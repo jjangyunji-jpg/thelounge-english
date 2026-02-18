@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff } from "lucide-react";
+import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,20 +55,21 @@ interface Student {
   lessonGoalCount: number;
   lessonHistory: LessonHistory[];
   reminderEnabled: boolean;
+  meetLink: string;
 }
 
 const calcMonthlyFee = (extra: number) => BASE_FEE + extra * LESSON_PRICE;
 
 const mockStudents: Student[] = [
-  { id: 1, name: "김민준", phone: "010-1111-2222", level: "B1", startDate: "2025-09-01", instructor: "Sarah Kim", status: "active", totalLessons: 45, extraLessons: 1, presetHomework: [{ id: 1, content: "일기 쓰기 2회 (10문장 이상)" }, { id: 2, content: "교재 Unit 3 복습" }], lessonGoal: "시제 연습하기", lessonGoalCount: 3, lessonHistory: [{ date: "2026-02-10", topic: "시제 연습하기 3", vocaCount: 12, hwStatus: "제출완료" }, { date: "2026-02-07", topic: "시제 연습하기 2", vocaCount: 8, hwStatus: "제출완료" }, { date: "2026-02-03", topic: "시제 연습하기 1", vocaCount: 15, hwStatus: "미제출" }], reminderEnabled: true },
-  { id: 2, name: "이지은", phone: "010-2222-3333", level: "C1", startDate: "2025-07-15", instructor: "James Park", status: "active", totalLessons: 62, extraLessons: 2, presetHomework: [{ id: 1, content: "에세이 초안 작성 (300단어 이상)" }], lessonGoal: "비즈니스 영어 이메일", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-10", topic: "비즈니스 영어 이메일 2", vocaCount: 10, hwStatus: "제출완료" }, { date: "2026-02-05", topic: "비즈니스 영어 이메일 1", vocaCount: 9, hwStatus: "제출완료" }], reminderEnabled: true },
-  { id: 3, name: "박서연", phone: "010-3333-4444", level: "A1", startDate: "2026-01-05", instructor: "Sarah Kim", status: "active", totalLessons: 8, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true },
-  { id: 4, name: "최현우", phone: "010-4444-5555", level: "B1", startDate: "2025-10-01", instructor: "James Park", status: "active", totalLessons: 38, extraLessons: 0, presetHomework: [{ id: 1, content: "단어 20개 암기 후 예문 작성" }], lessonGoal: "발음 교정", lessonGoalCount: 1, lessonHistory: [{ date: "2026-02-08", topic: "발음 교정 1", vocaCount: 6, hwStatus: "제출완료" }], reminderEnabled: false },
-  { id: 5, name: "정다은", phone: "010-5555-6666", level: "C2", startDate: "2025-06-01", instructor: "James Park", status: "active", totalLessons: 70, extraLessons: 1, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true },
-  { id: 6, name: "한소희", phone: "010-6666-7777", level: "B2", startDate: "2025-08-20", instructor: "James Park", status: "active", totalLessons: 50, extraLessons: 0, presetHomework: [{ id: 1, content: "뉴스 기사 읽기 + 요약 작성" }], lessonGoal: "프레젠테이션 표현", lessonGoalCount: 4, lessonHistory: [{ date: "2026-02-09", topic: "프레젠테이션 표현 4", vocaCount: 11, hwStatus: "제출완료" }, { date: "2026-02-04", topic: "프레젠테이션 표현 3", vocaCount: 7, hwStatus: "미제출" }], reminderEnabled: true },
-  { id: 7, name: "이수민", phone: "010-7777-8888", level: "A2", startDate: "2025-11-01", instructor: "Emily Lee", status: "active", totalLessons: 22, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true },
-  { id: 8, name: "정우성", phone: "010-8888-9999", level: "B1", startDate: "2025-09-15", instructor: "Emily Lee", status: "active", totalLessons: 40, extraLessons: 2, presetHomework: [{ id: 1, content: "일기 쓰기 3회 (5문장 이상)" }], lessonGoal: "관용표현 습득", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-11", topic: "관용표현 습득 2", vocaCount: 14, hwStatus: "제출완료" }, { date: "2026-02-06", topic: "관용표현 습득 1", vocaCount: 13, hwStatus: "제출완료" }], reminderEnabled: true },
-  { id: 9, name: "오지현", phone: "010-9999-0000", level: "A2", startDate: "2025-05-01", instructor: "Sarah Kim", status: "graduated", totalLessons: 60, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: false },
+  { id: 1, name: "김민준", phone: "010-1111-2222", level: "B1", startDate: "2025-09-01", instructor: "Sarah Kim", status: "active", totalLessons: 45, extraLessons: 1, presetHomework: [{ id: 1, content: "일기 쓰기 2회 (10문장 이상)" }, { id: 2, content: "교재 Unit 3 복습" }], lessonGoal: "시제 연습하기", lessonGoalCount: 3, lessonHistory: [{ date: "2026-02-10", topic: "시제 연습하기 3", vocaCount: 12, hwStatus: "제출완료" }, { date: "2026-02-07", topic: "시제 연습하기 2", vocaCount: 8, hwStatus: "제출완료" }, { date: "2026-02-03", topic: "시제 연습하기 1", vocaCount: 15, hwStatus: "미제출" }], reminderEnabled: true, meetLink: "https://meet.google.com/abc-defg-hij" },
+  { id: 2, name: "이지은", phone: "010-2222-3333", level: "C1", startDate: "2025-07-15", instructor: "James Park", status: "active", totalLessons: 62, extraLessons: 2, presetHomework: [{ id: 1, content: "에세이 초안 작성 (300단어 이상)" }], lessonGoal: "비즈니스 영어 이메일", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-10", topic: "비즈니스 영어 이메일 2", vocaCount: 10, hwStatus: "제출완료" }, { date: "2026-02-05", topic: "비즈니스 영어 이메일 1", vocaCount: 9, hwStatus: "제출완료" }], reminderEnabled: true, meetLink: "https://meet.google.com/xyz-uvwx-yzab" },
+  { id: 3, name: "박서연", phone: "010-3333-4444", level: "A1", startDate: "2026-01-05", instructor: "Sarah Kim", status: "active", totalLessons: 8, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true, meetLink: "" },
+  { id: 4, name: "최현우", phone: "010-4444-5555", level: "B1", startDate: "2025-10-01", instructor: "James Park", status: "active", totalLessons: 38, extraLessons: 0, presetHomework: [{ id: 1, content: "단어 20개 암기 후 예문 작성" }], lessonGoal: "발음 교정", lessonGoalCount: 1, lessonHistory: [{ date: "2026-02-08", topic: "발음 교정 1", vocaCount: 6, hwStatus: "제출완료" }], reminderEnabled: false, meetLink: "" },
+  { id: 5, name: "정다은", phone: "010-5555-6666", level: "C2", startDate: "2025-06-01", instructor: "James Park", status: "active", totalLessons: 70, extraLessons: 1, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true, meetLink: "https://meet.google.com/pqr-stuv-wxyz" },
+  { id: 6, name: "한소희", phone: "010-6666-7777", level: "B2", startDate: "2025-08-20", instructor: "James Park", status: "active", totalLessons: 50, extraLessons: 0, presetHomework: [{ id: 1, content: "뉴스 기사 읽기 + 요약 작성" }], lessonGoal: "프레젠테이션 표현", lessonGoalCount: 4, lessonHistory: [{ date: "2026-02-09", topic: "프레젠테이션 표현 4", vocaCount: 11, hwStatus: "제출완료" }, { date: "2026-02-04", topic: "프레젠테이션 표현 3", vocaCount: 7, hwStatus: "미제출" }], reminderEnabled: true, meetLink: "" },
+  { id: 7, name: "이수민", phone: "010-7777-8888", level: "A2", startDate: "2025-11-01", instructor: "Emily Lee", status: "active", totalLessons: 22, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true, meetLink: "" },
+  { id: 8, name: "정우성", phone: "010-8888-9999", level: "B1", startDate: "2025-09-15", instructor: "Emily Lee", status: "active", totalLessons: 40, extraLessons: 2, presetHomework: [{ id: 1, content: "일기 쓰기 3회 (5문장 이상)" }], lessonGoal: "관용표현 습득", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-11", topic: "관용표현 습득 2", vocaCount: 14, hwStatus: "제출완료" }, { date: "2026-02-06", topic: "관용표현 습득 1", vocaCount: 13, hwStatus: "제출완료" }], reminderEnabled: true, meetLink: "" },
+  { id: 9, name: "오지현", phone: "010-9999-0000", level: "A2", startDate: "2025-05-01", instructor: "Sarah Kim", status: "graduated", totalLessons: 60, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: false, meetLink: "" },
 ];
 
 const levelColors: Record<Level, string> = {
@@ -78,11 +79,7 @@ const levelColors: Record<Level, string> = {
   B2: "bg-orange-50 text-orange-700",
   C1: "bg-navy/10 text-navy",
   C2: "bg-navy/20 text-navy font-bold",
-};
-
-
-
-
+  };
 // New student form state
 interface NewStudent {
   name: string;
@@ -114,6 +111,10 @@ export default function StudentManagement() {
   // Inline editing a preset item
   const [editingHwItemId, setEditingHwItemId] = useState<number | null>(null);
   const [editingHwContent, setEditingHwContent] = useState("");
+
+  // Meet link editing
+  const [editingMeetId, setEditingMeetId] = useState<number | null>(null);
+  const [meetLinkInput, setMeetLinkInput] = useState("");
 
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
@@ -157,6 +158,22 @@ export default function StudentManagement() {
   const toggleReminder = (studentId: number) => {
     setStudents((prev) =>
       prev.map((s) => s.id === studentId ? { ...s, reminderEnabled: !s.reminderEnabled } : s)
+    );
+  };
+
+  const saveMeetLink = (studentId: number) => {
+    const url = meetLinkInput.trim();
+    if (url && !url.startsWith("http")) return;
+    setStudents((prev) =>
+      prev.map((s) => s.id === studentId ? { ...s, meetLink: url } : s)
+    );
+    setEditingMeetId(null);
+    setMeetLinkInput("");
+  };
+
+  const deleteMeetLink = (studentId: number) => {
+    setStudents((prev) =>
+      prev.map((s) => s.id === studentId ? { ...s, meetLink: "" } : s)
     );
   };
 
@@ -217,6 +234,7 @@ export default function StudentManagement() {
       lessonGoalCount: 0,
       lessonHistory: [],
       reminderEnabled: true,
+      meetLink: "",
     };
     setStudents((prev) => [s, ...prev]);
     setNewStudent({ name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0 });
@@ -437,6 +455,71 @@ export default function StudentManagement() {
 
               {expandedId === student.id && (
                 <div className="border-t border-border bg-muted/20 p-4 space-y-4">
+
+                  {/* Meet Link */}
+                  <div className="p-3 rounded-lg bg-card border border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Video className="w-3.5 h-3.5 text-navy" />
+                        Google Meet 링크
+                      </h4>
+                      {!editingMeetId && (
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); setEditingMeetId(student.id); setMeetLinkInput(student.meetLink); }}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          {student.meetLink ? "수정" : "추가"}
+                        </Button>
+                      )}
+                    </div>
+
+                    {editingMeetId === student.id ? (
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 relative">
+                          <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                          <Input
+                            value={meetLinkInput}
+                            onChange={(e) => setMeetLinkInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") saveMeetLink(student.id); if (e.key === "Escape") { setEditingMeetId(null); setMeetLinkInput(""); } }}
+                            placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                            className="h-8 text-xs pl-8"
+                            autoFocus
+                          />
+                        </div>
+                        <Button size="sm" className="h-8 px-3 text-xs bg-navy hover:bg-navy-light text-primary-foreground" onClick={() => saveMeetLink(student.id)}>
+                          저장
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => { setEditingMeetId(null); setMeetLinkInput(""); }}>
+                          취소
+                        </Button>
+                      </div>
+                    ) : student.meetLink ? (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={student.meetLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md bg-navy/5 border border-navy/15 text-navy text-xs font-medium hover:bg-navy/10 transition-colors truncate"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Video className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="truncate">{student.meetLink}</span>
+                          <ExternalLink className="w-3 h-3 flex-shrink-0 ml-auto" />
+                        </a>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteMeetLink(student.id); }}
+                          className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">링크가 설정되지 않았습니다</p>
+                    )}
+                  </div>
+
                   {/* Inline edit: level + extra lessons */}
                   <div className="p-3 rounded-lg bg-card border border-border space-y-3">
                     <div className="flex items-center justify-between">
