@@ -2,95 +2,104 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core Brand - Deep Navy + Gold */
+    --background: 220 30% 97%;
+    --foreground: 220 40% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 40% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 40% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary = Deep Navy */
+    --primary: 220 55% 18%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary = Soft Navy tint */
+    --secondary: 220 30% 94%;
+    --secondary-foreground: 220 55% 18%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 20% 93%;
+    --muted-foreground: 220 20% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent = Gold */
+    --accent: 42 80% 52%;
+    --accent-foreground: 220 55% 10%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 20% 88%;
+    --input: 220 20% 92%;
+    --ring: 42 80% 52%;
 
-    --radius: 0.5rem;
+    --radius: 0.6rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom tokens */
+    --navy: 220 55% 18%;
+    --navy-light: 220 45% 26%;
+    --navy-dark: 220 60% 10%;
+    --gold: 42 80% 52%;
+    --gold-light: 42 90% 65%;
+    --gold-dark: 38 75% 42%;
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Sidebar */
+    --sidebar-background: 220 55% 14%;
+    --sidebar-foreground: 220 20% 85%;
+    --sidebar-primary: 42 80% 52%;
+    --sidebar-primary-foreground: 220 55% 10%;
+    --sidebar-accent: 220 45% 22%;
+    --sidebar-accent-foreground: 220 10% 95%;
+    --sidebar-border: 220 40% 20%;
+    --sidebar-ring: 42 80% 52%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(220 55% 14%), hsl(220 45% 22%));
+    --gradient-gold: linear-gradient(135deg, hsl(42 80% 52%), hsl(38 75% 42%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 20% 98%));
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Shadows */
+    --shadow-sm: 0 1px 3px hsl(220 40% 12% / 0.08);
+    --shadow-md: 0 4px 16px hsl(220 40% 12% / 0.10);
+    --shadow-lg: 0 8px 32px hsl(220 40% 12% / 0.14);
+    --shadow-gold: 0 4px 20px hsl(42 80% 52% / 0.25);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 220 55% 10%;
+    --foreground: 220 10% 95%;
+    --card: 220 45% 14%;
+    --card-foreground: 220 10% 95%;
+    --popover: 220 45% 14%;
+    --popover-foreground: 220 10% 95%;
+    --primary: 42 80% 52%;
+    --primary-foreground: 220 55% 10%;
+    --secondary: 220 40% 20%;
+    --secondary-foreground: 220 10% 90%;
+    --muted: 220 40% 18%;
+    --muted-foreground: 220 20% 60%;
+    --accent: 42 80% 52%;
+    --accent-foreground: 220 55% 10%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 40% 22%;
+    --input: 220 40% 18%;
+    --ring: 42 80% 52%;
+    --sidebar-background: 220 60% 8%;
+    --sidebar-foreground: 220 20% 80%;
+    --sidebar-primary: 42 80% 52%;
+    --sidebar-primary-foreground: 220 55% 10%;
+    --sidebar-accent: 220 45% 18%;
+    --sidebar-accent-foreground: 220 10% 95%;
+    --sidebar-border: 220 40% 16%;
+    --sidebar-ring: 42 80% 52%;
   }
 }
 
@@ -101,5 +110,68 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .sidebar-gradient {
+    background: var(--gradient-hero);
+  }
+
+  .gold-gradient {
+    background: var(--gradient-gold);
+  }
+
+  .card-gradient {
+    background: var(--gradient-card);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-md);
+  }
+
+  .shadow-gold {
+    box-shadow: var(--shadow-gold);
+  }
+
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+
+  .bg-navy {
+    background-color: hsl(var(--navy));
+  }
+
+  .bg-navy-light {
+    background-color: hsl(var(--navy-light));
+  }
+
+  .border-gold {
+    border-color: hsl(var(--gold));
+  }
+
+  .status-active {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background-color: hsl(var(--success) / 0.12);
+    color: hsl(var(--success));
+  }
+
+  .status-inactive {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+  }
+
+  .status-graduated {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background-color: hsl(var(--warning) / 0.12);
+    color: hsl(var(--warning-foreground));
+    color: hsl(38 75% 42%);
   }
 }
