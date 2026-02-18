@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2 } from "lucide-react";
+import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,13 @@ export interface PresetHomework {
   content: string;
 }
 
+interface LessonHistory {
+  date: string;
+  topic: string;
+  vocaCount: number;
+  hwStatus: string;
+}
+
 interface Student {
   id: number;
   name: string;
@@ -44,20 +51,23 @@ interface Student {
   totalLessons: number;
   extraLessons: number;
   presetHomework: PresetHomework[];
+  lessonGoal: string;
+  lessonGoalCount: number;
+  lessonHistory: LessonHistory[];
 }
 
 const calcMonthlyFee = (extra: number) => BASE_FEE + extra * LESSON_PRICE;
 
 const mockStudents: Student[] = [
-  { id: 1, name: "김민준", phone: "010-1111-2222", level: "B1", startDate: "2025-09-01", instructor: "Sarah Kim", status: "active", totalLessons: 45, extraLessons: 1, presetHomework: [{ id: 1, content: "일기 쓰기 2회 (10문장 이상)" }, { id: 2, content: "교재 Unit 3 복습" }] },
-  { id: 2, name: "이지은", phone: "010-2222-3333", level: "C1", startDate: "2025-07-15", instructor: "James Park", status: "active", totalLessons: 62, extraLessons: 2, presetHomework: [{ id: 1, content: "에세이 초안 작성 (300단어 이상)" }] },
-  { id: 3, name: "박서연", phone: "010-3333-4444", level: "A1", startDate: "2026-01-05", instructor: "Sarah Kim", status: "active", totalLessons: 8, extraLessons: 0, presetHomework: [] },
-  { id: 4, name: "최현우", phone: "010-4444-5555", level: "B1", startDate: "2025-10-01", instructor: "James Park", status: "active", totalLessons: 38, extraLessons: 0, presetHomework: [{ id: 1, content: "단어 20개 암기 후 예문 작성" }] },
-  { id: 5, name: "정다은", phone: "010-5555-6666", level: "C2", startDate: "2025-06-01", instructor: "James Park", status: "active", totalLessons: 70, extraLessons: 1, presetHomework: [] },
-  { id: 6, name: "한소희", phone: "010-6666-7777", level: "B2", startDate: "2025-08-20", instructor: "James Park", status: "active", totalLessons: 50, extraLessons: 0, presetHomework: [{ id: 1, content: "뉴스 기사 읽기 + 요약 작성" }] },
-  { id: 7, name: "이수민", phone: "010-7777-8888", level: "A2", startDate: "2025-11-01", instructor: "Emily Lee", status: "active", totalLessons: 22, extraLessons: 0, presetHomework: [] },
-  { id: 8, name: "정우성", phone: "010-8888-9999", level: "B1", startDate: "2025-09-15", instructor: "Emily Lee", status: "active", totalLessons: 40, extraLessons: 2, presetHomework: [{ id: 1, content: "일기 쓰기 3회 (5문장 이상)" }] },
-  { id: 9, name: "오지현", phone: "010-9999-0000", level: "A2", startDate: "2025-05-01", instructor: "Sarah Kim", status: "graduated", totalLessons: 60, extraLessons: 0, presetHomework: [] },
+  { id: 1, name: "김민준", phone: "010-1111-2222", level: "B1", startDate: "2025-09-01", instructor: "Sarah Kim", status: "active", totalLessons: 45, extraLessons: 1, presetHomework: [{ id: 1, content: "일기 쓰기 2회 (10문장 이상)" }, { id: 2, content: "교재 Unit 3 복습" }], lessonGoal: "시제 연습하기", lessonGoalCount: 3, lessonHistory: [{ date: "2026-02-10", topic: "시제 연습하기 3", vocaCount: 12, hwStatus: "제출완료" }, { date: "2026-02-07", topic: "시제 연습하기 2", vocaCount: 8, hwStatus: "제출완료" }, { date: "2026-02-03", topic: "시제 연습하기 1", vocaCount: 15, hwStatus: "미제출" }] },
+  { id: 2, name: "이지은", phone: "010-2222-3333", level: "C1", startDate: "2025-07-15", instructor: "James Park", status: "active", totalLessons: 62, extraLessons: 2, presetHomework: [{ id: 1, content: "에세이 초안 작성 (300단어 이상)" }], lessonGoal: "비즈니스 영어 이메일", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-10", topic: "비즈니스 영어 이메일 2", vocaCount: 10, hwStatus: "제출완료" }, { date: "2026-02-05", topic: "비즈니스 영어 이메일 1", vocaCount: 9, hwStatus: "제출완료" }] },
+  { id: 3, name: "박서연", phone: "010-3333-4444", level: "A1", startDate: "2026-01-05", instructor: "Sarah Kim", status: "active", totalLessons: 8, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [] },
+  { id: 4, name: "최현우", phone: "010-4444-5555", level: "B1", startDate: "2025-10-01", instructor: "James Park", status: "active", totalLessons: 38, extraLessons: 0, presetHomework: [{ id: 1, content: "단어 20개 암기 후 예문 작성" }], lessonGoal: "발음 교정", lessonGoalCount: 1, lessonHistory: [{ date: "2026-02-08", topic: "발음 교정 1", vocaCount: 6, hwStatus: "제출완료" }] },
+  { id: 5, name: "정다은", phone: "010-5555-6666", level: "C2", startDate: "2025-06-01", instructor: "James Park", status: "active", totalLessons: 70, extraLessons: 1, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [] },
+  { id: 6, name: "한소희", phone: "010-6666-7777", level: "B2", startDate: "2025-08-20", instructor: "James Park", status: "active", totalLessons: 50, extraLessons: 0, presetHomework: [{ id: 1, content: "뉴스 기사 읽기 + 요약 작성" }], lessonGoal: "프레젠테이션 표현", lessonGoalCount: 4, lessonHistory: [{ date: "2026-02-09", topic: "프레젠테이션 표현 4", vocaCount: 11, hwStatus: "제출완료" }, { date: "2026-02-04", topic: "프레젠테이션 표현 3", vocaCount: 7, hwStatus: "미제출" }] },
+  { id: 7, name: "이수민", phone: "010-7777-8888", level: "A2", startDate: "2025-11-01", instructor: "Emily Lee", status: "active", totalLessons: 22, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [] },
+  { id: 8, name: "정우성", phone: "010-8888-9999", level: "B1", startDate: "2025-09-15", instructor: "Emily Lee", status: "active", totalLessons: 40, extraLessons: 2, presetHomework: [{ id: 1, content: "일기 쓰기 3회 (5문장 이상)" }], lessonGoal: "관용표현 습득", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-11", topic: "관용표현 습득 2", vocaCount: 14, hwStatus: "제출완료" }, { date: "2026-02-06", topic: "관용표현 습득 1", vocaCount: 13, hwStatus: "제출완료" }] },
+  { id: 9, name: "오지현", phone: "010-9999-0000", level: "A2", startDate: "2025-05-01", instructor: "Sarah Kim", status: "graduated", totalLessons: 60, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [] },
 ];
 
 const levelColors: Record<Level, string> = {
@@ -69,11 +79,8 @@ const levelColors: Record<Level, string> = {
   C2: "bg-navy/20 text-navy font-bold",
 };
 
-const mockNotes = [
-  { date: "2026-02-10", topic: "Business Email Writing", vocaCount: 12, hwStatus: "제출완료" },
-  { date: "2026-02-07", topic: "Presentation Skills", vocaCount: 8, hwStatus: "제출완료" },
-  { date: "2026-02-03", topic: "Idioms & Expressions", vocaCount: 15, hwStatus: "미제출" },
-];
+
+
 
 // New student form state
 interface NewStudent {
@@ -97,10 +104,14 @@ export default function StudentManagement() {
   const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
   const [editLevel, setEditLevel] = useState<Level | "">("");
   const [editExtra, setEditExtra] = useState(0);
+  const [editGoal, setEditGoal] = useState("");
 
   // Preset homework editing
   const [editingPresetId, setEditingPresetId] = useState<number | null>(null);
   const [presetInput, setPresetInput] = useState("");
+  // Inline editing a preset item
+  const [editingHwItemId, setEditingHwItemId] = useState<number | null>(null);
+  const [editingHwContent, setEditingHwContent] = useState("");
 
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
@@ -119,13 +130,23 @@ export default function StudentManagement() {
     setEditingStudentId(s.id);
     setEditLevel(s.level);
     setEditExtra(s.extraLessons);
+    setEditGoal(s.lessonGoal);
   };
 
   const saveInlineEdit = (id: number) => {
     setStudents((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, level: editLevel as Level, extraLessons: editExtra } : s
-      )
+      prev.map((s) => {
+        if (s.id !== id) return s;
+        // If goal changed, reset count and update history topic prefix
+        const goalChanged = editGoal.trim() !== s.lessonGoal;
+        return {
+          ...s,
+          level: editLevel as Level,
+          extraLessons: editExtra,
+          lessonGoal: editGoal.trim(),
+          lessonGoalCount: goalChanged ? 0 : s.lessonGoalCount,
+        };
+      })
     );
     setEditingStudentId(null);
   };
@@ -152,6 +173,24 @@ export default function StudentManagement() {
     );
   };
 
+  const startEditHwItem = (hw: { id: number; content: string }) => {
+    setEditingHwItemId(hw.id);
+    setEditingHwContent(hw.content);
+  };
+
+  const saveEditHwItem = (studentId: number, hwId: number) => {
+    if (!editingHwContent.trim()) return;
+    setStudents((prev) =>
+      prev.map((s) =>
+        s.id === studentId
+          ? { ...s, presetHomework: s.presetHomework.map((h) => h.id === hwId ? { ...h, content: editingHwContent } : h) }
+          : s
+      )
+    );
+    setEditingHwItemId(null);
+    setEditingHwContent("");
+  };
+
   const registerStudent = () => {
     if (!newStudent.name || !newStudent.level || !newStudent.instructor) return;
     const s: Student = {
@@ -165,6 +204,9 @@ export default function StudentManagement() {
       totalLessons: 0,
       extraLessons: newStudent.extraLessons,
       presetHomework: [],
+      lessonGoal: "",
+      lessonGoalCount: 0,
+      lessonHistory: [],
     };
     setStudents((prev) => [s, ...prev]);
     setNewStudent({ name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0 });
@@ -428,6 +470,20 @@ export default function StudentManagement() {
                             />
                           </div>
                         </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Target className="w-3 h-3" /> 수업 목표
+                          </Label>
+                          <Input
+                            value={editGoal}
+                            onChange={(e) => setEditGoal(e.target.value)}
+                            placeholder="예: 시제 연습하기"
+                            className="h-8 text-sm"
+                          />
+                          {editGoal.trim() !== student.lessonGoal && editGoal.trim() && (
+                            <p className="text-xs text-warning">⚠️ 목표 변경 시 수업 이력 카운트가 0에서 다시 시작됩니다</p>
+                          )}
+                        </div>
                         {/* Fee preview */}
                         <div className="p-2 rounded bg-muted/40 text-xs flex items-center justify-between">
                           <span className="text-muted-foreground">
@@ -454,7 +510,7 @@ export default function StudentManagement() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-3 gap-3 text-xs">
+                      <div className="grid grid-cols-4 gap-3 text-xs">
                         <div>
                           <p className="text-muted-foreground">레벨</p>
                           <p className="font-semibold text-foreground mt-0.5">{student.level}</p>
@@ -468,6 +524,12 @@ export default function StudentManagement() {
                         <div>
                           <p className="text-muted-foreground">이번달 수강료</p>
                           <p className="font-bold text-gold-dark mt-0.5">₩{monthlyFee.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground flex items-center gap-1"><Target className="w-3 h-3" />수업 목표</p>
+                          <p className="font-semibold text-foreground mt-0.5 truncate">
+                            {student.lessonGoal ? `${student.lessonGoal} (${student.lessonGoalCount}회차)` : <span className="text-muted-foreground font-normal">미설정</span>}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -489,15 +551,41 @@ export default function StudentManagement() {
                         <p className="text-xs text-muted-foreground py-1">설정된 정기 숙제가 없습니다</p>
                       ) : (
                         student.presetHomework.map((hw) => (
-                          <div key={hw.id} className="flex items-center gap-2 py-1 group">
-                            <span className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0 mt-0.5" />
-                            <span className="flex-1 text-sm text-foreground">{hw.content}</span>
-                            <button
-                              onClick={() => removePresetHw(student.id, hw.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                          <div key={hw.id} className="rounded-md border border-border bg-muted/20 px-2.5 py-1.5 group">
+                            {editingHwItemId === hw.id ? (
+                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Input
+                                  value={editingHwContent}
+                                  onChange={(e) => setEditingHwContent(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") saveEditHwItem(student.id, hw.id); if (e.key === "Escape") setEditingHwItemId(null); }}
+                                  className="h-7 text-xs flex-1"
+                                  autoFocus
+                                />
+                                <button onClick={() => saveEditHwItem(student.id, hw.id)} className="text-success hover:opacity-80">
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => setEditingHwItemId(null)} className="text-muted-foreground hover:text-foreground">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0" />
+                                <span className="flex-1 text-sm text-foreground">{hw.content}</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); startEditHwItem(hw); }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); removePresetHw(student.id, hw.id); }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))
                       )}
@@ -540,6 +628,9 @@ export default function StudentManagement() {
                       <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                         <BookOpen className="w-3.5 h-3.5 text-gold" />
                         최근 수업 이력
+                        {student.lessonGoal && (
+                          <span className="text-xs font-normal text-muted-foreground">— 현재 목표: {student.lessonGoal}</span>
+                        )}
                       </h4>
                       <button
                         onClick={() => setShowHistory(showHistory === student.id ? null : student.id)}
@@ -548,18 +639,22 @@ export default function StudentManagement() {
                         전체보기
                       </button>
                     </div>
-                    <div className="space-y-2">
-                      {mockNotes.slice(0, 3).map((note, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-card border border-border">
-                          <span className="text-xs text-muted-foreground w-20 flex-shrink-0">{note.date}</span>
-                          <span className="flex-1 text-foreground text-xs">{note.topic}</span>
-                          <span className="text-xs text-muted-foreground">단어 {note.vocaCount}개</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${note.hwStatus === "제출완료" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
-                            숙제 {note.hwStatus}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    {student.lessonHistory.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-2">수업 이력이 없습니다</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {(showHistory === student.id ? student.lessonHistory : student.lessonHistory.slice(0, 3)).map((note, i) => (
+                          <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-card border border-border">
+                            <span className="text-xs text-muted-foreground w-20 flex-shrink-0">{note.date}</span>
+                            <span className="flex-1 text-foreground text-xs font-medium">{note.topic}</span>
+                            <span className="text-xs text-muted-foreground">단어 {note.vocaCount}개</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${note.hwStatus === "제출완료" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                              숙제 {note.hwStatus}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {tab === "active" && (
