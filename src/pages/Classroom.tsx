@@ -2,12 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import {
   Video, VideoOff, Clock, FileText, CheckSquare,
   Save, Sparkles, ExternalLink, ChevronDown, ChevronUp,
-  Plus, Trash2, ArrowLeft, Wifi, WifiOff
+  Plus, Trash2, ArrowLeft, Wifi, WifiOff, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type ClassState = "pre" | "ready" | "active" | "ended";
@@ -17,7 +16,14 @@ interface HomeworkItem {
   id: number;
   content: string;
   done: boolean;
+  isPreset?: boolean; // 정기 숙제 여부
 }
+
+// Preset homework for this student (would come from DB in real app)
+const PRESET_HOMEWORK: HomeworkItem[] = [
+  { id: 101, content: "일기 쓰기 2회 (10문장 이상)", done: false, isPreset: true },
+  { id: 102, content: "교재 Unit 3 복습", done: false, isPreset: true },
+];
 
 const SESSION = {
   studentName: "김민준",
@@ -51,9 +57,8 @@ export default function Classroom() {
   const [elapsed, setElapsed] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [notes, setNotes] = useState("");
-  const [hwList, setHwList] = useState<HomeworkItem[]>([
-    { id: 1, content: "이메일 초안 작성해오기", done: false },
-  ]);
+  // Pre-populate with preset homework
+  const [hwList, setHwList] = useState<HomeworkItem[]>(PRESET_HOMEWORK);
   const [hwInput, setHwInput] = useState("");
   const [hwOpen, setHwOpen] = useState(true);
   const [extracting, setExtracting] = useState(false);
@@ -365,38 +370,59 @@ export default function Classroom() {
 
             {hwOpen && (
               <div className="p-4 space-y-3">
-                {/* Input */}
-                <div className="flex gap-2">
-                  <Input
-                    value={hwInput}
-                    onChange={(e) => setHwInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addHw()}
-                    placeholder="숙제 내용을 입력하고 Enter..."
-                    disabled={isDisabled}
-                    className="h-9 text-sm flex-1"
-                  />
-                  <Button
-                    size="sm"
-                    onClick={addHw}
-                    disabled={!hwInput.trim() || isDisabled}
-                    className="h-9 px-3 bg-navy hover:bg-navy-light text-primary-foreground"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
+                {/* Preset section label */}
+                {hwList.some((h) => h.isPreset) && (
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <RefreshCw className="w-3 h-3 text-gold" />
+                    <span className="text-xs font-medium text-gold-dark">정기 숙제</span>
+                    <span className="text-xs text-muted-foreground">(자동 설정됨)</span>
+                  </div>
+                )}
 
                 {/* List */}
                 {hwList.length > 0 ? (
                   <div className="space-y-2">
-                    {hwList.map((hw) => (
+                    {/* Preset items first */}
+                    {hwList.filter((h) => h.isPreset).map((hw) => (
+                      <div key={hw.id} className="flex items-center gap-3 py-1.5 group pl-1 border-l-2 border-gold/40">
+                        <button
+                          onClick={() => toggleHw(hw.id)}
+                          className={cn(
+                            "w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all",
+                            hw.done ? "bg-success border-success" : "border-gold/60 hover:border-gold"
+                          )}
+                        >
+                          {hw.done && <span className="text-success-foreground text-xs font-bold">✓</span>}
+                        </button>
+                        <span className={cn("flex-1 text-sm", hw.done && "line-through text-muted-foreground")}>
+                          {hw.content}
+                        </span>
+                        <button
+                          onClick={() => removeHw(hw.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Divider if both preset and regular exist */}
+                    {hwList.some((h) => h.isPreset) && hwList.some((h) => !h.isPreset) && (
+                      <div className="flex items-center gap-2 py-1">
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-xs text-muted-foreground">추가 숙제</span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                    )}
+
+                    {/* Non-preset items */}
+                    {hwList.filter((h) => !h.isPreset).map((hw) => (
                       <div key={hw.id} className="flex items-center gap-3 py-1.5 group">
                         <button
                           onClick={() => toggleHw(hw.id)}
                           className={cn(
                             "w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all",
-                            hw.done
-                              ? "bg-success border-success"
-                              : "border-muted-foreground hover:border-navy"
+                            hw.done ? "bg-success border-success" : "border-muted-foreground hover:border-navy"
                           )}
                         >
                           {hw.done && <span className="text-success-foreground text-xs font-bold">✓</span>}
@@ -416,6 +442,26 @@ export default function Classroom() {
                 ) : (
                   <p className="text-xs text-muted-foreground py-2">숙제를 입력해주세요</p>
                 )}
+
+                {/* Input for additional homework */}
+                <div className="flex gap-2 pt-1">
+                  <Input
+                    value={hwInput}
+                    onChange={(e) => setHwInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addHw()}
+                    placeholder="추가 숙제 입력..."
+                    disabled={isDisabled}
+                    className="h-8 text-sm flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={addHw}
+                    disabled={!hwInput.trim() || isDisabled}
+                    className="h-8 px-3 bg-navy hover:bg-navy-light text-primary-foreground"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
 
                 {/* Save & notify */}
                 {(classState === "active" || classState === "ended") && hwList.length > 0 && (
