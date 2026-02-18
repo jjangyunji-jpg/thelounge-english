@@ -1,5 +1,6 @@
-import { Users, GraduationCap, BookOpen, TrendingUp, Clock, AlertCircle } from "lucide-react";
+import { Users, GraduationCap, BookOpen, TrendingUp, Clock, AlertCircle, Video } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const stats = [
   { label: "활성 강사", value: "4명", icon: Users, color: "text-navy", bg: "bg-navy/8" },
@@ -62,6 +63,12 @@ export default function AdminDashboard() {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-medium">
                   {item.level}
                 </span>
+                <a href="/classroom">
+                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs text-navy hover:bg-navy/8">
+                    <Video className="w-3 h-3" />
+                    입장
+                  </Button>
+                </a>
               </div>
             ))}
           </div>
