@@ -1,0 +1,1 @@
+ALTER TABLE public.vocabulary_tests DROP CONSTRAINT IF EXISTS vocabulary_tests_type_check;
