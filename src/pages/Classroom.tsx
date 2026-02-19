@@ -34,6 +34,27 @@ const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; col
   memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",            hint: "녹음 선택 (대화문 등)" },
 };
 
+// 주차 라벨 생성 (예: "2026-W08")
+function getWeekLabel(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+// 오늘 날짜 포맷 (예: 2026년 2월 19일 수요일)
+function formatDate(date = new Date()) {
+  return date.toLocaleDateString("ko-KR", {
+    year: "numeric", month: "long", day: "numeric", weekday: "short",
+  });
+}
+
+// 수업 시간 포맷 (예: 오후 7:30)
+function formatTime(date = new Date()) {
+  return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+}
+
 const SESSION = {
   sessionId: "048b973b-ad42-4c1e-a9ac-32cf7b2fb87f",
   studentName: "김민준",
@@ -174,9 +195,47 @@ export default function Classroom() {
   const handleExtractVocab = async () => {
     if (!notes.trim()) return;
     setExtracting(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setExtracting(false);
-    setExtracted(true);
+
+    const weekLabel = getWeekLabel();
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+    const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/extract-vocab`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify({
+          notes,
+          studentName: SESSION.studentName,
+          weekLabel,
+          sessionId: SESSION.sessionId,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast({ title: "추출 실패", description: data.error ?? "오류가 발생했습니다.", variant: "destructive" });
+        return;
+      }
+
+      if (data.inserted === 0) {
+        toast({ title: data.message ?? "새로운 단어가 없습니다.", description: "이미 단어장에 추가된 단어들입니다." });
+      } else {
+        toast({
+          title: `단어 ${data.inserted}개 추출 완료 ✓`,
+          description: `${weekLabel} 단어장에 추가됐습니다. ${data.words.map((w: { english_word: string }) => w.english_word).join(", ")}`,
+        });
+        setExtracted(true);
+      }
+    } catch (err) {
+      toast({ title: "네트워크 오류", description: "다시 시도해주세요.", variant: "destructive" });
+    } finally {
+      setExtracting(false);
+    }
   };
 
   const handleAddHw = async () => {
@@ -263,6 +322,12 @@ export default function Classroom() {
             {SESSION.topic && (
               <span className="text-gold text-xs hidden md:inline">· {SESSION.topic}</span>
             )}
+          </div>
+          {/* 날짜 + 수업 시간 */}
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-sidebar-foreground/50 text-xs font-mono">
+              {formatDate()} · {formatTime(SESSION.scheduledAt)}
+            </span>
           </div>
         </div>
 
