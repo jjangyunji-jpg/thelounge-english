@@ -94,6 +94,39 @@ export type Database = {
         }
         Relationships: []
       }
+      holiday_notices: {
+        Row: {
+          created_at: string
+          date_end: string
+          date_start: string
+          dismissed_by: string[] | null
+          id: string
+          notify_students: boolean
+          reason: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          date_end: string
+          date_start: string
+          dismissed_by?: string[] | null
+          id?: string
+          notify_students?: boolean
+          reason?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          date_end?: string
+          date_start?: string
+          dismissed_by?: string[] | null
+          id?: string
+          notify_students?: boolean
+          reason?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       homework_assignments: {
         Row: {
           created_at: string
