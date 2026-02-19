@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   Video, VideoOff, Clock, FileText, CheckSquare,
   Save, Sparkles, ExternalLink, ChevronDown, ChevronUp,
-  Plus, Trash2, ArrowLeft, Wifi, WifiOff, RefreshCw
+  Plus, Trash2, ArrowLeft, Wifi, WifiOff, RefreshCw,
+  PenLine, BookOpen, Mic, Brain, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,22 +11,28 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InstructorSTTPanel from "@/components/classroom/InstructorSTTPanel";
 import WordLookupPanel from "@/components/classroom/WordLookupPanel";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type ClassState = "pre" | "ready" | "active" | "ended";
 type Role = "instructor" | "student";
+type HwType = "writing" | "reading" | "speaking" | "memorizing";
 
 interface HomeworkItem {
-  id: number;
-  content: string;
-  done: boolean;
-  isPreset?: boolean; // 정기 숙제 여부
+  id: string;           // temp UUID for new items, DB UUID after save
+  type: HwType;
+  title: string;
+  description: string;
+  isPreset: boolean;
+  saved: boolean;       // true = already in DB
 }
 
-// Preset homework for this student (would come from DB in real app)
-const PRESET_HOMEWORK: HomeworkItem[] = [
-  { id: 101, content: "일기 쓰기 2회 (10문장 이상)", done: false, isPreset: true },
-  { id: 102, content: "교재 Unit 3 복습", done: false, isPreset: true },
-];
+const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string; hint: string }> = {
+  writing:    { label: "쓰기",  icon: PenLine,  color: "text-[hsl(var(--navy))]",   hint: "텍스트 작성 필수" },
+  reading:    { label: "읽기",  icon: BookOpen, color: "text-[hsl(var(--gold-dark))]", hint: "녹음 필수" },
+  speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]",  hint: "녹음 필수 / 텍스트 선택" },
+  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",            hint: "녹음 필수 (대화문 등)" },
+};
 
 const SESSION = {
   studentName: "김민준",
@@ -53,20 +60,26 @@ function formatCountdown(ms: number) {
 }
 
 export default function Classroom() {
+  const { toast } = useToast();
   const [role, setRole] = useState<Role>("instructor");
   const [classState, setClassState] = useState<ClassState>("ready");
   const [meetConnected, setMeetConnected] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [notes, setNotes] = useState("");
-  // Pre-populate with preset homework
-  const [hwList, setHwList] = useState<HomeworkItem[]>(PRESET_HOMEWORK);
-  const [hwInput, setHwInput] = useState("");
+  const [hwList, setHwList] = useState<HomeworkItem[]>([]);
   const [hwOpen, setHwOpen] = useState(true);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // 새 숙제 추가 폼 상태
+  const [addingHw, setAddingHw] = useState(false);
+  const [newHwType, setNewHwType] = useState<HwType>("writing");
+  const [newHwTitle, setNewHwTitle] = useState("");
+  const [newHwDesc, setNewHwDesc] = useState("");
+  const [savingHw, setSavingHw] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -113,17 +126,33 @@ export default function Classroom() {
     setExtracted(true);
   };
 
-  const addHw = () => {
-    if (!hwInput.trim()) return;
-    setHwList((prev) => [...prev, { id: Date.now(), content: hwInput, done: false }]);
-    setHwInput("");
+  const handleAddHw = async () => {
+    if (!newHwTitle.trim()) return;
+    setSavingHw(true);
+    const { data, error } = await supabase.from("homework_assignments").insert({
+      student_name: SESSION.studentName,
+      title: newHwTitle.trim(),
+      description: newHwDesc.trim() || null,
+      type: newHwType,
+      is_preset: false,
+    }).select().single();
+
+    if (!error && data) {
+      setHwList((prev) => [...prev, {
+        id: data.id, type: newHwType,
+        title: newHwTitle.trim(), description: newHwDesc.trim(),
+        isPreset: false, saved: true,
+      }]);
+      toast({ title: "숙제가 추가됐습니다 ✓" });
+    }
+    setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing");
+    setAddingHw(false); setSavingHw(false);
   };
 
-  const toggleHw = (id: number) =>
-    setHwList((prev) => prev.map((h) => h.id === id ? { ...h, done: !h.done } : h));
-
-  const removeHw = (id: number) =>
+  const removeHw = async (id: string) => {
+    await supabase.from("homework_assignments").delete().eq("id", id);
     setHwList((prev) => prev.filter((h) => h.id !== id));
+  };
 
   const isDisabled = classState === "pre";
 
@@ -364,7 +393,7 @@ export default function Classroom() {
                 <CheckSquare className="w-4 h-4 text-gold" />
                 <span className="font-semibold text-sm text-foreground">숙제</span>
                 <span className="text-xs bg-gold/15 text-gold-dark px-1.5 py-0.5 rounded-full font-medium">
-                  {hwList.filter((h) => !h.done).length}건
+                  {hwList.length}건
                 </span>
               </div>
               {hwOpen
@@ -373,117 +402,127 @@ export default function Classroom() {
             </button>
 
             {hwOpen && (
-              <div className="p-4 space-y-3">
-                {/* Preset section label */}
-                {hwList.some((h) => h.isPreset) && (
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <RefreshCw className="w-3 h-3 text-gold" />
-                    <span className="text-xs font-medium text-gold-dark">정기 숙제</span>
-                    <span className="text-xs text-muted-foreground">(자동 설정됨)</span>
-                  </div>
+              <div className="p-3 space-y-2">
+                {/* Homework list */}
+                {hwList.length === 0 && !addingHw && (
+                  <p className="text-xs text-muted-foreground py-1.5 px-1">아직 추가된 숙제가 없습니다</p>
                 )}
 
-                {/* List */}
-                {hwList.length > 0 ? (
-                  <div className="space-y-2">
-                    {/* Preset items first */}
-                    {hwList.filter((h) => h.isPreset).map((hw) => (
-                      <div key={hw.id} className="flex items-center gap-3 py-1.5 group pl-1 border-l-2 border-gold/40">
-                        <button
-                          onClick={() => toggleHw(hw.id)}
-                          className={cn(
-                            "w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all",
-                            hw.done ? "bg-success border-success" : "border-gold/60 hover:border-gold"
-                          )}
-                        >
-                          {hw.done && <span className="text-success-foreground text-xs font-bold">✓</span>}
-                        </button>
-                        <span className={cn("flex-1 text-sm", hw.done && "line-through text-muted-foreground")}>
-                          {hw.content}
-                        </span>
+                {hwList.map((hw) => {
+                  const meta = HW_TYPE_META[hw.type];
+                  const Icon = meta.icon;
+                  return (
+                    <div key={hw.id} className="flex items-start gap-2.5 py-2 px-2.5 rounded-lg bg-muted/30 group border border-border">
+                      <div className={cn("mt-0.5 flex-shrink-0", meta.color)}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-semibold text-foreground">{hw.title}</span>
+                          <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>
+                            {meta.label}
+                          </span>
+                        </div>
+                        {hw.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{hw.description}</p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground/70 mt-0.5">{meta.hint}</p>
+                      </div>
+                      {!isDisabled && (
                         <button
                           onClick={() => removeHw(hw.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0 mt-0.5"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
-                      </div>
-                    ))}
+                      )}
+                    </div>
+                  );
+                })}
 
-                    {/* Divider if both preset and regular exist */}
-                    {hwList.some((h) => h.isPreset) && hwList.some((h) => !h.isPreset) && (
-                      <div className="flex items-center gap-2 py-1">
-                        <div className="flex-1 h-px bg-border" />
-                        <span className="text-xs text-muted-foreground">추가 숙제</span>
-                        <div className="flex-1 h-px bg-border" />
-                      </div>
-                    )}
+                {/* Add homework form */}
+                {addingHw ? (
+                  <div className="border border-[hsl(var(--gold)/0.4)] rounded-lg p-3 space-y-2.5 bg-[hsl(var(--gold)/0.04)]">
+                    {/* Type selector */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(Object.keys(HW_TYPE_META) as HwType[]).map((t) => {
+                        const m = HW_TYPE_META[t];
+                        const Icon = m.icon;
+                        return (
+                          <button
+                            key={t}
+                            onClick={() => setNewHwType(t)}
+                            className={cn(
+                              "flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-all",
+                              newHwType === t
+                                ? "border-[hsl(var(--gold))] bg-[hsl(var(--gold)/0.10)] text-foreground"
+                                : "border-border bg-card text-muted-foreground hover:border-[hsl(var(--gold)/0.4)]"
+                            )}
+                          >
+                            <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", newHwType === t ? m.color : "")} />
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                    {/* Non-preset items */}
-                    {hwList.filter((h) => !h.isPreset).map((hw) => (
-                      <div key={hw.id} className="flex items-center gap-3 py-1.5 group">
-                        <button
-                          onClick={() => toggleHw(hw.id)}
-                          className={cn(
-                            "w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all",
-                            hw.done ? "bg-success border-success" : "border-muted-foreground hover:border-navy"
-                          )}
-                        >
-                          {hw.done && <span className="text-success-foreground text-xs font-bold">✓</span>}
-                        </button>
-                        <span className={cn("flex-1 text-sm", hw.done && "line-through text-muted-foreground")}>
-                          {hw.content}
-                        </span>
-                        <button
-                          onClick={() => removeHw(hw.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                    {/* Hint */}
+                    <p className="text-[10px] text-muted-foreground px-0.5">{HW_TYPE_META[newHwType].hint}</p>
+
+                    {/* Title */}
+                    <Input
+                      value={newHwTitle}
+                      onChange={(e) => setNewHwTitle(e.target.value)}
+                      placeholder="숙제 제목 (필수)"
+                      className="h-8 text-sm"
+                      onKeyDown={(e) => e.key === "Enter" && handleAddHw()}
+                    />
+
+                    {/* Description */}
+                    <Textarea
+                      value={newHwDesc}
+                      onChange={(e) => setNewHwDesc(e.target.value)}
+                      placeholder="상세 설명 (선택)"
+                      className="min-h-[60px] resize-none text-xs"
+                    />
+
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        onClick={handleAddHw}
+                        disabled={!newHwTitle.trim() || savingHw}
+                        className="flex-1 h-8 text-xs bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {savingHw ? "저장 중..." : "추가"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => { setAddingHw(false); setNewHwTitle(""); setNewHwDesc(""); }}
+                        className="h-8 text-xs"
+                      >
+                        취소
+                      </Button>
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground py-2">숙제를 입력해주세요</p>
-                )}
-
-                {/* Input for additional homework */}
-                <div className="flex gap-2 pt-1">
-                  <Input
-                    value={hwInput}
-                    onChange={(e) => setHwInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addHw()}
-                    placeholder="추가 숙제 입력..."
-                    disabled={isDisabled}
-                    className="h-8 text-sm flex-1"
-                  />
                   <Button
                     size="sm"
-                    onClick={addHw}
-                    disabled={!hwInput.trim() || isDisabled}
-                    className="h-8 px-3 bg-navy hover:bg-navy-light text-primary-foreground"
+                    variant="outline"
+                    onClick={() => setAddingHw(true)}
+                    disabled={isDisabled}
+                    className="w-full h-8 text-xs gap-1.5 border-dashed border-[hsl(var(--gold)/0.5)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold)/0.06)]"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
+                    숙제 추가
                   </Button>
-                </div>
-
-                {/* Save & notify */}
-                {(classState === "active" || classState === "ended") && hwList.length > 0 && (
-                  <div className="pt-2 border-t border-border">
-                    <Button
-                      size="sm"
-                      className="h-8 text-xs bg-navy hover:bg-navy-light text-primary-foreground gap-1.5"
-                      onClick={handleSave}
-                    >
-                      <Save className="w-3 h-3" />
-                      숙제 저장 & 학생 알림 발송
-                    </Button>
-                  </div>
                 )}
               </div>
             )}
           </div>
         </div>
+
 
           {/* ── RIGHT COLUMN: Instructor STT Panel ──────────────────── */}
           {role === "instructor" && (
