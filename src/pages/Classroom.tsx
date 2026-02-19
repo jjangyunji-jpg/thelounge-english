@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InstructorSTTPanel from "@/components/classroom/InstructorSTTPanel";
 import WordLookupPanel from "@/components/classroom/WordLookupPanel";
+import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -793,14 +794,18 @@ export default function Classroom() {
         </div>
 
 
-          {/* ── RIGHT COLUMN: Instructor STT Panel ──────────────────── */}
-          {role === "instructor" && (
+          {/* ── RIGHT COLUMN: Instructor tools / Student vocab ──────────── */}
+          {role === "instructor" ? (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4">
               <WordLookupPanel studentLevel={SESSION.level} />
               <InstructorSTTPanel
                 disabled={classState !== "active"}
                 autoStart={classState === "active"}
               />
+            </div>
+          ) : (
+            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4">
+              <StudentVocabPanel studentName={SESSION.studentName} />
             </div>
           )}
         </div>
