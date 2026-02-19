@@ -360,7 +360,7 @@ function SubmissionCard({
             ) : submitted ? (
               <><Send className="w-3.5 h-3.5" />다시 제출</>
             ) : (
-              <><Send className="w-3.5 h-3.5" />제출하기</>
+              <><Send className="w-3.5 h-3.5" />숙제 완료하기</>
             )}
           </Button>
 

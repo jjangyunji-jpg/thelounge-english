@@ -77,14 +77,14 @@ function WordRow({ word }: { word: VocabWord }) {
       >
         <TTSButton word={word} />
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className="font-medium text-sm text-foreground truncate">{word.english_word}</span>
+          <span className="font-medium text-sm text-foreground break-words">{word.english_word}</span>
           {word.part_of_speech && (
             <span className="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-medium flex-shrink-0 hidden sm:inline">
               {word.part_of_speech}
             </span>
           )}
         </div>
-        <span className="text-xs text-muted-foreground flex-shrink-0 max-w-[90px] truncate">{word.korean_meaning}</span>
+        <span className="text-xs text-muted-foreground flex-shrink-0 max-w-[90px] text-right leading-snug">{word.korean_meaning}</span>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
           {expanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
         </div>
