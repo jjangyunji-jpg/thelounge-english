@@ -3,7 +3,7 @@ import {
   Video, VideoOff, Clock, FileText, CheckSquare,
   Save, Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, Trash2, ArrowLeft, Wifi, WifiOff, RefreshCw,
-  PenLine, BookOpen, Mic, Brain, X
+  PenLine, BookOpen, Mic, Brain, X, Pencil, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,6 +80,13 @@ export default function Classroom() {
   const [newHwTitle, setNewHwTitle] = useState("");
   const [newHwDesc, setNewHwDesc] = useState("");
   const [savingHw, setSavingHw] = useState(false);
+
+  // 숙제 수정 상태
+  const [editingHwId, setEditingHwId] = useState<string | null>(null);
+  const [editHwType, setEditHwType] = useState<HwType>("writing");
+  const [editHwTitle, setEditHwTitle] = useState("");
+  const [editHwDesc, setEditHwDesc] = useState("");
+  const [savingEditHw, setSavingEditHw] = useState(false);
 
   // 마운트 시 정기 숙제 DB 로드
   useEffect(() => {
@@ -176,6 +183,39 @@ export default function Classroom() {
   const removeHw = async (id: string) => {
     await supabase.from("homework_assignments").delete().eq("id", id);
     setHwList((prev) => prev.filter((h) => h.id !== id));
+  };
+
+  const startEditHw = (hw: HomeworkItem) => {
+    setEditingHwId(hw.id);
+    setEditHwType(hw.type);
+    setEditHwTitle(hw.title);
+    setEditHwDesc(hw.description);
+    setAddingHw(false);
+  };
+
+  const cancelEditHw = () => {
+    setEditingHwId(null);
+    setEditHwTitle(""); setEditHwDesc("");
+  };
+
+  const handleSaveEditHw = async () => {
+    if (!editHwTitle.trim() || !editingHwId) return;
+    setSavingEditHw(true);
+    const { error } = await supabase
+      .from("homework_assignments")
+      .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null })
+      .eq("id", editingHwId);
+
+    if (!error) {
+      setHwList((prev) => prev.map((h) =>
+        h.id === editingHwId
+          ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() }
+          : h
+      ));
+      toast({ title: "숙제가 수정됐습니다 ✓" });
+    }
+    setSavingEditHw(false);
+    cancelEditHw();
   };
 
   const isDisabled = classState === "pre";
@@ -435,6 +475,63 @@ export default function Classroom() {
                 {hwList.map((hw) => {
                   const meta = HW_TYPE_META[hw.type];
                   const Icon = meta.icon;
+                  const isEditing = editingHwId === hw.id;
+
+                  if (isEditing) {
+                    return (
+                      <div key={hw.id} className="border border-[hsl(var(--gold)/0.5)] rounded-lg p-3 space-y-2.5 bg-[hsl(var(--gold)/0.04)]">
+                        {/* Type selector */}
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {(Object.keys(HW_TYPE_META) as HwType[]).map((t) => {
+                            const m = HW_TYPE_META[t];
+                            const TIcon = m.icon;
+                            return (
+                              <button
+                                key={t}
+                                onClick={() => setEditHwType(t)}
+                                className={cn(
+                                  "flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-all",
+                                  editHwType === t
+                                    ? "border-[hsl(var(--gold))] bg-[hsl(var(--gold)/0.10)] text-foreground"
+                                    : "border-border bg-card text-muted-foreground hover:border-[hsl(var(--gold)/0.4)]"
+                                )}
+                              >
+                                <TIcon className={cn("w-3.5 h-3.5 flex-shrink-0", editHwType === t ? m.color : "")} />
+                                {m.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground px-0.5">{HW_TYPE_META[editHwType].hint}</p>
+                        <Input
+                          value={editHwTitle}
+                          onChange={(e) => setEditHwTitle(e.target.value)}
+                          placeholder="숙제 제목 (필수)"
+                          className="h-8 text-sm"
+                          onKeyDown={(e) => e.key === "Enter" && handleSaveEditHw()}
+                        />
+                        <Textarea
+                          value={editHwDesc}
+                          onChange={(e) => setEditHwDesc(e.target.value)}
+                          placeholder="상세 설명 (선택)"
+                          className="min-h-[60px] resize-none text-xs"
+                        />
+                        <div className="flex gap-1.5">
+                          <Button
+                            size="sm"
+                            onClick={handleSaveEditHw}
+                            disabled={!editHwTitle.trim() || savingEditHw}
+                            className="flex-1 h-8 text-xs bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground gap-1.5"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            {savingEditHw ? "저장 중..." : "저장"}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEditHw} className="h-8 text-xs">취소</Button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={hw.id} className="flex items-start gap-2.5 py-2 px-2.5 rounded-lg bg-muted/30 group border border-border">
                       <div className={cn("mt-0.5 flex-shrink-0", meta.color)}>
@@ -453,12 +550,20 @@ export default function Classroom() {
                         <p className="text-[10px] text-muted-foreground/70 mt-0.5">{meta.hint}</p>
                       </div>
                       {!isDisabled && (
-                        <button
-                          onClick={() => removeHw(hw.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0 mt-0.5"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">
+                          <button
+                            onClick={() => startEditHw(hw)}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => removeHw(hw.id)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
