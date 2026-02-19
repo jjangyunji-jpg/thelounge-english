@@ -115,6 +115,7 @@ function StudentView({ studentName }: { studentName: string }) {
   const [textContent, setTextContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const { recording, audioBlob, audioUrl, start, stop, reset } = useAudioRecorder();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -139,6 +140,9 @@ function StudentView({ studentName }: { studentName: string }) {
     setSubmissions(subs || []);
     if (asgn && asgn.length > 0 && !selectedId) {
       setSelectedId(asgn[0].id);
+      const firstSub = (subs || []).find((s) => s.assignment_id === asgn[0].id);
+      setTextContent(firstSub?.text_content || "");
+      setIsEditing(!firstSub); // 제출 이력 없으면 편집 모드
     }
   };
 
@@ -186,9 +190,9 @@ function StudentView({ studentName }: { studentName: string }) {
     }
 
     toast({ title: "숙제 제출 완료! ✓", description: "강사님이 확인할 예정입니다." });
-    setTextContent("");
     reset();
-    fetchAssignments();
+    setIsEditing(false);
+    await fetchAssignments();
     setSubmitting(false);
   };
 
@@ -216,7 +220,14 @@ function StudentView({ studentName }: { studentName: string }) {
             return (
               <button
                 key={a.id}
-                onClick={() => { setSelectedId(a.id); setTextContent(sub?.text_content || ""); reset(); }}
+                onClick={() => {
+                  setSelectedId(a.id);
+                  const sub = getSubmission(a.id);
+                  setTextContent(sub?.text_content || "");
+                  setIsEditing(!sub); // 미제출이면 바로 편집 모드
+                  reset();
+                  setPlaying(false);
+                }}
                 className={cn(
                   "w-full text-left rounded-xl border p-3.5 transition-all",
                   selectedId === a.id
@@ -271,72 +282,128 @@ function StudentView({ studentName }: { studentName: string }) {
 
             {/* Submission form */}
             <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col gap-0">
-              <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[hsl(var(--gold))]" />
-                <span className="font-semibold text-sm text-foreground">제출하기</span>
-                {submission && <StatusBadge status={submission.status} />}
+              <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[hsl(var(--gold))]" />
+                  <span className="font-semibold text-sm text-foreground">
+                    {submission ? "제출 내용" : "제출하기"}
+                  </span>
+                  {submission && <StatusBadge status={submission.status} />}
+                </div>
+                {/* 제출 완료 상태에서 수정 버튼 */}
+                {submission && !isEditing && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsEditing(true)}
+                    className="h-7 text-xs gap-1.5 border-[hsl(var(--gold)/0.5)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold)/0.08)]"
+                  >
+                    ✏️ 수정하기
+                  </Button>
+                )}
               </div>
 
               <div className="p-4 space-y-4">
-                {/* Text area */}
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">텍스트 답변</label>
-                  <Textarea
-                    value={textContent}
-                    onChange={(e) => setTextContent(e.target.value)}
-                    placeholder="영어로 답변을 작성해주세요..."
-                    className="min-h-[160px] resize-none text-sm"
-                  />
-                </div>
-
-                {/* Existing audio */}
-                {submission?.audio_url && !audioUrl && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border">
-                    <span className="text-xs text-muted-foreground">기존 녹음:</span>
-                    <audio src={submission.audio_url} controls className="h-8 flex-1" />
-                  </div>
-                )}
-
-                {/* Audio recorder */}
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">음성 녹음 (선택)</label>
-                  <div className="flex items-center gap-3">
-                    {!recording && !audioUrl && (
-                      <Button size="sm" variant="outline" onClick={start} className="gap-2 border-[hsl(var(--gold)/0.5)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold)/0.08)]">
-                        <Mic className="w-3.5 h-3.5" />
-                        녹음 시작
-                      </Button>
+                {/* 제출 완료 + 읽기 전용 뷰 */}
+                {submission && !isEditing ? (
+                  <>
+                    {submission.text_content ? (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">텍스트 답변</label>
+                        <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-foreground whitespace-pre-wrap min-h-[120px]">
+                          {submission.text_content}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">텍스트 답변 없음</p>
                     )}
-                    {recording && (
-                      <Button size="sm" onClick={stop} className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse">
-                        <MicOff className="w-3.5 h-3.5" />
-                        녹음 중지
-                      </Button>
-                    )}
-                    {audioUrl && !recording && (
-                      <div className="flex items-center gap-2 flex-1">
-                        <audio ref={audioRef} src={audioUrl} onEnded={() => setPlaying(false)} className="hidden" />
-                        <Button size="sm" variant="outline" onClick={togglePlay} className="gap-1.5">
-                          {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                          {playing ? "일시정지" : "재생"}
-                        </Button>
-                        <span className="text-xs text-muted-foreground flex-1">녹음 완료</span>
-                        <Button size="sm" variant="ghost" onClick={reset} className="text-muted-foreground hover:text-destructive text-xs">
-                          다시 녹음
-                        </Button>
+
+                    {submission.audio_url && (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">녹음 파일</label>
+                        <audio src={submission.audio_url} controls className="w-full h-9" />
                       </div>
                     )}
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Text area - 편집 모드 */}
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">텍스트 답변</label>
+                      <Textarea
+                        value={textContent}
+                        onChange={(e) => setTextContent(e.target.value)}
+                        placeholder="영어로 답변을 작성해주세요..."
+                        className="min-h-[160px] resize-none text-sm"
+                      />
+                    </div>
 
-                <Button
-                  onClick={handleSubmit}
-                  disabled={submitting || (!textContent.trim() && !audioBlob)}
-                  className="w-full gold-gradient text-accent-foreground font-semibold gap-2 shadow-gold hover:opacity-90"
-                >
-                  <Upload className="w-4 h-4" />
-                  {submitting ? (uploadingAudio ? "오디오 업로드 중..." : "제출 중...") : "숙제 제출"}
-                </Button>
+                    {/* Existing audio */}
+                    {submission?.audio_url && !audioUrl && (
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border">
+                        <span className="text-xs text-muted-foreground">기존 녹음:</span>
+                        <audio src={submission.audio_url} controls className="h-8 flex-1" />
+                      </div>
+                    )}
+
+                    {/* Audio recorder */}
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">음성 녹음 (선택)</label>
+                      <div className="flex items-center gap-3">
+                        {!recording && !audioUrl && (
+                          <Button size="sm" variant="outline" onClick={start} className="gap-2 border-[hsl(var(--gold)/0.5)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold)/0.08)]">
+                            <Mic className="w-3.5 h-3.5" />
+                            녹음 시작
+                          </Button>
+                        )}
+                        {recording && (
+                          <Button size="sm" onClick={stop} className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse">
+                            <MicOff className="w-3.5 h-3.5" />
+                            녹음 중지
+                          </Button>
+                        )}
+                        {audioUrl && !recording && (
+                          <div className="flex items-center gap-2 flex-1">
+                            <audio ref={audioRef} src={audioUrl} onEnded={() => setPlaying(false)} className="hidden" />
+                            <Button size="sm" variant="outline" onClick={togglePlay} className="gap-1.5">
+                              {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                              {playing ? "일시정지" : "재생"}
+                            </Button>
+                            <span className="text-xs text-muted-foreground flex-1">녹음 완료</span>
+                            <Button size="sm" variant="ghost" onClick={reset} className="text-muted-foreground hover:text-destructive text-xs">
+                              다시 녹음
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleSubmit}
+                        disabled={submitting || (!textContent.trim() && !audioBlob)}
+                        className="flex-1 gold-gradient text-accent-foreground font-semibold gap-2 shadow-gold hover:opacity-90"
+                      >
+                        <Upload className="w-4 h-4" />
+                        {submitting ? (uploadingAudio ? "오디오 업로드 중..." : "제출 중...") : submission ? "수정 제출" : "숙제 제출"}
+                      </Button>
+                      {/* 수정 중 취소 */}
+                      {submission && isEditing && (
+                        <Button
+                          size="default"
+                          variant="outline"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setTextContent(submission.text_content || "");
+                            reset();
+                          }}
+                        >
+                          취소
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </>
