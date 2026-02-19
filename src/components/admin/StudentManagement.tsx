@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,11 +102,21 @@ interface NewStudent {
 export default function StudentManagement() {
   const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
+  const [instructorNames, setInstructorNames] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"active" | "graduated">("active");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("instructors")
+      .select("name")
+      .eq("active", true)
+      .order("name")
+      .then(({ data }) => setInstructorNames((data || []).map((i) => i.name)));
+  }, []);
 
   // preset homework per student (DB 연동): studentId -> presets
   const [presetMap, setPresetMap] = useState<Record<number, PresetHomework[]>>({});
@@ -390,7 +400,7 @@ export default function StudentManagement() {
                         <SelectValue placeholder="선택" />
                       </SelectTrigger>
                       <SelectContent>
-                        {["Sarah Kim", "James Park", "Emily Lee"].map((t) => (
+                        {instructorNames.map((t) => (
                           <SelectItem key={t} value={t}>{t}</SelectItem>
                         ))}
                       </SelectContent>
@@ -720,7 +730,7 @@ export default function StudentManagement() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {["Sarah Kim", "James Park", "Emily Lee"].map((t) => (
+                              {instructorNames.map((t) => (
                                 <SelectItem key={t} value={t}>{t}</SelectItem>
                               ))}
                             </SelectContent>
