@@ -86,19 +86,23 @@ function RichDescription({ text }: { text: string }) {
     }
     if (isUrl(trimmed)) {
       const ytId = getYouTubeId(trimmed);
-      if (ytId && !ytIds.includes(ytId)) ytIds.push(ytId);
-      inlineNodes.push(
-        <a
-          key={keyIdx++}
-          href={trimmed}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-0.5 text-[hsl(var(--navy))] underline underline-offset-2 hover:text-[hsl(var(--navy-light))] break-all"
-        >
-          {trimmed}
-          <ExternalLink className="w-3 h-3 flex-shrink-0 ml-0.5" />
-        </a>
-      );
+      if (ytId) {
+        // YouTube URL → 임베드만, 인라인 링크 생략
+        if (!ytIds.includes(ytId)) ytIds.push(ytId);
+      } else {
+        inlineNodes.push(
+          <a
+            key={keyIdx++}
+            href={trimmed}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-0.5 text-[hsl(var(--navy))] underline underline-offset-2 hover:text-[hsl(var(--navy-light))] break-all"
+          >
+            {trimmed}
+            <ExternalLink className="w-3 h-3 flex-shrink-0 ml-0.5" />
+          </a>
+        );
+      }
     } else {
       inlineNodes.push(<span key={keyIdx++}>{raw}</span>);
     }
