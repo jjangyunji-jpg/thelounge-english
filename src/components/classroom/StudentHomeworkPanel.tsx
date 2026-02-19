@@ -124,7 +124,7 @@ function SubmissionCard({
   onSubmitted: (sub: Submission) => void;
 }) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(!submission);
+  const [open, setOpen] = useState(false);
   const [descOpen, setDescOpen] = useState(true);
   const [text, setText] = useState(submission?.text_content ?? "");
   const [submitting, setSubmitting] = useState(false);
