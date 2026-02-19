@@ -3,7 +3,7 @@ import {
   Video, VideoOff, Clock, FileText, CheckSquare,
   Save, Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, Trash2, ArrowLeft, Wifi, WifiOff, RefreshCw,
-  PenLine, BookOpen, Mic, Brain, X, Pencil, Check
+  PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -67,6 +67,7 @@ export default function Classroom() {
   const [elapsed, setElapsed] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [notes, setNotes] = useState("");
+  const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
   const [hwOpen, setHwOpen] = useState(true);
   const [extracting, setExtracting] = useState(false);
@@ -405,19 +406,57 @@ export default function Classroom() {
                   <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
                 )}
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleSave}
-                disabled={isDisabled || !notes.trim()}
-                className={cn(
-                  "h-7 text-xs gap-1.5 transition-all",
-                  saveFlash && "border-success text-success"
-                )}
-              >
-                <Save className="w-3 h-3" />
-                {saveFlash ? "저장됨 ✓" : "저장"}
-              </Button>
+              <div className="flex items-center gap-1.5">
+                {/* AI 단어 추출 버튼 */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExtractVocab}
+                  disabled={isDisabled || extracting || !notes.trim()}
+                  className={cn(
+                    "h-7 text-xs gap-1.5 transition-all border-navy/30 text-navy hover:bg-navy/10",
+                    extracted && "border-success/40 text-success"
+                  )}
+                >
+                  <BookMarked className="w-3 h-3" />
+                  {extracting ? "추출 중..." : extracted ? "단어 추출됨 ✓" : "단어 추출"}
+                </Button>
+
+                {/* 수정 / 읽기 전용 토글 */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setNotesEditMode((v) => !v)}
+                  disabled={isDisabled}
+                  className={cn(
+                    "h-7 text-xs gap-1.5 transition-all",
+                    notesEditMode
+                      ? "border-gold/50 text-gold hover:bg-gold/10"
+                      : "border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {notesEditMode ? (
+                    <><Edit3 className="w-3 h-3" />편집 중</>
+                  ) : (
+                    <><Pencil className="w-3 h-3" />편집</>
+                  )}
+                </Button>
+
+                {/* 저장 버튼 */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSave}
+                  disabled={isDisabled || !notes.trim()}
+                  className={cn(
+                    "h-7 text-xs gap-1.5 transition-all",
+                    saveFlash && "border-success text-success"
+                  )}
+                >
+                  <Save className="w-3 h-3" />
+                  {saveFlash ? "저장됨 ✓" : "저장"}
+                </Button>
+              </div>
             </div>
 
             {/* Notes body */}
@@ -426,7 +465,11 @@ export default function Classroom() {
               onChange={(e) => setNotes(e.target.value)}
               placeholder={`수업 내용을 자유롭게 타이핑하세요.\n\nToday's topic: ${SESSION.topic}\n\n- Key expressions:\n- Grammar points:\n- Notes:\n\n수업 종료 후 AI가 노트에서 단어를 자동으로 추출합니다.`}
               disabled={isDisabled}
-              className="flex-1 min-h-[320px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none"
+              readOnly={!notesEditMode}
+              className={cn(
+                "flex-1 min-h-[320px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none",
+                !notesEditMode && "cursor-default text-muted-foreground"
+              )}
             />
 
             {/* Active extract shortcut */}
