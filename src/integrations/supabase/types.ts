@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      business_meetings: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          id: string
+          instructor_id: string
+          notes: string | null
+          scheduled_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          instructor_id: string
+          notes?: string | null
+          scheduled_at: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          instructor_id?: string
+          notes?: string | null
+          scheduled_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_meetings_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_sessions: {
         Row: {
           created_at: string
@@ -146,6 +181,101 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      instructor_students: {
+        Row: {
+          created_at: string
+          id: string
+          instructor_id: string
+          student_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instructor_id: string
+          student_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instructor_id?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_students_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instructors: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          id: string
+          lesson_rate: number
+          meeting_rate: number
+          name: string
+          phone: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          lesson_rate?: number
+          meeting_rate?: number
+          name: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          lesson_rate?: number
+          meeting_rate?: number
+          name?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      schedule_periods: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean
+          label: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          label: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          start_date?: string
+        }
+        Relationships: []
       }
       vocabulary_test_results: {
         Row: {
