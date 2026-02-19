@@ -147,11 +147,12 @@ export default function InstructorSTTPanel({
     }
   }, [disabled, audioMode, connectWithStream]);
 
-  // ── 자동 시작 (수업 시작 시) ──────────────────────────────────────────────
+  // ── 자동 시작 (수업 시작 시, 마이크 모드만 가능) ────────────────────────────
+  // getDisplayMedia(시스템 오디오)는 유저 제스처(클릭) 없이 호출 불가
   useEffect(() => {
-    if (autoStart && !disabled && !scribe.isConnected && !autoStartedRef.current) {
+    if (autoStart && !disabled && !scribe.isConnected && !autoStartedRef.current && audioMode === "mic") {
       autoStartedRef.current = true;
-      handleStart(audioMode);
+      handleStart("mic");
     }
     // disabled가 다시 true가 되면 reset
     if (disabled) autoStartedRef.current = false;
@@ -299,8 +300,6 @@ export default function InstructorSTTPanel({
               )}
               {isConnecting
                 ? "연결 중..."
-                : autoStart && !disabled
-                ? "자동 연결됨"
                 : audioMode === "system"
                 ? "오디오 캡처 시작"
                 : "녹음 시작"}
