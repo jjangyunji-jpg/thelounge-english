@@ -237,9 +237,15 @@ function SubmissionCard({
         </div>
       </button>
 
-      {/* Body */}
+        {/* Body */}
       {open && (
         <div className="px-4 pb-4 space-y-3 border-t border-border/50">
+          {/* Description (full, with line breaks) */}
+          {assignment.description && (
+            <div className="mt-3 px-3 py-2.5 rounded-lg bg-muted/40 border border-border/60">
+              <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">{assignment.description}</p>
+            </div>
+          )}
           {/* Instructor note (reviewed) */}
           {submission?.instructor_note && (
             <div className="mt-3 px-3 py-2 rounded-lg bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)]">
