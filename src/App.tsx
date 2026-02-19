@@ -10,6 +10,8 @@ import InstructorLogin from "./pages/InstructorLogin";
 import InstructorDashboard from "./pages/InstructorDashboard";
 import NotFound from "./pages/NotFound";
 import SetPassword from "./pages/SetPassword";
+import MakeupRequest from "./pages/MakeupRequest";
+import ClassNote from "./pages/ClassNote";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +29,8 @@ const App = () => (
           <Route path="/instructor/login" element={<InstructorLogin />} />
           <Route path="/instructor" element={<InstructorDashboard />} />
           <Route path="/set-password" element={<SetPassword />} />
+          <Route path="/makeup" element={<MakeupRequest />} />
+          <Route path="/classnote" element={<ClassNote />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
