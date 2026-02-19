@@ -487,7 +487,10 @@ export default function Classroom() {
           {/* ── RIGHT COLUMN: Instructor STT Panel ──────────────────── */}
           {role === "instructor" && (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4">
-              <InstructorSTTPanel disabled={classState !== "active"} />
+              <InstructorSTTPanel
+                disabled={classState !== "active"}
+                autoStart={classState === "active"}
+              />
             </div>
           )}
         </div>

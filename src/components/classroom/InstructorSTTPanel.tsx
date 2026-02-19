@@ -1,11 +1,11 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useScribe } from "@elevenlabs/react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Mic, MicOff, Sparkles, CheckCircle2, AlertCircle,
-  Volume2, RotateCcw, BookOpen, Wand2, Loader2
+  Volume2, RotateCcw, BookOpen, Wand2, Loader2, Monitor
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,60 +29,124 @@ interface AIResult {
   feedback?: string;
 }
 
+type AudioMode = "mic" | "system";
+
 interface InstructorSTTPanelProps {
   disabled?: boolean;
+  autoStart?: boolean; // 수업 시작 시 자동 녹음
 }
 
-export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPanelProps) {
+export default function InstructorSTTPanel({
+  disabled = false,
+  autoStart = false,
+}: InstructorSTTPanelProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [aiResult, setAiResult] = useState<AIResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<"all" | "correct" | "synonyms">("all");
-  const lastCommittedRef = useRef("");
+  const [audioMode, setAudioMode] = useState<AudioMode>("system");
+  const autoStartedRef = useRef(false);
 
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
     onPartialTranscript: () => {},
-    onCommittedTranscript: (data) => {
-      lastCommittedRef.current = data.text;
-    },
+    onCommittedTranscript: () => {},
   });
 
-  const handleStart = useCallback(async () => {
+  // ── 연결 핵심 로직 ────────────────────────────────────────────────────────
+  const connectWithStream = useCallback(async (stream: MediaStream) => {
+    const { data, error } = await supabase.functions.invoke("elevenlabs-scribe-token");
+    if (error || !data?.token) throw new Error("STT 토큰 발급 실패");
+
+    await scribe.connect({
+      token: data.token,
+      commitStrategy: "vad" as any,
+      // useScribe가 내부적으로 마이크를 열지 않도록 microphone 옵션은 전달하지 않고
+      // stream을 MediaStreamAudioSourceNode로 전달하는 방식 대신
+      // 시스템 오디오일 때는 마이크 설정 없이 token만 전달 후 오디오 수동 전송
+      microphone:
+        audioMode === "mic"
+          ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+          : undefined,
+    });
+
+    // 시스템 오디오 모드: WebAudio API로 stream을 PCM으로 변환 후 수동 전송
+    if (audioMode === "system") {
+      startSystemAudioCapture(stream, scribe);
+    }
+
+    // stream이 끊기면 자동 disconnect
+    stream.getAudioTracks().forEach((t) => {
+      t.onended = () => scribe.disconnect();
+    });
+  }, [scribe, audioMode]);
+
+  // ── 마이크 녹음 시작 ──────────────────────────────────────────────────────
+  const handleStart = useCallback(async (mode: AudioMode = audioMode) => {
     if (disabled) return;
     setIsConnecting(true);
     setAiResult(null);
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      const { data, error } = await supabase.functions.invoke("elevenlabs-scribe-token");
-      if (error || !data?.token) {
-        throw new Error("STT 토큰 발급 실패");
+    try {
+      let stream: MediaStream;
+
+      if (mode === "mic") {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } else {
+        // 시스템 오디오: 브라우저 탭 or 화면 오디오 캡처
+        try {
+          stream = await (navigator.mediaDevices as any).getDisplayMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+            },
+            video: false, // 영상 불필요
+          });
+        } catch (e) {
+          // getDisplayMedia는 video 없이 실패하는 브라우저가 있음 → video 포함 후 제거
+          stream = await (navigator.mediaDevices as any).getDisplayMedia({
+            audio: true,
+            video: true,
+          });
+          // 비디오 트랙 즉시 중지
+          stream.getVideoTracks().forEach((t: MediaStreamTrack) => {
+            t.stop();
+            stream.removeTrack(t);
+          });
+        }
+
+        if (!stream.getAudioTracks().length) {
+          throw new Error(
+            "오디오 공유가 선택되지 않았습니다. 화면 공유 시 '오디오 공유' 체크박스를 선택해주세요."
+          );
+        }
       }
 
-      await scribe.connect({
-        token: data.token,
-        commitStrategy: "vad" as any,
-        microphone: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      await connectWithStream(stream);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "연결 실패";
       toast.error(msg);
     } finally {
       setIsConnecting(false);
     }
-  }, [scribe, disabled]);
+  }, [disabled, audioMode, connectWithStream]);
+
+  // ── 자동 시작 (수업 시작 시) ──────────────────────────────────────────────
+  useEffect(() => {
+    if (autoStart && !disabled && !scribe.isConnected && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      handleStart(audioMode);
+    }
+    // disabled가 다시 true가 되면 reset
+    if (disabled) autoStartedRef.current = false;
+  }, [autoStart, disabled, scribe.isConnected, handleStart, audioMode]);
 
   const handleStop = useCallback(async () => {
     await scribe.disconnect();
   }, [scribe]);
 
   const handleAnalyze = useCallback(async (mode: "all" | "correct" | "synonyms") => {
-    // Combine all committed transcripts
     const fullText = scribe.committedTranscripts.map((t) => t.text).join(" ").trim();
     if (!fullText) {
       toast.error("분석할 텍스트가 없습니다");
@@ -105,7 +169,7 @@ export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPa
       }
 
       setAiResult(data);
-    } catch (err) {
+    } catch {
       toast.error("AI 분석 실패. 잠시 후 다시 시도하세요.");
     } finally {
       setIsAnalyzing(false);
@@ -131,7 +195,7 @@ export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPa
           {scribe.isConnected && (
             <span className="flex items-center gap-1 text-xs text-success">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              녹음 중
+              {audioMode === "system" ? "시스템 오디오 인식 중" : "녹음 중"}
             </span>
           )}
         </div>
@@ -149,21 +213,68 @@ export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPa
       </div>
 
       <div className="p-4 flex flex-col gap-3">
+        {/* Audio Mode Selector */}
+        {!scribe.isConnected && (
+          <div className="flex gap-1 p-0.5 bg-muted rounded-lg self-start">
+            <button
+              onClick={() => setAudioMode("system")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all",
+                audioMode === "system"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Monitor className="w-3 h-3" />
+              시스템 오디오
+            </button>
+            <button
+              onClick={() => setAudioMode("mic")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all",
+                audioMode === "mic"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Mic className="w-3 h-3" />
+              마이크
+            </button>
+          </div>
+        )}
+
+        {/* Mode description */}
+        {!scribe.isConnected && !disabled && (
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {audioMode === "system"
+              ? "💡 Google Meet 탭의 오디오를 캡처합니다. 화면 공유 팝업에서 Meet 탭을 선택하고 '오디오 공유'를 체크하세요."
+              : "마이크로 주변 소리를 녹음합니다. 이어폰 사용 시 학생 목소리가 잘 안 잡힐 수 있습니다."}
+          </p>
+        )}
+
         {/* Mic controls */}
         <div className="flex items-center gap-2">
           {!scribe.isConnected ? (
             <Button
               size="sm"
-              onClick={handleStart}
+              onClick={() => handleStart(audioMode)}
               disabled={isConnecting || disabled}
               className="gap-2 bg-navy hover:bg-navy-light text-primary-foreground text-xs h-8"
             >
               {isConnecting ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : audioMode === "system" ? (
+                <Monitor className="w-3.5 h-3.5" />
               ) : (
                 <Mic className="w-3.5 h-3.5" />
               )}
-              {isConnecting ? "연결 중..." : "녹음 시작"}
+              {isConnecting
+                ? "연결 중..."
+                : autoStart && !disabled
+                ? "자동 연결됨"
+                : audioMode === "system"
+                ? "오디오 캡처 시작"
+                : "녹음 시작"}
             </Button>
           ) : (
             <Button
@@ -172,12 +283,12 @@ export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPa
               className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs h-8"
             >
               <MicOff className="w-3.5 h-3.5" />
-              녹음 중지
+              중지
             </Button>
           )}
-          <span className="text-xs text-muted-foreground">
-            {disabled ? "수업 시작 후 사용 가능" : "학생이 말하는 동안 녹음하세요"}
-          </span>
+          {disabled && (
+            <span className="text-xs text-muted-foreground">수업 시작 후 사용 가능</span>
+          )}
         </div>
 
         {/* Live partial transcript */}
@@ -256,7 +367,6 @@ export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPa
 
         {aiResult && !isAnalyzing && (
           <div className="space-y-3">
-            {/* Score + feedback */}
             {aiResult.score !== undefined && (
               <div className="flex items-center gap-3 p-2.5 rounded-lg bg-navy/5 border border-navy/15">
                 <div className="text-center">
@@ -274,7 +384,6 @@ export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPa
               </div>
             )}
 
-            {/* Corrected version */}
             {aiResult.corrected && (
               <div className="rounded-lg bg-success/5 border border-success/20 px-3 py-2">
                 <p className="text-xs font-medium text-success mb-1">✓ 교정된 문장</p>
@@ -282,7 +391,6 @@ export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPa
               </div>
             )}
 
-            {/* Errors */}
             {aiResult.errors && aiResult.errors.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -302,7 +410,6 @@ export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPa
               </div>
             )}
 
-            {/* Synonyms */}
             {aiResult.synonyms && aiResult.synonyms.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -333,12 +440,47 @@ export default function InstructorSTTPanel({ disabled = false }: InstructorSTTPa
         )}
 
         {/* Empty state */}
-        {!scribe.isConnected && !hasTranscript && !isConnecting && (
-          <p className="text-xs text-muted-foreground text-center py-2">
-            녹음을 시작하면 학생의 영어 발화를 실시간으로 텍스트로 변환합니다
+        {!scribe.isConnected && !hasTranscript && !isConnecting && !disabled && (
+          <p className="text-xs text-muted-foreground text-center py-1">
+            {autoStart ? "수업이 시작되면 자동으로 오디오 캡처가 시작됩니다" : "캡처를 시작하면 학생의 영어 발화를 실시간으로 텍스트로 변환합니다"}
           </p>
         )}
       </div>
     </div>
   );
+}
+
+// ── 시스템 오디오 → PCM → Scribe 수동 전송 ──────────────────────────────────
+function startSystemAudioCapture(stream: MediaStream, scribe: ReturnType<typeof useScribe>) {
+  try {
+    const audioCtx = new AudioContext({ sampleRate: 16000 });
+    const source = audioCtx.createMediaStreamSource(stream);
+    const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+    processor.onaudioprocess = (e) => {
+      if (!scribe.isConnected) {
+        processor.disconnect();
+        source.disconnect();
+        audioCtx.close();
+        return;
+      }
+      const float32 = e.inputBuffer.getChannelData(0);
+      const int16 = new Int16Array(float32.length);
+      for (let i = 0; i < float32.length; i++) {
+        int16[i] = Math.max(-32768, Math.min(32767, Math.round(float32[i] * 32767)));
+      }
+      // base64로 변환 후 전송
+      const bytes = new Uint8Array(int16.buffer);
+      let binary = "";
+      bytes.forEach((b) => (binary += String.fromCharCode(b)));
+      const base64 = btoa(binary);
+      scribe.sendAudio(base64);
+    };
+
+    source.connect(processor);
+    processor.connect(audioCtx.destination);
+  } catch (err) {
+    console.error("System audio capture error:", err);
+    toast.error("시스템 오디오 캡처 실패. 마이크 모드를 사용해주세요.");
+  }
 }
