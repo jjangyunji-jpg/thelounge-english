@@ -64,11 +64,6 @@ const SESSION = {
   scheduledAt: new Date(Date.now() + 5 * 60 * 1000),
   meetLink: "https://meet.google.com/vsk-rqzo-kpg",
   topic: "미래 표현 3가지",
-  objectives: [
-    "현재진행형(be Ving) 이해 및 활용",
-    "will vs be going to 차이 구분",
-    "미래 표현 3가지(will / be going to / be Ving) 문장 연습",
-  ],
 };
 
 function formatDuration(seconds: number) {
@@ -101,6 +96,9 @@ export default function Classroom() {
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
+  const [objectives, setObjectives] = useState<string[]>([]);
+  const [sessionTopic, setSessionTopic] = useState(SESSION.topic);
+  const [generatingObjectives, setGeneratingObjectives] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 새 숙제 추가 폼 상태
@@ -196,6 +194,22 @@ export default function Classroom() {
     setSaveFlash(true);
     setTimeout(() => setSaveFlash(false), 2000);
     toast({ title: "노트가 저장됐습니다 ✓" });
+
+    // AI로 수업목표 자동 생성
+    setGeneratingObjectives(true);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("generate-objectives", {
+        body: { notes: notes.trim(), topic: SESSION.topic },
+      });
+      if (!fnError && data?.objectives?.length > 0) {
+        setObjectives(data.objectives);
+        if (data.topic) setSessionTopic(data.topic);
+      }
+    } catch {
+      // 실패해도 조용히 무시
+    } finally {
+      setGeneratingObjectives(false);
+    }
   };
 
   const handleExtractVocab = async () => {
@@ -325,18 +339,23 @@ export default function Classroom() {
               {SESSION.level}
             </span>
             <span className="text-sidebar-foreground/60 text-xs hidden sm:inline">with {SESSION.instructorName}</span>
-            {SESSION.topic && (
-              <span className="text-gold text-xs hidden md:inline">· {SESSION.topic}</span>
+            {sessionTopic && (
+              <span className="text-gold text-xs hidden md:inline">· {sessionTopic}</span>
             )}
           </div>
           {/* 수업 목표 + 날짜·시간 */}
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            {SESSION.objectives.map((obj, i) => (
+            {objectives.map((obj, i) => (
               <span key={i} className="text-sidebar-foreground/60 text-xs hidden lg:inline">
                 <span className="text-gold/70 font-medium">{i + 1}.</span> {obj}
-                {i < SESSION.objectives.length - 1 && <span className="text-sidebar-foreground/30 mx-1.5">|</span>}
+                {i < objectives.length - 1 && <span className="text-sidebar-foreground/30 mx-1.5">|</span>}
               </span>
             ))}
+            {objectives.length === 0 && (
+              <span className="text-sidebar-foreground/40 text-xs hidden lg:inline italic">
+                {generatingObjectives ? "수업목표 생성 중..." : "노트 저장 시 수업목표가 자동 생성됩니다"}
+              </span>
+            )}
             <span className="text-sidebar-foreground/40 text-xs font-mono hidden sm:inline">
               · {formatDate()} {formatTime(SESSION.scheduledAt)}
             </span>
@@ -494,7 +513,7 @@ export default function Classroom() {
           <div className="flex-1 flex flex-col gap-5 min-w-0">
 
           {/* ── NOTES ─────────────────────────────────────────────────── */}
-          <div className="flex flex-col flex-1 rounded-xl border border-border bg-card shadow-card overflow-hidden">
+          <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
             {/* Notes header */}
             <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30">
               <div className="flex items-center gap-2">
@@ -565,7 +584,7 @@ export default function Classroom() {
               disabled={isDisabled}
               readOnly={!notesEditMode}
               className={cn(
-                "flex-1 min-h-[320px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none",
+                "h-[320px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto",
                 !notesEditMode && "cursor-default text-muted-foreground"
               )}
             />
