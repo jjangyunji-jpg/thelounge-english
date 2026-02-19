@@ -125,6 +125,7 @@ function SubmissionCard({
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(!submission);
+  const [descOpen, setDescOpen] = useState(true);
   const [text, setText] = useState(submission?.text_content ?? "");
   const [submitting, setSubmitting] = useState(false);
   const meta = HW_META[assignment.type];
@@ -240,10 +241,21 @@ function SubmissionCard({
         {/* Body */}
       {open && (
         <div className="px-4 pb-4 space-y-3 border-t border-border/50">
-          {/* Description (full, with line breaks) */}
+          {/* Description (collapsible) */}
           {assignment.description && (
-            <div className="mt-3 px-3 py-2.5 rounded-lg bg-muted/40 border border-border/60">
-              <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">{assignment.description}</p>
+            <div className="mt-3 rounded-lg border border-border/60 overflow-hidden">
+              <button
+                onClick={() => setDescOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 hover:bg-muted/60 transition-colors text-left"
+              >
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">상세 내용</span>
+                {descOpen ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+              </button>
+              {descOpen && (
+                <div className="px-3 py-2.5 bg-muted/20">
+                  <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">{assignment.description}</p>
+                </div>
+              )}
             </div>
           )}
           {/* Instructor note (reviewed) */}
