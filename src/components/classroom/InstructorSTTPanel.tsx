@@ -68,15 +68,15 @@ export default function InstructorSTTPanel({
   }, [scribe.isConnected, audioMode, scribe.sendAudio]);
 
   // ── 연결 핵심 로직 ────────────────────────────────────────────────────────
-  const connectWithStream = useCallback(async (stream: MediaStream) => {
+  const connectWithStream = useCallback(async (stream: MediaStream, mode: AudioMode) => {
     const { data, error } = await supabase.functions.invoke("elevenlabs-scribe-token");
     if (error || !data?.token) throw new Error("STT 토큰 발급 실패");
 
     // 시스템 오디오 stream 보관 (isConnected useEffect에서 사용)
-    systemStreamRef.current = stream;
+    systemStreamRef.current = mode === "system" ? stream : null;
 
     await scribe.connect(
-      audioMode === "mic"
+      mode === "mic"
         ? {
             token: data.token,
             commitStrategy: "vad" as any,
@@ -94,7 +94,7 @@ export default function InstructorSTTPanel({
     stream.getAudioTracks().forEach((t) => {
       t.onended = () => scribe.disconnect();
     });
-  }, [scribe, audioMode]);
+  }, [scribe]);
 
   // ── 마이크 녹음 시작 ──────────────────────────────────────────────────────
   const handleStart = useCallback(async (mode: AudioMode = audioMode) => {
@@ -106,30 +106,25 @@ export default function InstructorSTTPanel({
       let stream: MediaStream;
 
       if (mode === "mic") {
+        // 마이크: getUserMedia는 gesture context 유지됨
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } else {
-        // 시스템 오디오: 브라우저 탭 or 화면 오디오 캡처
-        try {
-          stream = await (navigator.mediaDevices as any).getDisplayMedia({
-            audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false,
-            },
-            video: false, // 영상 불필요
-          });
-        } catch (e) {
-          // getDisplayMedia는 video 없이 실패하는 브라우저가 있음 → video 포함 후 제거
-          stream = await (navigator.mediaDevices as any).getDisplayMedia({
-            audio: true,
-            video: true,
-          });
-          // 비디오 트랙 즉시 중지
-          stream.getVideoTracks().forEach((t: MediaStreamTrack) => {
-            t.stop();
-            stream.removeTrack(t);
-          });
-        }
+        // 시스템 오디오: video:true로 바로 호출 (video:false 재시도 패턴 제거)
+        // → gesture context가 소진되지 않도록 단 1번만 호출
+        stream = await (navigator.mediaDevices as any).getDisplayMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+          video: true,
+        });
+
+        // 비디오 트랙 즉시 중지 (오디오만 필요)
+        stream.getVideoTracks().forEach((t: MediaStreamTrack) => {
+          t.stop();
+          stream.removeTrack(t);
+        });
 
         if (!stream.getAudioTracks().length) {
           throw new Error(
@@ -138,7 +133,7 @@ export default function InstructorSTTPanel({
         }
       }
 
-      await connectWithStream(stream);
+      await connectWithStream(stream, mode);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "연결 실패";
       toast.error(msg);
