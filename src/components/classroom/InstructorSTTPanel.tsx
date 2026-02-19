@@ -245,11 +245,25 @@ export default function InstructorSTTPanel({
 
         {/* Mode description */}
         {!scribe.isConnected && !disabled && (
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {audioMode === "system"
-              ? "💡 Google Meet 탭의 오디오를 캡처합니다. 화면 공유 팝업에서 Meet 탭을 선택하고 '오디오 공유'를 체크하세요."
-              : "마이크로 주변 소리를 녹음합니다. 이어폰 사용 시 학생 목소리가 잘 안 잡힐 수 있습니다."}
-          </p>
+          <>
+            {audioMode === "system" ? (
+              <div className="rounded-lg bg-gold/8 border border-gold/30 px-3 py-2.5 space-y-1.5">
+                <p className="text-xs font-semibold text-gold-dark flex items-center gap-1.5">
+                  ⚠️ 시스템 오디오 사용 전 필독
+                </p>
+                <ol className="text-xs text-foreground/80 space-y-1 list-decimal list-inside leading-relaxed">
+                  <li>캡처 시작 버튼을 누르면 화면 공유 팝업이 열립니다.</li>
+                  <li>팝업에서 <span className="font-semibold text-foreground">Google Meet 탭</span>을 선택하세요.</li>
+                  <li>반드시 <span className="font-semibold text-foreground">"탭의 오디오 공유"</span> 체크박스를 활성화하세요.</li>
+                  <li>이 옵션이 없으면 학생 목소리가 캡처되지 않습니다.</li>
+                </ol>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                마이크로 주변 소리를 녹음합니다. 이어폰 사용 시 학생 목소리가 잘 안 잡힐 수 있습니다.
+              </p>
+            )}
+          </>
         )}
 
         {/* Mic controls */}
