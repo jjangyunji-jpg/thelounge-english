@@ -75,14 +75,20 @@ export default function InstructorSTTPanel({
     // 시스템 오디오 stream 보관 (isConnected useEffect에서 사용)
     systemStreamRef.current = stream;
 
-    await scribe.connect({
-      token: data.token,
-      commitStrategy: "vad" as any,
-      microphone:
-        audioMode === "mic"
-          ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-          : undefined,
-    });
+    await scribe.connect(
+      audioMode === "mic"
+        ? {
+            token: data.token,
+            commitStrategy: "vad" as any,
+            microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          }
+        : {
+            token: data.token,
+            commitStrategy: "vad" as any,
+            audioFormat: "pcm_s16le" as any,
+            sampleRate: 16000,
+          }
+    );
 
     // stream이 끊기면 자동 disconnect
     stream.getAudioTracks().forEach((t) => {
