@@ -81,6 +81,30 @@ export default function Classroom() {
   const [newHwDesc, setNewHwDesc] = useState("");
   const [savingHw, setSavingHw] = useState(false);
 
+  // 마운트 시 정기 숙제 DB 로드
+  useEffect(() => {
+    const loadPresets = async () => {
+      const { data } = await supabase
+        .from("homework_assignments")
+        .select("*")
+        .eq("student_name", SESSION.studentName)
+        .eq("is_preset", true)
+        .order("created_at", { ascending: true });
+
+      if (data && data.length > 0) {
+        setHwList(data.map((d) => ({
+          id: d.id,
+          type: d.type as HwType,
+          title: d.title,
+          description: d.description || "",
+          isPreset: true,
+          saved: true,
+        })));
+      }
+    };
+    loadPresets();
+  }, []);
+
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
