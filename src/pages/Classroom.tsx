@@ -62,7 +62,12 @@ const SESSION = {
   level: "B1",
   scheduledAt: new Date(Date.now() + 5 * 60 * 1000),
   meetLink: "https://meet.google.com/vsk-rqzo-kpg",
-  topic: "Business Email Writing",
+  topic: "미래 표현 3가지",
+  objectives: [
+    "현재진행형(be Ving) 이해 및 활용",
+    "will vs be going to 차이 구분",
+    "미래 표현 3가지(will / be going to / be Ving) 문장 연습",
+  ],
 };
 
 function formatDuration(seconds: number) {
@@ -323,10 +328,16 @@ export default function Classroom() {
               <span className="text-gold text-xs hidden md:inline">· {SESSION.topic}</span>
             )}
           </div>
-          {/* 날짜 + 수업 시간 */}
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-sidebar-foreground/50 text-xs font-mono">
-              {formatDate()} · {formatTime(SESSION.scheduledAt)}
+          {/* 수업 목표 + 날짜·시간 */}
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {SESSION.objectives.map((obj, i) => (
+              <span key={i} className="text-sidebar-foreground/60 text-xs hidden lg:inline">
+                <span className="text-gold/70 font-medium">{i + 1}.</span> {obj}
+                {i < SESSION.objectives.length - 1 && <span className="text-sidebar-foreground/30 mx-1.5">|</span>}
+              </span>
+            ))}
+            <span className="text-sidebar-foreground/40 text-xs font-mono hidden sm:inline">
+              · {formatDate()} {formatTime(SESSION.scheduledAt)}
             </span>
           </div>
         </div>
