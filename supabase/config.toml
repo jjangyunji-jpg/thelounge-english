@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.ai-correct]
 verify_jwt = false
+
+[functions.word-lookup]
+verify_jwt = false

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InstructorSTTPanel from "@/components/classroom/InstructorSTTPanel";
+import WordLookupPanel from "@/components/classroom/WordLookupPanel";
 
 type ClassState = "pre" | "ready" | "active" | "ended";
 type Role = "instructor" | "student";
@@ -487,6 +488,7 @@ export default function Classroom() {
           {/* ── RIGHT COLUMN: Instructor STT Panel ──────────────────── */}
           {role === "instructor" && (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4">
+              <WordLookupPanel studentLevel={SESSION.level} />
               <InstructorSTTPanel
                 disabled={classState !== "active"}
                 autoStart={classState === "active"}
