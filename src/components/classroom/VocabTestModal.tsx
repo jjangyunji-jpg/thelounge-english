@@ -97,24 +97,10 @@ function useAudioRecorder() {
 
 // ── Helper: build questions ────────────────────────────────────────────────────
 function buildQuestions(words: VocabWord[]): Question[] {
-  // Pick 10-20 vocab words
   const shuffled = [...words].sort(() => Math.random() - 0.5);
-  const vocabCount = Math.min(20, Math.max(10, words.length));
-  const vocabWords = shuffled.slice(0, Math.min(vocabCount, shuffled.length));
-
-  const vocabQs: Question[] = vocabWords.map((w) => ({ type: "vocab", word: w }));
-
-  // Pick up to 5 sentence words (must have example_sentence)
-  const sentenceWords = shuffled.filter((w) => w.example_sentence).slice(0, 5);
-  const sentenceQs: Question[] = sentenceWords.map((w) => {
-    const sentence = w.example_sentence!;
-    // Blank out the target word (case-insensitive)
-    const regex = new RegExp(w.english_word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
-    const blanked = sentence.replace(regex, "___");
-    return { type: "sentence", word: w, sentence: blanked, blankWord: w.english_word };
-  });
-
-  return [...vocabQs, ...sentenceQs];
+  // Scale 10–20 proportionally: <10 words → use all, 10–20 → use all, >20 → cap at 20
+  const count = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
+  return shuffled.slice(0, count).map((w) => ({ type: "vocab" as const, word: w }));
 }
 
 // ── Normalize for comparison ───────────────────────────────────────────────────
@@ -465,7 +451,7 @@ export default function VocabTestModal({
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground mb-0.5">테스트 방식을 선택하세요</p>
                 <p className="text-xs text-muted-foreground">
-                  총 {Math.min(20, Math.max(10, words.length))}개 단어 + 최대 5개 문장 문제
+                  총 {words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5))}개 단어 문제
                 </p>
               </div>
 
