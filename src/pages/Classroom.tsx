@@ -31,7 +31,7 @@ const SESSION = {
   instructorName: "Sarah Kim",
   level: "B1",
   scheduledAt: new Date(Date.now() + 5 * 60 * 1000),
-  meetLink: "https://meet.google.com/abc-defg-hij",
+  meetLink: "https://meet.google.com/vsk-rqzo-kpg",
   topic: "Business Email Writing",
 };
 
