@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain } from "lucide-react";
+import { useState } from "react";
+import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,13 @@ interface LessonHistory {
   hwStatus: string;
 }
 
+const DAYS_OF_WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+
+interface ScheduleSlot {
+  day: string;
+  time: string;
+}
+
 interface Student {
   id: number;
   name: string;
@@ -68,21 +75,10 @@ interface Student {
   lessonHistory: LessonHistory[];
   reminderEnabled: boolean;
   meetLink: string;
+  schedules: ScheduleSlot[];
 }
 
 const calcMonthlyFee = (extra: number) => BASE_FEE + extra * LESSON_PRICE;
-
-const mockStudents: Student[] = [
-  { id: 1, name: "김민준", phone: "010-1111-2222", level: "B1", startDate: "2025-09-01", instructor: "Sarah Kim", status: "active", totalLessons: 45, extraLessons: 1, presetHomework: [], lessonGoal: "시제 연습하기", lessonGoalCount: 3, lessonHistory: [{ date: "2026-02-10", topic: "시제 연습하기 3", vocaCount: 12, hwStatus: "제출완료" }, { date: "2026-02-07", topic: "시제 연습하기 2", vocaCount: 8, hwStatus: "제출완료" }, { date: "2026-02-03", topic: "시제 연습하기 1", vocaCount: 15, hwStatus: "미제출" }], reminderEnabled: true, meetLink: "https://meet.google.com/abc-defg-hij" },
-  { id: 2, name: "이지은", phone: "010-2222-3333", level: "C1", startDate: "2025-07-15", instructor: "James Park", status: "active", totalLessons: 62, extraLessons: 2, presetHomework: [], lessonGoal: "비즈니스 영어 이메일", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-10", topic: "비즈니스 영어 이메일 2", vocaCount: 10, hwStatus: "제출완료" }, { date: "2026-02-05", topic: "비즈니스 영어 이메일 1", vocaCount: 9, hwStatus: "제출완료" }], reminderEnabled: true, meetLink: "https://meet.google.com/xyz-uvwx-yzab" },
-  { id: 3, name: "박서연", phone: "010-3333-4444", level: "A1", startDate: "2026-01-05", instructor: "Sarah Kim", status: "active", totalLessons: 8, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true, meetLink: "" },
-  { id: 4, name: "최현우", phone: "010-4444-5555", level: "B1", startDate: "2025-10-01", instructor: "James Park", status: "active", totalLessons: 38, extraLessons: 0, presetHomework: [], lessonGoal: "발음 교정", lessonGoalCount: 1, lessonHistory: [{ date: "2026-02-08", topic: "발음 교정 1", vocaCount: 6, hwStatus: "제출완료" }], reminderEnabled: false, meetLink: "" },
-  { id: 5, name: "정다은", phone: "010-5555-6666", level: "C2", startDate: "2025-06-01", instructor: "James Park", status: "active", totalLessons: 70, extraLessons: 1, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true, meetLink: "https://meet.google.com/pqr-stuv-wxyz" },
-  { id: 6, name: "한소희", phone: "010-6666-7777", level: "B2", startDate: "2025-08-20", instructor: "James Park", status: "active", totalLessons: 50, extraLessons: 0, presetHomework: [], lessonGoal: "프레젠테이션 표현", lessonGoalCount: 4, lessonHistory: [{ date: "2026-02-09", topic: "프레젠테이션 표현 4", vocaCount: 11, hwStatus: "제출완료" }, { date: "2026-02-04", topic: "프레젠테이션 표현 3", vocaCount: 7, hwStatus: "미제출" }], reminderEnabled: true, meetLink: "" },
-  { id: 7, name: "이수민", phone: "010-7777-8888", level: "A2", startDate: "2025-11-01", instructor: "Emily Lee", status: "active", totalLessons: 22, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true, meetLink: "" },
-  { id: 8, name: "정우성", phone: "010-8888-9999", level: "B1", startDate: "2025-09-15", instructor: "Emily Lee", status: "active", totalLessons: 40, extraLessons: 2, presetHomework: [], lessonGoal: "관용표현 습득", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-11", topic: "관용표현 습득 2", vocaCount: 14, hwStatus: "제출완료" }, { date: "2026-02-06", topic: "관용표현 습득 1", vocaCount: 13, hwStatus: "제출완료" }], reminderEnabled: true, meetLink: "" },
-  { id: 9, name: "오지현", phone: "010-9999-0000", level: "A2", startDate: "2025-05-01", instructor: "Sarah Kim", status: "graduated", totalLessons: 60, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: false, meetLink: "" },
-];
 
 const levelColors: Record<Level, string> = {
   A1: "bg-muted text-muted-foreground",
@@ -100,11 +96,12 @@ interface NewStudent {
   instructor: string;
   startDate: string;
   extraLessons: number;
+  schedules: ScheduleSlot[];
 }
 
 export default function StudentManagement() {
   const { toast } = useToast();
-  const [students, setStudents] = useState<Student[]>(mockStudents);
+  const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"active" | "graduated">("active");
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -142,7 +139,7 @@ export default function StudentManagement() {
 
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
-    name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0,
+    name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [],
   });
 
   const filtered = students.filter(
@@ -314,9 +311,10 @@ export default function StudentManagement() {
       lessonHistory: [],
       reminderEnabled: true,
       meetLink: "",
+      schedules: newStudent.schedules,
     };
     setStudents((prev) => [s, ...prev]);
-    setNewStudent({ name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0 });
+    setNewStudent({ name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [] });
     setDialogOpen(false);
   };
 
@@ -407,6 +405,79 @@ export default function StudentManagement() {
                     value={newStudent.startDate}
                     onChange={(e) => setNewStudent((p) => ({ ...p, startDate: e.target.value }))}
                   />
+                </div>
+
+                {/* 수업 일정 */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      수업 일정
+                    </Label>
+                    <button
+                      type="button"
+                      className="text-xs text-navy hover:underline flex items-center gap-1"
+                      onClick={() =>
+                        setNewStudent((p) => ({
+                          ...p,
+                          schedules: [...p.schedules, { day: "월", time: "10:00" }],
+                        }))
+                      }
+                    >
+                      <Plus className="w-3 h-3" /> 추가
+                    </button>
+                  </div>
+                  {newStudent.schedules.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-1">수업 일정을 추가하세요</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {newStudent.schedules.map((slot, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Select
+                            value={slot.day}
+                            onValueChange={(v) =>
+                              setNewStudent((p) => ({
+                                ...p,
+                                schedules: p.schedules.map((s, i) => i === idx ? { ...s, day: v } : s),
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="h-8 w-20 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DAYS_OF_WEEK.map((d) => (
+                                <SelectItem key={d} value={d}>{d}요일</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="time"
+                            className="h-8 flex-1 text-xs"
+                            value={slot.time}
+                            onChange={(e) =>
+                              setNewStudent((p) => ({
+                                ...p,
+                                schedules: p.schedules.map((s, i) => i === idx ? { ...s, time: e.target.value } : s),
+                              }))
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              setNewStudent((p) => ({
+                                ...p,
+                                schedules: p.schedules.filter((_, i) => i !== idx),
+                              }))
+                            }
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Fee calculator */}
@@ -695,31 +766,47 @@ export default function StudentManagement() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-                        <div>
-                          <p className="text-muted-foreground">레벨</p>
-                          <p className="font-semibold text-foreground mt-0.5">{student.level}</p>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                          <div>
+                            <p className="text-muted-foreground">레벨</p>
+                            <p className="font-semibold text-foreground mt-0.5">{student.level}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">담당 강사</p>
+                            <p className="font-semibold text-foreground mt-0.5">{student.instructor}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">이번달 수업</p>
+                            <p className="font-semibold text-foreground mt-0.5">
+                              {BASE_LESSONS}회 {student.extraLessons > 0 && <span className="text-gold-dark">+{student.extraLessons}회</span>}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">이번달 수강료</p>
+                            <p className="font-bold text-gold-dark mt-0.5">₩{monthlyFee.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground flex items-center gap-1"><Target className="w-3 h-3" />수업 목표</p>
+                            <p className="font-semibold text-foreground mt-0.5 truncate">
+                              {student.lessonGoal ? `${student.lessonGoal} (${student.lessonGoalCount}회차)` : <span className="text-muted-foreground font-normal">미설정</span>}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">담당 강사</p>
-                          <p className="font-semibold text-foreground mt-0.5">{student.instructor}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">이번달 수업</p>
-                          <p className="font-semibold text-foreground mt-0.5">
-                            {BASE_LESSONS}회 {student.extraLessons > 0 && <span className="text-gold-dark">+{student.extraLessons}회</span>}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">이번달 수강료</p>
-                          <p className="font-bold text-gold-dark mt-0.5">₩{monthlyFee.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground flex items-center gap-1"><Target className="w-3 h-3" />수업 목표</p>
-                          <p className="font-semibold text-foreground mt-0.5 truncate">
-                            {student.lessonGoal ? `${student.lessonGoal} (${student.lessonGoalCount}회차)` : <span className="text-muted-foreground font-normal">미설정</span>}
-                          </p>
-                        </div>
+                        {student.schedules.length > 0 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                              <Clock className="w-3 h-3" />수업 일정
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {student.schedules.map((slot, i) => (
+                                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">
+                                  {slot.day}요일 {slot.time}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -982,8 +1069,9 @@ export default function StudentManagement() {
         })}
 
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-sm">검색 결과가 없습니다.</p>
+          <div className="text-center py-16 text-muted-foreground">
+            <p className="text-sm font-medium">{tab === "active" ? "수강중인 수강생이 없습니다" : "퇴원생이 없습니다"}</p>
+            {tab === "active" && <p className="text-xs mt-1">신규 등록 버튼을 눌러 수강생을 추가하세요.</p>}
           </div>
         )}
       </div>
