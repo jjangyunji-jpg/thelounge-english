@@ -15,6 +15,7 @@ interface SynonymEntry {
 }
 
 interface LookupResult {
+  search_word?: string;
   korean_meaning: string;
   part_of_speech: string;
   example_sentence: string;
@@ -99,7 +100,7 @@ export default function WordLookupPanel({ studentLevel = "B1" }: WordLookupPanel
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="단어 또는 표현 입력 (예: commit)"
+        placeholder="단어 입력 (영어 또는 한국어)"
               className="pr-8 text-sm h-9"
             />
             {query && (
@@ -135,7 +136,13 @@ export default function WordLookupPanel({ studentLevel = "B1" }: WordLookupPanel
             {/* Word header */}
             <div className="rounded-lg bg-navy/5 border border-navy/15 px-3 py-2.5">
               <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="text-base font-bold text-foreground">{searchedWord}</span>
+                {/* 한국어 검색 시 AI가 찾은 영어 단어 우선 표시 */}
+                <span className="text-base font-bold text-foreground">
+                  {result.search_word ?? searchedWord}
+                </span>
+                {result.search_word && result.search_word.toLowerCase() !== searchedWord.toLowerCase() && (
+                  <span className="text-xs text-muted-foreground">← "{searchedWord}"</span>
+                )}
                 <span className="text-xs text-muted-foreground italic">{result.part_of_speech}</span>
               </div>
               <p className="text-sm font-semibold text-navy mt-0.5">{result.korean_meaning}</p>
