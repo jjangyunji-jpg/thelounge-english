@@ -14,7 +14,264 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      class_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          instructor_name: string
+          level: string
+          meet_link: string | null
+          notes: string | null
+          scheduled_at: string
+          started_at: string | null
+          student_name: string
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          instructor_name: string
+          level?: string
+          meet_link?: string | null
+          notes?: string | null
+          scheduled_at: string
+          started_at?: string | null
+          student_name: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          instructor_name?: string
+          level?: string
+          meet_link?: string | null
+          notes?: string | null
+          scheduled_at?: string
+          started_at?: string | null
+          student_name?: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homework_assignments: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_at: string | null
+          id: string
+          is_preset: boolean
+          session_id: string | null
+          student_name: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          is_preset?: boolean
+          session_id?: string | null
+          student_name: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          is_preset?: boolean
+          session_id?: string | null
+          student_name?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_assignments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_submissions: {
+        Row: {
+          assignment_id: string | null
+          audio_url: string | null
+          id: string
+          instructor_note: string | null
+          reviewed_at: string | null
+          status: string
+          student_name: string
+          submitted_at: string
+          text_content: string | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          audio_url?: string | null
+          id?: string
+          instructor_note?: string | null
+          reviewed_at?: string | null
+          status?: string
+          student_name: string
+          submitted_at?: string
+          text_content?: string | null
+        }
+        Update: {
+          assignment_id?: string | null
+          audio_url?: string | null
+          id?: string
+          instructor_note?: string | null
+          reviewed_at?: string | null
+          status?: string
+          student_name?: string
+          submitted_at?: string
+          text_content?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "homework_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vocabulary_test_results: {
+        Row: {
+          created_at: string
+          id: string
+          is_correct: boolean | null
+          student_answer: string | null
+          test_id: string | null
+          word_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          student_answer?: string | null
+          test_id?: string | null
+          word_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          student_answer?: string | null
+          test_id?: string | null
+          word_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vocabulary_test_results_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "vocabulary_tests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vocabulary_test_results_word_id_fkey"
+            columns: ["word_id"]
+            isOneToOne: false
+            referencedRelation: "vocabulary_words"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vocabulary_tests: {
+        Row: {
+          completed_at: string | null
+          id: string
+          score: number | null
+          started_at: string
+          student_name: string
+          total: number | null
+          type: string
+          week_label: string | null
+          word_ids: string[] | null
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          score?: number | null
+          started_at?: string
+          student_name: string
+          total?: number | null
+          type: string
+          week_label?: string | null
+          word_ids?: string[] | null
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          score?: number | null
+          started_at?: string
+          student_name?: string
+          total?: number | null
+          type?: string
+          week_label?: string | null
+          word_ids?: string[] | null
+        }
+        Relationships: []
+      }
+      vocabulary_words: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          english_word: string
+          example_sentence: string | null
+          id: string
+          korean_meaning: string
+          part_of_speech: string | null
+          session_id: string | null
+          student_name: string
+          week_label: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          english_word: string
+          example_sentence?: string | null
+          id?: string
+          korean_meaning: string
+          part_of_speech?: string | null
+          session_id?: string | null
+          student_name: string
+          week_label: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          english_word?: string
+          example_sentence?: string | null
+          id?: string
+          korean_meaning?: string
+          part_of_speech?: string | null
+          session_id?: string | null
+          student_name?: string
+          week_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vocabulary_words_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
