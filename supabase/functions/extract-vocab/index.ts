@@ -104,18 +104,17 @@ If no clear English-Korean pairs are found, return { "words": [] }.`;
       });
     }
 
-    // 이미 존재하는 단어 중복 제거 (같은 학생 + 같은 주차)
-    const { data: existing } = await supabase
+    // 해당 주차 기존 단어 전체 삭제 후 새 단어로 대체
+    const { error: deleteError } = await supabase
       .from("vocabulary_words")
-      .select("english_word")
+      .delete()
       .eq("student_name", studentName)
       .eq("week_label", weekLabel);
 
-    const existingSet = new Set((existing ?? []).map((r: { english_word: string }) => r.english_word.toLowerCase()));
+    if (deleteError) throw deleteError;
 
     const toInsert = words
       .filter((w) => w.english_word && w.korean_meaning)
-      .filter((w) => !existingSet.has(w.english_word.toLowerCase()))
       .map((w) => ({
         student_name: studentName,
         week_label: weekLabel,
@@ -127,7 +126,7 @@ If no clear English-Korean pairs are found, return { "words": [] }.`;
       }));
 
     if (toInsert.length === 0) {
-      return new Response(JSON.stringify({ inserted: 0, words: [], message: "이미 모두 추가된 단어입니다." }), {
+      return new Response(JSON.stringify({ inserted: 0, words: [], message: "추출된 단어가 없습니다." }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
