@@ -122,6 +122,13 @@ export default function StudentManagement() {
   const [newPresetDesc, setNewPresetDesc] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
 
+  // 정기 숙제 수정 상태
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
+  const [editPresetType, setEditPresetType] = useState<HwType>("writing");
+  const [editPresetTitle, setEditPresetTitle] = useState("");
+  const [editPresetDesc, setEditPresetDesc] = useState("");
+  const [savingEditPreset, setSavingEditPreset] = useState(false);
+
   // Inline editing state
   const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
   const [editLevel, setEditLevel] = useState<Level | "">("");
@@ -200,6 +207,41 @@ export default function StudentManagement() {
   const removePresetHw = async (studentId: number, hwId: string) => {
     await supabase.from("homework_assignments").delete().eq("id", hwId);
     setPresetMap((p) => ({ ...p, [studentId]: (p[studentId] || []).filter((h) => h.id !== hwId) }));
+  };
+
+  const startEditPreset = (hw: PresetHomework) => {
+    setEditingPresetId(hw.id);
+    setEditPresetType(hw.type);
+    setEditPresetTitle(hw.title);
+    setEditPresetDesc(hw.description);
+    setAddingPresetFor(null);
+  };
+
+  const cancelEditPreset = () => {
+    setEditingPresetId(null);
+    setEditPresetTitle(""); setEditPresetDesc("");
+  };
+
+  const saveEditPreset = async (studentId: number) => {
+    if (!editPresetTitle.trim() || !editingPresetId) return;
+    setSavingEditPreset(true);
+    const { error } = await supabase
+      .from("homework_assignments")
+      .update({ type: editPresetType, title: editPresetTitle.trim(), description: editPresetDesc.trim() || null })
+      .eq("id", editingPresetId);
+    if (!error) {
+      setPresetMap((p) => ({
+        ...p,
+        [studentId]: (p[studentId] || []).map((h) =>
+          h.id === editingPresetId
+            ? { ...h, type: editPresetType, title: editPresetTitle.trim(), description: editPresetDesc.trim() }
+            : h
+        ),
+      }));
+      toast({ title: "정기 숙제 수정 완료 ✓" });
+    }
+    setSavingEditPreset(false);
+    cancelEditPreset();
   };
 
   const graduate = (id: number) => {
@@ -702,6 +744,45 @@ export default function StudentManagement() {
                         (presetMap[student.id] || []).map((hw) => {
                           const meta = HW_TYPE_META[hw.type];
                           const Icon = meta?.icon;
+                          const isEditingThis = editingPresetId === hw.id;
+
+                          if (isEditingThis) {
+                            return (
+                              <div key={hw.id} className="border border-[hsl(var(--gold)/0.5)] rounded-lg p-3 space-y-2.5 bg-[hsl(var(--gold)/0.04)]" onClick={(e) => e.stopPropagation()}>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  {(Object.keys(HW_TYPE_META) as HwType[]).map((t) => {
+                                    const m = HW_TYPE_META[t];
+                                    const TIcon = m.icon;
+                                    return (
+                                      <button key={t} onClick={() => setEditPresetType(t)}
+                                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-all ${
+                                          editPresetType === t
+                                            ? "border-[hsl(var(--gold))] bg-[hsl(var(--gold)/0.10)] text-foreground"
+                                            : "border-border bg-card text-muted-foreground hover:border-[hsl(var(--gold)/0.4)]"
+                                        }`}
+                                      >
+                                        <TIcon className={`w-3.5 h-3.5 flex-shrink-0 ${editPresetType === t ? m.color : ""}`} />
+                                        {m.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">{HW_TYPE_META[editPresetType].hint}</p>
+                                <Input value={editPresetTitle} onChange={(e) => setEditPresetTitle(e.target.value)} placeholder="숙제 제목 (필수)" className="h-8 text-xs" autoFocus />
+                                <Input value={editPresetDesc} onChange={(e) => setEditPresetDesc(e.target.value)} placeholder="상세 설명 (선택)" className="h-8 text-xs" />
+                                <div className="flex gap-1.5">
+                                  <Button size="sm" disabled={!editPresetTitle.trim() || savingEditPreset}
+                                    className="flex-1 h-8 text-xs bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground"
+                                    onClick={(e) => { e.stopPropagation(); saveEditPreset(student.id); }}
+                                  >
+                                    <Check className="w-3 h-3 mr-1" />{savingEditPreset ? "저장 중..." : "저장"}
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={(e) => { e.stopPropagation(); cancelEditPreset(); }}>취소</Button>
+                                </div>
+                              </div>
+                            );
+                          }
+
                           return (
                             <div key={hw.id} className="rounded-md border border-border bg-muted/20 px-3 py-2 group flex items-start gap-2.5">
                               {Icon && <Icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${meta.color}`} />}
@@ -717,12 +798,14 @@ export default function StudentManagement() {
                                 )}
                                 <p className="text-[10px] text-muted-foreground/70 mt-0.5">{meta?.hint}</p>
                               </div>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); removePresetHw(student.id, hw.id); }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0 mt-0.5"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">
+                                <button onClick={(e) => { e.stopPropagation(); startEditPreset(hw); }} className="text-muted-foreground hover:text-foreground">
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); removePresetHw(student.id, hw.id); }} className="text-muted-foreground hover:text-destructive">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             </div>
                           );
                         })
