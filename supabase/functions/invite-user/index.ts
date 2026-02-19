@@ -16,7 +16,9 @@ Deno.serve(async (req) => {
   const { email, role } = await req.json();
 
   // 1. Invite user by email (sends invite link)
-  const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email);
+  const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
+    redirectTo: "https://thelounge-english.lovable.app/set-password",
+  });
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
