@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Video, VideoOff, Clock, FileText, CheckSquare,
   Save, Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff,
-  PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked
+  PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked,
+  Bold, Heading1, Heading2, Heading3, Minus, Table2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -96,6 +97,45 @@ export default function Classroom() {
   const [sessionTopic, setSessionTopic] = useState(SESSION.topic);
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const notesRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const applyFormat = useCallback((type: "bold" | "h1" | "h2" | "h3" | "hr" | "table") => {
+    const el = notesRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selected = notes.slice(start, end);
+    let newText = notes;
+    let newStart = start;
+    let newEnd = end;
+
+    if (type === "bold") {
+      const replacement = `**${selected || "텍스트"}**`;
+      newText = notes.slice(0, start) + replacement + notes.slice(end);
+      newStart = start + 2;
+      newEnd = newStart + (selected || "텍스트").length;
+    } else if (type === "h1" || type === "h2" || type === "h3") {
+      const prefix = type === "h1" ? "# " : type === "h2" ? "## " : "### ";
+      const lineStart = notes.lastIndexOf("\n", start - 1) + 1;
+      newText = notes.slice(0, lineStart) + prefix + notes.slice(lineStart);
+      newStart = start + prefix.length;
+      newEnd = end + prefix.length;
+    } else if (type === "hr") {
+      const ins = "\n\n---\n\n";
+      newText = notes.slice(0, end) + ins + notes.slice(end);
+      newStart = newEnd = end + ins.length;
+    } else if (type === "table") {
+      const ins = "\n\n| 열1 | 열2 | 열3 |\n| --- | --- | --- |\n| 내용 | 내용 | 내용 |\n\n";
+      newText = notes.slice(0, end) + ins + notes.slice(end);
+      newStart = newEnd = end + ins.length;
+    }
+
+    setNotes(newText);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(newStart, newEnd);
+    }, 0);
+  }, [notes]);
 
   const [addingHw, setAddingHw] = useState(false);
   const [newHwType, setNewHwType] = useState<HwType>("writing");
@@ -412,7 +452,7 @@ export default function Classroom() {
                   value={notes}
                   readOnly
                   placeholder="강사가 수업 노트를 작성하면 여기에 표시됩니다."
-                  className="h-[320px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto cursor-default text-muted-foreground"
+                  className="h-[420px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto cursor-default text-muted-foreground"
                 />
               </div>
               {/* 숙제 */}
@@ -451,11 +491,38 @@ export default function Classroom() {
                     </Button>
                   </div>
                 </div>
+                {/* ── Formatting toolbar ── */}
+                {notesEditMode && !isDisabled && (
+                  <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border bg-muted/20 flex-wrap">
+                    {([
+                      { type: "bold" as const, icon: Bold, label: "굵게 (Ctrl+B)" },
+                      { type: "h1" as const, icon: Heading1, label: "제목 1" },
+                      { type: "h2" as const, icon: Heading2, label: "제목 2" },
+                      { type: "h3" as const, icon: Heading3, label: "제목 3" },
+                      { type: "hr" as const, icon: Minus, label: "구분선" },
+                      { type: "table" as const, icon: Table2, label: "표 삽입" },
+                    ] as const).map(({ type, icon: Icon, label }) => (
+                      <button
+                        key={type}
+                        title={label}
+                        onMouseDown={(e) => { e.preventDefault(); applyFormat(type); }}
+                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                      </button>
+                    ))}
+                    <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">Ctrl+B 굵게</span>
+                  </div>
+                )}
                 <Textarea
+                  ref={notesRef}
                   value={notes} onChange={(e) => setNotes(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey && e.key === "b") { e.preventDefault(); applyFormat("bold"); }
+                  }}
                   placeholder={`수업 내용을 자유롭게 타이핑하세요.\n\nToday's topic: ${SESSION.topic}\n\n- Key expressions:\n- Grammar points:\n- Notes:`}
                   disabled={isDisabled} readOnly={!notesEditMode}
-                  className={cn("h-[320px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto",
+                  className={cn("h-[420px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto",
                     !notesEditMode && "cursor-default text-muted-foreground")}
                 />
                 {classState === "active" && (
