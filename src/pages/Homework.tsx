@@ -3,13 +3,14 @@ import {
   ArrowLeft, CheckSquare, FileText, Mic, MicOff, Play,
   Pause, Upload, MessageSquare, Clock, Check, X,
   ChevronDown, ChevronUp, RefreshCw, BookOpen, User,
-  PenLine, Brain
+  PenLine, Brain, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
 
 type Role = "instructor" | "student";
 type HwType = "writing" | "reading" | "speaking" | "memorizing";
@@ -48,6 +49,78 @@ const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; col
   speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]",   hint: "녹음 필수 / 텍스트 선택" },
   memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",              hint: "녹음 필수 (대화문 등)" },
 };
+
+// ── URL / YouTube helpers ─────────────────────────────────────────────────────
+function getYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/,
+  ];
+  for (const re of patterns) {
+    const m = url.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function isUrl(str: string) {
+  return /^https?:\/\/\S+/.test(str);
+}
+
+// Render description: plain text + clickable links + YouTube embeds
+function RichDescription({ text }: { text: string }) {
+  // Split on whitespace-bounded URLs
+  const tokens = text.split(/(\s+)/);
+  const urlTokens = text.split(/\s+/).filter(Boolean);
+
+  // Collect YouTube IDs to render embeds at the bottom
+  const ytIds: string[] = [];
+  const inlineNodes: React.ReactNode[] = [];
+
+  let keyIdx = 0;
+  for (const raw of tokens) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      inlineNodes.push(raw); // preserve whitespace
+      continue;
+    }
+    if (isUrl(trimmed)) {
+      const ytId = getYouTubeId(trimmed);
+      if (ytId && !ytIds.includes(ytId)) ytIds.push(ytId);
+      inlineNodes.push(
+        <a
+          key={keyIdx++}
+          href={trimmed}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-0.5 text-[hsl(var(--navy))] underline underline-offset-2 hover:text-[hsl(var(--navy-light))] break-all"
+        >
+          {trimmed}
+          <ExternalLink className="w-3 h-3 flex-shrink-0 ml-0.5" />
+        </a>
+      );
+    } else {
+      inlineNodes.push(<span key={keyIdx++}>{raw}</span>);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground leading-relaxed">{inlineNodes}</p>
+      {ytIds.map((id) => (
+        <div key={id} className="rounded-xl overflow-hidden border border-border aspect-video">
+          <iframe
+            src={`https://www.youtube.com/embed/${id}`}
+            title="YouTube video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="w-full h-full"
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function TypeBadge({ type }: { type: string }) {
   const meta = HW_TYPE_META[type as HwType];
@@ -289,7 +362,9 @@ function StudentView({ studentName }: { studentName: string }) {
                 )}
               </div>
               {selected.description && (
-                <p className="px-4 py-3 text-sm text-muted-foreground">{selected.description}</p>
+                <div className="px-4 py-3">
+                  <RichDescription text={selected.description} />
+                </div>
               )}
               {/* 타입별 안내 */}
               <div className="px-4 pb-3">
