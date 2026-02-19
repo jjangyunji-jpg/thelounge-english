@@ -117,7 +117,8 @@ export default function Classroom() {
 
       const { data } = await supabase
         .from("homework_assignments").select("*")
-        .eq("student_name", SESSION.studentName).eq("is_preset", true)
+        .eq("student_name", SESSION.studentName)
+        .or(`session_id.eq.${SESSION.sessionId},is_preset.eq.true`)
         .order("created_at", { ascending: true });
 
       if (data && data.length > 0) {
@@ -400,8 +401,22 @@ export default function Classroom() {
 
           {/* ── LEFT COLUMN ─────────────────────────────────────────────── */}
           {role === "student" ? (
-            <div className="flex-1 flex flex-col min-w-0 min-h-0">
-              <StudentHomeworkPanel studentName={SESSION.studentName} />
+            <div className="flex-1 flex flex-col gap-5 min-w-0">
+              {/* 수업 노트 (읽기 전용) */}
+              <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
+                  <FileText className="w-4 h-4 text-gold" />
+                  <span className="font-semibold text-sm text-foreground">수업 노트</span>
+                </div>
+                <Textarea
+                  value={notes}
+                  readOnly
+                  placeholder="강사가 수업 노트를 작성하면 여기에 표시됩니다."
+                  className="h-[320px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto cursor-default text-muted-foreground"
+                />
+              </div>
+              {/* 숙제 */}
+              <StudentHomeworkPanel studentName={SESSION.studentName} sessionId={SESSION.sessionId} />
             </div>
           ) : (
             <div className="flex-1 flex flex-col gap-5 min-w-0">

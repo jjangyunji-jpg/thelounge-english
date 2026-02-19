@@ -359,7 +359,7 @@ function SubmissionCard({
 }
 
 // ── Main Panel ─────────────────────────────────────────────────────────────────
-export default function StudentHomeworkPanel({ studentName }: { studentName: string }) {
+export default function StudentHomeworkPanel({ studentName, sessionId }: { studentName: string; sessionId: string }) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [loading, setLoading] = useState(true);
@@ -372,6 +372,7 @@ export default function StudentHomeworkPanel({ studentName }: { studentName: str
           .from("homework_assignments")
           .select("id, type, title, description, is_preset")
           .eq("student_name", studentName)
+          .or(`session_id.eq.${sessionId},is_preset.eq.true`)
           .order("created_at", { ascending: true }),
         supabase
           .from("homework_submissions")
