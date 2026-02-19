@@ -116,30 +116,25 @@ function isCorrect(userAnswer: string, expected: string): boolean {
   return e.split(" ").every((word) => u.includes(normalize(word)));
 }
 
-// ── STT transcription via ElevenLabs ─────────────────────────────────────────
+// ── STT transcription via edge function ──────────────────────────────────────
 async function transcribeAudio(blob: Blob): Promise<string> {
+  const formData = new FormData();
+  formData.append("audio", blob, "recording.webm");
+
   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
   const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  // Get scribe token
-  const tokenRes = await fetch(`${SUPABASE_URL}/functions/v1/elevenlabs-scribe-token`, {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/stt-transcribe`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
-  });
-  const { token } = await tokenRes.json();
-  if (!token) throw new Error("STT 토큰 발급 실패");
-
-  // Use ElevenLabs batch transcription for simplicity
-  const formData = new FormData();
-  formData.append("file", blob, "recording.webm");
-  formData.append("model_id", "scribe_v2");
-  formData.append("language_code", "eng");
-
-  const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
-    method: "POST",
-    headers: { "xi-api-key": token },
+    headers: { Authorization: `Bearer ${SUPABASE_KEY}` },
     body: formData,
   });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `STT 오류 (${res.status})`);
+  }
+
   const data = await res.json();
   return data.text ?? "";
 }
