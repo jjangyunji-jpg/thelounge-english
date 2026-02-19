@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,18 +19,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type StudentStatus = "active" | "graduated";
 type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+type HwType = "writing" | "reading" | "speaking" | "memorizing";
 
 const LEVELS: Level[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 const BASE_LESSONS = 4;
 const LESSON_PRICE = 50000;
 const BASE_FEE = BASE_LESSONS * LESSON_PRICE;
 
+const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string; hint: string }> = {
+  writing:    { label: "쓰기",   icon: PenLine,  color: "text-[hsl(var(--navy))]",      hint: "텍스트 작성 필수" },
+  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]", hint: "녹음 필수" },
+  speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]",   hint: "녹음 필수 / 텍스트 선택" },
+  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",              hint: "녹음 필수 (대화문 등)" },
+};
+
 export interface PresetHomework {
-  id: number;
-  content: string;
+  id: string;       // DB UUID
+  type: HwType;
+  title: string;
+  description: string;
 }
 
 interface LessonHistory {
@@ -61,14 +73,14 @@ interface Student {
 const calcMonthlyFee = (extra: number) => BASE_FEE + extra * LESSON_PRICE;
 
 const mockStudents: Student[] = [
-  { id: 1, name: "김민준", phone: "010-1111-2222", level: "B1", startDate: "2025-09-01", instructor: "Sarah Kim", status: "active", totalLessons: 45, extraLessons: 1, presetHomework: [{ id: 1, content: "일기 쓰기 2회 (10문장 이상)" }, { id: 2, content: "교재 Unit 3 복습" }], lessonGoal: "시제 연습하기", lessonGoalCount: 3, lessonHistory: [{ date: "2026-02-10", topic: "시제 연습하기 3", vocaCount: 12, hwStatus: "제출완료" }, { date: "2026-02-07", topic: "시제 연습하기 2", vocaCount: 8, hwStatus: "제출완료" }, { date: "2026-02-03", topic: "시제 연습하기 1", vocaCount: 15, hwStatus: "미제출" }], reminderEnabled: true, meetLink: "https://meet.google.com/abc-defg-hij" },
-  { id: 2, name: "이지은", phone: "010-2222-3333", level: "C1", startDate: "2025-07-15", instructor: "James Park", status: "active", totalLessons: 62, extraLessons: 2, presetHomework: [{ id: 1, content: "에세이 초안 작성 (300단어 이상)" }], lessonGoal: "비즈니스 영어 이메일", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-10", topic: "비즈니스 영어 이메일 2", vocaCount: 10, hwStatus: "제출완료" }, { date: "2026-02-05", topic: "비즈니스 영어 이메일 1", vocaCount: 9, hwStatus: "제출완료" }], reminderEnabled: true, meetLink: "https://meet.google.com/xyz-uvwx-yzab" },
+  { id: 1, name: "김민준", phone: "010-1111-2222", level: "B1", startDate: "2025-09-01", instructor: "Sarah Kim", status: "active", totalLessons: 45, extraLessons: 1, presetHomework: [], lessonGoal: "시제 연습하기", lessonGoalCount: 3, lessonHistory: [{ date: "2026-02-10", topic: "시제 연습하기 3", vocaCount: 12, hwStatus: "제출완료" }, { date: "2026-02-07", topic: "시제 연습하기 2", vocaCount: 8, hwStatus: "제출완료" }, { date: "2026-02-03", topic: "시제 연습하기 1", vocaCount: 15, hwStatus: "미제출" }], reminderEnabled: true, meetLink: "https://meet.google.com/abc-defg-hij" },
+  { id: 2, name: "이지은", phone: "010-2222-3333", level: "C1", startDate: "2025-07-15", instructor: "James Park", status: "active", totalLessons: 62, extraLessons: 2, presetHomework: [], lessonGoal: "비즈니스 영어 이메일", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-10", topic: "비즈니스 영어 이메일 2", vocaCount: 10, hwStatus: "제출완료" }, { date: "2026-02-05", topic: "비즈니스 영어 이메일 1", vocaCount: 9, hwStatus: "제출완료" }], reminderEnabled: true, meetLink: "https://meet.google.com/xyz-uvwx-yzab" },
   { id: 3, name: "박서연", phone: "010-3333-4444", level: "A1", startDate: "2026-01-05", instructor: "Sarah Kim", status: "active", totalLessons: 8, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true, meetLink: "" },
-  { id: 4, name: "최현우", phone: "010-4444-5555", level: "B1", startDate: "2025-10-01", instructor: "James Park", status: "active", totalLessons: 38, extraLessons: 0, presetHomework: [{ id: 1, content: "단어 20개 암기 후 예문 작성" }], lessonGoal: "발음 교정", lessonGoalCount: 1, lessonHistory: [{ date: "2026-02-08", topic: "발음 교정 1", vocaCount: 6, hwStatus: "제출완료" }], reminderEnabled: false, meetLink: "" },
+  { id: 4, name: "최현우", phone: "010-4444-5555", level: "B1", startDate: "2025-10-01", instructor: "James Park", status: "active", totalLessons: 38, extraLessons: 0, presetHomework: [], lessonGoal: "발음 교정", lessonGoalCount: 1, lessonHistory: [{ date: "2026-02-08", topic: "발음 교정 1", vocaCount: 6, hwStatus: "제출완료" }], reminderEnabled: false, meetLink: "" },
   { id: 5, name: "정다은", phone: "010-5555-6666", level: "C2", startDate: "2025-06-01", instructor: "James Park", status: "active", totalLessons: 70, extraLessons: 1, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true, meetLink: "https://meet.google.com/pqr-stuv-wxyz" },
-  { id: 6, name: "한소희", phone: "010-6666-7777", level: "B2", startDate: "2025-08-20", instructor: "James Park", status: "active", totalLessons: 50, extraLessons: 0, presetHomework: [{ id: 1, content: "뉴스 기사 읽기 + 요약 작성" }], lessonGoal: "프레젠테이션 표현", lessonGoalCount: 4, lessonHistory: [{ date: "2026-02-09", topic: "프레젠테이션 표현 4", vocaCount: 11, hwStatus: "제출완료" }, { date: "2026-02-04", topic: "프레젠테이션 표현 3", vocaCount: 7, hwStatus: "미제출" }], reminderEnabled: true, meetLink: "" },
+  { id: 6, name: "한소희", phone: "010-6666-7777", level: "B2", startDate: "2025-08-20", instructor: "James Park", status: "active", totalLessons: 50, extraLessons: 0, presetHomework: [], lessonGoal: "프레젠테이션 표현", lessonGoalCount: 4, lessonHistory: [{ date: "2026-02-09", topic: "프레젠테이션 표현 4", vocaCount: 11, hwStatus: "제출완료" }, { date: "2026-02-04", topic: "프레젠테이션 표현 3", vocaCount: 7, hwStatus: "미제출" }], reminderEnabled: true, meetLink: "" },
   { id: 7, name: "이수민", phone: "010-7777-8888", level: "A2", startDate: "2025-11-01", instructor: "Emily Lee", status: "active", totalLessons: 22, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: true, meetLink: "" },
-  { id: 8, name: "정우성", phone: "010-8888-9999", level: "B1", startDate: "2025-09-15", instructor: "Emily Lee", status: "active", totalLessons: 40, extraLessons: 2, presetHomework: [{ id: 1, content: "일기 쓰기 3회 (5문장 이상)" }], lessonGoal: "관용표현 습득", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-11", topic: "관용표현 습득 2", vocaCount: 14, hwStatus: "제출완료" }, { date: "2026-02-06", topic: "관용표현 습득 1", vocaCount: 13, hwStatus: "제출완료" }], reminderEnabled: true, meetLink: "" },
+  { id: 8, name: "정우성", phone: "010-8888-9999", level: "B1", startDate: "2025-09-15", instructor: "Emily Lee", status: "active", totalLessons: 40, extraLessons: 2, presetHomework: [], lessonGoal: "관용표현 습득", lessonGoalCount: 2, lessonHistory: [{ date: "2026-02-11", topic: "관용표현 습득 2", vocaCount: 14, hwStatus: "제출완료" }, { date: "2026-02-06", topic: "관용표현 습득 1", vocaCount: 13, hwStatus: "제출완료" }], reminderEnabled: true, meetLink: "" },
   { id: 9, name: "오지현", phone: "010-9999-0000", level: "A2", startDate: "2025-05-01", instructor: "Sarah Kim", status: "graduated", totalLessons: 60, extraLessons: 0, presetHomework: [], lessonGoal: "", lessonGoalCount: 0, lessonHistory: [], reminderEnabled: false, meetLink: "" },
 ];
 
@@ -79,7 +91,7 @@ const levelColors: Record<Level, string> = {
   B2: "bg-orange-50 text-orange-700",
   C1: "bg-navy/10 text-navy",
   C2: "bg-navy/20 text-navy font-bold",
-  };
+};
 // New student form state
 interface NewStudent {
   name: string;
@@ -91,6 +103,7 @@ interface NewStudent {
 }
 
 export default function StudentManagement() {
+  const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>(mockStudents);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"active" | "graduated">("active");
@@ -98,19 +111,23 @@ export default function StudentManagement() {
   const [showHistory, setShowHistory] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // preset homework per student (DB 연동): studentId -> presets
+  const [presetMap, setPresetMap] = useState<Record<number, PresetHomework[]>>({});
+  const [loadingPresets, setLoadingPresets] = useState<Record<number, boolean>>({});
+
+  // 새 정기 숙제 추가 폼
+  const [addingPresetFor, setAddingPresetFor] = useState<number | null>(null);
+  const [newPresetType, setNewPresetType] = useState<HwType>("writing");
+  const [newPresetTitle, setNewPresetTitle] = useState("");
+  const [newPresetDesc, setNewPresetDesc] = useState("");
+  const [savingPreset, setSavingPreset] = useState(false);
+
   // Inline editing state
   const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
   const [editLevel, setEditLevel] = useState<Level | "">("");
   const [editExtra, setEditExtra] = useState(0);
   const [editGoal, setEditGoal] = useState("");
   const [editInstructor, setEditInstructor] = useState("");
-
-  // Preset homework editing
-  const [editingPresetId, setEditingPresetId] = useState<number | null>(null);
-  const [presetInput, setPresetInput] = useState("");
-  // Inline editing a preset item
-  const [editingHwItemId, setEditingHwItemId] = useState<number | null>(null);
-  const [editingHwContent, setEditingHwContent] = useState("");
 
   // Meet link editing
   const [editingMeetId, setEditingMeetId] = useState<number | null>(null);
@@ -124,6 +141,66 @@ export default function StudentManagement() {
   const filtered = students.filter(
     (s) => s.status === tab && s.name.includes(search)
   );
+
+  // 학생의 정기 숙제 DB 로드
+  const loadPresets = async (studentId: number, studentName: string) => {
+    setLoadingPresets((p) => ({ ...p, [studentId]: true }));
+    const { data } = await supabase
+      .from("homework_assignments")
+      .select("*")
+      .eq("student_name", studentName)
+      .eq("is_preset", true)
+      .order("created_at", { ascending: true });
+    setPresetMap((p) => ({
+      ...p,
+      [studentId]: (data || []).map((d) => ({
+        id: d.id,
+        type: d.type as HwType,
+        title: d.title,
+        description: d.description || "",
+      })),
+    }));
+    setLoadingPresets((p) => ({ ...p, [studentId]: false }));
+  };
+
+  const handleExpandStudent = (studentId: number, studentName: string) => {
+    if (expandedId === studentId) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(studentId);
+      if (!presetMap[studentId]) loadPresets(studentId, studentName);
+    }
+  };
+
+  const addPresetHw = async (studentId: number, studentName: string) => {
+    if (!newPresetTitle.trim()) return;
+    setSavingPreset(true);
+    const { data, error } = await supabase.from("homework_assignments").insert({
+      student_name: studentName,
+      title: newPresetTitle.trim(),
+      description: newPresetDesc.trim() || null,
+      type: newPresetType,
+      is_preset: true,
+    }).select().single();
+
+    if (!error && data) {
+      const newItem: PresetHomework = {
+        id: data.id,
+        type: newPresetType,
+        title: newPresetTitle.trim(),
+        description: newPresetDesc.trim(),
+      };
+      setPresetMap((p) => ({ ...p, [studentId]: [...(p[studentId] || []), newItem] }));
+      toast({ title: "정기 숙제 추가 완료 ✓" });
+    }
+    setNewPresetTitle(""); setNewPresetDesc(""); setNewPresetType("writing");
+    setAddingPresetFor(null); setSavingPreset(false);
+  };
+
+  const removePresetHw = async (studentId: number, hwId: string) => {
+    await supabase.from("homework_assignments").delete().eq("id", hwId);
+    setPresetMap((p) => ({ ...p, [studentId]: (p[studentId] || []).filter((h) => h.id !== hwId) }));
+  };
 
   const graduate = (id: number) => {
     setStudents((prev) => prev.map((s) => (s.id === id ? { ...s, status: "graduated" } : s)));
@@ -175,46 +252,6 @@ export default function StudentManagement() {
     setStudents((prev) =>
       prev.map((s) => s.id === studentId ? { ...s, meetLink: "" } : s)
     );
-  };
-
-  const addPresetHw = (studentId: number) => {
-    if (!presetInput.trim()) return;
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.id === studentId
-          ? { ...s, presetHomework: [...s.presetHomework, { id: Date.now(), content: presetInput }] }
-          : s
-      )
-    );
-    setPresetInput("");
-  };
-
-  const removePresetHw = (studentId: number, hwId: number) => {
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.id === studentId
-          ? { ...s, presetHomework: s.presetHomework.filter((h) => h.id !== hwId) }
-          : s
-      )
-    );
-  };
-
-  const startEditHwItem = (hw: { id: number; content: string }) => {
-    setEditingHwItemId(hw.id);
-    setEditingHwContent(hw.content);
-  };
-
-  const saveEditHwItem = (studentId: number, hwId: number) => {
-    if (!editingHwContent.trim()) return;
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.id === studentId
-          ? { ...s, presetHomework: s.presetHomework.map((h) => h.id === hwId ? { ...h, content: editingHwContent } : h) }
-          : s
-      )
-    );
-    setEditingHwItemId(null);
-    setEditingHwContent("");
   };
 
   const registerStudent = () => {
@@ -413,7 +450,7 @@ export default function StudentManagement() {
             <Card key={student.id} className="shadow-card border-border overflow-hidden">
               <div
                 className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-                onClick={() => setExpandedId(expandedId === student.id ? null : student.id)}
+                onClick={() => handleExpandStudent(student.id, student.name)}
               >
                 <div className="w-9 h-9 rounded-full bg-navy/8 flex items-center justify-center flex-shrink-0">
                   <span className="text-navy font-bold text-sm">{student.name.charAt(0)}</span>
@@ -651,86 +688,112 @@ export default function StudentManagement() {
                       <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                         <RefreshCw className="w-3.5 h-3.5 text-gold" />
                         정기 숙제 설정
-                        <span className="text-xs font-normal text-muted-foreground">— 수업 시작 시 자동으로 채워집니다</span>
+                        <span className="text-xs font-normal text-muted-foreground">— 클래스룸에 자동으로 반영됩니다</span>
                       </h4>
                     </div>
 
                     {/* Preset list */}
                     <div className="space-y-2 mb-3">
-                      {student.presetHomework.length === 0 ? (
+                      {loadingPresets[student.id] ? (
+                        <p className="text-xs text-muted-foreground py-1">불러오는 중...</p>
+                      ) : (presetMap[student.id] || []).length === 0 ? (
                         <p className="text-xs text-muted-foreground py-1">설정된 정기 숙제가 없습니다</p>
                       ) : (
-                        student.presetHomework.map((hw) => (
-                          <div key={hw.id} className="rounded-md border border-border bg-muted/20 px-2.5 py-1.5 group">
-                            {editingHwItemId === hw.id ? (
-                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                <Input
-                                  value={editingHwContent}
-                                  onChange={(e) => setEditingHwContent(e.target.value)}
-                                  onKeyDown={(e) => { if (e.key === "Enter") saveEditHwItem(student.id, hw.id); if (e.key === "Escape") setEditingHwItemId(null); }}
-                                  className="h-7 text-xs flex-1"
-                                  autoFocus
-                                />
-                                <button onClick={() => saveEditHwItem(student.id, hw.id)} className="text-success hover:opacity-80">
-                                  <Check className="w-3.5 h-3.5" />
-                                </button>
-                                <button onClick={() => setEditingHwItemId(null)} className="text-muted-foreground hover:text-foreground">
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
+                        (presetMap[student.id] || []).map((hw) => {
+                          const meta = HW_TYPE_META[hw.type];
+                          const Icon = meta?.icon;
+                          return (
+                            <div key={hw.id} className="rounded-md border border-border bg-muted/20 px-3 py-2 group flex items-start gap-2.5">
+                              {Icon && <Icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${meta.color}`} />}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-sm font-medium text-foreground">{hw.title}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full bg-muted font-medium ${meta?.color}`}>
+                                    {meta?.label}
+                                  </span>
+                                </div>
+                                {hw.description && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{hw.description}</p>
+                                )}
+                                <p className="text-[10px] text-muted-foreground/70 mt-0.5">{meta?.hint}</p>
                               </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0" />
-                                <span className="flex-1 text-sm text-foreground">{hw.content}</span>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); startEditHwItem(hw); }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); removePresetHw(student.id, hw.id); }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ))
+                              <button
+                                onClick={(e) => { e.stopPropagation(); removePresetHw(student.id, hw.id); }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0 mt-0.5"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })
                       )}
                     </div>
 
-                    {/* Add preset input */}
-                    {editingPresetId === student.id ? (
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    {/* Add preset form */}
+                    {addingPresetFor === student.id ? (
+                      <div className="border border-[hsl(var(--gold)/0.4)] rounded-lg p-3 space-y-2.5 bg-[hsl(var(--gold)/0.04)]" onClick={(e) => e.stopPropagation()}>
+                        {/* Type selector */}
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {(Object.keys(HW_TYPE_META) as HwType[]).map((t) => {
+                            const m = HW_TYPE_META[t];
+                            const Icon = m.icon;
+                            return (
+                              <button
+                                key={t}
+                                onClick={() => setNewPresetType(t)}
+                                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-all ${
+                                  newPresetType === t
+                                    ? "border-[hsl(var(--gold))] bg-[hsl(var(--gold)/0.10)] text-foreground"
+                                    : "border-border bg-card text-muted-foreground hover:border-[hsl(var(--gold)/0.4)]"
+                                }`}
+                              >
+                                <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${newPresetType === t ? m.color : ""}`} />
+                                {m.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">{HW_TYPE_META[newPresetType].hint}</p>
                         <Input
-                          value={presetInput}
-                          onChange={(e) => setPresetInput(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") { addPresetHw(student.id); } if (e.key === "Escape") setEditingPresetId(null); }}
-                          placeholder="예: 일기 쓰기 2회 (10문장 이상)"
-                          className="h-8 text-xs flex-1"
+                          value={newPresetTitle}
+                          onChange={(e) => setNewPresetTitle(e.target.value)}
+                          placeholder="숙제 제목 (필수)"
+                          className="h-8 text-xs"
                           autoFocus
                         />
-                        <Button size="sm" className="h-8 px-3 text-xs bg-navy hover:bg-navy-light text-primary-foreground" onClick={() => addPresetHw(student.id)}>
-                          추가
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => { setEditingPresetId(null); setPresetInput(""); }}>
-                          취소
-                        </Button>
+                        <Input
+                          value={newPresetDesc}
+                          onChange={(e) => setNewPresetDesc(e.target.value)}
+                          placeholder="상세 설명 (선택)"
+                          className="h-8 text-xs"
+                        />
+                        <div className="flex gap-1.5">
+                          <Button
+                            size="sm"
+                            disabled={!newPresetTitle.trim() || savingPreset}
+                            className="flex-1 h-8 text-xs bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground"
+                            onClick={(e) => { e.stopPropagation(); addPresetHw(student.id, student.name); }}
+                          >
+                            {savingPreset ? "저장 중..." : "추가"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={(e) => { e.stopPropagation(); setAddingPresetFor(null); setNewPresetTitle(""); setNewPresetDesc(""); }}>
+                            취소
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-7 text-xs gap-1.5 border-dashed"
-                        onClick={(e) => { e.stopPropagation(); setEditingPresetId(student.id); setPresetInput(""); }}
+                        onClick={(e) => { e.stopPropagation(); setAddingPresetFor(student.id); setNewPresetType("writing"); setNewPresetTitle(""); setNewPresetDesc(""); }}
                       >
                         <Plus className="w-3 h-3" />
                         정기 숙제 추가
                       </Button>
                     )}
                   </div>
+
 
                   {/* Lesson history preview */}
                   <div>
