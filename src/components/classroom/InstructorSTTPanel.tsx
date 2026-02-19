@@ -46,6 +46,8 @@ export default function InstructorSTTPanel({
   const [analysisMode, setAnalysisMode] = useState<"all" | "correct" | "synonyms">("all");
   const [audioMode, setAudioMode] = useState<AudioMode>("system");
   const autoStartedRef = useRef(false);
+  const systemStreamRef = useRef<MediaStream | null>(null);
+  const audioCleanupRef = useRef<(() => void) | null>(null);
 
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
@@ -53,27 +55,34 @@ export default function InstructorSTTPanel({
     onCommittedTranscript: () => {},
   });
 
+  // ── 시스템 오디오: isConnected가 true가 된 후에 캡처 시작 ────────────────
+  useEffect(() => {
+    if (scribe.isConnected && audioMode === "system" && systemStreamRef.current) {
+      const cleanup = startSystemAudioCapture(systemStreamRef.current, scribe.sendAudio);
+      audioCleanupRef.current = cleanup;
+    }
+    if (!scribe.isConnected) {
+      audioCleanupRef.current?.();
+      audioCleanupRef.current = null;
+    }
+  }, [scribe.isConnected, audioMode, scribe.sendAudio]);
+
   // ── 연결 핵심 로직 ────────────────────────────────────────────────────────
   const connectWithStream = useCallback(async (stream: MediaStream) => {
     const { data, error } = await supabase.functions.invoke("elevenlabs-scribe-token");
     if (error || !data?.token) throw new Error("STT 토큰 발급 실패");
 
+    // 시스템 오디오 stream 보관 (isConnected useEffect에서 사용)
+    systemStreamRef.current = stream;
+
     await scribe.connect({
       token: data.token,
       commitStrategy: "vad" as any,
-      // useScribe가 내부적으로 마이크를 열지 않도록 microphone 옵션은 전달하지 않고
-      // stream을 MediaStreamAudioSourceNode로 전달하는 방식 대신
-      // 시스템 오디오일 때는 마이크 설정 없이 token만 전달 후 오디오 수동 전송
       microphone:
         audioMode === "mic"
           ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
           : undefined,
     });
-
-    // 시스템 오디오 모드: WebAudio API로 stream을 PCM으로 변환 후 수동 전송
-    if (audioMode === "system") {
-      startSystemAudioCapture(stream, scribe);
-    }
 
     // stream이 끊기면 자동 disconnect
     stream.getAudioTracks().forEach((t) => {
@@ -465,19 +474,18 @@ export default function InstructorSTTPanel({
 }
 
 // ── 시스템 오디오 → PCM → Scribe 수동 전송 ──────────────────────────────────
-function startSystemAudioCapture(stream: MediaStream, scribe: ReturnType<typeof useScribe>) {
+function startSystemAudioCapture(
+  stream: MediaStream,
+  sendAudio: (base64: string) => void
+): () => void {
   try {
     const audioCtx = new AudioContext({ sampleRate: 16000 });
     const source = audioCtx.createMediaStreamSource(stream);
     const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    let active = true;
 
     processor.onaudioprocess = (e) => {
-      if (!scribe.isConnected) {
-        processor.disconnect();
-        source.disconnect();
-        audioCtx.close();
-        return;
-      }
+      if (!active) return;
       const float32 = e.inputBuffer.getChannelData(0);
       const int16 = new Int16Array(float32.length);
       for (let i = 0; i < float32.length; i++) {
@@ -488,13 +496,22 @@ function startSystemAudioCapture(stream: MediaStream, scribe: ReturnType<typeof 
       let binary = "";
       bytes.forEach((b) => (binary += String.fromCharCode(b)));
       const base64 = btoa(binary);
-      scribe.sendAudio(base64);
+      sendAudio(base64);
     };
 
     source.connect(processor);
     processor.connect(audioCtx.destination);
+
+    // cleanup 함수 반환
+    return () => {
+      active = false;
+      processor.disconnect();
+      source.disconnect();
+      audioCtx.close();
+    };
   } catch (err) {
     console.error("System audio capture error:", err);
     toast.error("시스템 오디오 캡처 실패. 마이크 모드를 사용해주세요.");
+    return () => {};
   }
 }
