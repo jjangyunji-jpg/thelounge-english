@@ -35,6 +35,7 @@ const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; col
 };
 
 const SESSION = {
+  sessionId: "048b973b-ad42-4c1e-a9ac-32cf7b2fb87f",
   studentName: "김민준",
   instructorName: "Sarah Kim",
   level: "B1",
@@ -89,9 +90,18 @@ export default function Classroom() {
   const [editHwDesc, setEditHwDesc] = useState("");
   const [savingEditHw, setSavingEditHw] = useState(false);
 
-  // 마운트 시 정기 숙제 DB 로드
+  // 마운트 시 DB에서 노트 + 정기 숙제 로드
   useEffect(() => {
-    const loadPresets = async () => {
+    const loadData = async () => {
+      // 노트 로드
+      const { data: sessionData } = await supabase
+        .from("class_sessions")
+        .select("notes")
+        .eq("id", SESSION.sessionId)
+        .single();
+      if (sessionData?.notes) setNotes(sessionData.notes);
+
+      // 정기 숙제 로드
       const { data } = await supabase
         .from("homework_assignments")
         .select("*")
@@ -110,7 +120,7 @@ export default function Classroom() {
         })));
       }
     };
-    loadPresets();
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -145,9 +155,20 @@ export default function Classroom() {
     setMeetConnected(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!notes.trim()) return;
+    const { error } = await supabase
+      .from("class_sessions")
+      .update({ notes: notes.trim() })
+      .eq("id", SESSION.sessionId);
+
+    if (error) {
+      toast({ title: "저장 실패", description: error.message, variant: "destructive" });
+      return;
+    }
     setSaveFlash(true);
-    setTimeout(() => setSaveFlash(false), 1500);
+    setTimeout(() => setSaveFlash(false), 2000);
+    toast({ title: "노트가 저장됐습니다 ✓" });
   };
 
   const handleExtractVocab = async () => {
