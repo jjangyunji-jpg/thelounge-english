@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import InstructorSTTPanel from "@/components/classroom/InstructorSTTPanel";
 
 type ClassState = "pre" | "ready" | "active" | "ended";
 type Role = "instructor" | "student";
@@ -295,7 +296,9 @@ export default function Classroom() {
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
       {classState !== "pre" && (
-        <div className="flex-1 flex flex-col max-w-4xl w-full mx-auto px-4 py-5 gap-5">
+        <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto">
+          {/* ── LEFT COLUMN: Notes + Homework ──────────────────────────── */}
+          <div className="flex-1 flex flex-col gap-5 min-w-0">
 
           {/* ── NOTES ─────────────────────────────────────────────────── */}
           <div className="flex flex-col flex-1 rounded-xl border border-border bg-card shadow-card overflow-hidden">
@@ -479,6 +482,14 @@ export default function Classroom() {
               </div>
             )}
           </div>
+        </div>
+
+          {/* ── RIGHT COLUMN: Instructor STT Panel ──────────────────── */}
+          {role === "instructor" && (
+            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4">
+              <InstructorSTTPanel disabled={classState !== "active"} />
+            </div>
+          )}
         </div>
       )}
     </div>
