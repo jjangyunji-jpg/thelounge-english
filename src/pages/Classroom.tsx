@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Video, VideoOff, Clock, FileText, CheckSquare,
-  Save, Sparkles, ExternalLink, ChevronDown, ChevronUp,
+  Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked,
-  Bold, Heading1, Heading2, Heading3, Minus, Table2,
+  Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,14 +54,24 @@ function formatTime(date = new Date()) {
   return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
 
-const SESSION = {
-  sessionId: "048b973b-ad42-4c1e-a9ac-32cf7b2fb87f",
-  studentName: "김민준",
-  instructorName: "Sarah Kim",
+interface SessionData {
+  sessionId: string;
+  studentName: string;
+  instructorName: string;
+  level: string;
+  scheduledAt: Date;
+  meetLink: string;
+  topic: string;
+}
+
+const DEFAULT_SESSION: SessionData = {
+  sessionId: "",
+  studentName: "",
+  instructorName: "Reina",
   level: "B1",
-  scheduledAt: new Date(Date.now() + 5 * 60 * 1000),
-  meetLink: "https://meet.google.com/vsk-rqzo-kpg",
-  topic: "미래 표현 3가지",
+  scheduledAt: new Date(),
+  meetLink: "",
+  topic: "",
 };
 
 function formatDuration(seconds: number) {
@@ -81,6 +92,58 @@ function formatCountdown(ms: number) {
 
 export default function Classroom() {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const urlSessionId = searchParams.get("sessionId");
+
+  const [session, setSession] = useState<SessionData>(DEFAULT_SESSION);
+  const [sessionLoading, setSessionLoading] = useState(true);
+
+  // Load session from DB if sessionId provided
+  useEffect(() => {
+    const loadSession = async () => {
+      if (!urlSessionId) {
+        // No session ID: show latest upcoming session or allow freeform
+        const { data } = await supabase
+          .from("class_sessions")
+          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
+          .order("scheduled_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (data) {
+          setSession({
+            sessionId: data.id,
+            studentName: data.student_name,
+            instructorName: data.instructor_name,
+            level: data.level,
+            scheduledAt: new Date(data.scheduled_at),
+            meetLink: data.meet_link || "",
+            topic: data.topic || "",
+          });
+        }
+        setSessionLoading(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("class_sessions")
+        .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
+        .eq("id", urlSessionId)
+        .single();
+      if (data) {
+        setSession({
+          sessionId: data.id,
+          studentName: data.student_name,
+          instructorName: data.instructor_name,
+          level: data.level,
+          scheduledAt: new Date(data.scheduled_at),
+          meetLink: data.meet_link || "",
+          topic: data.topic || "",
+        });
+      }
+      setSessionLoading(false);
+    };
+    loadSession();
+  }, [urlSessionId]);
+
   const [role, setRole] = useState<Role>("instructor");
   const [classState, setClassState] = useState<ClassState>("ready");
   const [meetConnected, setMeetConnected] = useState(false);
@@ -94,7 +157,7 @@ export default function Classroom() {
   const [extracted, setExtracted] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
   const [objectives, setObjectives] = useState<string[]>([]);
-  const [sessionTopic, setSessionTopic] = useState(SESSION.topic);
+  const [sessionTopic, setSessionTopic] = useState("");
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const notesRef = useRef<HTMLTextAreaElement | null>(null);
@@ -150,15 +213,16 @@ export default function Classroom() {
   const [savingEditHw, setSavingEditHw] = useState(false);
 
   useEffect(() => {
+    if (sessionLoading || !session.sessionId) return;
     const loadData = async () => {
       const { data: sessionData } = await supabase
-        .from("class_sessions").select("notes").eq("id", SESSION.sessionId).single();
+        .from("class_sessions").select("notes").eq("id", session.sessionId).single();
       if (sessionData?.notes) setNotes(sessionData.notes);
 
       const { data } = await supabase
         .from("homework_assignments").select("*")
-        .eq("student_name", SESSION.studentName)
-        .or(`session_id.eq.${SESSION.sessionId},is_preset.eq.true`)
+        .eq("student_name", session.studentName)
+        .or(`session_id.eq.${session.sessionId},is_preset.eq.true`)
         .order("created_at", { ascending: true });
 
       if (data && data.length > 0) {
@@ -167,9 +231,10 @@ export default function Classroom() {
           description: d.description || "", isPreset: true, saved: true,
         })));
       }
+      setSessionTopic(session.topic);
     };
     loadData();
-  }, []);
+  }, [session.sessionId, sessionLoading]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -185,21 +250,21 @@ export default function Classroom() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [classState]);
 
-  const msUntilClass = SESSION.scheduledAt.getTime() - now;
+  const msUntilClass = session.scheduledAt.getTime() - now;
 
   const handleStartClass = () => {
     setClassState("active");
-    window.open(SESSION.meetLink, "_blank", "noopener,noreferrer");
+    if (session.meetLink) window.open(session.meetLink, "_blank", "noopener,noreferrer");
     setMeetConnected(true);
   };
 
   const handleEndClass = () => { setClassState("ended"); setMeetConnected(false); };
-  const handleJoinMeet = () => { window.open(SESSION.meetLink, "_blank", "noopener,noreferrer"); setMeetConnected(true); };
+  const handleJoinMeet = () => { if (session.meetLink) window.open(session.meetLink, "_blank", "noopener,noreferrer"); setMeetConnected(true); };
 
   const handleSave = async () => {
     if (!notes.trim()) return;
     const { error } = await supabase.from("class_sessions")
-      .update({ notes: notes.trim() }).eq("id", SESSION.sessionId);
+      .update({ notes: notes.trim() }).eq("id", session.sessionId);
     if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
     setSaveFlash(true);
     setTimeout(() => setSaveFlash(false), 2000);
@@ -208,7 +273,7 @@ export default function Classroom() {
     setGeneratingObjectives(true);
     try {
       const { data, error: fnError } = await supabase.functions.invoke("generate-objectives", {
-        body: { notes: notes.trim(), topic: SESSION.topic },
+        body: { notes: notes.trim(), topic: session.topic },
       });
       if (!fnError && data?.objectives?.length > 0) {
         setObjectives(data.objectives);
@@ -227,7 +292,7 @@ export default function Classroom() {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/extract-vocab`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({ notes, studentName: SESSION.studentName, weekLabel, sessionId: SESSION.sessionId }),
+        body: JSON.stringify({ notes, studentName: session.studentName, weekLabel, sessionId: session.sessionId }),
       });
       const data = await res.json();
       if (!res.ok) { toast({ title: "추출 실패", description: data.error ?? "오류", variant: "destructive" }); return; }
@@ -245,7 +310,7 @@ export default function Classroom() {
     if (!newHwTitle.trim()) return;
     setSavingHw(true);
     const { data, error } = await supabase.from("homework_assignments").insert({
-      student_name: SESSION.studentName, title: newHwTitle.trim(),
+      student_name: session.studentName, title: newHwTitle.trim(),
       description: newHwDesc.trim() || null, type: newHwType, is_preset: false,
     }).select().single();
     if (!error && data) {
@@ -291,9 +356,9 @@ export default function Classroom() {
         <div className="w-px h-5 bg-sidebar-border" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-sidebar-accent-foreground text-sm">{SESSION.studentName}</span>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground font-medium">{SESSION.level}</span>
-            <span className="text-sidebar-foreground/60 text-xs hidden sm:inline">with {SESSION.instructorName}</span>
+            <span className="font-bold text-sidebar-accent-foreground text-sm">{session.studentName}</span>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground font-medium">{session.level}</span>
+            <span className="text-sidebar-foreground/60 text-xs hidden sm:inline">with {session.instructorName}</span>
             {sessionTopic && <span className="text-gold text-xs hidden md:inline">· {sessionTopic}</span>}
           </div>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -309,7 +374,7 @@ export default function Classroom() {
               </span>
             )}
             <span className="text-sidebar-foreground/40 text-xs font-mono hidden sm:inline">
-              · {formatDate()} {formatTime(SESSION.scheduledAt)}
+              · {formatDate()} {formatTime(session.scheduledAt)}
             </span>
           </div>
         </div>
@@ -387,7 +452,7 @@ export default function Classroom() {
             <WifiOff className="w-4 h-4 text-gold-dark" />
             <span className="text-gold-dark font-medium text-sm">수업 시작 버튼을 누르면 Google Meet가 자동으로 열립니다</span>
           </div>
-          <span className="text-xs text-muted-foreground font-mono hidden md:inline">{SESSION.meetLink}</span>
+          <span className="text-xs text-muted-foreground font-mono hidden md:inline">{session.meetLink}</span>
         </div>
       )}
 
@@ -400,7 +465,7 @@ export default function Classroom() {
           </div>
           <button onClick={handleJoinMeet} className="flex items-center gap-1.5 text-xs text-success hover:underline">
             <ExternalLink className="w-3 h-3" />
-            <span className="hidden md:inline">{SESSION.meetLink}</span>
+            <span className="hidden md:inline">{session.meetLink}</span>
             <span className="md:hidden">Meet 재접속</span>
           </button>
         </div>
@@ -456,7 +521,7 @@ export default function Classroom() {
                 />
               </div>
               {/* 숙제 */}
-              <StudentHomeworkPanel studentName={SESSION.studentName} sessionId={SESSION.sessionId} />
+              <StudentHomeworkPanel studentName={session.studentName} sessionId={session.sessionId} />
             </div>
           ) : (
             <div className="flex-1 flex flex-col gap-5 min-w-0">
@@ -520,7 +585,7 @@ export default function Classroom() {
                   onKeyDown={(e) => {
                     if (e.ctrlKey && e.key === "b") { e.preventDefault(); applyFormat("bold"); }
                   }}
-                  placeholder={`수업 내용을 자유롭게 타이핑하세요.\n\nToday's topic: ${SESSION.topic}\n\n- Key expressions:\n- Grammar points:\n- Notes:`}
+                  placeholder={`수업 내용을 자유롭게 타이핑하세요.\n\nToday's topic: ${session.topic}\n\n- Key expressions:\n- Grammar points:\n- Notes:`}
                   disabled={isDisabled} readOnly={!notesEditMode}
                   className={cn("h-[420px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto",
                     !notesEditMode && "cursor-default text-muted-foreground")}
@@ -658,12 +723,12 @@ export default function Classroom() {
           {/* ── RIGHT COLUMN ────────────────────────────────────────────── */}
           {role === "instructor" ? (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4">
-              <WordLookupPanel studentLevel={SESSION.level} />
+              <WordLookupPanel studentLevel={session.level} />
               <InstructorSTTPanel disabled={classState !== "active"} autoStart={classState === "active"} />
             </div>
           ) : (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
-              <StudentVocabPanel studentName={SESSION.studentName} scheduledAt={SESSION.scheduledAt} />
+              <StudentVocabPanel studentName={session.studentName} scheduledAt={session.scheduledAt} />
             </div>
           )}
 
