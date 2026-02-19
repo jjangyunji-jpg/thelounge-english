@@ -4,6 +4,7 @@ import {
   ChevronDown, ChevronUp, Clock, Check, X, Volume2,
   Loader2, Square, RotateCcw, MessageSquare, PenLine,
   Mic, Brain, ExternalLink, Star, TrendingUp, AlertCircle,
+  BanIcon, Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,21 @@ import { useToast } from "@/hooks/use-toast";
 // ── Types ──────────────────────────────────────────────────────────────────────
 const STUDENTS = ["김민준", "이서연", "박지호"];
 const CURRENT_STUDENT = "김민준";
+
+interface HolidayNotice {
+  id: string;
+  title: string;
+  date_start: string;
+  date_end: string;
+  reason: string | null;
+  notify_students: boolean;
+}
+
+const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
+function formatDateKo(dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00");
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS_KO[d.getDay()]})`;
+}
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing";
 
@@ -189,10 +205,38 @@ export default function StudentDashboard() {
   const [vocabWords, setVocabWords] = useState<VocabWord[]>([]);
   const [testHistory, setTestHistory] = useState<TestRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [holidays, setHolidays] = useState<HolidayNotice[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("dismissed_holiday_ids") || "[]"); } catch { return []; }
+  });
+
+  const visibleHolidays = holidays.filter(
+    (h) => h.notify_students && !dismissedIds.includes(h.id)
+  );
+  const [popupIndex, setPopupIndex] = useState(0);
+  const currentPopup = visibleHolidays[popupIndex] ?? null;
+
+  const dismissPopup = (id: string) => {
+    const next = [...dismissedIds, id];
+    setDismissedIds(next);
+    localStorage.setItem("dismissed_holiday_ids", JSON.stringify(next));
+    setPopupIndex((i) => i); // stay, next one will show
+  };
 
   useEffect(() => {
     loadAll(student);
+    loadHolidays();
   }, [student]);
+
+  const loadHolidays = async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await supabase
+      .from("holiday_notices")
+      .select("id,title,date_start,date_end,reason,notify_students")
+      .gte("date_end", today)
+      .order("date_start", { ascending: true });
+    setHolidays(data || []);
+  };
 
   const loadAll = async (name: string) => {
     setLoading(true);
@@ -249,6 +293,52 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* ── Holiday Popup ── */}
+      {currentPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-foreground/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
+            {/* Top stripe */}
+            <div className="h-1.5 bg-destructive w-full" />
+            <div className="p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center flex-shrink-0">
+                  <BanIcon className="w-5 h-5 text-destructive" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-semibold text-destructive uppercase tracking-wide mb-0.5">휴강 공지</p>
+                  <p className="font-bold text-foreground text-base leading-snug">{currentPopup.title}</p>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-muted/40 border border-border space-y-1.5">
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="text-foreground font-medium">
+                    {currentPopup.date_start === currentPopup.date_end
+                      ? formatDateKo(currentPopup.date_start)
+                      : `${formatDateKo(currentPopup.date_start)} ~ ${formatDateKo(currentPopup.date_end)}`}
+                  </span>
+                </div>
+                {currentPopup.reason && (
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <Bell className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    <span>{currentPopup.reason}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                해당 기간에는 수업이 진행되지 않습니다. 문의사항이 있으시면 담당 강사에게 연락해 주세요.
+              </p>
+              <Button
+                className="w-full h-10 bg-navy hover:bg-navy-light text-primary-foreground font-semibold"
+                onClick={() => dismissPopup(currentPopup.id)}
+              >
+                확인했습니다
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-5 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
