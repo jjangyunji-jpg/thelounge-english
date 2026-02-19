@@ -45,7 +45,7 @@ const CURRENT_STUDENT = "김민준";
 
 const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string; hint: string }> = {
   writing:    { label: "쓰기",   icon: PenLine,  color: "text-[hsl(var(--navy))]",      hint: "텍스트 작성 필수" },
-  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]", hint: "녹음 필수" },
+  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]", hint: "녹음 선택" },
   speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]",   hint: "녹음 필수 / 텍스트 선택" },
   memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",              hint: "녹음 필수 (대화문 등)" },
 };
@@ -402,7 +402,7 @@ function StudentView({ studentName }: { studentName: string }) {
               const hwType = selected.type as HwType;
               const needsText = hwType === "writing" || hwType === "speaking";
               const textRequired = hwType === "writing";
-              const audioRequired = hwType !== "writing";
+              const audioRequired = hwType === "speaking" || hwType === "memorizing";
               const isSubmitDisabled = submitting
                 || (textRequired && !textContent.trim())
                 || (audioRequired && !audioBlob && !submission?.audio_url);
