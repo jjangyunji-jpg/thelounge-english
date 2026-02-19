@@ -162,9 +162,9 @@ export default function StudentVocabPanel({ studentName }: { studentName: string
   const weeks = Object.keys(byWeek).sort((a, b) => b.localeCompare(a));
 
   return (
-    <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col">
+    <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col flex-1 min-h-0">
       {/* Header */}
-      <div className="px-3 py-2.5 border-b border-border bg-muted/30 flex items-center justify-between">
+      <div className="px-3 py-2.5 border-b border-border bg-muted/30 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <BookOpen className="w-3.5 h-3.5 text-gold" />
           <span className="font-semibold text-xs text-foreground">내 단어장</span>
@@ -184,7 +184,7 @@ export default function StudentVocabPanel({ studentName }: { studentName: string
       </div>
 
       {/* Body */}
-      <div className="overflow-y-auto flex-1" style={{ maxHeight: "420px" }}>
+      <div className="overflow-y-auto flex-1">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />

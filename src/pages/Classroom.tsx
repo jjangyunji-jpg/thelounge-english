@@ -804,7 +804,7 @@ export default function Classroom() {
               />
             </div>
           ) : (
-            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4">
+            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
               <StudentVocabPanel studentName={SESSION.studentName} />
             </div>
           )}
