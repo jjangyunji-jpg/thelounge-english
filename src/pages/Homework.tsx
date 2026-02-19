@@ -2,16 +2,17 @@ import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft, CheckSquare, FileText, Mic, MicOff, Play,
   Pause, Upload, MessageSquare, Clock, Check, X,
-  ChevronDown, ChevronUp, RefreshCw, BookOpen, User
+  ChevronDown, ChevronUp, RefreshCw, BookOpen, User,
+  PenLine, Brain
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 type Role = "instructor" | "student";
+type HwType = "writing" | "reading" | "speaking" | "memorizing";
 
 type Assignment = {
   id: string;
@@ -40,6 +41,25 @@ type Submission = {
 // Demo students
 const STUDENTS = ["김민준", "이서연", "박지호"];
 const CURRENT_STUDENT = "김민준";
+
+const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string; hint: string }> = {
+  writing:    { label: "쓰기",   icon: PenLine,  color: "text-[hsl(var(--navy))]",      hint: "텍스트 작성 필수" },
+  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]", hint: "녹음 필수" },
+  speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]",   hint: "녹음 필수 / 텍스트 선택" },
+  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",              hint: "녹음 필수 (대화문 등)" },
+};
+
+function TypeBadge({ type }: { type: string }) {
+  const meta = HW_TYPE_META[type as HwType];
+  if (!meta) return null;
+  const Icon = meta.icon;
+  return (
+    <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-muted", meta.color)}>
+      <Icon className="w-2.5 h-2.5" />
+      {meta.label}
+    </span>
+  );
+}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", {
@@ -239,8 +259,11 @@ function StudentView({ studentName }: { studentName: string }) {
                   <span className="font-medium text-sm text-foreground leading-snug">{a.title}</span>
                   {a.is_preset && <RefreshCw className="w-3 h-3 text-[hsl(var(--gold))] flex-shrink-0 mt-0.5" />}
                 </div>
-                <div className="flex items-center justify-between">
-                  <StatusBadge status={sub?.status || "pending"} />
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <TypeBadge type={a.type} />
+                    <StatusBadge status={sub?.status || "pending"} />
+                  </div>
                   {a.due_at && (
                     <span className="text-xs text-muted-foreground">{formatDate(a.due_at)}</span>
                   )}
@@ -257,16 +280,31 @@ function StudentView({ studentName }: { studentName: string }) {
           <>
             {/* Assignment info */}
             <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+              <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2 flex-wrap">
                 <BookOpen className="w-4 h-4 text-[hsl(var(--gold))]" />
                 <span className="font-semibold text-sm text-foreground">{selected.title}</span>
+                <TypeBadge type={selected.type} />
                 {selected.is_preset && (
-                  <span className="text-xs text-muted-foreground ml-1">(정기 숙제)</span>
+                  <span className="text-xs text-muted-foreground">(정기 숙제)</span>
                 )}
               </div>
               {selected.description && (
                 <p className="px-4 py-3 text-sm text-muted-foreground">{selected.description}</p>
               )}
+              {/* 타입별 안내 */}
+              <div className="px-4 pb-3">
+                {(() => {
+                  const meta = HW_TYPE_META[selected.type as HwType];
+                  if (!meta) return null;
+                  const Icon = meta.icon;
+                  return (
+                    <div className={cn("inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-muted", meta.color)}>
+                      <Icon className="w-3.5 h-3.5" />
+                      {meta.hint}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Instructor feedback (if reviewed) */}
@@ -281,131 +319,192 @@ function StudentView({ studentName }: { studentName: string }) {
             )}
 
             {/* Submission form */}
-            <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col gap-0">
-              <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[hsl(var(--gold))]" />
-                  <span className="font-semibold text-sm text-foreground">
-                    {submission ? "제출 내용" : "제출하기"}
-                  </span>
-                  {submission && <StatusBadge status={submission.status} />}
-                </div>
-                {/* 제출 완료 상태에서 수정 버튼 */}
-                {submission && !isEditing && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsEditing(true)}
-                    className="h-7 text-xs gap-1.5 border-[hsl(var(--gold)/0.5)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold)/0.08)]"
-                  >
-                    ✏️ 수정하기
-                  </Button>
-                )}
-              </div>
+            {(() => {
+              const hwType = selected.type as HwType;
+              const needsText = hwType === "writing" || hwType === "speaking";
+              const textRequired = hwType === "writing";
+              const audioRequired = hwType !== "writing";
+              const isSubmitDisabled = submitting
+                || (textRequired && !textContent.trim())
+                || (audioRequired && !audioBlob && !submission?.audio_url);
 
-              <div className="p-4 space-y-4">
-                {/* 제출 완료 + 읽기 전용 뷰 */}
-                {submission && !isEditing ? (
-                  <>
-                    {submission.text_content ? (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">텍스트 답변</label>
-                        <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-foreground whitespace-pre-wrap min-h-[120px]">
-                          {submission.text_content}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">텍스트 답변 없음</p>
-                    )}
-
-                    {submission.audio_url && (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">녹음 파일</label>
-                        <audio src={submission.audio_url} controls className="w-full h-9" />
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {/* Text area - 편집 모드 */}
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">텍스트 답변</label>
-                      <Textarea
-                        value={textContent}
-                        onChange={(e) => setTextContent(e.target.value)}
-                        placeholder="영어로 답변을 작성해주세요..."
-                        className="min-h-[160px] resize-none text-sm"
-                      />
+              return (
+                <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col gap-0">
+                  <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[hsl(var(--gold))]" />
+                      <span className="font-semibold text-sm text-foreground">
+                        {submission ? "제출 내용" : "제출하기"}
+                      </span>
+                      {submission && <StatusBadge status={submission.status} />}
                     </div>
-
-                    {/* Existing audio */}
-                    {submission?.audio_url && !audioUrl && (
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border">
-                        <span className="text-xs text-muted-foreground">기존 녹음:</span>
-                        <audio src={submission.audio_url} controls className="h-8 flex-1" />
-                      </div>
+                    {submission && !isEditing && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsEditing(true)}
+                        className="h-7 text-xs gap-1.5 border-[hsl(var(--gold)/0.5)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold)/0.08)]"
+                      >
+                        ✏️ 수정하기
+                      </Button>
                     )}
+                  </div>
 
-                    {/* Audio recorder */}
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">음성 녹음 (선택)</label>
-                      <div className="flex items-center gap-3">
-                        {!recording && !audioUrl && (
-                          <Button size="sm" variant="outline" onClick={start} className="gap-2 border-[hsl(var(--gold)/0.5)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold)/0.08)]">
-                            <Mic className="w-3.5 h-3.5" />
-                            녹음 시작
-                          </Button>
-                        )}
-                        {recording && (
-                          <Button size="sm" onClick={stop} className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse">
-                            <MicOff className="w-3.5 h-3.5" />
-                            녹음 중지
-                          </Button>
-                        )}
-                        {audioUrl && !recording && (
-                          <div className="flex items-center gap-2 flex-1">
-                            <audio ref={audioRef} src={audioUrl} onEnded={() => setPlaying(false)} className="hidden" />
-                            <Button size="sm" variant="outline" onClick={togglePlay} className="gap-1.5">
-                              {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                              {playing ? "일시정지" : "재생"}
-                            </Button>
-                            <span className="text-xs text-muted-foreground flex-1">녹음 완료</span>
-                            <Button size="sm" variant="ghost" onClick={reset} className="text-muted-foreground hover:text-destructive text-xs">
-                              다시 녹음
-                            </Button>
+                  <div className="p-4 space-y-4">
+                    {/* 읽기 전용 뷰 */}
+                    {submission && !isEditing ? (
+                      <>
+                        {submission.text_content ? (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">텍스트 답변</label>
+                            <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-foreground whitespace-pre-wrap min-h-[120px]">
+                              {submission.text_content}
+                            </div>
+                          </div>
+                        ) : (hwType === "speaking" && (
+                          <p className="text-sm text-muted-foreground italic">텍스트 없음 (선택 항목)</p>
+                        ))}
+                        {submission.audio_url ? (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">녹음 파일</label>
+                            <audio src={submission.audio_url} controls className="w-full h-9" />
+                          </div>
+                        ) : audioRequired ? (
+                          <p className="text-sm text-destructive/70 italic">녹음 파일 없음</p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        {/* 텍스트 입력 (쓰기: 필수 / 말하기: 선택) */}
+                        {needsText && (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                              텍스트 답변
+                              {textRequired
+                                ? <span className="text-destructive ml-1">*필수</span>
+                                : <span className="text-muted-foreground/60 ml-1">(선택)</span>
+                              }
+                            </label>
+                            <Textarea
+                              value={textContent}
+                              onChange={(e) => setTextContent(e.target.value)}
+                              placeholder={hwType === "writing" ? "영어로 답변을 작성해주세요..." : "대본이나 메모를 작성해주세요... (선택)"}
+                              className="min-h-[160px] resize-none text-sm"
+                            />
                           </div>
                         )}
-                      </div>
-                    </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleSubmit}
-                        disabled={submitting || (!textContent.trim() && !audioBlob)}
-                        className="flex-1 gold-gradient text-accent-foreground font-semibold gap-2 shadow-gold hover:opacity-90"
-                      >
-                        <Upload className="w-4 h-4" />
-                        {submitting ? (uploadingAudio ? "오디오 업로드 중..." : "제출 중...") : submission ? "수정 제출" : "숙제 제출"}
-                      </Button>
-                      {/* 수정 중 취소 */}
-                      {submission && isEditing && (
-                        <Button
-                          size="default"
-                          variant="outline"
-                          onClick={() => {
-                            setIsEditing(false);
-                            setTextContent(submission.text_content || "");
-                            reset();
-                          }}
-                        >
-                          취소
-                        </Button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+                        {/* 오디오 (녹음 필요 타입) */}
+                        {audioRequired && (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                              음성 녹음
+                              <span className="text-destructive ml-1">*필수</span>
+                            </label>
+
+                            {/* 기존 녹음 (수정 모드) */}
+                            {submission?.audio_url && !audioUrl && (
+                              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border mb-2">
+                                <span className="text-xs text-muted-foreground">기존 녹음:</span>
+                                <audio src={submission.audio_url} controls className="h-8 flex-1" />
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-3">
+                              {!recording && !audioUrl && (
+                                <Button size="sm" variant="outline" onClick={start} className="gap-2 border-destructive/40 text-destructive hover:bg-destructive/08">
+                                  <Mic className="w-3.5 h-3.5" />
+                                  녹음 시작
+                                </Button>
+                              )}
+                              {recording && (
+                                <Button size="sm" onClick={stop} className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse">
+                                  <MicOff className="w-3.5 h-3.5" />
+                                  녹음 중지
+                                </Button>
+                              )}
+                              {audioUrl && !recording && (
+                                <div className="flex items-center gap-2 flex-1">
+                                  <audio ref={audioRef} src={audioUrl} onEnded={() => setPlaying(false)} className="hidden" />
+                                  <Button size="sm" variant="outline" onClick={togglePlay} className="gap-1.5">
+                                    {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                                    {playing ? "일시정지" : "재생"}
+                                  </Button>
+                                  <span className="text-xs text-muted-foreground flex-1">녹음 완료 ✓</span>
+                                  <Button size="sm" variant="ghost" onClick={reset} className="text-muted-foreground hover:text-destructive text-xs">
+                                    다시 녹음
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 쓰기 타입의 오디오 선택 입력 */}
+                        {!audioRequired && (
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">음성 녹음 <span className="text-muted-foreground/60">(선택)</span></label>
+                            {submission?.audio_url && !audioUrl && (
+                              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border border-border mb-2">
+                                <span className="text-xs text-muted-foreground">기존 녹음:</span>
+                                <audio src={submission.audio_url} controls className="h-8 flex-1" />
+                              </div>
+                            )}
+                            <div className="flex items-center gap-3">
+                              {!recording && !audioUrl && (
+                                <Button size="sm" variant="outline" onClick={start} className="gap-2 border-[hsl(var(--gold)/0.5)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold)/0.08)]">
+                                  <Mic className="w-3.5 h-3.5" />녹음 시작
+                                </Button>
+                              )}
+                              {recording && (
+                                <Button size="sm" onClick={stop} className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse">
+                                  <MicOff className="w-3.5 h-3.5" />녹음 중지
+                                </Button>
+                              )}
+                              {audioUrl && !recording && (
+                                <div className="flex items-center gap-2 flex-1">
+                                  <audio ref={audioRef} src={audioUrl} onEnded={() => setPlaying(false)} className="hidden" />
+                                  <Button size="sm" variant="outline" onClick={togglePlay} className="gap-1.5">
+                                    {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                                    {playing ? "일시정지" : "재생"}
+                                  </Button>
+                                  <span className="text-xs text-muted-foreground flex-1">녹음 완료</span>
+                                  <Button size="sm" variant="ghost" onClick={reset} className="text-muted-foreground hover:text-destructive text-xs">다시 녹음</Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleSubmit}
+                            disabled={isSubmitDisabled}
+                            className="flex-1 gold-gradient text-accent-foreground font-semibold gap-2 shadow-gold hover:opacity-90"
+                          >
+                            <Upload className="w-4 h-4" />
+                            {submitting ? (uploadingAudio ? "오디오 업로드 중..." : "제출 중...") : submission ? "수정 제출" : "숙제 제출"}
+                          </Button>
+                          {submission && isEditing && (
+                            <Button
+                              size="default"
+                              variant="outline"
+                              onClick={() => {
+                                setIsEditing(false);
+                                setTextContent(submission.text_content || "");
+                                reset();
+                              }}
+                            >
+                              취소
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
