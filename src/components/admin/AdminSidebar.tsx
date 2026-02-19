@@ -1,7 +1,7 @@
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen } from "lucide-react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type AdminTab = "dashboard" | "instructors" | "students" | "messages" | "settings";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "messages" | "settings";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -10,6 +10,7 @@ interface AdminSidebarProps {
 
 const navItems = [
   { id: "dashboard" as AdminTab, label: "대시보드", icon: LayoutDashboard },
+  { id: "operations" as AdminTab, label: "운영 대시보드", icon: BarChart2 },
   { id: "instructors" as AdminTab, label: "강사 관리", icon: Users },
   { id: "students" as AdminTab, label: "수강생 관리", icon: GraduationCap },
   { id: "messages" as AdminTab, label: "메시지 관리", icon: MessageSquare },

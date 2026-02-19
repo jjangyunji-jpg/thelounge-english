@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AdminSidebar, { AdminTab } from "@/components/admin/AdminSidebar";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import OperationsDashboard from "@/components/admin/OperationsDashboard";
 import InstructorManagement from "@/components/admin/InstructorManagement";
 import StudentManagement from "@/components/admin/StudentManagement";
 import MessageCenter from "@/components/admin/MessageCenter";
@@ -15,6 +16,8 @@ export default function Admin() {
     switch (activeTab) {
       case "dashboard":
         return <AdminDashboard />;
+      case "operations":
+        return <OperationsDashboard />;
       case "instructors":
         return <InstructorManagement />;
       case "students":
