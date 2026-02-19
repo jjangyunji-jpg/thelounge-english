@@ -663,7 +663,7 @@ export default function Classroom() {
             </div>
           ) : (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
-              <StudentVocabPanel studentName={SESSION.studentName} />
+              <StudentVocabPanel studentName={SESSION.studentName} scheduledAt={SESSION.scheduledAt} />
             </div>
           )}
 
