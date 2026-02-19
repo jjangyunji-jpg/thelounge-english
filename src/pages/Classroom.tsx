@@ -31,7 +31,7 @@ const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; col
   writing:    { label: "쓰기",  icon: PenLine,  color: "text-[hsl(var(--navy))]",   hint: "텍스트 작성 필수" },
   reading:    { label: "읽기",  icon: BookOpen, color: "text-[hsl(var(--gold-dark))]", hint: "녹음 선택" },
   speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]",  hint: "녹음 필수 / 텍스트 선택" },
-  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",            hint: "녹음 필수 (대화문 등)" },
+  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",            hint: "녹음 선택 (대화문 등)" },
 };
 
 const SESSION = {
