@@ -144,7 +144,8 @@ export default function Classroom() {
     loadSession();
   }, [urlSessionId]);
 
-  const [role, setRole] = useState<Role>("instructor");
+  const urlRole = searchParams.get("role") as Role | null;
+  const [role, setRole] = useState<Role>(urlRole === "student" ? "student" : "instructor");
   const [classState, setClassState] = useState<ClassState>("ready");
   const [meetConnected, setMeetConnected] = useState(false);
   const [elapsed, setElapsed] = useState(0);
