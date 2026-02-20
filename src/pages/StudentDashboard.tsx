@@ -467,10 +467,21 @@ export default function StudentDashboard() {
   );
   const totalClassDays = pastSessions.length + pastRecurring.length;
 
-  // 캘린더용: 실제 세션 + 반복일정 모두 표시
+  // 휴강 날짜 집합
+  const holidayDateStrings = new Set<string>();
+  holidays.forEach(h => {
+    const cur = new Date(h.date_start + "T00:00:00");
+    const end = new Date(h.date_end + "T23:59:59");
+    while (cur <= end) {
+      holidayDateStrings.add(cur.toDateString());
+      cur.setDate(cur.getDate() + 1);
+    }
+  });
+
+  // 캘린더용: 실제 세션 + 반복일정 모두 표시 (휴강일 제외)
   const allCalendarDates = new Set([
-    ...allSessions.map(s => new Date(s.scheduled_at).toDateString()),
-    ...recurringDates.map(d => d.toDateString()),
+    ...allSessions.map(s => new Date(s.scheduled_at).toDateString()).filter(d => !holidayDateStrings.has(d)),
+    ...recurringDates.map(d => d.toDateString()).filter(d => !holidayDateStrings.has(d)),
   ]);
 
   // ── Derived stats ──
@@ -643,32 +654,30 @@ export default function StudentDashboard() {
                   <p className="text-[10px] mt-0.5 text-muted-foreground">노트 & 피드백</p>
                 </div>
               </button>
-              {/* 단어 시험보기 */}
+              {/* 스피킹 라운지 */}
               <button
-                onClick={() => setVocabOpen(true)}
+                onClick={() => navigate(`/speaking-lounge?name=${encodeURIComponent(student)}`)}
                 className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
-                  <Trophy className="w-4 h-4 text-navy" />
+                  <Mic className="w-4 h-4 text-navy" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold leading-none text-foreground">단어 시험보기</p>
-                  <p className="text-[10px] mt-0.5 text-muted-foreground">{vocabWords.length}개 단어</p>
+                  <p className="text-xs font-bold leading-none text-foreground">스피킹 라운지</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">말하기 연습</p>
                 </div>
               </button>
-              {/* 숙제 제출하러가기 */}
+              {/* 다이어리 라운지 */}
               <button
-                onClick={() => navigate(`/classnote?name=${encodeURIComponent(student)}&tab=homework`)}
+                onClick={() => navigate(`/diary-lounge?name=${encodeURIComponent(student)}`)}
                 className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
                   <PenLine className="w-4 h-4 text-navy" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold leading-none text-foreground">숙제 제출하러가기</p>
-                  <p className="text-[10px] mt-0.5 text-muted-foreground">
-                    {pendingHw.length > 0 ? `${pendingHw.length}개 미제출` : "모두 완료!"}
-                  </p>
+                  <p className="text-xs font-bold leading-none text-foreground">다이어리 라운지</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">영어 일기 쓰기</p>
                 </div>
               </button>
             </div>
