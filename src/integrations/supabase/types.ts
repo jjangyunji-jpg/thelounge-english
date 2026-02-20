@@ -218,20 +218,53 @@ export type Database = {
       instructor_students: {
         Row: {
           created_at: string
+          extra_lessons: number | null
           id: string
           instructor_id: string
+          instructor_name: string | null
+          lesson_goal: string | null
+          lesson_goal_count: number | null
+          level: string | null
+          meet_link: string | null
+          phone: string | null
+          reminder_enabled: boolean | null
+          schedules: string | null
+          start_date: string | null
+          status: string | null
           student_name: string
         }
         Insert: {
           created_at?: string
+          extra_lessons?: number | null
           id?: string
           instructor_id: string
+          instructor_name?: string | null
+          lesson_goal?: string | null
+          lesson_goal_count?: number | null
+          level?: string | null
+          meet_link?: string | null
+          phone?: string | null
+          reminder_enabled?: boolean | null
+          schedules?: string | null
+          start_date?: string | null
+          status?: string | null
           student_name: string
         }
         Update: {
           created_at?: string
+          extra_lessons?: number | null
           id?: string
           instructor_id?: string
+          instructor_name?: string | null
+          lesson_goal?: string | null
+          lesson_goal_count?: number | null
+          level?: string | null
+          meet_link?: string | null
+          phone?: string | null
+          reminder_enabled?: boolean | null
+          schedules?: string | null
+          start_date?: string | null
+          status?: string | null
           student_name?: string
         }
         Relationships: [
