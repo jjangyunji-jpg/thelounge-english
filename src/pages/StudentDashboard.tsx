@@ -276,7 +276,8 @@ export default function StudentDashboard() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
 
-  const student = "김민준";
+  const searchParams = new URLSearchParams(window.location.search);
+  const student = searchParams.get("name") || "정유리";
 
   const visibleHolidays = holidays.filter(h => h.notify_students && !dismissedIds.includes(h.id));
   const currentPopup = visibleHolidays[0] ?? null;
@@ -456,58 +457,73 @@ export default function StudentDashboard() {
               <span className="text-xs font-semibold text-foreground">바로가기</span>
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
-              {[
-                {
-                  icon: Video,
-                  label: "수업 입장하기",
-                  sub: nextSession ? timeUntilLabel(nextSession.scheduled_at) : "예정 없음",
-                  primary: true,
-                  onClick: () => navigate("/classroom"),
-                },
-                {
-                  icon: RotateCcw,
-                  label: "보강 신청하기",
-                  sub: "일정 조율",
-                  primary: false,
-                  onClick: () => navigate("/makeup"),
-                },
-                {
-                  icon: FileText,
-                  label: "수업 노트",
-                  sub: "노트 & 피드백",
-                  primary: false,
-                  onClick: () => navigate("/classnote"),
-                },
-                {
-                  icon: BookOpen,
-                  label: "단어 공부",
-                  sub: `${vocabWords.length}개`,
-                  primary: false,
-                  onClick: () => setVocabOpen(true),
-                },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  onClick={item.onClick}
-                  className={cn(
-                    "rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98]",
-                    item.primary
-                      ? "bg-navy text-primary-foreground col-span-2"
-                      : "bg-muted/50 border border-border hover:bg-muted"
-                  )}
-                >
-                  <div className={cn(
-                    "w-7 h-7 rounded-md flex items-center justify-center",
-                    item.primary ? "bg-white/15" : "bg-card"
-                  )}>
-                    <item.icon className={cn("w-4 h-4", item.primary ? "text-gold" : "text-navy")} />
-                  </div>
-                  <div>
-                    <p className={cn("text-xs font-bold leading-none", item.primary ? "text-primary-foreground" : "text-foreground")}>{item.label}</p>
-                    <p className={cn("text-[10px] mt-0.5", item.primary ? "text-primary-foreground/60" : "text-muted-foreground")}>{item.sub}</p>
-                  </div>
-                </button>
-              ))}
+              {/* 수업 입장하기 - full width primary */}
+              <button
+                onClick={() => nextSession?.meet_link ? window.open(nextSession.meet_link, "_blank") : navigate("/classroom")}
+                className="col-span-2 rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-navy text-primary-foreground"
+              >
+                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-white/15">
+                  <Video className="w-4 h-4 text-gold" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold leading-none text-primary-foreground">수업 입장하기</p>
+                  <p className="text-[10px] mt-0.5 text-primary-foreground/60">{nextSession ? timeUntilLabel(nextSession.scheduled_at) : "예정 없음"}</p>
+                </div>
+              </button>
+              {/* 보강 신청하기 */}
+              <button
+                onClick={() => navigate("/makeup")}
+                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
+              >
+                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
+                  <RotateCcw className="w-4 h-4 text-navy" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold leading-none text-foreground">보강 신청하기</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">일정 조율</p>
+                </div>
+              </button>
+              {/* 수업 노트 */}
+              <button
+                onClick={() => navigate(`/classnote?name=${encodeURIComponent(student)}`)}
+                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
+              >
+                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
+                  <FileText className="w-4 h-4 text-navy" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold leading-none text-foreground">수업 노트</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">노트 & 피드백</p>
+                </div>
+              </button>
+              {/* 단어 시험보기 */}
+              <button
+                onClick={() => setVocabOpen(true)}
+                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
+              >
+                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
+                  <Trophy className="w-4 h-4 text-navy" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold leading-none text-foreground">단어 시험보기</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">{vocabWords.length}개 단어</p>
+                </div>
+              </button>
+              {/* 숙제 제출하러가기 */}
+              <button
+                onClick={() => navigate(`/classnote?name=${encodeURIComponent(student)}&tab=homework`)}
+                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
+              >
+                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
+                  <PenLine className="w-4 h-4 text-navy" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold leading-none text-foreground">숙제 제출하러가기</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">
+                    {pendingHw.length > 0 ? `${pendingHw.length}개 미제출` : "모두 완료!"}
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
         </div>
