@@ -12,6 +12,8 @@ import NotFound from "./pages/NotFound";
 import SetPassword from "./pages/SetPassword";
 import MakeupRequest from "./pages/MakeupRequest";
 import ClassNote from "./pages/ClassNote";
+import StudentSetup from "./pages/StudentSetup";
+import StudentLogin from "./pages/StudentLogin";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +33,9 @@ const App = () => (
           <Route path="/set-password" element={<SetPassword />} />
           <Route path="/makeup" element={<MakeupRequest />} />
           <Route path="/classnote" element={<ClassNote />} />
+          {/* 학생 인증 라우트 */}
+          <Route path="/student-setup" element={<StudentSetup />} />
+          <Route path="/login/student" element={<StudentLogin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -40,4 +45,5 @@ const App = () => (
 );
 
 export default App;
+
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock } from "lucide-react";
+import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock, Mail, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,8 +109,32 @@ export default function StudentManagement() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteStudentName, setInviteStudentName] = useState("");
+  const [inviting, setInviting] = useState(false);
+
+  const handleInviteStudent = async () => {
+    if (!inviteEmail.trim() || !inviteStudentName.trim()) return;
+    setInviting(true);
+    try {
+      const { error } = await supabase.functions.invoke("invite-student", {
+        body: { email: inviteEmail.trim(), studentName: inviteStudentName.trim() },
+      });
+      if (error) throw error;
+      toast({ title: `${inviteStudentName} 님께 초대 메일 발송 완료 ✓`, description: inviteEmail });
+      setInviteEmail("");
+      setInviteStudentName("");
+      setInviteDialogOpen(false);
+    } catch (e: unknown) {
+      toast({ title: "초대 실패", description: e instanceof Error ? e.message : "오류", variant: "destructive" });
+    } finally {
+      setInviting(false);
+    }
+  };
 
   useEffect(() => {
+
     // Load instructors
     supabase
       .from("instructors")
@@ -413,6 +437,52 @@ export default function StudentManagement() {
             <Download className="w-4 h-4" />
             이번달 수강생 리스트
           </Button>
+          {/* 학생 초대 다이얼로그 */}
+          <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 border-[hsl(var(--success)/0.6)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.08)]">
+                <Mail className="w-4 h-4" />
+                계정 초대
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>학생 계정 초대</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <p className="text-xs text-muted-foreground">
+                  학생 이메일로 초대 메일을 발송합니다.<br />
+                  학생이 링크를 클릭하면 닉네임·비밀번호를 설정하고 대시보드에 로그인할 수 있습니다.
+                </p>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">등록된 학생 이름 (정확히 입력)</Label>
+                  <Input
+                    placeholder="예: 정유리"
+                    value={inviteStudentName}
+                    onChange={(e) => setInviteStudentName(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">학생 이메일</Label>
+                  <Input
+                    type="email"
+                    placeholder="student@email.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <Button
+                  className="w-full gap-2 bg-navy hover:bg-navy-light text-primary-foreground"
+                  disabled={!inviteEmail.trim() || !inviteStudentName.trim() || inviting}
+                  onClick={handleInviteStudent}
+                >
+                  {inviting ? <><Loader2 className="w-4 h-4 animate-spin" />발송 중...</> : <><Mail className="w-4 h-4" />초대 메일 발송</>}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2 bg-navy hover:bg-navy-light text-primary-foreground">

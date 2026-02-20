@@ -363,8 +363,39 @@ export default function StudentDashboard() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
 
+  // ── 인증: auth 세션 → student_name 로드, 없으면 URL 파라미터 폴백 ──
+  const [authStudent, setAuthStudent] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const searchParams = new URLSearchParams(window.location.search);
-  const student = searchParams.get("name") || "정유리";
+  const urlStudent = searchParams.get("name");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const { data: profile } = await supabase
+          .from("student_profiles")
+          .select("student_name")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        if (profile?.student_name) {
+          setAuthStudent(profile.student_name);
+        } else {
+          // 로그인은 됐지만 student_profiles 없으면 setup으로
+          navigate("/student-setup");
+          return;
+        }
+      }
+      setAuthLoading(false);
+    });
+  }, []);
+
+  // auth 학생명 > URL 파라미터 > 기본값 순 우선순위
+  const student = authStudent || urlStudent || "정유리";
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login/student");
+  };
 
   const visibleHolidays = holidays.filter(h => h.notify_students && !dismissedIds.includes(h.id));
   const currentPopup = visibleHolidays[0] ?? null;
@@ -375,7 +406,9 @@ export default function StudentDashboard() {
     localStorage.setItem("dismissed_holiday_ids", JSON.stringify(next));
   };
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    if (!authLoading) loadAll();
+  }, [authLoading, student]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -498,7 +531,7 @@ export default function StudentDashboard() {
   }, {});
   const vocabWeeks = Object.keys(vocabByWeek).sort((a, b) => b.localeCompare(a));
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -567,13 +600,23 @@ export default function StudentDashboard() {
             <p className="text-[10px] text-muted-foreground mt-0.5">{student} 님</p>
           </div>
         </div>
-        {nextSessionFromDB?.meet_link && (
-          <a href={nextSessionFromDB.meet_link} target="_blank" rel="noopener noreferrer">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy text-primary-foreground text-xs font-bold shadow-sm hover:bg-navy-light transition-colors">
-              <Video className="w-3.5 h-3.5" /> 수업 입장
+        <div className="flex items-center gap-2">
+          {nextSessionFromDB?.meet_link && (
+            <a href={nextSessionFromDB.meet_link} target="_blank" rel="noopener noreferrer">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy text-primary-foreground text-xs font-bold shadow-sm hover:bg-navy-light transition-colors">
+                <Video className="w-3.5 h-3.5" /> 수업 입장
+              </button>
+            </a>
+          )}
+          {authStudent && (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              로그아웃
             </button>
-          </a>
-        )}
+          )}
+        </div>
       </header>
 
       {/* ── 2-Column Layout ── */}
