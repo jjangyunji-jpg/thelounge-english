@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
 
+
 interface ClassSession {
   id: string;
   scheduled_at: string;
@@ -38,7 +39,27 @@ function formatTime(dateStr: string) {
 export default function ClassNote() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const student = searchParams.get("name") || "";
+  const urlStudent = searchParams.get("name") || "";
+
+  // 인증 기반 학생 식별 (URL 파라미터 폴백)
+  const [authStudent, setAuthStudent] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const { data: profile } = await supabase
+          .from("student_profiles")
+          .select("student_name")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        if (profile?.student_name) setAuthStudent(profile.student_name);
+      }
+      setAuthLoading(false);
+    });
+  }, []);
+
+  const student = authStudent || urlStudent;
 
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
