@@ -292,7 +292,7 @@ function MiniCalendar({ allCalendarDates, holidays, schedulePeriods }: {
               "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all",
               todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
                 : session && !isOff ? "bg-gold/15 text-gold-dark font-semibold"
-                : holiday ? "bg-destructive/8 text-destructive/50"
+                : holiday ? "text-muted-foreground/30"
                 : tuesdayOff ? "text-muted-foreground/30"
                 : inPeriod ? "text-foreground hover:bg-muted/50"
                 : "text-muted-foreground/40 hover:bg-muted/30",
@@ -302,7 +302,7 @@ function MiniCalendar({ allCalendarDates, holidays, schedulePeriods }: {
                 <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
               )}
               {holiday && !todayMark && (
-                <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-destructive/50" />
+                <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-muted-foreground/30" />
               )}
             </div>
           );
