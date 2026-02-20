@@ -617,7 +617,15 @@ export default function StudentDashboard() {
             <div className="p-3 grid grid-cols-2 gap-2">
               {/* 수업 입장하기 - full width primary */}
               <button
-                onClick={() => nextSessionFromDB?.meet_link ? window.open(nextSessionFromDB.meet_link, "_blank") : navigate("/classroom")}
+                onClick={() => {
+                  if (nextSessionFromDB?.meet_link) {
+                    window.open(nextSessionFromDB.meet_link, "_blank");
+                  } else if (nextSessionFromDB?.id) {
+                    navigate(`/classroom?sessionId=${nextSessionFromDB.id}&role=student`);
+                  } else {
+                    navigate("/classroom?role=student");
+                  }
+                }}
                 className="col-span-2 rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-navy text-primary-foreground"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-white/15">
