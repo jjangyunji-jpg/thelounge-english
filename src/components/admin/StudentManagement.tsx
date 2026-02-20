@@ -61,6 +61,7 @@ interface ScheduleSlot {
 
 interface Student {
   id: number;
+  dbId?: string; // UUID from DB
   name: string;
   phone: string;
   level: Level;
@@ -110,13 +111,47 @@ export default function StudentManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
+    // Load instructors
     supabase
       .from("instructors")
       .select("name")
       .eq("active", true)
       .order("name")
       .then(({ data }) => setInstructorNames((data || []).map((i) => i.name)));
+
+    // Load students from DB
+    loadStudentsFromDB();
   }, []);
+
+  const loadStudentsFromDB = async () => {
+    const { data, error } = await supabase
+      .from("instructor_students")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) { console.error("학생 로드 오류:", error); return; }
+
+    const dbStudents: Student[] = (data || []).map((row: any) => ({
+      id: row.id_num ?? (row.student_name + row.created_at).hashCode?.() ?? Math.random(),
+      dbId: row.id,
+      name: row.student_name,
+      phone: row.phone || "",
+      level: (row.level as Level) || "B1",
+      startDate: row.start_date || "",
+      instructor: row.instructor_name || "",
+      status: (row.status as StudentStatus) || "active",
+      totalLessons: row.total_lessons || 0,
+      extraLessons: row.extra_lessons || 0,
+      presetHomework: [],
+      lessonGoal: row.lesson_goal || "",
+      lessonGoalCount: row.lesson_goal_count || 0,
+      lessonHistory: [],
+      reminderEnabled: row.reminder_enabled ?? true,
+      meetLink: row.meet_link || "",
+      schedules: row.schedules ? JSON.parse(row.schedules) : [],
+    }));
+    setStudents(dbStudents);
+  };
 
   // preset homework per student (DB 연동): studentId -> presets
   const [presetMap, setPresetMap] = useState<Record<number, PresetHomework[]>>({});
@@ -303,10 +338,46 @@ export default function StudentManagement() {
     );
   };
 
-  const registerStudent = () => {
+  const [savingStudent, setSavingStudent] = useState(false);
+
+  const registerStudent = async () => {
     if (!newStudent.name || !newStudent.level || !newStudent.instructor) return;
+    setSavingStudent(true);
+
+    // Find instructor_id
+    const { data: instrData } = await supabase
+      .from("instructors")
+      .select("id")
+      .eq("name", newStudent.instructor)
+      .eq("active", true)
+      .maybeSingle();
+
+    const { data, error } = await supabase
+      .from("instructor_students")
+      .insert({
+        student_name: newStudent.name,
+        instructor_id: instrData?.id ?? null,
+        phone: newStudent.phone || null,
+        level: newStudent.level,
+        start_date: newStudent.startDate || null,
+        instructor_name: newStudent.instructor,
+        extra_lessons: newStudent.extraLessons,
+        schedules: newStudent.schedules.length > 0 ? JSON.stringify(newStudent.schedules) : null,
+        status: "active",
+      })
+      .select()
+      .single();
+
+    setSavingStudent(false);
+
+    if (error) {
+      toast({ title: "등록 실패", description: error.message, variant: "destructive" });
+      return;
+    }
+
     const s: Student = {
       id: Date.now(),
+      dbId: data.id,
       name: newStudent.name,
       phone: newStudent.phone,
       level: newStudent.level as Level,
@@ -326,6 +397,7 @@ export default function StudentManagement() {
     setStudents((prev) => [s, ...prev]);
     setNewStudent({ name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [] });
     setDialogOpen(false);
+    toast({ title: `${newStudent.name} 수강생 등록 완료 ✓` });
   };
 
   return (
@@ -527,9 +599,9 @@ export default function StudentManagement() {
                 <Button
                   className="w-full bg-navy hover:bg-navy-light text-primary-foreground"
                   onClick={registerStudent}
-                  disabled={!newStudent.name || !newStudent.level || !newStudent.instructor}
+                  disabled={!newStudent.name || !newStudent.level || !newStudent.instructor || savingStudent}
                 >
-                  등록하기
+                  {savingStudent ? "등록 중..." : "등록하기"}
                 </Button>
               </div>
             </DialogContent>
