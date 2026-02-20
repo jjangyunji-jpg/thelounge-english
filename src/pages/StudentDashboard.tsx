@@ -12,10 +12,40 @@ import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
+const DAY_KO_TO_NUM: Record<string, number> = { 일: 0, 월: 1, 화: 2, 수: 3, 목: 4, 금: 5, 토: 6 };
 
 function formatDateKo(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS_KO[d.getDay()]})`;
+}
+
+interface ScheduleSlot { day: string; time: string; }
+
+// 반복 일정으로부터 날짜 배열 생성 (startDate부터 monthsAhead개월 후까지)
+function generateRecurringDates(schedules: ScheduleSlot[], startDate: string, monthsAhead = 3): Date[] {
+  if (!schedules || schedules.length === 0) return [];
+  const start = startDate ? new Date(startDate + "T00:00:00") : new Date();
+  const end = new Date();
+  end.setMonth(end.getMonth() + monthsAhead);
+
+  const dates: Date[] = [];
+  const cursor = new Date(start);
+  cursor.setHours(0, 0, 0, 0);
+
+  while (cursor <= end) {
+    const dayNum = cursor.getDay();
+    for (const slot of schedules) {
+      const slotDay = DAY_KO_TO_NUM[slot.day];
+      if (slotDay === dayNum) {
+        const [h, m] = slot.time.split(":").map(Number);
+        const d = new Date(cursor);
+        d.setHours(h, m, 0, 0);
+        dates.push(d);
+      }
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
 }
 
 interface HolidayNotice {
@@ -25,6 +55,13 @@ interface HolidayNotice {
   date_end: string;
   reason: string | null;
   notify_students: boolean;
+}
+
+interface StudentRecord {
+  schedules: ScheduleSlot[];
+  start_date: string | null;
+  level: string | null;
+  instructor_name: string | null;
 }
 
 interface ClassSession {
@@ -144,7 +181,11 @@ function TTSButton({ word }: { word: VocabWord }) {
 }
 
 // ── Mini Calendar ──────────────────────────────────────────────────────────────
-function MiniCalendar({ sessions, holidays }: { sessions: ClassSession[]; holidays: HolidayNotice[] }) {
+function MiniCalendar({ sessions, allCalendarDates, holidays }: {
+  sessions: ClassSession[];
+  allCalendarDates: Set<string>;
+  holidays: HolidayNotice[];
+}) {
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
@@ -153,22 +194,18 @@ function MiniCalendar({ sessions, holidays }: { sessions: ClassSession[]; holida
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const sessionDates = new Set(
-    sessions.map(s => {
-      const d = new Date(s.scheduled_at);
-      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    })
-  );
   const holidayRanges = holidays.map(h => ({
     start: new Date(h.date_start + "T00:00:00"),
     end: new Date(h.date_end + "T23:59:59"),
   }));
 
   const isHoliday = (d: Date) => {
-    if (d.getDay() === 2) return true; // 매주 화요일 정기휴일
     return holidayRanges.some(r => d >= r.start && d <= r.end);
   };
-  const hasSession = (day: number) => sessionDates.has(`${year}-${month}-${day}`);
+  const hasSession = (day: number) => {
+    const d = new Date(year, month, day);
+    return allCalendarDates.has(d.toDateString());
+  };
   const isToday = (day: number) =>
     today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
 
@@ -269,6 +306,7 @@ export default function StudentDashboard() {
   const [testHistory, setTestHistory] = useState<TestRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [holidays, setHolidays] = useState<HolidayNotice[]>([]);
+  const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("dismissed_holiday_ids") || "[]"); } catch { return []; }
   });
@@ -300,7 +338,7 @@ export default function StudentDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [sessRes, allSessRes, hwRes, subRes, vocRes, testRes] = await Promise.all([
+    const [sessRes, allSessRes, hwRes, subRes, vocRes, testRes, studentRes] = await Promise.all([
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
         .eq("student_name", student).order("scheduled_at", { ascending: false }).limit(20),
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
@@ -313,27 +351,84 @@ export default function StudentDashboard() {
         .eq("student_name", student).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
+      supabase.from("instructor_students").select("schedules,start_date,level,instructor_name")
+        .eq("student_name", student).maybeSingle(),
     ]);
+
     setSessions(sessRes.data || []);
     setAllSessions(allSessRes.data || []);
     setAssignments(hwRes.data || []);
     setSubmissions(subRes.data || []);
     setVocabWords(vocRes.data || []);
     setTestHistory(testRes.data || []);
+
+    if (studentRes.data) {
+      let schedules: ScheduleSlot[] = [];
+      try {
+        const raw = studentRes.data.schedules;
+        schedules = typeof raw === "string" ? JSON.parse(raw) : (raw as ScheduleSlot[]) || [];
+      } catch { schedules = []; }
+      setStudentRecord({
+        schedules,
+        start_date: studentRes.data.start_date,
+        level: studentRes.data.level,
+        instructor_name: studentRes.data.instructor_name,
+      });
+    }
+
     setLoading(false);
   };
 
   const getSubmission = (aId: string) => submissions.find(s => s.assignment_id === aId);
 
-  // ── Derived stats ──
+  // ── 반복 일정에서 가상 세션 날짜 생성 ──
+  const recurringDates = studentRecord
+    ? generateRecurringDates(studentRecord.schedules, studentRecord.start_date || "", 3)
+    : [];
+
+  // 실제 class_sessions에 이미 있는 날짜 (YYYY-MM-DD)
+  const existingSessionDates = new Set(
+    allSessions.map(s => new Date(s.scheduled_at).toDateString())
+  );
+
+  // 반복 일정 중 아직 class_session에 없는 것들 (가상 upcoming)
+  const virtualUpcoming = recurringDates.filter(
+    d => d.getTime() > Date.now() && !existingSessionDates.has(d.toDateString())
+  );
+
+  // 다음 수업: 실제 세션 또는 반복 일정 중 가장 빠른 것
+  const nextSessionFromDB = sessions
+    .filter(s => msUntil(s.scheduled_at) > 0)
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
+  const nextVirtual = virtualUpcoming[0] ?? null;
+
+  const nextClassDate: Date | null = (() => {
+    const dbTime = nextSessionFromDB ? new Date(nextSessionFromDB.scheduled_at).getTime() : Infinity;
+    const virtTime = nextVirtual ? nextVirtual.getTime() : Infinity;
+    if (dbTime === Infinity && virtTime === Infinity) return null;
+    return dbTime <= virtTime ? new Date(nextSessionFromDB!.scheduled_at) : nextVirtual;
+  })();
+  const nextClassIsVirtual = nextClassDate && nextVirtual && nextClassDate.getTime() === nextVirtual.getTime();
+
+  // 수업일수: 지난 실제 세션 + 반복 일정에서 시작일 ~ 오늘까지 지나간 날 (중복 제거)
   const pastSessions = sessions.filter(s => msUntil(s.scheduled_at) <= 0);
-  const nextSession = sessions.find(s => msUntil(s.scheduled_at) > 0);
+  const pastRecurring = recurringDates.filter(
+    d => d.getTime() <= Date.now() && !existingSessionDates.has(d.toDateString())
+  );
+  const totalClassDays = pastSessions.length + pastRecurring.length;
+
+  // 캘린더용: 실제 세션 + 반복일정 모두 표시
+  const allCalendarDates = new Set([
+    ...allSessions.map(s => new Date(s.scheduled_at).toDateString()),
+    ...recurringDates.map(d => d.toDateString()),
+  ]);
+
+  // ── Derived stats ──
   const pendingHw = assignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
   const latestTest = testHistory[0];
   const avgScore = testHistory.length > 0
     ? Math.round(testHistory.reduce((acc, t) => acc + (t.total ? (t.score ?? 0) / t.total : 0), 0) / testHistory.length * 100)
     : null;
-  const totalClassDays = pastSessions.length;
 
   const vocabByWeek = vocabWords.reduce<Record<string, VocabWord[]>>((acc, w) => {
     if (!acc[w.week_label]) acc[w.week_label] = [];
@@ -411,8 +506,8 @@ export default function StudentDashboard() {
             <p className="text-[10px] text-muted-foreground mt-0.5">{student} 님</p>
           </div>
         </div>
-        {nextSession?.meet_link && (
-          <a href={nextSession.meet_link} target="_blank" rel="noopener noreferrer">
+        {nextSessionFromDB?.meet_link && (
+          <a href={nextSessionFromDB.meet_link} target="_blank" rel="noopener noreferrer">
             <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy text-primary-foreground text-xs font-bold shadow-sm hover:bg-navy-light transition-colors">
               <Video className="w-3.5 h-3.5" /> 수업 입장
             </button>
@@ -433,18 +528,20 @@ export default function StudentDashboard() {
               <span className="text-xs font-semibold text-foreground">수업 캘린더</span>
             </div>
             <div className="p-3">
-              <MiniCalendar sessions={allSessions} holidays={holidays} />
+              <MiniCalendar sessions={allSessions} allCalendarDates={allCalendarDates} holidays={holidays} />
             </div>
             {/* Upcoming next session inside calendar */}
-            {nextSession && (
+            {nextClassDate && (
               <div className="px-3 pb-3">
                 <div className="rounded-md bg-navy/5 border border-navy/10 px-3 py-2 flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-navy flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-foreground truncate">{nextSession.topic || "다음 수업"}</p>
-                    <p className="text-[10px] text-muted-foreground">{fmtDateTime(nextSession.scheduled_at)}</p>
+                    <p className="text-xs font-semibold text-foreground truncate">
+                      {nextClassIsVirtual ? "정기 수업" : (nextSessionFromDB?.topic || "다음 수업")}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">{fmtDateTime(nextClassDate.toISOString())}</p>
                   </div>
-                  <span className="text-[10px] font-bold text-navy flex-shrink-0">{timeUntilLabel(nextSession.scheduled_at)}</span>
+                  <span className="text-[10px] font-bold text-navy flex-shrink-0">{timeUntilLabel(nextClassDate.toISOString())}</span>
                 </div>
               </div>
             )}
@@ -459,7 +556,7 @@ export default function StudentDashboard() {
             <div className="p-3 grid grid-cols-2 gap-2">
               {/* 수업 입장하기 - full width primary */}
               <button
-                onClick={() => nextSession?.meet_link ? window.open(nextSession.meet_link, "_blank") : navigate("/classroom")}
+                onClick={() => nextSessionFromDB?.meet_link ? window.open(nextSessionFromDB.meet_link, "_blank") : navigate("/classroom")}
                 className="col-span-2 rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-navy text-primary-foreground"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-white/15">
@@ -467,7 +564,7 @@ export default function StudentDashboard() {
                 </div>
                 <div>
                   <p className="text-xs font-bold leading-none text-primary-foreground">수업 입장하기</p>
-                  <p className="text-[10px] mt-0.5 text-primary-foreground/60">{nextSession ? timeUntilLabel(nextSession.scheduled_at) : "예정 없음"}</p>
+                  <p className="text-[10px] mt-0.5 text-primary-foreground/60">{nextClassDate ? timeUntilLabel(nextClassDate.toISOString()) : "예정 없음"}</p>
                 </div>
               </button>
               {/* 보강 신청하기 */}
@@ -571,27 +668,33 @@ export default function StudentDashboard() {
 
           {/* Next Class */}
           <RSection title="다음 수업" icon={Clock}>
-            {nextSession ? (
+            {nextClassDate ? (
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-0.5">
-                    <p className="font-bold text-foreground text-sm">{nextSession.topic || "수업"}</p>
-                    <p className="text-xs text-muted-foreground">{fmtDateTime(nextSession.scheduled_at)}</p>
-                    <p className="text-xs text-muted-foreground">담당: {nextSession.instructor_name}</p>
+                    <p className="font-bold text-foreground text-sm">
+                      {nextClassIsVirtual ? "정기 수업" : (nextSessionFromDB?.topic || "수업")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{fmtDateTime(nextClassDate.toISOString())}</p>
+                    <p className="text-xs text-muted-foreground">
+                      담당: {studentRecord?.instructor_name || nextSessionFromDB?.instructor_name || "-"}
+                    </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-navy/10 text-navy font-bold">{nextSession.level}</span>
-                    <span className="text-[10px] font-bold text-gold">{timeUntilLabel(nextSession.scheduled_at)}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-navy/10 text-navy font-bold">
+                      {studentRecord?.level || nextSessionFromDB?.level || "-"}
+                    </span>
+                    <span className="text-[10px] font-bold text-gold">{timeUntilLabel(nextClassDate.toISOString())}</span>
                   </div>
                 </div>
-                {nextSession.meet_link && (
-                  <a href={nextSession.meet_link} target="_blank" rel="noopener noreferrer" className="block">
+                {!nextClassIsVirtual && nextSessionFromDB?.meet_link && (
+                  <a href={nextSessionFromDB.meet_link} target="_blank" rel="noopener noreferrer" className="block">
                     <button className="w-full py-2 rounded-md bg-navy text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-navy-light transition-colors">
                       <Video className="w-3.5 h-3.5" /> 수업 입장하기
                     </button>
                   </a>
                 )}
-                {msUntil(nextSession.scheduled_at) <= 48 * 3600 * 1000 && pendingHw.length > 0 && (
+                {(nextClassDate.getTime() - Date.now()) <= 48 * 3600 * 1000 && pendingHw.length > 0 && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-destructive/8 border border-destructive/20">
                     <AlertCircle className="w-3 h-3 text-destructive flex-shrink-0" />
                     <p className="text-[11px] text-destructive">미제출 숙제 {pendingHw.length}개 남아있어요</p>
