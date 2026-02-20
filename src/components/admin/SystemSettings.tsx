@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Plus, Trash2, Save, Info, BanIcon, Bell, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Calendar, Plus, Trash2, Save, Info, BanIcon, Bell, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface PeriodSetting {
-  id: number;
-  year: number;
-  month: number;
-  startDate: string;
-  endDate: string;
+  id: string; // UUID from DB
+  label: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  isNew?: boolean; // UI only: not yet saved
 }
 
 interface HolidayNotice {
@@ -26,12 +27,6 @@ interface HolidayNotice {
   created_at: string;
 }
 
-const mockPeriods: PeriodSetting[] = [
-  { id: 1, year: 2026, month: 1, startDate: "2026-01-02", endDate: "2026-02-05" },
-  { id: 2, year: 2026, month: 2, startDate: "2026-02-06", endDate: "2026-03-06" },
-  { id: 3, year: 2026, month: 3, startDate: "2026-03-07", endDate: "2026-04-08" },
-];
-
 const monthNames = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
@@ -42,12 +37,19 @@ function formatDateKo(dateStr: string) {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS_KO[d.getDay()]})`;
 }
 
+// label에서 월 숫자 추출 (예: "2026-02" → 2)
+function labelToMonth(label: string): number {
+  const m = label.match(/(\d{4})-(\d{2})/);
+  return m ? parseInt(m[2]) : 0;
+}
+
 export default function SystemSettings() {
   const { toast } = useToast();
-  const [periods, setPeriods] = useState<PeriodSetting[]>(mockPeriods);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editVals, setEditVals] = useState({ startDate: "", endDate: "" });
-  const [saved, setSaved] = useState(false);
+  const [periods, setPeriods] = useState<PeriodSetting[]>([]);
+  const [loadingPeriods, setLoadingPeriods] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editVals, setEditVals] = useState({ label: "", start_date: "", end_date: "" });
+  const [savingPeriod, setSavingPeriod] = useState(false);
 
   // Holiday notices
   const [notices, setNotices] = useState<HolidayNotice[]>([]);
@@ -63,15 +65,20 @@ export default function SystemSettings() {
   const [savingNotice, setSavingNotice] = useState(false);
 
   useEffect(() => {
+    loadPeriods();
     loadNotices();
   }, []);
 
+  const loadPeriods = async () => {
+    setLoadingPeriods(true);
+    const { data } = await supabase.from("schedule_periods").select("*").order("start_date", { ascending: true });
+    setPeriods(data || []);
+    setLoadingPeriods(false);
+  };
+
   const loadNotices = async () => {
     setLoadingNotices(true);
-    const { data } = await supabase
-      .from("holiday_notices")
-      .select("*")
-      .order("date_start", { ascending: true });
+    const { data } = await supabase.from("holiday_notices").select("*").order("date_start", { ascending: true });
     setNotices(data || []);
     setLoadingNotices(false);
   };
@@ -106,45 +113,64 @@ export default function SystemSettings() {
   };
 
   const toggleNotify = async (notice: HolidayNotice) => {
-    const { error } = await supabase
-      .from("holiday_notices")
-      .update({ notify_students: !notice.notify_students })
-      .eq("id", notice.id);
+    const { error } = await supabase.from("holiday_notices").update({ notify_students: !notice.notify_students }).eq("id", notice.id);
     if (!error) {
-      setNotices((prev) =>
-        prev.map((n) => n.id === notice.id ? { ...n, notify_students: !n.notify_students } : n)
-      );
+      setNotices((prev) => prev.map((n) => n.id === notice.id ? { ...n, notify_students: !n.notify_students } : n));
     }
   };
 
-  // Period editing
+  // Period CRUD (DB 연동)
   const startEdit = (p: PeriodSetting) => {
     setEditingId(p.id);
-    setEditVals({ startDate: p.startDate, endDate: p.endDate });
+    setEditVals({ label: p.label, start_date: p.start_date, end_date: p.end_date });
   };
 
-  const savePeriod = (id: number) => {
-    setPeriods((prev) => prev.map((p) => (p.id === id ? { ...p, ...editVals } : p)));
+  const savePeriod = async (id: string) => {
+    if (!editVals.label || !editVals.start_date || !editVals.end_date) return;
+    setSavingPeriod(true);
+    const period = periods.find(p => p.id === id);
+    if (period?.isNew) {
+      // 신규: INSERT
+      const { error } = await supabase.from("schedule_periods").insert({
+        label: editVals.label,
+        start_date: editVals.start_date,
+        end_date: editVals.end_date,
+        is_active: true,
+      });
+      if (!error) { toast({ title: "수업 기간이 등록되었습니다 ✓" }); await loadPeriods(); }
+      else toast({ title: "등록 실패", description: error.message, variant: "destructive" });
+    } else {
+      // 수정: UPDATE
+      const { error } = await supabase.from("schedule_periods").update({
+        label: editVals.label,
+        start_date: editVals.start_date,
+        end_date: editVals.end_date,
+      }).eq("id", id);
+      if (!error) { toast({ title: "저장되었습니다 ✓" }); await loadPeriods(); }
+      else toast({ title: "저장 실패", description: error.message, variant: "destructive" });
+    }
     setEditingId(null);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSavingPeriod(false);
   };
 
-  const deletePeriod = (id: number) => {
-    setPeriods((prev) => prev.filter((p) => p.id !== id));
+  const deletePeriod = async (id: string) => {
+    const period = periods.find(p => p.id === id);
+    if (period?.isNew) {
+      setPeriods(prev => prev.filter(p => p.id !== id));
+      return;
+    }
+    const { error } = await supabase.from("schedule_periods").delete().eq("id", id);
+    if (!error) { setPeriods(prev => prev.filter(p => p.id !== id)); toast({ title: "삭제되었습니다" }); }
   };
 
   const addPeriod = () => {
-    const last = periods[periods.length - 1];
-    const nextMonth = last ? (last.month === 12 ? 1 : last.month + 1) : new Date().getMonth() + 1;
-    const nextYear = last && last.month === 12 ? last.year + 1 : (last?.year || new Date().getFullYear());
-    const newId = Date.now();
-    setPeriods((prev) => [
-      ...prev,
-      { id: newId, year: nextYear, month: nextMonth, startDate: "", endDate: "" },
-    ]);
-    setEditingId(newId);
-    setEditVals({ startDate: "", endDate: "" });
+    const tempId = `new-${Date.now()}`;
+    const now = new Date();
+    const defaultLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const newP: PeriodSetting = { id: tempId, label: defaultLabel, start_date: "", end_date: "", is_active: true, isNew: true };
+    setPeriods(prev => [...prev, newP]);
+    setEditingId(tempId);
+    setEditVals({ label: defaultLabel, start_date: "", end_date: "" });
   };
 
   // Upcoming vs past notices
@@ -180,78 +206,89 @@ export default function SystemSettings() {
             <div>
               <p className="text-xs font-medium text-navy">가변적 수업 기간이란?</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                매월 수업 기간이 다를 수 있습니다. 예를 들어 2026년 2월 수업 기간은 2/6 ~ 3/6으로 설정할 수 있습니다.
-                이 기간을 기준으로 수업 횟수 집계 및 정산이 이루어집니다.
+                매월 수업 기간이 다를 수 있습니다. 예를 들어 2026년 2월 수업 기간은 2/1 ~ 3/4로 설정할 수 있습니다.
+                이 기간을 기준으로 수업 횟수 집계 및 정산이 이루어지며, 수강생 캘린더에 자동 반영됩니다.
               </p>
             </div>
           </div>
 
-          <div className="space-y-3">
-            {periods.map((period) => (
-              <div key={period.id} className="p-4 rounded-lg border border-border bg-card">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-navy text-primary-foreground flex items-center justify-center">
-                      <span className="text-xs font-bold">{monthNames[period.month - 1].replace("월", "")}</span>
-                    </div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {period.year}년 {monthNames[period.month - 1]} 수업 기간
-                    </p>
-                  </div>
-                  <div className="flex gap-1">
-                    {editingId !== period.id && (
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => startEdit(period)}>
-                        수정
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => deletePeriod(period.id)}>
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
+          {loadingPeriods ? (
+            <p className="text-xs text-muted-foreground py-2">불러오는 중...</p>
+          ) : (
+            <div className="space-y-3">
+              {periods.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                  <p className="text-xs">등록된 수업 기간이 없습니다</p>
                 </div>
-
-                {editingId === period.id ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">시작일</Label>
-                      <Input type="date" value={editVals.startDate} onChange={(e) => setEditVals((v) => ({ ...v, startDate: e.target.value }))} className="h-8 text-sm" />
+              )}
+              {periods.map((period) => (
+                <div key={period.id} className="p-4 rounded-lg border border-border bg-card">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-navy text-primary-foreground flex items-center justify-center">
+                        <span className="text-xs font-bold">{monthNames[labelToMonth(period.label) - 1]?.replace("월", "") || "?"}</span>
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">{period.label} 수업 기간</p>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">종료일</Label>
-                      <Input type="date" value={editVals.endDate} onChange={(e) => setEditVals((v) => ({ ...v, endDate: e.target.value }))} className="h-8 text-sm" />
-                    </div>
-                    <div className="col-span-2 flex gap-2">
-                      <Button size="sm" className="h-7 text-xs bg-navy hover:bg-navy-light text-primary-foreground gap-1.5" onClick={() => savePeriod(period.id)}>
-                        <Save className="w-3 h-3" />저장
+                    <div className="flex gap-1">
+                      {editingId !== period.id && (
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => startEdit(period)}>수정</Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => deletePeriod(period.id)}>
+                        <Trash2 className="w-3 h-3" />
                       </Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingId(null)}>취소</Button>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground text-xs">시작</span>
-                      <span className="font-medium text-foreground text-sm">{period.startDate || "미설정"}</span>
-                    </div>
-                    <span className="text-muted-foreground">→</span>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground text-xs">종료</span>
-                      <span className="font-medium text-foreground text-sm">{period.endDate || "미설정"}</span>
-                    </div>
-                    {period.startDate && period.endDate && (
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {Math.ceil((new Date(period.endDate).getTime() - new Date(period.startDate).getTime()) / (1000 * 60 * 60 * 24))}일
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
 
-          {saved && (
-            <div className="p-3 rounded-lg bg-success/10 border border-success/20">
-              <p className="text-xs text-success font-medium">✓ 저장되었습니다.</p>
+                  {editingId === period.id ? (
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">기간 레이블 (예: 2026-02)</Label>
+                        <Input value={editVals.label} onChange={(e) => setEditVals(v => ({ ...v, label: e.target.value }))} placeholder="2026-02" className="h-8 text-sm" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">시작일</Label>
+                          <Input type="date" value={editVals.start_date} onChange={(e) => setEditVals(v => ({ ...v, start_date: e.target.value }))} className="h-8 text-sm" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">종료일</Label>
+                          <Input type="date" value={editVals.end_date} onChange={(e) => setEditVals(v => ({ ...v, end_date: e.target.value }))} className="h-8 text-sm" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" className="h-7 text-xs bg-navy hover:bg-navy-light text-primary-foreground gap-1.5"
+                          disabled={!editVals.label || !editVals.start_date || !editVals.end_date || savingPeriod}
+                          onClick={() => savePeriod(period.id)}>
+                          <Save className="w-3 h-3" />{savingPeriod ? "저장 중..." : "저장"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
+                          if (period.isNew) setPeriods(prev => prev.filter(p => p.id !== period.id));
+                          setEditingId(null);
+                        }}>취소</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-xs">시작</span>
+                        <span className="font-medium text-foreground text-sm">{formatDateKo(period.start_date) || "미설정"}</span>
+                      </div>
+                      <span className="text-muted-foreground">→</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-xs">종료</span>
+                        <span className="font-medium text-foreground text-sm">{formatDateKo(period.end_date) || "미설정"}</span>
+                      </div>
+                      {period.start_date && period.end_date && (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          {Math.ceil((new Date(period.end_date).getTime() - new Date(period.start_date).getTime()) / (1000 * 60 * 60 * 24))}일
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
