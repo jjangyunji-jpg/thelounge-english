@@ -360,8 +360,8 @@ export default function StudentDashboard() {
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("dismissed_holiday_ids") || "[]"); } catch { return []; }
   });
-  const [vocabOpen, setVocabOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [testHistoryOpen, setTestHistoryOpen] = useState(false);
+  const [classHistoryOpen, setClassHistoryOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
 
   // ── 인증: auth 세션 → student_name 로드, 없으면 URL 파라미터 폴백 ──
@@ -896,59 +896,34 @@ export default function StudentDashboard() {
             )}
           </div>
 
-          {/* Vocab Panel */}
-          <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-            <button
-              onClick={() => setVocabOpen(v => !v)}
-              className="w-full flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30 hover:bg-muted/50 transition-colors"
-            >
+          {/* Vocab - Link to page */}
+          <button
+            onClick={() => navigate(`/vocabulary?name=${encodeURIComponent(student)}`)}
+            className="w-full rounded-lg border border-border bg-card shadow-sm overflow-hidden hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center justify-between px-3 py-2.5">
               <div className="flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 text-gold" />
                 <span className="text-xs font-semibold text-foreground">단어장</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{vocabWords.length}개</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">{vocabOpen ? "접기" : "펼치기"}</span>
-            </button>
-            {vocabOpen && (
-              <div className="divide-y divide-border/50 max-h-72 overflow-y-auto">
-                {vocabWords.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">등록된 단어가 없습니다</p>
-                ) : (
-                  vocabWeeks.map(week => (
-                    <div key={week}>
-                      <div className="px-3 py-1.5 bg-muted/30">
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{fmtWeek(week)}</span>
-                      </div>
-                      {vocabByWeek[week].map(w => (
-                        <div key={w.id} className="flex items-center gap-2 px-3 py-2">
-                          <TTSButton word={w} />
-                          <span className="font-semibold text-xs text-foreground flex-1">{w.english_word}</span>
-                          {w.part_of_speech && (
-                            <span className="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground hidden sm:inline">{w.part_of_speech}</span>
-                          )}
-                          <span className="text-[11px] text-muted-foreground flex-shrink-0">{w.korean_meaning}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
+              <span className="text-[10px] text-muted-foreground">전체 보기 →</span>
+            </div>
+          </button>
 
           {/* Test History */}
           <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <button
-              onClick={() => setHistoryOpen(v => !v)}
+              onClick={() => setTestHistoryOpen(v => !v)}
               className="w-full flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30 hover:bg-muted/50 transition-colors"
             >
               <div className="flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-gold" />
-                <span className="text-xs font-semibold text-foreground">이력</span>
+                <span className="text-xs font-semibold text-foreground">단어 테스트 이력</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">{testHistory.length}회 테스트</span>
+              <span className="text-[10px] text-muted-foreground">{testHistory.length}회</span>
             </button>
-            {historyOpen && (
+            {testHistoryOpen && (
               <div className="divide-y divide-border/50 max-h-64 overflow-y-auto">
                 {testHistory.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">완료된 테스트가 없습니다</p>
@@ -978,26 +953,38 @@ export default function StudentDashboard() {
                 )}
               </div>
             )}
-            {/* Session history mini */}
-            <div className="border-t border-border">
-              <div className="px-3 py-2 bg-muted/20">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                  <Check className="w-3 h-3" /> 수업 이력 · 총 {totalClassDays}회
-                </p>
+          </div>
+
+          {/* Class History */}
+          <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+            <button
+              onClick={() => setClassHistoryOpen(v => !v)}
+              className="w-full flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30 hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-gold" />
+                <span className="text-xs font-semibold text-foreground">수업 이력</span>
               </div>
-              <div className="divide-y divide-border/50 max-h-40 overflow-y-auto">
-                {pastSessions.slice(0, 5).map((s, idx) => (
-                  <div key={s.id} className="flex items-center gap-2.5 px-3 py-2">
-                    <span className="text-[10px] font-bold text-muted-foreground w-6 flex-shrink-0">#{totalClassDays - idx}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">{s.topic || "수업"}</p>
-                      <p className="text-[10px] text-muted-foreground">{fmtDate(s.scheduled_at)}</p>
+              <span className="text-[10px] text-muted-foreground">총 {totalClassDays}회</span>
+            </button>
+            {classHistoryOpen && (
+              <div className="divide-y divide-border/50 max-h-48 overflow-y-auto">
+                {pastSessions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">수업 이력이 없습니다</p>
+                ) : (
+                  pastSessions.slice(0, 10).map((s, idx) => (
+                    <div key={s.id} className="flex items-center gap-2.5 px-3 py-2">
+                      <span className="text-[10px] font-bold text-muted-foreground w-6 flex-shrink-0">#{totalClassDays - idx}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{s.topic || "수업"}</p>
+                        <p className="text-[10px] text-muted-foreground">{fmtDate(s.scheduled_at)}</p>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground flex-shrink-0">{s.level}</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground flex-shrink-0">{s.level}</span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
-            </div>
+            )}
           </div>
 
         </div>
