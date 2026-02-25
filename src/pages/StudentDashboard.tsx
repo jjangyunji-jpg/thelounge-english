@@ -863,8 +863,8 @@ export default function StudentDashboard() {
                         )}>
                           <Icon className={cn("w-3.5 h-3.5", meta?.color)} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/classroom?role=student&tab=hw`)}>
+                          <p className="text-xs font-semibold text-foreground truncate hover:text-navy transition-colors">{a.title}</p>
                           {a.due_at && <p className="text-[10px] text-muted-foreground">마감: {fmtDate(a.due_at)}</p>}
                         </div>
                         {status === "reviewed" && (
