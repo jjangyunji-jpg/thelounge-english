@@ -14,6 +14,7 @@ import MakeupRequest from "./pages/MakeupRequest";
 import ClassNote from "./pages/ClassNote";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Vocabulary from "./pages/Vocabulary";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/student-setup" element={<StudentSetup />} />
           <Route path="/makeup" element={<MakeupRequest />} />
           <Route path="/classnote" element={<ClassNote />} />
+          <Route path="/vocabulary" element={<Vocabulary />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
