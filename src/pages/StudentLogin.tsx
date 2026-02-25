@@ -39,7 +39,7 @@ export default function StudentLogin() {
         return;
       }
 
-      navigate("/student");
+      navigate("/dashboard-student");
     } catch (e: unknown) {
       toast({
         title: "로그인 실패",

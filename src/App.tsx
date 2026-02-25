@@ -28,8 +28,8 @@ const App = () => (
           <Route path="/signup" element={<Signup />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/classroom" element={<Classroom />} />
-          <Route path="/student" element={<StudentDashboard />} />
-          <Route path="/instructor" element={<InstructorDashboard />} />
+          <Route path="/dashboard-student" element={<StudentDashboard />} />
+          <Route path="/dashboard-instructor" element={<InstructorDashboard />} />
           <Route path="/set-password" element={<SetPassword />} />
           <Route path="/makeup" element={<MakeupRequest />} />
           <Route path="/classnote" element={<ClassNote />} />

@@ -21,7 +21,7 @@ export default function InstructorLogin() {
     if (error) {
       toast({ title: "로그인 실패", description: error.message, variant: "destructive" });
     } else {
-      navigate("/instructor");
+      navigate("/dashboard-instructor");
     }
     setLoading(false);
   };
