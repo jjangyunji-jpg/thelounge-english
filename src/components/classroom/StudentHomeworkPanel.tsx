@@ -280,6 +280,8 @@ function SubmissionCard({
               <Textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                spellCheck
+                lang="en"
                 placeholder={
                   meta.requiresText
                     ? "여기에 작성하세요 (필수)"
