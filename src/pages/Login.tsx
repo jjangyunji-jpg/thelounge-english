@@ -24,12 +24,16 @@ export default function Login() {
 
       const userId = data.user.id;
 
-      // Check role and approval
-      const { data: roleData } = await supabase
+      // Check role and approval (user may have multiple roles, pick highest priority)
+      const { data: roles } = await supabase
         .from("user_roles")
         .select("role, approved")
-        .eq("user_id", userId)
-        .maybeSingle();
+        .eq("user_id", userId);
+
+      const priorityOrder = ["admin", "instructor", "student"];
+      const roleData = (roles || []).sort(
+        (a, b) => priorityOrder.indexOf(a.role) - priorityOrder.indexOf(b.role)
+      )[0];
 
       if (!roleData) {
         await supabase.auth.signOut();
