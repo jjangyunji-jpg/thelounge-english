@@ -381,14 +381,19 @@ export default function Classroom() {
         </div>
 
         <div className="flex gap-1 p-0.5 bg-sidebar-accent rounded-lg">
-          {(["instructor", "student"] as Role[]).map((r) => (
-            <button key={r} onClick={() => setRole(r)}
-              className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all",
-                role === r ? "bg-gold text-accent-foreground" : "text-sidebar-foreground hover:text-sidebar-accent-foreground")}
-            >
-              {r === "instructor" ? "강사" : "학생"}
-            </button>
-          ))}
+          {(["instructor", "student"] as Role[]).map((r) => {
+            const isLocked = urlRole === "student" && r === "instructor";
+            return (
+              <button key={r} onClick={() => !isLocked && setRole(r)}
+                disabled={isLocked}
+                className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all",
+                  role === r ? "bg-gold text-accent-foreground" : "text-sidebar-foreground hover:text-sidebar-accent-foreground",
+                  isLocked && "opacity-40 cursor-not-allowed")}
+              >
+                {r === "instructor" ? "강사" : "학생"}
+              </button>
+            );
+          })}
         </div>
 
         {meetConnected && (
