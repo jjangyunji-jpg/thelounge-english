@@ -25,9 +25,17 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? null);
+    // Get initial session
+    supabase.auth.getSession().then(({ data }) => {
+      setEmail(data.session?.user?.email ?? null);
     });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user?.email ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
