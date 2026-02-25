@@ -377,9 +377,9 @@ export default function StudentDashboard() {
           .select("student_name")
           .eq("user_id", session.user.id)
           .maybeSingle();
-        if (profile?.student_name) {
+        if (profile?.student_name && profile.student_name.trim() !== "") {
           setAuthStudent(profile.student_name);
-        } else {
+        } else if (!profile) {
           // 로그인은 됐지만 student_profiles 없으면 setup으로
           navigate("/student-setup");
           return;
