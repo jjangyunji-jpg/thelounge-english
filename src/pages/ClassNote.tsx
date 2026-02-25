@@ -100,7 +100,7 @@ export default function ClassNote() {
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
       <header className="sidebar-gradient text-sidebar-foreground px-4 py-3 flex items-center gap-4 shadow-lg">
         <button
-          onClick={() => navigate(`/student?name=${encodeURIComponent(student)}`)}
+          onClick={() => navigate("/dashboard-student")}
           className="flex items-center gap-1.5 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -269,7 +269,8 @@ export default function ClassNote() {
                       "text-[11px] font-semibold",
                       selectedSession?.id === s.id ? "text-gold-dark" : "text-foreground"
                     )}>
-                      {formatDate(s.scheduled_at).slice(0, -5)}
+                      <span className="text-gold font-bold">{sessionWeekMap.get(s.id)}주차</span>
+                      {" "}{formatDate(s.scheduled_at).slice(0, -5)}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
                       {s.topic || "수업"} · {formatTime(s.scheduled_at)}
