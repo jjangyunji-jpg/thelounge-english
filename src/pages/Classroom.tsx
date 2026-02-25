@@ -97,47 +97,45 @@ export default function Classroom() {
 
   const [session, setSession] = useState<SessionData>(DEFAULT_SESSION);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionNumber, setSessionNumber] = useState<number | null>(null);
 
   // Load session from DB if sessionId provided
   useEffect(() => {
     const loadSession = async () => {
+      let sessionData: any = null;
       if (!urlSessionId) {
-        // No session ID: show latest upcoming session or allow freeform
         const { data } = await supabase
           .from("class_sessions")
           .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
           .order("scheduled_at", { ascending: false })
           .limit(1)
           .single();
-        if (data) {
-          setSession({
-            sessionId: data.id,
-            studentName: data.student_name,
-            instructorName: data.instructor_name,
-            level: data.level,
-            scheduledAt: new Date(data.scheduled_at),
-            meetLink: data.meet_link || "",
-            topic: data.topic || "",
-          });
-        }
-        setSessionLoading(false);
-        return;
+        sessionData = data;
+      } else {
+        const { data } = await supabase
+          .from("class_sessions")
+          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
+          .eq("id", urlSessionId)
+          .single();
+        sessionData = data;
       }
-      const { data } = await supabase
-        .from("class_sessions")
-        .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
-        .eq("id", urlSessionId)
-        .single();
-      if (data) {
+      if (sessionData) {
         setSession({
-          sessionId: data.id,
-          studentName: data.student_name,
-          instructorName: data.instructor_name,
-          level: data.level,
-          scheduledAt: new Date(data.scheduled_at),
-          meetLink: data.meet_link || "",
-          topic: data.topic || "",
+          sessionId: sessionData.id,
+          studentName: sessionData.student_name,
+          instructorName: sessionData.instructor_name,
+          level: sessionData.level,
+          scheduledAt: new Date(sessionData.scheduled_at),
+          meetLink: sessionData.meet_link || "",
+          topic: sessionData.topic || "",
         });
+        // 이 학생의 세션 중 현재 세션이 몇 번째인지 계산
+        const { count } = await supabase
+          .from("class_sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("student_name", sessionData.student_name)
+          .lte("scheduled_at", sessionData.scheduled_at);
+        setSessionNumber(count ?? null);
       }
       setSessionLoading(false);
     };
@@ -359,6 +357,9 @@ export default function Classroom() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-sidebar-accent-foreground text-sm">{session.studentName}</span>
             <span className="text-xs px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground font-medium">{session.level}</span>
+            {sessionNumber && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-gold/20 text-gold font-bold">{sessionNumber}주차</span>
+            )}
             <span className="text-sidebar-foreground/60 text-xs hidden sm:inline">with {session.instructorName}</span>
             {sessionTopic && <span className="text-gold text-xs hidden md:inline">· {sessionTopic}</span>}
           </div>
