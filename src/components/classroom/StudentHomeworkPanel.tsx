@@ -416,8 +416,8 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
     setSubmissions((prev) => ({ ...prev, [assignmentId]: sub }));
   };
 
-  const submitted = Object.keys(submissions).length;
   const total = assignments.length;
+  const submitted = assignments.filter(a => submissions[a.id]?.status === "submitted" || submissions[a.id]?.status === "reviewed").length;
 
   return (
     <div className="flex-1 flex flex-col gap-4 min-h-0">

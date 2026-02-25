@@ -84,6 +84,12 @@ export default function ClassNote() {
     load();
   }, [student]);
 
+  // 주차 계산: scheduled_at 오름차순 인덱스
+  const sessionWeekMap = new Map<string, number>();
+  [...sessions].sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at)).forEach((s, i) => {
+    sessionWeekMap.set(s.id, i + 1);
+  });
+
   const pastSessions = sessions.filter(
     (s) => new Date(s.scheduled_at) <= new Date()
   );
@@ -142,7 +148,10 @@ export default function ClassNote() {
                       selectedSession?.id === s.id && "bg-gold/10"
                     )}
                   >
-                    <p className="font-semibold text-foreground">{formatDate(s.scheduled_at)}</p>
+                    <p className="font-semibold text-foreground">
+                      <span className="text-gold font-bold">{sessionWeekMap.get(s.id)}주차</span>
+                      {" "}{formatDate(s.scheduled_at)}
+                    </p>
                     <p className="text-muted-foreground mt-0.5">
                       {formatTime(s.scheduled_at)} · {s.topic || "수업"}
                     </p>
