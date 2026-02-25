@@ -4,6 +4,7 @@ import AdminDashboard from "@/components/admin/AdminDashboard";
 import OperationsDashboard from "@/components/admin/OperationsDashboard";
 import InstructorManagement from "@/components/admin/InstructorManagement";
 import StudentManagement from "@/components/admin/StudentManagement";
+import UserApproval from "@/components/admin/UserApproval";
 import MessageCenter from "@/components/admin/MessageCenter";
 import SystemSettings from "@/components/admin/SystemSettings";
 import { Menu, X } from "lucide-react";
@@ -22,6 +23,8 @@ export default function Admin() {
         return <InstructorManagement />;
       case "students":
         return <StudentManagement />;
+      case "approval":
+        return <UserApproval />;
       case "messages":
         return <MessageCenter />;
       case "settings":

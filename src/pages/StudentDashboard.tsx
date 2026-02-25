@@ -394,7 +394,7 @@ export default function StudentDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/login/student");
+    navigate("/login");
   };
 
   const visibleHolidays = holidays.filter(h => h.notify_students && !dismissedIds.includes(h.id));
