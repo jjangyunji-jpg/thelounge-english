@@ -131,9 +131,11 @@ function WeekGroup({ weekLabel, words }: { weekLabel: string; words: VocabWord[]
 export default function StudentVocabPanel({
   studentName,
   scheduledAt,
+  sessionId,
 }: {
   studentName: string;
   scheduledAt: Date;
+  sessionId: string;
 }) {
   const [words, setWords] = useState<VocabWord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +157,7 @@ export default function StudentVocabPanel({
       .from("vocabulary_words")
       .select("id, english_word, korean_meaning, part_of_speech, example_sentence, audio_url, week_label")
       .eq("student_name", studentName)
-      .order("week_label", { ascending: false })
+      .eq("session_id", sessionId)
       .order("created_at", { ascending: true });
     setWords(data ?? []);
     setLoading(false);
@@ -175,7 +177,7 @@ export default function StudentVocabPanel({
     setLoadingTests(false);
   };
 
-  useEffect(() => { load(); loadTestCount(); }, [studentName]);
+  useEffect(() => { load(); loadTestCount(); }, [studentName, sessionId]);
 
   const byWeek = words.reduce<Record<string, VocabWord[]>>((acc, w) => {
     if (!acc[w.week_label]) acc[w.week_label] = [];
