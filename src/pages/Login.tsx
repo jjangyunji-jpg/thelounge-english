@@ -57,10 +57,10 @@ export default function Login() {
           navigate("/admin");
           break;
         case "instructor":
-          navigate("/instructor");
+          navigate("/dashboard-instructor");
           break;
         case "student":
-          navigate("/student");
+          navigate("/dashboard-student");
           break;
         default:
           navigate("/");

@@ -23,7 +23,7 @@ export default function MakeupRequest() {
           </ul>
         </div>
         <button
-          onClick={() => navigate("/student")}
+          onClick={() => navigate("/dashboard-student")}
           className="flex items-center gap-2 mx-auto text-sm text-amber-600 font-semibold"
         >
           <ArrowLeft className="w-4 h-4" /> 대시보드로 돌아가기
