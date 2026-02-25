@@ -1,6 +1,8 @@
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "messages" | "settings";
 
 interface AdminSidebarProps {
@@ -19,6 +21,20 @@ const navItems = [
 ];
 
 export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setEmail(data.user?.email ?? null);
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
+
   return (
     <aside className="w-64 min-h-screen sidebar-gradient flex flex-col">
       {/* Logo */}
@@ -57,9 +73,20 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-6 py-4 border-t border-sidebar-border">
-        <p className="text-sidebar-foreground/50 text-xs">© 2026 The Lounge English</p>
+      {/* Footer - logged in user */}
+      <div className="px-4 py-4 border-t border-sidebar-border space-y-3">
+        {email && (
+          <p className="text-sidebar-foreground/70 text-xs truncate" title={email}>
+            🔑 {email}
+          </p>
+        )}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          로그아웃
+        </button>
       </div>
     </aside>
   );
