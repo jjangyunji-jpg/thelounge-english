@@ -390,9 +390,9 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
       const [{ data: asgn }, { data: subs }] = await Promise.all([
         supabase
           .from("homework_assignments")
-          .select("id, type, title, description, is_preset")
+          .select("id, type, title, description, is_preset, session_id")
           .eq("student_name", studentName)
-          .or(`session_id.eq.${sessionId},is_preset.eq.true`)
+          .eq("session_id", sessionId)
           .order("created_at", { ascending: true }),
         supabase
           .from("homework_submissions")
@@ -410,7 +410,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
       setLoading(false);
     };
     load();
-  }, [studentName]);
+  }, [studentName, sessionId]);
 
   const handleSubmitted = (assignmentId: string, sub: Submission) => {
     setSubmissions((prev) => ({ ...prev, [assignmentId]: sub }));
