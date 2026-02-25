@@ -90,6 +90,7 @@ interface Assignment {
   type: string;
   due_at: string | null;
   is_preset: boolean;
+  session_id: string | null;
 }
 
 interface Submission {
@@ -417,7 +418,7 @@ export default function StudentDashboard() {
         .eq("student_name", student).order("scheduled_at", { ascending: false }).limit(20),
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
         .eq("student_name", student).order("scheduled_at", { ascending: true }),
-      supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset")
+      supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id")
         .eq("student_name", student).order("created_at", { ascending: false }),
       supabase.from("homework_submissions").select("id,assignment_id,status,text_content,audio_url,instructor_note,reviewed_at")
         .eq("student_name", student),
@@ -863,7 +864,10 @@ export default function StudentDashboard() {
                         )}>
                           <Icon className={cn("w-3.5 h-3.5", meta?.color)} />
                         </div>
-                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/classroom?role=student&tab=hw`)}>
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
+                          const sid = a.session_id || sessions[0]?.id;
+                          navigate(`/classroom?${sid ? `sessionId=${sid}&` : ''}role=student&tab=hw`);
+                        }}>
                           <p className="text-xs font-semibold text-foreground truncate hover:text-navy transition-colors">{a.title}</p>
                           {a.due_at && <p className="text-[10px] text-muted-foreground">마감: {fmtDate(a.due_at)}</p>}
                         </div>
