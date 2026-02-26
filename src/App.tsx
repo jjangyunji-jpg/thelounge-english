@@ -12,6 +12,7 @@ import StudentSetup from "./pages/StudentSetup";
 import SetPassword from "./pages/SetPassword";
 import MakeupRequest from "./pages/MakeupRequest";
 import ClassNote from "./pages/ClassNote";
+import ForgotPassword from "./pages/ForgotPassword";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Vocabulary from "./pages/Vocabulary";
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/student-setup" element={<StudentSetup />} />
           <Route path="/makeup" element={<MakeupRequest />} />
           <Route path="/classnote" element={<ClassNote />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/vocabulary" element={<Vocabulary />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
