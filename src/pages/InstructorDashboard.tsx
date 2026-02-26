@@ -1268,36 +1268,53 @@ export default function InstructorDashboard() {
                   </details>
                 )}
 
-                {/* Today's sessions */}
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-gold" />
-                    오늘의 수업
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{todaySessions.length}건</span>
-                  </h3>
-                  {todaySessions.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-1">오늘 예정된 수업이 없습니다</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {todaySessions.map((s) => (
-                        <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
-                          <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground">{s.student_name}</p>
-                            <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
-                          </div>
-                          {s.meet_link && (
-                            <a href={`/t/classroom?sessionId=${s.id}`}>
-                              <Button size="sm" className="h-7 text-xs gap-1 bg-navy hover:bg-navy-light text-primary-foreground">
-                                <Video className="w-3 h-3" /> 교실
-                              </Button>
-                            </a>
-                          )}
+                {/* Today's schedule */}
+                {(() => {
+                  const todayMeetings = meetings.filter((m) => isToday(m.scheduled_at))
+                    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+                  const totalToday = todaySessions.length + todayMeetings.length;
+                  return (
+                    <div className="rounded-xl border border-border bg-card p-4">
+                      <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-gold" />
+                        오늘의 일정
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{totalToday}건</span>
+                      </h3>
+                      {totalToday === 0 ? (
+                        <p className="text-xs text-muted-foreground py-1">오늘 예정된 일정이 없습니다</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {todaySessions.map((s) => (
+                            <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
+                              <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground">{s.student_name}</p>
+                                <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
+                              </div>
+                              {s.meet_link && (
+                                <a href={`/t/classroom?sessionId=${s.id}`}>
+                                  <Button size="sm" className="h-7 text-xs gap-1 bg-navy hover:bg-navy-light text-primary-foreground">
+                                    <Video className="w-3 h-3" /> 교실
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                          {todayMeetings.map((m) => (
+                            <div key={m.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gold/30 bg-gold/5">
+                              <p className="text-xs font-bold text-gold-dark w-12 text-center flex-shrink-0">{fmtTime(m.scheduled_at)}</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground">업무 미팅</p>
+                                <p className="text-[11px] text-muted-foreground">{m.duration_minutes}분{m.notes ? ` · ${m.notes}` : ""}</p>
+                              </div>
+                              <Coffee className="w-4 h-4 text-gold" />
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {/* Student progress with donut charts */}
                 <div className="rounded-xl border border-border bg-card p-4">
