@@ -882,7 +882,7 @@ export default function InstructorDashboard() {
       supabase.from("homework_assignments").select("id,title,student_name"),
       supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
-      supabase.from("schedule_periods").select("*").eq("is_active", true).maybeSingle(),
+      supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,student_name,started_at,completed_at,score,total"),
       supabase.from("holiday_notices").select("date_start,date_end"),
     ]);
@@ -893,7 +893,11 @@ export default function InstructorDashboard() {
     setSubmissions((subRes.data || []) as HomeworkSubmission[]);
     setMeetings(meetRes.data || []);
     setVocabTests(vocabRes.data || []);
-    setPeriod(periodRes.data || null);
+    // Pick the period that contains today
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const periods = periodRes.data || [];
+    const currentPeriod = periods.find(p => p.start_date <= todayStr && p.end_date >= todayStr) || periods[0] || null;
+    setPeriod(currentPeriod);
     setHolidays(holRes.data || []);
     setLoading(false);
   }, []);
