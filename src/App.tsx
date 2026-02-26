@@ -31,14 +31,9 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/admin" element={<Admin />} />
-          <Route path="/classroom" element={<Classroom />} />
-          <Route path="/dashboard-student" element={<StudentDashboard />} />
           <Route path="/dashboard-instructor" element={<InstructorDashboard />} />
           <Route path="/set-password" element={<SetPassword />} />
           <Route path="/student-setup" element={<StudentSetup />} />
-          <Route path="/makeup" element={<MakeupRequest />} />
-          <Route path="/classnote" element={<ClassNote />} />
-          <Route path="/vocabulary" element={<Vocabulary />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           {/* /my/* 학생 전용 라우트 */}
           <Route path="/my/profile" element={<MyProfile />} />
@@ -46,6 +41,7 @@ const App = () => (
           <Route path="/my/vocabulary" element={<Vocabulary />} />
           <Route path="/my/classnote" element={<ClassNote />} />
           <Route path="/my/dashboard" element={<StudentDashboard />} />
+          <Route path="/my/makeup" element={<MakeupRequest />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

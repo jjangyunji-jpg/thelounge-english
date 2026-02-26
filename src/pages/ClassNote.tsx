@@ -100,7 +100,7 @@ export default function ClassNote() {
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
       <header className="sidebar-gradient text-sidebar-foreground px-4 py-3 flex items-center gap-4 shadow-lg">
         <button
-          onClick={() => navigate("/dashboard-student")}
+          onClick={() => navigate("/my/dashboard")}
           className="flex items-center gap-1.5 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors text-sm"
         >
           <ArrowLeft className="w-4 h-4" />

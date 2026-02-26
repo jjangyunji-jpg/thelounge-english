@@ -153,7 +153,7 @@ export default function Vocabulary() {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-5 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <button onClick={() => navigate("/dashboard-student")}
+          <button onClick={() => navigate("/my/dashboard")}
             className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
           >
             <ChevronLeft className="w-4 h-4 text-foreground" />
