@@ -285,9 +285,15 @@ export default function NotesEditor({
         editor.chain().focus().toggleCallout({ type: "info" }).run();
         break;
       case "suggestion": {
-        // Collapse selection to end, then toggle mark for subsequent typing
-        const { to } = editor.state.selection;
-        editor.chain().focus().setTextSelection(to).toggleSuggestion().run();
+        const isActive = editor.isActive("suggestion");
+        if (!isActive) {
+          // Collapse selection to end, then activate mark
+          const { to } = editor.state.selection;
+          editor.commands.setTextSelection(to);
+          editor.commands.setSuggestion();
+        } else {
+          editor.commands.unsetSuggestion();
+        }
         break;
       }
         break;
