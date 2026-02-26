@@ -1348,22 +1348,36 @@ export default function InstructorDashboard() {
                         <p className="text-xs text-muted-foreground py-1">오늘 예정된 일정이 없습니다</p>
                       ) : (
                         <div className="space-y-2">
-                          {todaySessions.map((s) => (
-                            <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
-                              <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground">{s.student_name}</p>
-                                <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
+                          {todaySessions.map((s) => {
+                            // Find previous session for this student (before today's session)
+                            const prevSession = sessions
+                              .filter((ps) => ps.student_name === s.student_name && new Date(ps.scheduled_at) < new Date(s.scheduled_at))
+                              .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0];
+
+                            return (
+                              <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
+                                <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground">{s.student_name}</p>
+                                  <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  {prevSession && (
+                                    <a href={`/t/classroom?sessionId=${prevSession.id}`}>
+                                      <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 px-2">
+                                        <ChevronLeft className="w-3 h-3" /> 지난 수업
+                                      </Button>
+                                    </a>
+                                  )}
+                                  <a href={`/t/classroom?sessionId=${s.id}`}>
+                                    <Button size="sm" className="h-7 text-[10px] gap-1 bg-navy hover:bg-navy-light text-primary-foreground px-2">
+                                      <FileText className="w-3 h-3" /> 이번 수업
+                                    </Button>
+                                  </a>
+                                </div>
                               </div>
-                              {s.meet_link && (
-                                <a href={`/t/classroom?sessionId=${s.id}`}>
-                                  <Button size="sm" className="h-7 text-xs gap-1 bg-navy hover:bg-navy-light text-primary-foreground">
-                                    <Video className="w-3 h-3" /> 교실
-                                  </Button>
-                                </a>
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                           {todayMeetings.map((m) => (
                             <div key={m.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gold/30 bg-gold/5">
                               <p className="text-xs font-bold text-gold-dark w-12 text-center flex-shrink-0">{fmtTime(m.scheduled_at)}</p>
