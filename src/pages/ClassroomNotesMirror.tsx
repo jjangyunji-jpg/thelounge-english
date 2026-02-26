@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Wifi } from "lucide-react";
+import { FileText } from "lucide-react";
 
 export default function ClassroomNotesMirror() {
   const [searchParams] = useSearchParams();
@@ -74,6 +74,9 @@ export default function ClassroomNotesMirror() {
     );
   }
 
+  // Check if content looks like HTML
+  const isHtml = notes.startsWith("<") || notes.includes("<p>") || notes.includes("<table");
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Compact header */}
@@ -101,13 +104,20 @@ export default function ClassroomNotesMirror() {
 
       {/* Notes content */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-8 py-6">
-        <div className="whitespace-pre-wrap text-base leading-relaxed text-foreground font-mono">
-          {notes || (
-            <span className="text-muted-foreground italic">
-              강사가 수업 노트를 작성하면 여기에 실시간으로 표시됩니다...
-            </span>
-          )}
-        </div>
+        {isHtml ? (
+          <div
+            className="tiptap notes-mirror-content text-base leading-relaxed text-foreground"
+            dangerouslySetInnerHTML={{ __html: notes }}
+          />
+        ) : (
+          <div className="whitespace-pre-wrap text-base leading-relaxed text-foreground font-mono">
+            {notes || (
+              <span className="text-muted-foreground italic">
+                강사가 수업 노트를 작성하면 여기에 실시간으로 표시됩니다...
+              </span>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

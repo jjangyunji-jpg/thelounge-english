@@ -199,18 +199,32 @@ export default function Classroom() {
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCorrectedText = useRef("");
 
-  const triggerAutoCorrect = useCallback(async (text: string) => {
-    if (!text.trim() || isAutoCorrecting) return;
+  const triggerAutoCorrect = useCallback(async (html: string) => {
+    // Extract plain text from HTML for typo correction
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    const plainText = tmp.textContent || tmp.innerText || "";
+    if (!plainText.trim() || isAutoCorrecting) return;
     setIsAutoCorrecting(true);
     try {
       const { data, error } = await supabase.functions.invoke("ai-correct", {
-        body: { text, mode: "typo" },
+        body: { text: plainText, mode: "typo" },
       });
-      if (!error && data?.corrected && data.corrected !== text) {
-        setNotes(data.corrected);
-        lastCorrectedText.current = data.corrected;
+      if (!error && data?.corrected && data.corrected !== plainText) {
+        // Replace text content in HTML while preserving structure
+        // Simple approach: replace in the HTML string
+        let correctedHtml = html;
+        const origWords = plainText.split(/\s+/);
+        const corrWords = (data.corrected as string).split(/\s+/);
+        for (let i = 0; i < origWords.length && i < corrWords.length; i++) {
+          if (origWords[i] !== corrWords[i] && origWords[i].length > 0) {
+            correctedHtml = correctedHtml.replace(origWords[i], corrWords[i]);
+          }
+        }
+        setNotes(correctedHtml);
+        lastCorrectedText.current = correctedHtml;
       } else {
-        lastCorrectedText.current = text;
+        lastCorrectedText.current = html;
       }
     } catch { /* silent */ }
     finally { setIsAutoCorrecting(false); }
