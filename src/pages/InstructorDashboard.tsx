@@ -955,6 +955,12 @@ export default function InstructorDashboard() {
   });
 
   // Period stats
+  const BASE_PAY = 11000;
+  const LEVEL_RATES: Record<string, number> = {
+    'A1': 14000, 'A2': 14000,
+    'B1': 19000, 'B2': 19000,
+    'C1': 24000, 'C2': 24000,
+  };
   const start = period ? new Date(period.start_date) : null;
   const end = period ? new Date(period.end_date) : null;
   const periodSessions = sessions.filter((s) => {
@@ -968,8 +974,12 @@ export default function InstructorDashboard() {
     return d >= start && d <= end;
   });
   const lessonHours = periodSessions.length;
-  const meetingHours = +(periodMeetings.reduce((s, m) => s + m.duration_minutes, 0) / 60).toFixed(1);
-  const totalAmount = lessonHours * instructor.lesson_rate + meetingHours * instructor.meeting_rate;
+  const lessonAmount = periodSessions.reduce((sum, s) => {
+    const levelRate = LEVEL_RATES[s.level] || 19000;
+    return sum + BASE_PAY + levelRate;
+  }, 0);
+  const meetingAmount = periodMeetings.length * BASE_PAY;
+  const totalAmount = lessonAmount + meetingAmount;
 
    // Selected date sessions + meetings + virtual schedules
     const selectedDateStr = selectedDate?.toDateString();
