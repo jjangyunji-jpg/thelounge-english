@@ -205,7 +205,19 @@ interface VirtualSchedule {
   level: string | null;
 }
 
-function buildVirtualSchedules(students: StudentFull[], year: number, month: number): Map<string, VirtualSchedule[]> {
+function buildHolidaySet(holidays: { date_start: string; date_end: string }[]): Set<string> {
+  const set = new Set<string>();
+  for (const h of holidays) {
+    const start = new Date(h.date_start + "T00:00:00");
+    const end = new Date(h.date_end + "T00:00:00");
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      set.add(d.toISOString().slice(0, 10));
+    }
+  }
+  return set;
+}
+
+function buildVirtualSchedules(students: StudentFull[], year: number, month: number, holidaySet: Set<string>): Map<string, VirtualSchedule[]> {
   const map = new Map<string, VirtualSchedule[]>();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   students.forEach((st) => {
@@ -218,11 +230,16 @@ function buildVirtualSchedules(students: StudentFull[], year: number, month: num
       if (targetDay === undefined) return;
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(year, month, d);
-        if (date.getDay() === targetDay) {
-          const key = date.toDateString();
-          if (!map.has(key)) map.set(key, []);
-          map.get(key)!.push({ student_name: st.student_name, time: slot.time, meet_link: st.meet_link, level: st.level });
-        }
+        if (date.getDay() !== targetDay) continue;
+        // Skip Tuesdays (정기 휴일)
+        if (date.getDay() === 2) continue;
+        // Skip holidays
+        const dateStr2 = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        if (holidaySet.has(dateStr2)) continue;
+
+        const key = date.toDateString();
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push({ student_name: st.student_name, time: slot.time, meet_link: st.meet_link, level: st.level });
       }
     });
   });
@@ -234,12 +251,14 @@ function BigCalendar({
   sessions,
   meetings,
   students,
+  holidays,
   selectedDate,
   onSelectDate,
 }: {
   sessions: ClassSession[];
   meetings: BusinessMeeting[];
   students: StudentFull[];
+  holidays: { date_start: string; date_end: string }[];
   selectedDate: Date | null;
   onSelectDate: (d: Date) => void;
 }) {
@@ -265,7 +284,8 @@ function BigCalendar({
   });
 
   // Virtual (recurring) schedules
-  const virtualByDate = buildVirtualSchedules(students, year, month);
+  const holidaySet = buildHolidaySet(holidays);
+  const virtualByDate = buildVirtualSchedules(students, year, month, holidaySet);
 
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
@@ -827,6 +847,7 @@ export default function InstructorDashboard() {
   const [meetings, setMeetings] = useState<BusinessMeeting[]>([]);
   const [vocabTests, setVocabTests] = useState<VocabTest[]>([]);
   const [period, setPeriod] = useState<SchedulePeriod | null>(null);
+  const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "students">("dashboard");
@@ -855,7 +876,7 @@ export default function InstructorDashboard() {
 
   const loadData = useCallback(async (ins: Instructor) => {
     setLoading(true);
-    const [studRes, sessRes, hwRes, subRes, meetRes, periodRes, vocabRes] = await Promise.all([
+    const [studRes, sessRes, hwRes, subRes, meetRes, periodRes, vocabRes, holRes] = await Promise.all([
       supabase.from("instructor_students").select("*").eq("instructor_id", ins.id),
       supabase.from("class_sessions").select("*").eq("instructor_name", ins.name).order("scheduled_at", { ascending: false }),
       supabase.from("homework_assignments").select("id,title,student_name"),
@@ -863,6 +884,7 @@ export default function InstructorDashboard() {
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).maybeSingle(),
       supabase.from("vocabulary_tests").select("id,student_name,started_at,completed_at,score,total"),
+      supabase.from("holiday_notices").select("date_start,date_end"),
     ]);
 
     setStudents(studRes.data || []);
@@ -872,6 +894,7 @@ export default function InstructorDashboard() {
     setMeetings(meetRes.data || []);
     setVocabTests(vocabRes.data || []);
     setPeriod(periodRes.data || null);
+    setHolidays(holRes.data || []);
     setLoading(false);
   }, []);
 
@@ -944,6 +967,13 @@ export default function InstructorDashboard() {
   // Virtual schedules for selected date
   const selectedDayVirtual = (() => {
     if (!selectedDate) return [];
+    // Skip Tuesdays
+    if (selectedDate.getDay() === 2) return [];
+    // Skip holidays
+    const selDateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+    const hSet = buildHolidaySet(holidays);
+    if (hSet.has(selDateStr)) return [];
+
     const dayName = ["일", "월", "화", "수", "목", "금", "토"][selectedDate.getDay()];
     const actualStudents = new Set(selectedDaySessions.map(s => s.student_name));
     const result: VirtualSchedule[] = [];
@@ -978,12 +1008,16 @@ export default function InstructorDashboard() {
 
     // Total scheduled this month from recurring schedules
     let totalMonthScheduled = 0;
+    const hSet = buildHolidaySet(holidays);
     try {
       const slots: ScheduleSlot[] = studentSchedules ? JSON.parse(studentSchedules) : [];
       if (Array.isArray(slots)) {
         const daysInMonth = monthEnd.getDate();
         for (let d = 1; d <= daysInMonth; d++) {
           const date = new Date(now.getFullYear(), now.getMonth(), d);
+          if (date.getDay() === 2) continue; // 화요일 제외
+          const dStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          if (hSet.has(dStr)) continue; // 공휴일 제외
           const dayName = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
           if (slots.some((sl) => sl.day === dayName)) totalMonthScheduled++;
         }
@@ -1106,6 +1140,7 @@ export default function InstructorDashboard() {
                     sessions={sessions}
                     meetings={meetings}
                     students={students}
+                    holidays={holidays}
                     selectedDate={selectedDate}
                     onSelectDate={setSelectedDate}
                   />
