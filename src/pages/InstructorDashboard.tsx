@@ -851,6 +851,7 @@ export default function InstructorDashboard() {
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement">("dashboard");
+  const [durationOverrides, setDurationOverrides] = useState<Record<string, number>>({});
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
@@ -985,35 +986,40 @@ export default function InstructorDashboard() {
   const lessonHours = periodSessions.length;
 
   // Settlement items for the table
-  type SettlementRow = { date: Date; type: 'lesson' | 'meeting'; description: string; time: string; pay: number; };
+  type SettlementRow = { key: string; date: Date; type: 'lesson' | 'meeting'; description: string; durationHours: number; payPerHour: number; };
   const settlementRows: SettlementRow[] = [];
   completedPeriodSessions.forEach((s) => {
     const levelRate = LEVEL_RATES[s.level] || 19000;
-    const pay = BASE_PAY + levelRate;
+    const key = `lesson-${s.id}`;
+    const durationHours = durationOverrides[key] ?? 1;
     settlementRows.push({
+      key,
       date: new Date(s.scheduled_at),
       type: 'lesson',
       description: `${s.student_name} 수업 (${getLevelCategory(s.level)})`,
-      time: fmtTime(s.scheduled_at),
-      pay,
+      durationHours,
+      payPerHour: BASE_PAY + levelRate,
     });
   });
   completedPeriodMeetings.forEach((m) => {
-    const meetingPay = BASE_PAY + Math.round((m.duration_minutes / 60) * (instructor?.meeting_rate ?? 20000));
+    const key = `meeting-${m.id}`;
+    const durationHours = durationOverrides[key] ?? (m.duration_minutes / 60);
     settlementRows.push({
+      key,
       date: new Date(m.scheduled_at),
       type: 'meeting',
-      description: `${m.notes || '업무 미팅'} (${m.duration_minutes}분)`,
-      time: fmtTime(m.scheduled_at),
-      pay: meetingPay,
+      description: m.notes || '업무 미팅',
+      durationHours,
+      payPerHour: BASE_PAY + (instructor?.meeting_rate ?? 20000),
     });
   });
   settlementRows.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   let cumulative = 0;
   const settlementWithCumulative = settlementRows.map((row) => {
-    cumulative += row.pay;
-    return { ...row, cumulative };
+    const pay = Math.round(row.durationHours * row.payPerHour);
+    cumulative += pay;
+    return { ...row, pay, cumulative };
   });
 
   const totalAmount = cumulative;
@@ -1600,7 +1606,7 @@ export default function InstructorDashboard() {
                       </tr>
                     ) : (
                       settlementWithCumulative.map((row, idx) => (
-                        <tr key={idx} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                        <tr key={row.key} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-2.5 text-xs text-foreground">
                             {row.date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" })}
                           </td>
@@ -1613,7 +1619,17 @@ export default function InstructorDashboard() {
                             </span>
                           </td>
                           <td className="px-4 py-2.5 text-xs text-foreground">{row.description}</td>
-                          <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.time}</td>
+                          <td className="px-4 py-2.5">
+                            <select
+                              className="text-xs bg-transparent border border-border rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              value={row.durationHours}
+                              onChange={(e) => setDurationOverrides(prev => ({ ...prev, [row.key]: parseFloat(e.target.value) }))}
+                            >
+                              {[0.5, 1, 1.5, 2, 2.5, 3].map(h => (
+                                <option key={h} value={h}>{h}시간</option>
+                              ))}
+                            </select>
+                          </td>
                           <td className="px-4 py-2.5 text-xs text-right font-medium text-foreground">₩{row.pay.toLocaleString()}</td>
                           <td className="px-4 py-2.5 text-xs text-right font-bold text-success">₩{row.cumulative.toLocaleString()}</td>
                         </tr>
