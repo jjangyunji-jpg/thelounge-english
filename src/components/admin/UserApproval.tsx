@@ -48,6 +48,19 @@ const initialSetupForm: StudentSetupForm = {
   phone: "", level: "B1", instructor: "", startDate: "", extraLessons: 0, schedules: [],
 };
 
+interface InstructorSetupForm {
+  phone: string;
+  joinDate: string;
+  gender: string;
+  age: string;
+  education: string;
+  bioNotes: string;
+}
+
+const initialInstructorForm: InstructorSetupForm = {
+  phone: "", joinDate: "", gender: "", age: "", education: "", bioNotes: "",
+};
+
 interface Props {
   onNavigate?: (tab: string) => void;
 }
@@ -65,6 +78,12 @@ export default function UserApproval({ onNavigate }: Props) {
   const [setupForm, setSetupForm] = useState<StudentSetupForm>(initialSetupForm);
   const [instructorNames, setInstructorNames] = useState<string[]>([]);
   const [savingSetup, setSavingSetup] = useState(false);
+
+  // Instructor setup dialog
+  const [instrDialogOpen, setInstrDialogOpen] = useState(false);
+  const [instrUser, setInstrUser] = useState<PendingUser | null>(null);
+  const [instrForm, setInstrForm] = useState<InstructorSetupForm>(initialInstructorForm);
+  const [savingInstr, setSavingInstr] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -107,10 +126,13 @@ export default function UserApproval({ onNavigate }: Props) {
     setActing(null);
 
     if (user.role === "student") {
-      // Open student setup dialog
       setSetupUser(user);
       setSetupForm(initialSetupForm);
       setSetupDialogOpen(true);
+    } else if (user.role === "instructor") {
+      setInstrUser(user);
+      setInstrForm(initialInstructorForm);
+      setInstrDialogOpen(true);
     }
 
     load();
@@ -170,6 +192,44 @@ export default function UserApproval({ onNavigate }: Props) {
     setSetupDialogOpen(false);
     setSetupUser(null);
     onNavigate?.("students");
+  };
+
+  const handleSaveInstructorSetup = async () => {
+    if (!instrUser) return;
+    setSavingInstr(true);
+
+    // Find the instructor record by user_id
+    const { data: instrData } = await supabase
+      .from("instructors")
+      .select("id")
+      .eq("user_id", instrUser.user_id)
+      .maybeSingle();
+
+    if (instrData) {
+      const { error } = await supabase
+        .from("instructors")
+        .update({
+          phone: instrForm.phone || null,
+          join_date: instrForm.joinDate || null,
+          gender: instrForm.gender || null,
+          age: instrForm.age ? parseInt(instrForm.age) : null,
+          education: instrForm.education || null,
+          bio_notes: instrForm.bioNotes || null,
+        })
+        .eq("id", instrData.id);
+
+      if (error) {
+        toast({ title: "강사 정보 저장 실패", description: error.message, variant: "destructive" });
+        setSavingInstr(false);
+        return;
+      }
+    }
+
+    toast({ title: `${instrUser.display_name} 강사 정보 등록 완료 ✓` });
+    setInstrDialogOpen(false);
+    setInstrUser(null);
+    setSavingInstr(false);
+    onNavigate?.("instructors");
   };
 
   const roleLabel = (r: string) => r === "student" ? "학생" : r === "instructor" ? "강사" : r;
@@ -407,6 +467,105 @@ export default function UserApproval({ onNavigate }: Props) {
             >
               {savingSetup && <Loader2 className="w-4 h-4 animate-spin" />}
               저장 후 수강생 관리로 이동
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Instructor Setup Dialog */}
+      <Dialog open={instrDialogOpen} onOpenChange={(open) => {
+        if (!open) { setInstrDialogOpen(false); setInstrUser(null); }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>강사 기본 정보 설정</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{instrUser?.display_name}</span> 님의 정보를 설정합니다.
+          </p>
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">연락처</Label>
+                <Input
+                  placeholder="010-0000-0000"
+                  className="h-9"
+                  value={instrForm.phone}
+                  onChange={(e) => setInstrForm(p => ({ ...p, phone: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">입사일</Label>
+                <Input
+                  type="date"
+                  className="h-9"
+                  value={instrForm.joinDate}
+                  onChange={(e) => setInstrForm(p => ({ ...p, joinDate: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">성별</Label>
+                <Select
+                  value={instrForm.gender}
+                  onValueChange={(v) => setInstrForm(p => ({ ...p, gender: v }))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="남">남</SelectItem>
+                    <SelectItem value="여">여</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">나이</Label>
+                <Input
+                  type="number"
+                  placeholder="30"
+                  className="h-9"
+                  value={instrForm.age}
+                  onChange={(e) => setInstrForm(p => ({ ...p, age: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">최종학력</Label>
+                <Select
+                  value={instrForm.education}
+                  onValueChange={(v) => setInstrForm(p => ({ ...p, education: v }))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="고졸">고졸</SelectItem>
+                    <SelectItem value="전문대졸">전문대졸</SelectItem>
+                    <SelectItem value="대졸">대졸</SelectItem>
+                    <SelectItem value="석사">석사</SelectItem>
+                    <SelectItem value="박사">박사</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">비고</Label>
+              <Input
+                placeholder="특이사항을 입력하세요"
+                className="h-9"
+                value={instrForm.bioNotes}
+                onChange={(e) => setInstrForm(p => ({ ...p, bioNotes: e.target.value }))}
+              />
+            </div>
+
+            <Button
+              className="w-full gap-2 bg-navy hover:bg-navy-light text-primary-foreground"
+              disabled={savingInstr}
+              onClick={handleSaveInstructorSetup}
+            >
+              {savingInstr && <Loader2 className="w-4 h-4 animate-spin" />}
+              저장 후 강사 관리로 이동
             </Button>
           </div>
         </DialogContent>

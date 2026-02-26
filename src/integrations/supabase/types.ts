@@ -280,9 +280,14 @@ export type Database = {
       instructors: {
         Row: {
           active: boolean
+          age: number | null
+          bio_notes: string | null
           created_at: string
+          education: string | null
           email: string
+          gender: string | null
           id: string
+          join_date: string | null
           lesson_rate: number
           meeting_rate: number
           name: string
@@ -292,9 +297,14 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          age?: number | null
+          bio_notes?: string | null
           created_at?: string
+          education?: string | null
           email: string
+          gender?: string | null
           id?: string
+          join_date?: string | null
           lesson_rate?: number
           meeting_rate?: number
           name: string
@@ -304,9 +314,14 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          age?: number | null
+          bio_notes?: string | null
           created_at?: string
+          education?: string | null
           email?: string
+          gender?: string | null
           id?: string
+          join_date?: string | null
           lesson_rate?: number
           meeting_rate?: number
           name?: string
