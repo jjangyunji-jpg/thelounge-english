@@ -13,10 +13,10 @@ const THIS_MONTH = "2026년 2월";
 const aiUsage = [
   {
     service: "단어·유의어 검색",
-    model: "openai/gpt-5-mini",
+    model: "google/gemini-2.5-flash-lite",
     calls: 142,
     tokens: 113_600,
-    estimatedKRW: 1_840,
+    estimatedKRW: 460,
     icon: BookOpen,
     color: "text-navy",
     bg: "bg-navy/8",
@@ -24,10 +24,10 @@ const aiUsage = [
   },
   {
     service: "문장 교정 분석",
-    model: "openai/gpt-5-mini",
+    model: "google/gemini-3-flash-preview",
     calls: 98,
     tokens: 78_400,
-    estimatedKRW: 1_270,
+    estimatedKRW: 390,
     icon: RefreshCw,
     color: "text-gold-dark",
     bg: "bg-gold/8",
@@ -54,7 +54,7 @@ const fixedCosts = [
 ];
 
 const monthlyLog = [
-  { date: "2026-02-19", event: "단어 검색 API 모델 교체 (gemini → gpt-5-mini)", type: "변경" },
+  { date: "2026-02-19", event: "단어 검색 모델 gemini-2.5-flash-lite로 최종 변경", type: "변경" },
   { date: "2026-02-18", event: "STT 패널 오류 수정 및 재배포", type: "수정" },
   { date: "2026-02-15", event: "단어·유의어 검색 기능 출시", type: "신규" },
   { date: "2026-02-10", event: "AI 문장 교정 기능 출시", type: "신규" },
