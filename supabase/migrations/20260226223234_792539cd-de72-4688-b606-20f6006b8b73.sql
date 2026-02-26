@@ -1,0 +1,1 @@
+ALTER TABLE public.instructors ADD COLUMN meet_link text DEFAULT NULL;

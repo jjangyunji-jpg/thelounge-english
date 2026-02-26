@@ -289,6 +289,7 @@ export type Database = {
           id: string
           join_date: string | null
           lesson_rate: number
+          meet_link: string | null
           meeting_rate: number
           name: string
           phone: string | null
@@ -306,6 +307,7 @@ export type Database = {
           id?: string
           join_date?: string | null
           lesson_rate?: number
+          meet_link?: string | null
           meeting_rate?: number
           name: string
           phone?: string | null
@@ -323,6 +325,7 @@ export type Database = {
           id?: string
           join_date?: string | null
           lesson_rate?: number
+          meet_link?: string | null
           meeting_rate?: number
           name?: string
           phone?: string | null
