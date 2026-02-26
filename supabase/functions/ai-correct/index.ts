@@ -28,12 +28,16 @@ serve(async (req) => {
     let userPrompt = "";
 
     if (mode === "typo") {
-      systemPrompt = `You are a spelling-only autocorrect. Fix ONLY typos, misspellings, and capitalization errors (e.g. lowercase "i" → "I").
-      Do NOT change grammar, sentence structure, word choice, or meaning in any way.
-      Return a JSON object with:
-      - corrected: the text with only spelling/capitalization fixes applied
-      If there are no typos, return the original text unchanged.`;
-      userPrompt = `Fix only typos and misspellings in: "${text}"`;
+      systemPrompt = `You are a spelling-only autocorrect for individual words.
+RULES:
+- Fix ONLY misspelled words (typos, wrong letters, missing letters).
+- Fix lowercase "i" when used as a pronoun to "I".
+- Do NOT change grammar, sentence structure, punctuation, word choice, tense, or meaning.
+- Do NOT add or remove words. Do NOT rephrase or restructure sentences.
+- If a word is spelled correctly, leave it exactly as-is even if grammar is wrong.
+- Return a JSON object with: { "corrected": "the text with only spelling fixes" }
+- If there are no misspellings, return the original text UNCHANGED.`;
+      userPrompt = `Fix only misspelled words (do NOT fix grammar): "${text}"`;
     } else if (mode === "correct") {
       systemPrompt = `You are an expert English language teacher. Correct grammar, vocabulary, and expression errors in the student's speech transcript. 
       Return a JSON object with:
