@@ -753,7 +753,7 @@ export default function StudentManagement() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{student.instructor} · {student.phone}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">담당 강사 : {student.instructor || "미지정"}{student.phone ? ` · ${student.phone}` : ""}</p>
                 </div>
                 <div className="hidden md:flex items-center gap-5 text-sm">
                   <div className="text-center">
