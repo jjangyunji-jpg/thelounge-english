@@ -284,8 +284,12 @@ export default function NotesEditor({
       case "callout":
         editor.chain().focus().toggleCallout({ type: "info" }).run();
         break;
-      case "suggestion":
-        editor.chain().focus().toggleSuggestion().run();
+      case "suggestion": {
+        // Collapse selection to end, then toggle mark for subsequent typing
+        const { to } = editor.state.selection;
+        editor.chain().focus().setTextSelection(to).toggleSuggestion().run();
+        break;
+      }
         break;
     }
   }, [editor]);
