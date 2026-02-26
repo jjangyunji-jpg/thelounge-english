@@ -293,11 +293,28 @@ export default function NotesEditor({
         } else {
           const { from, to } = editor.state.selection;
           if (from !== to) {
-            // Has selection → mark it as deleted (red strikethrough), then activate blue mode
-            editor.chain().focus().setSuggestionDelete().setTextSelection(to).setSuggestion().run();
+            // Step 1: Apply red strikethrough to selected text
+            editor.chain().focus().setSuggestionDelete().run();
+            // Step 2: Move cursor to end of selection
+            editor.commands.setTextSelection(to);
+            // Step 3: Set storedMarks to only have suggestion (blue), NOT suggestionDelete
+            const suggestionMarkType = editor.schema.marks.suggestion;
+            editor.view.dispatch(
+              editor.state.tr.setStoredMarks([suggestionMarkType.create()])
+            );
           } else {
             // No selection → just toggle blue mode
-            editor.commands.setSuggestion();
+            const suggestionMarkType = editor.schema.marks.suggestion;
+            const hasSuggestionStored = editor.state.storedMarks?.some(
+              (m) => m.type === suggestionMarkType
+            );
+            if (hasSuggestionStored) {
+              editor.view.dispatch(editor.state.tr.setStoredMarks([]));
+            } else {
+              editor.view.dispatch(
+                editor.state.tr.setStoredMarks([suggestionMarkType.create()])
+              );
+            }
           }
         }
         break;
