@@ -152,6 +152,22 @@ export default function NotesEditor({
           return false;
         }
 
+        // <- + space → ←
+        if (event.key === " ") {
+          setTimeout(() => {
+            if (!editor) return;
+            const pos = editor.state.selection.from;
+            if (pos >= 3) {
+              const t3 = editor.state.doc.textBetween(pos - 3, pos, "");
+              if (t3 === "<- ") {
+                editor.chain().focus().deleteRange({ from: pos - 3, to: pos }).insertContent("← ").run();
+                return;
+              }
+            }
+          }, 0);
+          return false;
+        }
+
         // -- → — (em dash)
         if (event.key === "-") {
           setTimeout(() => {
