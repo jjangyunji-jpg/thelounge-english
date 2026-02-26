@@ -18,15 +18,33 @@ interface Instructor {
   lesson_rate: number;
   meeting_rate: number;
   user_id: string | null;
+  join_date: string | null;
+  gender: string | null;
+  age: number | null;
+  education: string | null;
+  bio_notes: string | null;
 }
+
+// 급여 체계: 기본급 11,000 + 레벨별 수당
+const BASE_SALARY = 11000;
+const LEVEL_BONUS: Record<string, number> = {
+  "초급": 14000,  // A1, A2
+  "중급": 19000,  // B1, B2
+  "고급": 24000,  // C1, C2
+};
+
+const getLevelCategory = (level: string): string => {
+  if (["A1", "A2"].includes(level)) return "초급";
+  if (["B1", "B2"].includes(level)) return "중급";
+  if (["C1", "C2"].includes(level)) return "고급";
+  return "중급";
+};
 
 interface NewInstructorForm {
   name: string;
   email: string;
   password: string;
   phone: string;
-  lessonRate: number;
-  meetingRate: number;
 }
 
 export default function InstructorManagement() {
@@ -35,7 +53,7 @@ export default function InstructorManagement() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editRates, setEditRates] = useState({ lesson_rate: 0, meeting_rate: 0 });
+  const [editFields, setEditFields] = useState({ phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "" });
   const [savingId, setSavingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,8 +63,6 @@ export default function InstructorManagement() {
     email: "",
     password: "",
     phone: "",
-    lessonRate: 30000,
-    meetingRate: 20000,
   });
 
   useEffect(() => {
@@ -85,21 +101,43 @@ export default function InstructorManagement() {
 
   const startEdit = (ins: Instructor) => {
     setEditingId(ins.id);
-    setEditRates({ lesson_rate: ins.lesson_rate, meeting_rate: ins.meeting_rate });
+    setEditFields({
+      phone: ins.phone || "",
+      join_date: ins.join_date || "",
+      gender: ins.gender || "",
+      age: ins.age ? String(ins.age) : "",
+      education: ins.education || "",
+      bio_notes: ins.bio_notes || "",
+    });
   };
 
   const saveEdit = async (id: string) => {
     setSavingId(id);
     const { error } = await supabase
       .from("instructors")
-      .update({ lesson_rate: editRates.lesson_rate, meeting_rate: editRates.meeting_rate })
+      .update({
+        phone: editFields.phone || null,
+        join_date: editFields.join_date || null,
+        gender: editFields.gender || null,
+        age: editFields.age ? parseInt(editFields.age) : null,
+        education: editFields.education || null,
+        bio_notes: editFields.bio_notes || null,
+      })
       .eq("id", id);
 
     if (error) {
       toast({ title: "저장 실패", description: error.message, variant: "destructive" });
     } else {
       setInstructors((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, ...editRates } : i))
+        prev.map((i) => (i.id === id ? {
+          ...i,
+          phone: editFields.phone || null,
+          join_date: editFields.join_date || null,
+          gender: editFields.gender || null,
+          age: editFields.age ? parseInt(editFields.age) : null,
+          education: editFields.education || null,
+          bio_notes: editFields.bio_notes || null,
+        } : i))
       );
       setEditingId(null);
       toast({ title: "저장 완료" });
@@ -130,8 +168,6 @@ export default function InstructorManagement() {
           email: form.email,
           password: form.password,
           phone: form.phone,
-          lessonRate: form.lessonRate,
-          meetingRate: form.meetingRate,
         }),
       }
     );
@@ -142,7 +178,7 @@ export default function InstructorManagement() {
     } else {
       toast({ title: "강사 계정 생성 완료", description: `${form.name} 강사가 추가되었습니다.` });
       setShowAddModal(false);
-      setForm({ name: "", email: "", password: "", phone: "", lessonRate: 30000, meetingRate: 20000 });
+      setForm({ name: "", email: "", password: "", phone: "" });
       fetchInstructors();
     }
     setCreating(false);
@@ -236,14 +272,10 @@ export default function InstructorManagement() {
                 <p className="text-xs text-muted-foreground mt-0.5">{ins.email}</p>
               </div>
 
-              <div className="hidden md:flex items-center gap-6 text-sm">
+              <div className="hidden md:flex items-center gap-4 text-sm">
                 <div className="text-center">
-                  <p className="font-semibold text-foreground">₩{ins.lesson_rate.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">수업 시급</p>
-                </div>
-                <div className="text-center">
-                  <p className="font-semibold text-foreground">₩{ins.meeting_rate.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">미팅 시급</p>
+                  <p className="font-semibold text-foreground">₩{BASE_SALARY.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">기본급</p>
                 </div>
               </div>
 
@@ -257,89 +289,88 @@ export default function InstructorManagement() {
             {expandedId === ins.id && (
               <div className="border-t border-border bg-muted/20 p-4 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Rate settings */}
+                  {/* Salary info */}
                   <div className="p-4 rounded-lg bg-card border border-border">
-                    <h4 className="text-sm font-semibold text-foreground mb-3">💰 시급 설정</h4>
+                    <h4 className="text-sm font-semibold text-foreground mb-3">💰 급여 체계</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-muted-foreground">기본급</span>
+                        <span className="text-sm font-semibold text-foreground">₩{BASE_SALARY.toLocaleString()}</span>
+                      </div>
+                      {Object.entries(LEVEL_BONUS).map(([level, bonus]) => (
+                        <div key={level} className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">{level}반 수업 수당</span>
+                          <span className="text-sm font-medium text-foreground">+₩{bonus.toLocaleString()}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-border pt-2 mt-2">
+                        {Object.entries(LEVEL_BONUS).map(([level, bonus]) => (
+                          <div key={level} className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{level}반 합계</span>
+                            <span className="font-semibold text-navy">₩{(BASE_SALARY + bonus).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Personal info */}
+                  <div className="p-4 rounded-lg bg-card border border-border">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-foreground">📋 강사 정보</h4>
+                      {editingId !== ins.id && (
+                        <Button size="sm" variant="outline" className="h-6 text-xs gap-1" onClick={() => startEdit(ins)}>
+                          <Edit2 className="w-3 h-3" /> 수정
+                        </Button>
+                      )}
+                    </div>
                     {editingId === ins.id ? (
-                      <div className="space-y-3">
-                        <div>
-                          <Label className="text-xs text-muted-foreground">수업 시급 (원/시간)</Label>
-                          <Input
-                            type="number"
-                            value={editRates.lesson_rate}
-                            onChange={(e) =>
-                              setEditRates((r) => ({ ...r, lesson_rate: Number(e.target.value) }))
-                            }
-                            className="mt-1 h-8 text-sm"
-                          />
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">연락처</Label>
+                            <Input className="h-7 text-xs mt-0.5" value={editFields.phone} onChange={(e) => setEditFields(f => ({ ...f, phone: e.target.value }))} />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">입사일</Label>
+                            <Input type="date" className="h-7 text-xs mt-0.5" value={editFields.join_date} onChange={(e) => setEditFields(f => ({ ...f, join_date: e.target.value }))} />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">성별</Label>
+                            <Input className="h-7 text-xs mt-0.5" placeholder="남/여" value={editFields.gender} onChange={(e) => setEditFields(f => ({ ...f, gender: e.target.value }))} />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">나이</Label>
+                            <Input type="number" className="h-7 text-xs mt-0.5" value={editFields.age} onChange={(e) => setEditFields(f => ({ ...f, age: e.target.value }))} />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">최종학력</Label>
+                            <Input className="h-7 text-xs mt-0.5" value={editFields.education} onChange={(e) => setEditFields(f => ({ ...f, education: e.target.value }))} />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">비고</Label>
+                            <Input className="h-7 text-xs mt-0.5" value={editFields.bio_notes} onChange={(e) => setEditFields(f => ({ ...f, bio_notes: e.target.value }))} />
+                          </div>
                         </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">미팅 시급 (원/시간)</Label>
-                          <Input
-                            type="number"
-                            value={editRates.meeting_rate}
-                            onChange={(e) =>
-                              setEditRates((r) => ({ ...r, meeting_rate: Number(e.target.value) }))
-                            }
-                            className="mt-1 h-8 text-sm"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => saveEdit(ins.id)}
-                            disabled={savingId === ins.id}
-                            className="bg-navy text-primary-foreground hover:bg-navy-light h-7 text-xs"
-                          >
-                            {savingId === ins.id && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-                            저장
+                        <div className="flex gap-2 pt-1">
+                          <Button size="sm" onClick={() => saveEdit(ins.id)} disabled={savingId === ins.id} className="bg-navy text-primary-foreground hover:bg-navy-light h-7 text-xs">
+                            {savingId === ins.id && <Loader2 className="w-3 h-3 animate-spin mr-1" />}저장
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="h-7 text-xs">
-                            취소
-                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="h-7 text-xs">취소</Button>
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">수업 시급</span>
-                          <span className="text-sm font-semibold text-foreground">₩{ins.lesson_rate.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">미팅 시급</span>
-                          <span className="text-sm font-semibold text-foreground">₩{ins.meeting_rate.toLocaleString()}</span>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full mt-2 h-7 text-xs gap-1.5"
-                          onClick={() => startEdit(ins)}
-                        >
-                          <Edit2 className="w-3 h-3" /> 수정
-                        </Button>
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">이메일</span><span className="text-xs font-medium">{ins.email}</span></div>
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">연락처</span><span className="text-xs font-medium">{ins.phone || "—"}</span></div>
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">입사일</span><span className="text-xs font-medium">{ins.join_date || "—"}</span></div>
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">성별</span><span className="text-xs font-medium">{ins.gender || "—"}</span></div>
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">나이</span><span className="text-xs font-medium">{ins.age || "—"}</span></div>
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">최종학력</span><span className="text-xs font-medium">{ins.education || "—"}</span></div>
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">비고</span><span className="text-xs font-medium">{ins.bio_notes || "—"}</span></div>
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">계정</span><span className={`text-xs font-medium ${ins.user_id ? "text-success" : "text-muted-foreground"}`}>{ins.user_id ? "연결됨" : "미연결"}</span></div>
                       </div>
                     )}
-                  </div>
-
-                  {/* Contact info */}
-                  <div className="p-4 rounded-lg bg-card border border-border">
-                    <h4 className="text-sm font-semibold text-foreground mb-3">📋 연락처 정보</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-xs text-muted-foreground">이메일</span>
-                        <span className="text-xs font-medium">{ins.email}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-xs text-muted-foreground">전화번호</span>
-                        <span className="text-xs font-medium">{ins.phone || "—"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-xs text-muted-foreground">로그인 계정</span>
-                        <span className={`text-xs font-medium ${ins.user_id ? "text-success" : "text-muted-foreground"}`}>
-                          {ins.user_id ? "연결됨" : "미연결"}
-                        </span>
-                      </div>
-                    </div>
                   </div>
                 </div>
 
@@ -422,24 +453,6 @@ export default function InstructorManagement() {
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                   placeholder="010-0000-0000"
-                  className="h-9"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">수업 시급 (원)</Label>
-                <Input
-                  type="number"
-                  value={form.lessonRate}
-                  onChange={(e) => setForm((f) => ({ ...f, lessonRate: Number(e.target.value) }))}
-                  className="h-9"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">미팅 시급 (원)</Label>
-                <Input
-                  type="number"
-                  value={form.meetingRate}
-                  onChange={(e) => setForm((f) => ({ ...f, meetingRate: Number(e.target.value) }))}
                   className="h-9"
                 />
               </div>
