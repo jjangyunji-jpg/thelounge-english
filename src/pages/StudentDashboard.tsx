@@ -367,6 +367,7 @@ export default function StudentDashboard() {
 
   // ── 인증: auth 세션 → student_name 로드, 없으면 URL 파라미터 폴백 ──
   const [authStudent, setAuthStudent] = useState<string | null>(null);
+  const [authNickname, setAuthNickname] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const searchParams = new URLSearchParams(window.location.search);
   const urlStudent = searchParams.get("name");
@@ -376,11 +377,12 @@ export default function StudentDashboard() {
       if (session) {
         const { data: profile } = await supabase
           .from("student_profiles")
-          .select("student_name")
+          .select("student_name, nickname")
           .eq("user_id", session.user.id)
           .maybeSingle();
         if (profile?.student_name && profile.student_name.trim() !== "") {
           setAuthStudent(profile.student_name);
+          setAuthNickname(profile.nickname || null);
         } else if (!profile) {
           // 로그인은 됐지만 student_profiles 없으면 setup으로
           navigate("/student-setup");
@@ -604,7 +606,7 @@ export default function StudentDashboard() {
           </div>
           <div>
             <p className="font-bold text-foreground text-sm leading-none">더라운지영어</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{student} 님</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{authNickname || student} 님</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
