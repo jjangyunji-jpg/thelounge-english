@@ -105,14 +105,16 @@ export default function Classroom() {
       let sessionData: any = null;
       // Try to get student_name from auth session for filtering
       let studentNameFilter: string | null = null;
+      let nicknameValue: string | null = null;
       const { data: { session: authSession } } = await supabase.auth.getSession();
       if (authSession) {
         const { data: profile } = await supabase
           .from("student_profiles")
-          .select("student_name")
+          .select("student_name, nickname")
           .eq("user_id", authSession.user.id)
           .maybeSingle();
         if (profile?.student_name) studentNameFilter = profile.student_name;
+        nicknameValue = profile?.nickname || null;
       }
 
       if (!urlSessionId) {
@@ -137,7 +139,7 @@ export default function Classroom() {
       if (sessionData) {
         setSession({
           sessionId: sessionData.id,
-          studentName: sessionData.student_name,
+          studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
           instructorName: sessionData.instructor_name,
           level: sessionData.level,
           scheduledAt: new Date(sessionData.scheduled_at),
@@ -161,7 +163,7 @@ export default function Classroom() {
             .maybeSingle();
           setSession(prev => ({
             ...prev,
-            studentName,
+            studentName: nicknameValue || studentName,
             level: isData?.level ?? prev.level,
             instructorName: isData?.instructor_name ?? prev.instructorName,
             meetLink: isData?.meet_link ?? "",
