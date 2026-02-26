@@ -296,7 +296,16 @@ export default function Classroom() {
   };
 
   const handleEndClass = () => { setClassState("ended"); setMeetConnected(false); };
-  const handleJoinMeet = () => { if (session.meetLink) window.open(session.meetLink, "_blank", "noopener,noreferrer"); setMeetConnected(true); };
+  const handleLeaveClass = () => { setMeetConnected(false); setClassState("ready"); };
+  const handleJoinMeet = () => {
+    if (session.meetLink) {
+      const w = window.open(session.meetLink, "_blank", "noopener,noreferrer");
+      if (!w) {
+        toast({ title: "팝업이 차단됐습니다", description: "아래 Meet 링크를 직접 복사해서 새 탭에 붙여넣어주세요.", variant: "destructive" });
+      }
+    }
+    setMeetConnected(true);
+  };
 
   const handleSave = async () => {
     if (!notes.trim()) return;
@@ -475,11 +484,19 @@ export default function Classroom() {
               <ExternalLink className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Meet 재접속</span>
             </Button>
-            <Button size="sm" onClick={handleEndClass}
-              className="h-8 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-1.5"
-            >
-              <VideoOff className="w-3.5 h-3.5" />{role === "instructor" ? "수업 종료" : "수업 나가기"}
-            </Button>
+            {role === "instructor" ? (
+              <Button size="sm" onClick={handleEndClass}
+                className="h-8 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-1.5"
+              >
+                <VideoOff className="w-3.5 h-3.5" />수업 종료
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" onClick={handleLeaveClass}
+                className="h-8 text-xs border-destructive/50 text-destructive hover:bg-destructive/10 gap-1.5"
+              >
+                <VideoOff className="w-3.5 h-3.5" />수업 나가기
+              </Button>
+            )}
           </div>
         )}
 
@@ -520,12 +537,14 @@ export default function Classroom() {
           <span className="text-sm text-muted-foreground">
             수업이 종료되었습니다. 총 수업 시간: <span className="font-bold text-foreground">{formatDuration(elapsed)}</span>
           </span>
-          <Button size="sm" onClick={handleExtractVocab} disabled={extracting || extracted || !notes.trim()}
-            className="gap-2 bg-navy hover:bg-navy-light text-primary-foreground text-xs h-8"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            {extracting ? "AI 단어 추출 중..." : extracted ? "단어 추출 완료 ✓" : "수업 노트에서 단어 추출"}
-          </Button>
+          {role === "instructor" && (
+            <Button size="sm" onClick={handleExtractVocab} disabled={extracting || extracted || !notes.trim()}
+              className="gap-2 bg-navy hover:bg-navy-light text-primary-foreground text-xs h-8"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {extracting ? "AI 단어 추출 중..." : extracted ? "단어 추출 완료 ✓" : "수업 노트에서 단어 추출"}
+            </Button>
+          )}
         </div>
       )}
 
