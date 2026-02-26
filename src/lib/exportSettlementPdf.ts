@@ -56,7 +56,7 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
   const end = new Date(periodEnd);
   const now = new Date();
 
-  const rows: { date: Date; type: string; description: string; time: string; pay: number }[] = [];
+  const rows: { date: Date; type: string; description: string; durationHours: number; pay: number }[] = [];
 
   sessions.forEach((s) => {
     const d = new Date(s.scheduled_at);
@@ -66,7 +66,7 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
         date: d,
         type: "수업",
         description: `${s.student_name} (${getLevelCategory(s.level)})`,
-        time: d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+        durationHours: 1,
         pay: BASE_PAY + levelRate,
       });
     }
@@ -75,12 +75,13 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
   meetings.forEach((m) => {
     const d = new Date(m.scheduled_at);
     if (d >= start && d <= end && d <= now) {
-      const meetingPay = BASE_PAY + Math.round((m.duration_minutes / 60) * meetingRate);
+      const durationHours = m.duration_minutes / 60;
+      const meetingPay = Math.round(durationHours * (BASE_PAY + meetingRate));
       rows.push({
         date: d,
         type: "미팅",
-        description: `${m.notes || "업무 미팅"} (${m.duration_minutes}분)`,
-        time: d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+        description: m.notes || "업무 미팅",
+        durationHours,
         pay: meetingPay,
       });
     }
@@ -133,7 +134,7 @@ export async function exportAllSettlementsPdf(
         r.date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" }),
         r.type,
         r.description,
-        r.time,
+        `${r.durationHours}시간`,
         `₩${r.pay.toLocaleString()}`,
         `₩${r.cumulative.toLocaleString()}`,
       ]),
