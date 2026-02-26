@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Volume2, Loader2, Square, ChevronDown, ChevronUp,
-  ChevronLeft, Coffee, RefreshCw,
+  ChevronLeft, RefreshCw, Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import VocabTestModal from "@/components/classroom/VocabTestModal";
 
 interface VocabWord {
   id: string;
@@ -107,6 +108,8 @@ export default function Vocabulary() {
   const [words, setWords] = useState<VocabWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState<string>("정유리");
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [showTest, setShowTest] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -114,10 +117,11 @@ export default function Vocabulary() {
       if (session) {
         const { data: profile } = await supabase
           .from("student_profiles")
-          .select("student_name")
+          .select("student_name, nickname")
           .eq("user_id", session.user.id)
           .maybeSingle();
         if (profile?.student_name) setStudent(profile.student_name);
+        if (profile?.nickname) setDisplayName(profile.nickname);
       } else {
         const params = new URLSearchParams(window.location.search);
         const name = params.get("name");
@@ -148,6 +152,12 @@ export default function Vocabulary() {
   }, {});
   const weeks = Object.keys(byWeek).sort((a, b) => b.localeCompare(a));
 
+  // 랜덤 테스트용: 전체 단어에서 50개 선택
+  const testWords = (() => {
+    const shuffled = [...words].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(50, shuffled.length));
+  })();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -160,15 +170,28 @@ export default function Vocabulary() {
           </button>
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-gold" />
-            <span className="font-bold text-foreground text-sm">내 단어장</span>
+            <span className="font-bold text-foreground text-sm">
+              {displayName || student} 님의 단어장
+            </span>
             {!loading && (
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{words.length}개</span>
             )}
           </div>
         </div>
-        <button onClick={load} className="text-muted-foreground hover:text-foreground transition-colors" title="새로고침">
-          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-        </button>
+        <div className="flex items-center gap-2">
+          {words.length > 0 && (
+            <button
+              onClick={() => setShowTest(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-navy text-primary-foreground text-xs font-semibold hover:bg-navy-light transition-colors"
+            >
+              <Brain className="w-3.5 h-3.5" />
+              랜덤 테스트
+            </button>
+          )}
+          <button onClick={load} className="text-muted-foreground hover:text-foreground transition-colors" title="새로고침">
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+          </button>
+        </div>
       </header>
 
       {/* Body */}
@@ -190,6 +213,19 @@ export default function Vocabulary() {
           weeks.map(wk => <WeekGroup key={wk} weekLabel={wk} words={byWeek[wk]} />)
         )}
       </div>
+
+      {/* Random Test Modal */}
+      {showTest && testWords.length > 0 && (
+        <VocabTestModal
+          words={testWords}
+          studentName={student}
+          weekLabel="전체"
+          completedTests={0}
+          scheduledAt={new Date()}
+          onClose={() => setShowTest(false)}
+          onTestComplete={() => {}}
+        />
+      )}
     </div>
   );
 }
