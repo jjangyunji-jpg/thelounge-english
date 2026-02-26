@@ -61,7 +61,7 @@ Provide 6–10 synonym entries mixing all types. Prioritise expressions suitable
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5-mini",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
