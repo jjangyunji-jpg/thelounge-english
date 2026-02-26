@@ -70,6 +70,7 @@ interface HomeworkSubmission {
   assignment_id: string | null;
   status: string;
   student_name: string;
+  submitted_at: string;
 }
 
 interface BusinessMeeting {
@@ -78,6 +79,15 @@ interface BusinessMeeting {
   scheduled_at: string;
   duration_minutes: number;
   notes: string | null;
+}
+
+interface VocabTest {
+  id: string;
+  student_name: string;
+  started_at: string;
+  completed_at: string | null;
+  score: number | null;
+  total: number | null;
 }
 
 interface SchedulePeriod {
@@ -136,6 +146,53 @@ function fmtGoals(raw: string | null): string[] {
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr : [raw];
   } catch { return raw ? [raw] : []; }
+}
+
+// ── Donut Chart Component ─────────────────────────────────────────────────────
+function DonutStat({
+  value,
+  total,
+  label,
+  unit,
+  color,
+  trackColor,
+  isCount = false,
+}: {
+  value: number;
+  total: number;
+  label: string;
+  unit: string;
+  color: string;
+  trackColor: string;
+  isCount?: boolean;
+}) {
+  const size = 52;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const pct = isCount ? (value > 0 ? 1 : 0) : total > 0 ? Math.min(value / total, 1) : 0;
+  const dashOffset = circumference * (1 - pct);
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={trackColor} strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius} fill="none"
+          stroke={color} strokeWidth={strokeWidth}
+          strokeDasharray={circumference} strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+          className="transition-all duration-500"
+        />
+      </svg>
+      <div className="text-center -mt-[38px] mb-2">
+        <p className="text-[11px] font-bold text-foreground leading-none">
+          {isCount ? `${value}${unit}` : `${value}/${total}`}
+        </p>
+      </div>
+      <p className="text-[9px] text-muted-foreground leading-none">{label}</p>
+    </div>
+  );
 }
 
 // ── helpers: generate virtual schedule entries from recurring student schedules
@@ -768,6 +825,7 @@ export default function InstructorDashboard() {
   const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [meetings, setMeetings] = useState<BusinessMeeting[]>([]);
+  const [vocabTests, setVocabTests] = useState<VocabTest[]>([]);
   const [period, setPeriod] = useState<SchedulePeriod | null>(null);
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
@@ -797,20 +855,22 @@ export default function InstructorDashboard() {
 
   const loadData = useCallback(async (ins: Instructor) => {
     setLoading(true);
-    const [studRes, sessRes, hwRes, subRes, meetRes, periodRes] = await Promise.all([
+    const [studRes, sessRes, hwRes, subRes, meetRes, periodRes, vocabRes] = await Promise.all([
       supabase.from("instructor_students").select("*").eq("instructor_id", ins.id),
       supabase.from("class_sessions").select("*").eq("instructor_name", ins.name).order("scheduled_at", { ascending: false }),
       supabase.from("homework_assignments").select("id,title,student_name"),
-      supabase.from("homework_submissions").select("id,assignment_id,status,student_name"),
+      supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).maybeSingle(),
+      supabase.from("vocabulary_tests").select("id,student_name,started_at,completed_at,score,total"),
     ]);
 
     setStudents(studRes.data || []);
     setSessions(sessRes.data || []);
     setAssignments(hwRes.data || []);
-    setSubmissions(subRes.data || []);
+    setSubmissions((subRes.data || []) as HomeworkSubmission[]);
     setMeetings(meetRes.data || []);
+    setVocabTests(vocabRes.data || []);
     setPeriod(periodRes.data || null);
     setLoading(false);
   }, []);
@@ -898,15 +958,66 @@ export default function InstructorDashboard() {
     return result.sort((a, b) => a.time.localeCompare(b.time));
   })();
 
-  // Per-student stats
-  const getStudentStats = (studentName: string) => {
+  // Per-student stats with monthly & weekly breakdowns
+  const getStudentStats = (studentName: string, studentSchedules: string | null) => {
+    const now = new Date();
+
+    // Monthly sessions: completed vs total scheduled this month
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     const sSessions = sessions.filter((s) => s.student_name === studentName);
-    const completedSessions = sSessions.filter((s) => new Date(s.scheduled_at) < new Date()).length;
+    const monthSessions = sSessions.filter((s) => {
+      const d = new Date(s.scheduled_at);
+      return d >= monthStart && d <= monthEnd;
+    });
+    const completedMonthSessions = monthSessions.filter((s) => new Date(s.scheduled_at) < now).length;
+
+    // Total scheduled this month from recurring schedules
+    let totalMonthScheduled = 0;
+    try {
+      const slots: ScheduleSlot[] = studentSchedules ? JSON.parse(studentSchedules) : [];
+      if (Array.isArray(slots)) {
+        const daysInMonth = monthEnd.getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+          const date = new Date(now.getFullYear(), now.getMonth(), d);
+          const dayName = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
+          if (slots.some((sl) => sl.day === dayName)) totalMonthScheduled++;
+        }
+      }
+    } catch { /* ignore */ }
+    // Use max of actual or scheduled
+    const monthTotal = Math.max(totalMonthScheduled, monthSessions.length);
+
+    // Weekly homework: this week Mon-Sun
+    const weekDay = now.getDay();
+    const mondayOffset = weekDay === 0 ? -6 : 1 - weekDay;
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
     const sAssignments = assignments.filter((a) => a.student_name === studentName);
     const sSubmissions = submissions.filter((s) => s.student_name === studentName);
-    const submittedCount = sAssignments.filter((a) => sSubmissions.some((s) => s.assignment_id === a.id)).length;
-    const hwRate = sAssignments.length > 0 ? Math.round((submittedCount / sAssignments.length) * 100) : 0;
-    return { totalSessions: sSessions.length, completedSessions, assignmentCount: sAssignments.length, submittedCount, hwRate };
+    const weekSubmissions = sSubmissions.filter((s) => {
+      const d = new Date(s.submitted_at);
+      return d >= weekStart && d < weekEnd;
+    });
+    const weekSubmittedCount = weekSubmissions.length;
+
+    // Weekly vocab tests
+    const weekVocabTests = vocabTests.filter((v) => {
+      if (v.student_name !== studentName) return false;
+      const d = new Date(v.started_at);
+      return d >= weekStart && d < weekEnd;
+    });
+
+    return {
+      completedMonthSessions,
+      monthTotal,
+      weekSubmittedHw: weekSubmittedCount,
+      totalHw: sAssignments.length,
+      weekVocabCount: weekVocabTests.length,
+    };
   };
 
   return (
@@ -1091,30 +1202,27 @@ export default function InstructorDashboard() {
                   )}
                 </div>
 
-                {/* Student progress */}
+                {/* Student progress with donut charts */}
                 <div className="rounded-xl border border-border bg-card p-4">
                   <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                     <GraduationCap className="w-4 h-4 text-navy" />
                     학생별 학습 현황
                   </h3>
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     {students.filter(s => s.status === "active").map((st) => {
-                      const stats = getStudentStats(st.student_name);
-                          const goals = fmtGoals(st.lesson_goal);
+                      const stats = getStudentStats(st.student_name, st.schedules);
+                      const goals = fmtGoals(st.lesson_goal);
 
-                          return (
-                        <div key={st.id} className="px-3 py-2.5 rounded-lg border border-border bg-muted/20 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-navy/10 flex items-center justify-center">
-                                <span className="text-navy font-bold text-[10px]">{st.student_name.charAt(0)}</span>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-foreground">{st.student_name}</p>
-                                <p className="text-[10px] text-muted-foreground">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
-                              </div>
+                      return (
+                        <div key={st.id} className="px-3 py-3 rounded-lg border border-border bg-muted/20 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-navy/10 flex items-center justify-center">
+                              <span className="text-navy font-bold text-[10px]">{st.student_name.charAt(0)}</span>
                             </div>
-                            <span className="text-[10px] text-muted-foreground">{stats.completedSessions}회 완료</span>
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{st.student_name}</p>
+                              <p className="text-[10px] text-muted-foreground">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
+                            </div>
                           </div>
                           {goals.length > 0 && (
                             <div className="flex flex-wrap gap-1">
@@ -1123,9 +1231,33 @@ export default function InstructorDashboard() {
                               ))}
                             </div>
                           )}
-                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                            <span>수업 {stats.completedSessions}회</span>
-                            <span>숙제 {stats.submittedCount}/{stats.assignmentCount}건 ({stats.hwRate}%)</span>
+                          {/* Donut charts row */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <DonutStat
+                              value={stats.completedMonthSessions}
+                              total={stats.monthTotal}
+                              label="수업횟수"
+                              unit="회"
+                              color="hsl(var(--navy))"
+                              trackColor="hsl(var(--navy) / 0.15)"
+                            />
+                            <DonutStat
+                              value={stats.weekSubmittedHw}
+                              total={stats.totalHw}
+                              label="숙제 제출"
+                              unit="건"
+                              color="hsl(var(--gold-dark))"
+                              trackColor="hsl(var(--gold) / 0.2)"
+                            />
+                            <DonutStat
+                              value={stats.weekVocabCount}
+                              total={0}
+                              label="단어 테스트"
+                              unit="회"
+                              color="hsl(var(--success))"
+                              trackColor="hsl(var(--success) / 0.15)"
+                              isCount
+                            />
                           </div>
                         </div>
                       );
@@ -1176,7 +1308,7 @@ export default function InstructorDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {students.map((st) => {
-                const stats = getStudentStats(st.student_name);
+                const stats = getStudentStats(st.student_name, st.schedules);
                 const goals = fmtGoals(st.lesson_goal);
                 const statusLabel = st.status === "active" ? "수강 중" : st.status === "paused" ? "휴강" : "수료";
                 const statusColor = st.status === "active" ? "bg-success/10 text-success" : st.status === "paused" ? "bg-gold/10 text-gold-dark" : "bg-muted text-muted-foreground";
@@ -1225,16 +1357,11 @@ export default function InstructorDashboard() {
                         </div>
                       )}
 
-                      {/* Stats grid */}
-                      <div className="grid grid-cols-2 gap-2 text-center">
-                        <div className="py-1.5 rounded-lg bg-muted/30">
-                          <p className="text-xs font-bold text-foreground">{stats.completedSessions}</p>
-                          <p className="text-[9px] text-muted-foreground">완료 수업</p>
-                        </div>
-                        <div className="py-1.5 rounded-lg bg-muted/30">
-                          <p className="text-xs font-bold text-foreground">{stats.hwRate}%</p>
-                          <p className="text-[9px] text-muted-foreground">숙제 제출률</p>
-                        </div>
+                      {/* Donut charts */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <DonutStat value={stats.completedMonthSessions} total={stats.monthTotal} label="수업횟수" unit="회" color="hsl(var(--navy))" trackColor="hsl(var(--navy) / 0.15)" />
+                        <DonutStat value={stats.weekSubmittedHw} total={stats.totalHw} label="숙제 제출" unit="건" color="hsl(var(--gold-dark))" trackColor="hsl(var(--gold) / 0.2)" />
+                        <DonutStat value={stats.weekVocabCount} total={0} label="단어 테스트" unit="회" color="hsl(var(--success))" trackColor="hsl(var(--success) / 0.15)" isCount />
                       </div>
 
                       {/* Upcoming sessions */}
