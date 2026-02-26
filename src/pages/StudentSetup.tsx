@@ -71,7 +71,7 @@ export default function StudentSetup() {
       if (profileError) throw profileError;
 
       setDone(true);
-      setTimeout(() => navigate("/dashboard-student"), 2000);
+      setTimeout(() => navigate("/my/dashboard"), 2000);
     } catch (e: unknown) {
       toast({
         title: "오류 발생",

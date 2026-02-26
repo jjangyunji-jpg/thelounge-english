@@ -60,7 +60,7 @@ export default function Login() {
           navigate("/dashboard-instructor");
           break;
         case "student":
-          navigate("/dashboard-student");
+          navigate("/my/dashboard");
           break;
         default:
           navigate("/");

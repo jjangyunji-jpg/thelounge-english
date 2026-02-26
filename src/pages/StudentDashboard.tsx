@@ -681,9 +681,9 @@ export default function StudentDashboard() {
                   if (nextSessionFromDB?.meet_link) {
                     window.open(nextSessionFromDB.meet_link, "_blank");
                   } else if (nextSessionFromDB?.id) {
-                    navigate(`/classroom?sessionId=${nextSessionFromDB.id}&role=student`);
+                    navigate(`/my/classroom?sessionId=${nextSessionFromDB.id}&role=student`);
                   } else {
-                    navigate("/classroom?role=student");
+                    navigate("/my/classroom?role=student");
                   }
                 }}
                 className="col-span-2 rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-navy text-primary-foreground"
@@ -716,7 +716,7 @@ export default function StudentDashboard() {
               </div>
               {/* 수업 노트 */}
               <button
-                onClick={() => navigate(`/classnote?name=${encodeURIComponent(student)}`)}
+                onClick={() => navigate(`/my/classnote?name=${encodeURIComponent(student)}`)}
                 className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
@@ -882,7 +882,7 @@ export default function StudentDashboard() {
                         </div>
                         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
                           const sid = a.session_id || sessions[0]?.id;
-                          navigate(`/classroom?${sid ? `sessionId=${sid}&` : ''}role=student&tab=hw`);
+                          navigate(`/my/classroom?${sid ? `sessionId=${sid}&` : ''}role=student&tab=hw`);
                         }}>
                           <p className="text-xs font-semibold text-foreground truncate hover:text-navy transition-colors">{a.title}</p>
                           {a.due_at && <p className="text-[10px] text-muted-foreground">마감: {fmtDate(a.due_at)}</p>}
@@ -902,7 +902,7 @@ export default function StudentDashboard() {
                 )}
                 {assignments.length > 5 && (
                   <button
-                    onClick={() => navigate("/classnote")}
+                    onClick={() => navigate("/my/classnote")}
                     className="w-full text-center text-[11px] text-muted-foreground py-2 hover:text-foreground transition-colors"
                   >
                     +{assignments.length - 5}개 더보기
@@ -928,7 +928,7 @@ export default function StudentDashboard() {
               </button>
               {latestCompletedSession && latestSessionWords.length > 0 && (
                 <button
-                  onClick={() => navigate(`/classroom?sessionId=${latestCompletedSession.id}&role=student&tab=vocab`)}
+                  onClick={() => navigate(`/my/classroom?sessionId=${latestCompletedSession.id}&role=student&tab=vocab`)}
                   className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors"
                 >
                   테스트하러가기 →
@@ -964,7 +964,7 @@ export default function StudentDashboard() {
 
           {/* Vocab - Link to page */}
           <button
-            onClick={() => navigate(`/vocabulary?name=${encodeURIComponent(student)}`)}
+            onClick={() => navigate(`/my/vocabulary?name=${encodeURIComponent(student)}`)}
             className="w-full rounded-lg border border-border bg-card shadow-sm overflow-hidden hover:bg-muted/30 transition-colors"
           >
             <div className="flex items-center justify-between px-3 py-2.5">
