@@ -67,6 +67,7 @@ export default function NotesEditor({
       TableRow,
       TableCell,
       TableHeader,
+      Callout,
       Placeholder.configure({ placeholder }),
     ],
     content: content || "",
