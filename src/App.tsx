@@ -8,7 +8,7 @@ import Classroom from "./pages/Classroom";
 import StudentDashboard from "./pages/StudentDashboard";
 import InstructorDashboard from "./pages/InstructorDashboard";
 import NotFound from "./pages/NotFound";
-import StudentSetup from "./pages/StudentSetup";
+
 import SetPassword from "./pages/SetPassword";
 import MakeupRequest from "./pages/MakeupRequest";
 import ClassNote from "./pages/ClassNote";
@@ -31,10 +31,11 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/admin" element={<Admin />} />
-          <Route path="/dashboard-instructor" element={<InstructorDashboard />} />
           <Route path="/set-password" element={<SetPassword />} />
-          <Route path="/student-setup" element={<StudentSetup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          {/* /t/* 강사 전용 라우트 */}
+          <Route path="/t/dashboard" element={<InstructorDashboard />} />
+          <Route path="/t/classroom" element={<Classroom />} />
+          <Route path="/t/profile" element={<MyProfile />} />
           {/* /my/* 학생 전용 라우트 */}
           <Route path="/my/profile" element={<MyProfile />} />
           <Route path="/my/classroom" element={<Classroom />} />
