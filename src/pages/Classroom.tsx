@@ -95,6 +95,7 @@ export default function Classroom() {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const urlSessionId = searchParams.get("sessionId");
+  const urlStudentName = searchParams.get("student");
 
   const [session, setSession] = useState<SessionData>(DEFAULT_SESSION);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -119,16 +120,46 @@ export default function Classroom() {
       }
 
       if (!urlSessionId) {
+        // If student name provided via URL, use it as filter
+        const nameFilter = urlStudentName || studentNameFilter;
         let query = supabase
           .from("class_sessions")
           .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
           .order("scheduled_at", { ascending: false })
           .limit(1);
-        if (studentNameFilter) {
-          query = query.eq("student_name", studentNameFilter);
+        if (nameFilter) {
+          query = query.eq("student_name", nameFilter);
         }
         const { data } = await query.maybeSingle();
         sessionData = data;
+
+        // If no session found but we have a student name from URL, load their info
+        if (!sessionData && urlStudentName) {
+          const { data: isData } = await supabase
+            .from("instructor_students")
+            .select("level, instructor_name, meet_link")
+            .eq("student_name", urlStudentName)
+            .maybeSingle();
+          // Get instructor name from auth session
+          let instrName = isData?.instructor_name || "";
+          if (!instrName && authSession) {
+            const { data: instrData } = await supabase
+              .from("instructors")
+              .select("name")
+              .eq("user_id", authSession.user.id)
+              .maybeSingle();
+            instrName = instrData?.name || "";
+          }
+          setSession(prev => ({
+            ...prev,
+            studentName: urlStudentName,
+            level: isData?.level ?? prev.level,
+            instructorName: instrName || prev.instructorName,
+            meetLink: isData?.meet_link ?? "",
+          }));
+          setSessionLoading(false);
+          return;
+        }
       } else {
         const { data } = await supabase
           .from("class_sessions")
@@ -174,7 +205,7 @@ export default function Classroom() {
       setSessionLoading(false);
     };
     loadSession();
-  }, [urlSessionId]);
+  }, [urlSessionId, urlStudentName]);
 
   const urlRole = searchParams.get("role") as Role | null;
   const [role, setRole] = useState<Role>(urlRole === "student" ? "student" : "instructor");
