@@ -4,7 +4,7 @@ import {
   ArrowLeft, FileText, CheckSquare, Clock, BookOpen, ChevronDown,
   Calendar, Loader2,
 } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
@@ -223,11 +223,9 @@ export default function ClassNote() {
                 )}
               </div>
 
-              <Textarea
-                value={selectedSession.notes || ""}
-                readOnly
-                placeholder="강사가 수업 노트를 작성하면 여기에 표시됩니다."
-                className="h-[420px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto cursor-default text-muted-foreground"
+              <div
+                className="tiptap h-[420px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground"
+                dangerouslySetInnerHTML={{ __html: selectedSession.notes || "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>" }}
               />
             </div>
           )}
