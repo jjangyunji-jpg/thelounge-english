@@ -23,6 +23,7 @@ interface Instructor {
   age: number | null;
   education: string | null;
   bio_notes: string | null;
+  meet_link: string | null;
 }
 
 // 급여 체계: 기본급 11,000 + 레벨별 수당
@@ -53,7 +54,7 @@ export default function InstructorManagement() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFields, setEditFields] = useState({ phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "" });
+  const [editFields, setEditFields] = useState({ phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "", meet_link: "" });
   const [savingId, setSavingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -108,6 +109,7 @@ export default function InstructorManagement() {
       age: ins.age ? String(ins.age) : "",
       education: ins.education || "",
       bio_notes: ins.bio_notes || "",
+      meet_link: ins.meet_link || "",
     });
   };
 
@@ -122,6 +124,7 @@ export default function InstructorManagement() {
         age: editFields.age ? parseInt(editFields.age) : null,
         education: editFields.education || null,
         bio_notes: editFields.bio_notes || null,
+        meet_link: editFields.meet_link || null,
       })
       .eq("id", id);
 
@@ -137,6 +140,7 @@ export default function InstructorManagement() {
           age: editFields.age ? parseInt(editFields.age) : null,
           education: editFields.education || null,
           bio_notes: editFields.bio_notes || null,
+          meet_link: editFields.meet_link || null,
         } : i))
       );
       setEditingId(null);
@@ -351,6 +355,10 @@ export default function InstructorManagement() {
                             <Label className="text-[10px] text-muted-foreground">비고</Label>
                             <Input className="h-7 text-xs mt-0.5" value={editFields.bio_notes} onChange={(e) => setEditFields(f => ({ ...f, bio_notes: e.target.value }))} />
                           </div>
+                          <div className="col-span-2">
+                            <Label className="text-[10px] text-muted-foreground">구글 미트 링크 (업무 미팅용)</Label>
+                            <Input className="h-7 text-xs mt-0.5" placeholder="https://meet.google.com/xxx-xxxx-xxx" value={editFields.meet_link} onChange={(e) => setEditFields(f => ({ ...f, meet_link: e.target.value }))} />
+                          </div>
                         </div>
                         <div className="flex gap-2 pt-1">
                           <Button size="sm" onClick={() => saveEdit(ins.id)} disabled={savingId === ins.id} className="bg-navy text-primary-foreground hover:bg-navy-light h-7 text-xs">
@@ -368,6 +376,7 @@ export default function InstructorManagement() {
                         <div className="flex justify-between"><span className="text-xs text-muted-foreground">나이</span><span className="text-xs font-medium">{ins.age || "—"}</span></div>
                         <div className="flex justify-between"><span className="text-xs text-muted-foreground">최종학력</span><span className="text-xs font-medium">{ins.education || "—"}</span></div>
                         <div className="flex justify-between"><span className="text-xs text-muted-foreground">비고</span><span className="text-xs font-medium">{ins.bio_notes || "—"}</span></div>
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">미팅 링크</span><span className="text-xs font-medium truncate max-w-[180px]">{ins.meet_link ? <a href={ins.meet_link} target="_blank" rel="noopener noreferrer" className="text-navy underline">{ins.meet_link}</a> : "—"}</span></div>
                         <div className="flex justify-between"><span className="text-xs text-muted-foreground">계정</span><span className={`text-xs font-medium ${ins.user_id ? "text-success" : "text-muted-foreground"}`}>{ins.user_id ? "연결됨" : "미연결"}</span></div>
                       </div>
                     )}
