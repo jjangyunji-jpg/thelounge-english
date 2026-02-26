@@ -48,11 +48,11 @@ function getWeekLabel(date = new Date()) {
 }
 
 function formatDate(date = new Date()) {
-  return date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+  return date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
 }
 
 function formatTime(date = new Date()) {
-  return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
 }
 
 interface SessionData {

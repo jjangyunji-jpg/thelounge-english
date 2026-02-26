@@ -28,12 +28,13 @@ function formatDate(dateStr: string) {
     month: "long",
     day: "numeric",
     weekday: "short",
+    timeZone: "Asia/Seoul",
   });
 }
 
 function formatTime(dateStr: string) {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
 }
 
 export default function ClassNote() {
