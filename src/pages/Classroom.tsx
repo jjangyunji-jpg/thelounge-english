@@ -191,8 +191,12 @@ export default function Classroom() {
   const [objectives, setObjectives] = useState<string[]>([]);
   const [sessionTopic, setSessionTopic] = useState("");
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
+  const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(true);
+  const [isAutoCorrecting, setIsAutoCorrecting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const notesRef = useRef<HTMLTextAreaElement | null>(null);
+  const autoCorrectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCorrectedText = useRef("");
 
   const applyFormat = useCallback((type: "bold" | "h1" | "h2" | "h3" | "hr" | "table") => {
     const el = notesRef.current;
@@ -226,11 +230,39 @@ export default function Classroom() {
     }
 
     setNotes(newText);
+    lastCorrectedText.current = newText;
     setTimeout(() => {
       el.focus();
       el.setSelectionRange(newStart, newEnd);
     }, 0);
   }, [notes]);
+
+  const triggerAutoCorrect = useCallback(async (text: string) => {
+    if (!text.trim() || isAutoCorrecting) return;
+    setIsAutoCorrecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-correct", {
+        body: { text, mode: "correct" },
+      });
+      if (!error && data?.corrected && data.corrected !== text) {
+        const el = notesRef.current;
+        const cursorPos = el?.selectionStart ?? text.length;
+        setNotes(data.corrected);
+        lastCorrectedText.current = data.corrected;
+        // Restore cursor position
+        setTimeout(() => {
+          if (el) {
+            el.focus();
+            const newPos = Math.min(cursorPos, data.corrected.length);
+            el.setSelectionRange(newPos, newPos);
+          }
+        }, 0);
+      } else {
+        lastCorrectedText.current = text;
+      }
+    } catch { /* silent */ }
+    finally { setIsAutoCorrecting(false); }
+  }, [isAutoCorrecting]);
 
   const [addingHw, setAddingHw] = useState(false);
   const [newHwType, setNewHwType] = useState<HwType>("writing");
@@ -638,15 +670,35 @@ export default function Classroom() {
                         <Icon className="w-3.5 h-3.5" />
                       </button>
                     ))}
-                    <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">Ctrl+B 굵게</span>
-                  </div>
+                     <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">Ctrl+B 굵게</span>
+                     <button
+                       onClick={() => setAutoCorrectEnabled(v => !v)}
+                       className={cn("ml-2 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all border",
+                         autoCorrectEnabled
+                           ? "border-success/40 bg-success/10 text-success"
+                           : "border-muted-foreground/20 text-muted-foreground hover:bg-muted"
+                       )}
+                     >
+                       {isAutoCorrecting && <Loader2 className="w-3 h-3 animate-spin" />}
+                       {autoCorrectEnabled ? "자동교정 ON" : "자동교정 OFF"}
+                     </button>
+                   </div>
                 )}
                 <Textarea
                   ref={notesRef}
-                  value={notes} onChange={(e) => setNotes(e.target.value)}
+                  value={notes} onChange={(e) => {
+                    const newVal = e.target.value;
+                    setNotes(newVal);
+                    // Debounced auto-correct
+                    if (autoCorrectEnabled && newVal.trim() && newVal !== lastCorrectedText.current) {
+                      if (autoCorrectTimer.current) clearTimeout(autoCorrectTimer.current);
+                      autoCorrectTimer.current = setTimeout(() => triggerAutoCorrect(newVal), 3000);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.ctrlKey && e.key === "b") { e.preventDefault(); applyFormat("bold"); }
                   }}
+                  spellCheck
                   placeholder={`수업 내용을 자유롭게 타이핑하세요.\n\nToday's topic: ${session.topic}\n\n- Key expressions:\n- Grammar points:\n- Notes:`}
                   disabled={isDisabled} readOnly={!notesEditMode}
                   className={cn("h-[420px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto",
