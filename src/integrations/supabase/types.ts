@@ -534,6 +534,30 @@ export type Database = {
           },
         ]
       }
+      word_lookup_cache: {
+        Row: {
+          created_at: string
+          id: string
+          level: string
+          result: Json
+          word: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: string
+          result: Json
+          word: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: string
+          result?: Json
+          word?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
