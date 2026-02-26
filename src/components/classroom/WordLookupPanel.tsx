@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Search, Loader2, BookOpen, X } from "lucide-react";
+import { Search, Loader2, BookOpen, X, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface SynonymEntry {
@@ -77,6 +77,16 @@ export default function WordLookupPanel({ studentLevel = "B1" }: WordLookupPanel
     inputRef.current?.focus();
   };
 
+  const openNaverDict = (word?: string) => {
+    const q = (word || query).trim();
+    if (!q) return;
+    window.open(
+      `https://en.dict.naver.com/#/search?range=all&query=${encodeURIComponent(q)}`,
+      "naverDict",
+      "width=500,height=700,scrollbars=yes,resizable=yes"
+    );
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col">
       {/* Header */}
@@ -119,6 +129,17 @@ export default function WordLookupPanel({ studentLevel = "B1" }: WordLookupPanel
             className="gap-1.5 bg-navy hover:bg-navy-light text-primary-foreground h-9 px-3"
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => openNaverDict()}
+            disabled={!query.trim()}
+            className="h-9 px-2.5 text-xs gap-1"
+            title="네이버 사전에서 검색"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">사전</span>
           </Button>
         </div>
 
