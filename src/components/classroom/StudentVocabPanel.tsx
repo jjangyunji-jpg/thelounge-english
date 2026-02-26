@@ -346,7 +346,7 @@ export default function StudentVocabPanel({
           completedTests={completedTests}
           scheduledAt={scheduledAt}
           onClose={() => setTestModalOpen(false)}
-          onTestComplete={() => { loadTestCount(); setTestModalOpen(false); }}
+          onTestComplete={() => { loadTestCount(); setHistoryOpen(true); setTestModalOpen(false); }}
         />
       )}
     </>
