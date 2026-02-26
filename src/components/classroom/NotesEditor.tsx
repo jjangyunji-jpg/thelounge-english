@@ -159,29 +159,31 @@ export default function NotesEditor({
         // > + space at line start → toggle list
         // <- + space → ←
         if (event.key === " ") {
-          setTimeout(() => {
-            if (!editor) return;
+          if (editor) {
             const pos = editor.state.selection.from;
-
-            // Check for ">" at start of current block → toggle list
             const $pos = editor.state.doc.resolve(pos);
             const blockStart = $pos.start();
             const textInBlock = editor.state.doc.textBetween(blockStart, pos, "");
-            if (textInBlock === "> ") {
+
+            // ">" at start of block + space → toggle list
+            if (textInBlock === ">") {
               event.preventDefault();
               editor.chain().focus().deleteRange({ from: blockStart, to: pos }).run();
               setTimeout(() => {
                 editor.chain().focus().setDetailsBlock().run();
               }, 10);
-              return;
+              return true;
             }
+          }
 
-            // <- + space → ←
+          // <- + space → ← (async is fine here)
+          setTimeout(() => {
+            if (!editor) return;
+            const pos = editor.state.selection.from;
             if (pos >= 3) {
               const t3 = editor.state.doc.textBetween(pos - 3, pos, "");
               if (t3 === "<- ") {
                 editor.chain().focus().deleteRange({ from: pos - 3, to: pos }).insertContent("← ").run();
-                return;
               }
             }
           }, 0);
