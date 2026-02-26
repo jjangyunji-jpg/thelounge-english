@@ -4,6 +4,7 @@ import {
   Calendar, Clock, ChevronRight, Check, X, Loader2,
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
+  PenLine, Mic, Brain, Edit2, Trash2, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +88,23 @@ interface SchedulePeriod {
   is_active: boolean;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+const DAYS_OF_WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+const HOURS = Array.from({ length: 17 }, (_, i) => {
+  const h = i + 6;
+  return `${h.toString().padStart(2, "0")}:00`;
+});
+
+type HwType = "writing" | "reading" | "speaking" | "memorizing";
+const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
+  writing:    { label: "쓰기",   icon: PenLine,  color: "text-[hsl(var(--navy))]" },
+  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]" },
+  speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]" },
+  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500" },
+};
+
+interface ScheduleSlot { day: string; time: string; }
+interface PresetHw { id: string; type: HwType; title: string; description: string; }
+
 function fmt(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
 }
@@ -302,7 +319,6 @@ function StudentEditModal({
 }) {
   const { toast } = useToast();
   const [level, setLevel] = useState(student.level || "B1");
-  const [schedules, setSchedules] = useState(student.schedules || "");
   const [meetLink, setMeetLink] = useState(student.meet_link || "");
   const [phone, setPhone] = useState(student.phone || "");
   const [status, setStatus] = useState(student.status || "active");
@@ -311,10 +327,61 @@ function StudentEditModal({
   const [extraLessons, setExtraLessons] = useState(student.extra_lessons || 0);
   const [saving, setSaving] = useState(false);
 
+  // Schedule slots
+  const [slots, setSlots] = useState<ScheduleSlot[]>(() => {
+    try {
+      const parsed = student.schedules ? JSON.parse(student.schedules) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  });
+
+  // Preset homework
+  const [presets, setPresets] = useState<PresetHw[]>([]);
+  const [loadingPresets, setLoadingPresets] = useState(true);
+  const [addingPreset, setAddingPreset] = useState(false);
+  const [newPresetType, setNewPresetType] = useState<HwType>("writing");
+  const [newPresetTitle, setNewPresetTitle] = useState("");
+  const [newPresetDesc, setNewPresetDesc] = useState("");
+  const [savingPreset, setSavingPreset] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("homework_assignments")
+        .select("*")
+        .eq("student_name", student.student_name)
+        .eq("is_preset", true)
+        .order("created_at", { ascending: true });
+      setPresets((data || []).map((d) => ({ id: d.id, type: d.type as HwType, title: d.title, description: d.description || "" })));
+      setLoadingPresets(false);
+    })();
+  }, [student.student_name]);
+
+  const addPreset = async () => {
+    if (!newPresetTitle.trim()) return;
+    setSavingPreset(true);
+    const { data, error } = await supabase.from("homework_assignments").insert({
+      student_name: student.student_name, title: newPresetTitle.trim(),
+      description: newPresetDesc.trim() || null, type: newPresetType, is_preset: true,
+    }).select().single();
+    if (!error && data) {
+      setPresets((p) => [...p, { id: data.id, type: newPresetType, title: newPresetTitle.trim(), description: newPresetDesc.trim() }]);
+      toast({ title: "정기 숙제 추가 완료 ✓" });
+    }
+    setNewPresetTitle(""); setNewPresetDesc(""); setNewPresetType("writing");
+    setAddingPreset(false); setSavingPreset(false);
+  };
+
+  const removePreset = async (hwId: string) => {
+    await supabase.from("homework_assignments").delete().eq("id", hwId);
+    setPresets((p) => p.filter((h) => h.id !== hwId));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     const { error } = await supabase.from("instructor_students").update({
-      level, schedules: schedules.trim() || null, meet_link: meetLink.trim() || null,
+      level, schedules: slots.length > 0 ? JSON.stringify(slots) : null,
+      meet_link: meetLink.trim() || null,
       phone: phone.trim() || null, status,
       lesson_goal: lessonGoal.trim() || null, lesson_goal_count: lessonGoalCount,
       extra_lessons: extraLessons,
@@ -361,10 +428,48 @@ function StudentEditModal({
               </Select>
             </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">수업 일정 (예: 월수금 19:00)</Label>
-            <Input value={schedules} onChange={(e) => setSchedules(e.target.value)} placeholder="월수금 19:00" className="h-9 text-sm" />
+
+          {/* Schedule slots with dropdowns */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" /> 수업 일정
+              </Label>
+              <button
+                type="button"
+                className="text-xs text-navy hover:underline flex items-center gap-1"
+                onClick={() => setSlots((p) => [...p, { day: "월", time: "10:00" }])}
+              >
+                <Plus className="w-3 h-3" /> 추가
+              </button>
+            </div>
+            {slots.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-1">수업 일정을 추가하세요</p>
+            ) : (
+              <div className="space-y-2">
+                {slots.map((slot, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Select value={slot.day} onValueChange={(v) => setSlots((p) => p.map((s, i) => i === idx ? { ...s, day: v } : s))}>
+                      <SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {DAYS_OF_WEEK.map((d) => <SelectItem key={d} value={d}>{d}요일</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={slot.time} onValueChange={(v) => setSlots((p) => p.map((s, i) => i === idx ? { ...s, time: v } : s))}>
+                      <SelectTrigger className="h-8 flex-1 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {HOURS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setSlots((p) => p.filter((_, i) => i !== idx))}>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Google Meet 링크</Label>
             <Input value={meetLink} onChange={(e) => setMeetLink(e.target.value)} placeholder="https://meet.google.com/..." className="h-9 text-sm" />
@@ -386,6 +491,77 @@ function StudentEditModal({
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">학습 목표</Label>
             <Input value={lessonGoal} onChange={(e) => setLessonGoal(e.target.value)} placeholder="예: TOEIC 900점" className="h-9 text-sm" />
+          </div>
+
+          {/* Preset Homework */}
+          <div className="space-y-2 pt-1 border-t border-border">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5" /> 정기 숙제
+              </Label>
+            </div>
+            {loadingPresets ? (
+              <p className="text-xs text-muted-foreground">불러오는 중...</p>
+            ) : (
+              <div className="space-y-1.5">
+                {presets.map((hw) => {
+                  const meta = HW_TYPE_META[hw.type];
+                  const Icon = meta?.icon;
+                  return (
+                    <div key={hw.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-muted/20 group">
+                      {Icon && <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${meta.color}`} />}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-foreground">{hw.title}</span>
+                        <span className={`text-[10px] ml-1.5 ${meta.color}`}>{meta.label}</span>
+                      </div>
+                      <button onClick={() => removePreset(hw.id)} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {addingPreset ? (
+              <div className="border border-[hsl(var(--gold)/0.4)] rounded-lg p-3 space-y-2 bg-[hsl(var(--gold)/0.04)]">
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(Object.keys(HW_TYPE_META) as HwType[]).map((t) => {
+                    const m = HW_TYPE_META[t];
+                    const TIcon = m.icon;
+                    return (
+                      <button key={t} onClick={() => setNewPresetType(t)}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                          newPresetType === t
+                            ? "border-[hsl(var(--gold))] bg-[hsl(var(--gold)/0.10)] text-foreground"
+                            : "border-border bg-card text-muted-foreground hover:border-[hsl(var(--gold)/0.4)]"
+                        }`}
+                      >
+                        <TIcon className={`w-3.5 h-3.5 ${newPresetType === t ? m.color : ""}`} />
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <Input value={newPresetTitle} onChange={(e) => setNewPresetTitle(e.target.value)} placeholder="숙제 제목 (필수)" className="h-8 text-xs" autoFocus />
+                <Input value={newPresetDesc} onChange={(e) => setNewPresetDesc(e.target.value)} placeholder="상세 설명 (선택)" className="h-8 text-xs" />
+                <div className="flex gap-1.5">
+                  <Button size="sm" disabled={!newPresetTitle.trim() || savingPreset}
+                    className="flex-1 h-7 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
+                    onClick={addPreset}
+                  >
+                    {savingPreset ? "저장 중..." : "추가"}
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setAddingPreset(false); setNewPresetTitle(""); setNewPresetDesc(""); }}>취소</Button>
+                </div>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 border-dashed w-full"
+                onClick={() => { setAddingPreset(true); setNewPresetType("writing"); }}
+              >
+                <Plus className="w-3 h-3" /> 정기 숙제 추가
+              </Button>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
