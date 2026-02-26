@@ -43,6 +43,7 @@ export default function ClassNote() {
 
   // 인증 기반 학생 식별 (URL 파라미터 폴백)
   const [authStudent, setAuthStudent] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
@@ -50,10 +51,11 @@ export default function ClassNote() {
       if (session) {
         const { data: profile } = await supabase
           .from("student_profiles")
-          .select("student_name")
+          .select("student_name, nickname")
           .eq("user_id", session.user.id)
           .maybeSingle();
         if (profile?.student_name) setAuthStudent(profile.student_name);
+        if (profile?.nickname) setDisplayName(profile.nickname);
       }
       setAuthLoading(false);
     });
@@ -113,7 +115,7 @@ export default function ClassNote() {
             <span className="font-bold text-sidebar-accent-foreground text-sm">수업 노트</span>
             {student && (
               <span className="text-xs px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground font-medium">
-                {student}
+                {displayName || student}
               </span>
             )}
           </div>
