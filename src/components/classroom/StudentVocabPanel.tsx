@@ -145,7 +145,8 @@ export default function StudentVocabPanel({
   const [testHistory, setTestHistory] = useState<TestRecord[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const weekLabel = getWeekLabel();
+  // Use the session's word week label instead of current calendar week
+  const sessionWeekLabel = words.length > 0 ? words[0].week_label : getWeekLabel();
   const msUntilClass = scheduledAt.getTime() - Date.now();
   const within48h = msUntilClass > 0 && msUntilClass <= 48 * 3600 * 1000;
   const isMandatoryFinalTest = within48h && completedTests < 2;
@@ -173,7 +174,7 @@ export default function StudentVocabPanel({
       .order("completed_at", { ascending: false });
     const all = (data ?? []) as TestRecord[];
     setTestHistory(all);
-    setCompletedTests(all.filter((t) => t.week_label === weekLabel).length);
+    setCompletedTests(all.filter((t) => t.week_label === sessionWeekLabel).length);
     setLoadingTests(false);
   };
 
@@ -186,7 +187,7 @@ export default function StudentVocabPanel({
   }, {});
   const weeks = Object.keys(byWeek).sort((a, b) => b.localeCompare(a));
 
-  const currentWeekWords = byWeek[weekLabel] ?? [];
+  const currentWeekWords = byWeek[sessionWeekLabel] ?? [];
 
   const fmtDate = (iso: string) => {
     const d = new Date(iso);
@@ -341,7 +342,7 @@ export default function StudentVocabPanel({
         <VocabTestModal
           words={currentWeekWords}
           studentName={studentName}
-          weekLabel={weekLabel}
+          weekLabel={sessionWeekLabel}
           completedTests={completedTests}
           scheduledAt={scheduledAt}
           onClose={() => setTestModalOpen(false)}
