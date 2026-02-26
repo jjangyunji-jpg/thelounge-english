@@ -847,11 +847,13 @@ export default function InstructorDashboard() {
   const [meetings, setMeetings] = useState<BusinessMeeting[]>([]);
   const [vocabTests, setVocabTests] = useState<VocabTest[]>([]);
   const [period, setPeriod] = useState<SchedulePeriod | null>(null);
+  const [allPeriods, setAllPeriods] = useState<SchedulePeriod[]>([]);
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement">("dashboard");
   const [durationOverrides, setDurationOverrides] = useState<Record<string, number>>({});
+  const [studentTabPeriodIdx, setStudentTabPeriodIdx] = useState(-1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
@@ -897,8 +899,11 @@ export default function InstructorDashboard() {
     // Pick the period that contains today
     const todayStr = new Date().toISOString().slice(0, 10);
     const periods = periodRes.data || [];
-    const currentPeriod = periods.find(p => p.start_date <= todayStr && p.end_date >= todayStr) || periods[0] || null;
+    setAllPeriods(periods);
+    const currentIdx = periods.findIndex(p => p.start_date <= todayStr && p.end_date >= todayStr);
+    const currentPeriod = currentIdx >= 0 ? periods[currentIdx] : periods[0] || null;
     setPeriod(currentPeriod);
+    if (studentTabPeriodIdx < 0) setStudentTabPeriodIdx(currentIdx >= 0 ? currentIdx : 0);
     setHolidays(holRes.data || []);
     setLoading(false);
   }, []);
@@ -1064,12 +1069,13 @@ export default function InstructorDashboard() {
   })();
 
   // Per-student stats with monthly & weekly breakdowns
-  const getStudentStats = (studentName: string, studentSchedules: string | null) => {
+  const getStudentStats = (studentName: string, studentSchedules: string | null, overridePeriod?: SchedulePeriod | null) => {
     const now = new Date();
+    const usePeriod = overridePeriod !== undefined ? overridePeriod : period;
 
     // Period-based sessions: use active schedule_periods instead of calendar month
-    const periodStart = period ? new Date(period.start_date + "T00:00:00") : new Date(now.getFullYear(), now.getMonth(), 1);
-    const periodEnd = period ? new Date(period.end_date + "T23:59:59") : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const periodStart = usePeriod ? new Date(usePeriod.start_date + "T00:00:00") : new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = usePeriod ? new Date(usePeriod.end_date + "T23:59:59") : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     const sSessions = sessions.filter((s) => s.student_name === studentName);
     const periodSess = sSessions.filter((s) => {
       const d = new Date(s.scheduled_at);
@@ -1451,26 +1457,58 @@ export default function InstructorDashboard() {
         {/* ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "students" && (
           <div className="space-y-4">
+            {/* Period navigator */}
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                 <Users className="w-4 h-4 text-navy" />
                 담당 학생 관리
                 <span className="text-xs px-2 py-0.5 rounded-full bg-navy/10 text-navy font-medium">{students.length}명</span>
               </h2>
+              {allPeriods.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setStudentTabPeriodIdx(Math.max(0, studentTabPeriodIdx - 1))}
+                    disabled={studentTabPeriodIdx <= 0}
+                    className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-semibold text-foreground min-w-[100px] text-center">
+                    {allPeriods[studentTabPeriodIdx]?.label || "—"}
+                    <span className="block text-[10px] text-muted-foreground font-normal">
+                      {allPeriods[studentTabPeriodIdx]?.start_date} ~ {allPeriods[studentTabPeriodIdx]?.end_date}
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => setStudentTabPeriodIdx(Math.min(allPeriods.length - 1, studentTabPeriodIdx + 1))}
+                    disabled={studentTabPeriodIdx >= allPeriods.length - 1}
+                    className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {students.map((st) => {
-                const stats = getStudentStats(st.student_name, st.schedules);
+                const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
+                const stats = getStudentStats(st.student_name, st.schedules, selectedPeriod);
                 const goals = fmtGoals(st.lesson_goal);
                 const statusLabel = st.status === "active" ? "수강 중" : st.status === "paused" ? "휴강" : "수료";
                 const statusColor = st.status === "active" ? "bg-success/10 text-success" : st.status === "paused" ? "bg-gold/10 text-gold-dark" : "bg-muted text-muted-foreground";
 
-                // Upcoming sessions for this student
-                const studentUpcoming = sessions
-                  .filter((s) => s.student_name === st.student_name && msUntil(s.scheduled_at) > 0)
-                  .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
-                  .slice(0, 3);
+                // Sessions within selected period for this student
+                const pStart = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00") : null;
+                const pEnd = selectedPeriod ? new Date(selectedPeriod.end_date + "T23:59:59") : null;
+                const studentPeriodSessions = sessions
+                  .filter((s) => {
+                    if (s.student_name !== st.student_name) return false;
+                    if (!pStart || !pEnd) return false;
+                    const d = new Date(s.scheduled_at);
+                    return d >= pStart && d <= pEnd;
+                  })
+                  .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
                 return (
                   <div key={st.id} className="rounded-xl border border-border bg-card overflow-hidden">
@@ -1517,20 +1555,24 @@ export default function InstructorDashboard() {
                         <DonutStat value={stats.weekVocabCount} total={0} label="단어 테스트" unit="회" color="hsl(var(--success))" trackColor="hsl(var(--success) / 0.15)" isCount />
                       </div>
 
-                      {/* Upcoming sessions */}
-                      {studentUpcoming.length > 0 && (
+                      {/* Period sessions */}
+                      {studentPeriodSessions.length > 0 && (
                         <div className="space-y-1.5">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">예정 수업</p>
-                          {studentUpcoming.map((s) => (
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">수업 일정 ({studentPeriodSessions.length}회)</p>
+                          {studentPeriodSessions.map((s) => (
                             <div key={s.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/20 border border-border">
                               <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                               <span className="text-[11px] text-foreground flex-1">{fmtDateTime(s.scheduled_at)}</span>
-                              <button
-                                onClick={() => setRescheduleSession(s)}
-                                className="text-[10px] text-navy hover:underline font-medium"
-                              >
-                                변경
-                              </button>
+                              {new Date(s.scheduled_at) <= new Date() ? (
+                                <span className="text-[10px] text-success font-medium">완료</span>
+                              ) : (
+                                <button
+                                  onClick={() => setRescheduleSession(s)}
+                                  className="text-[10px] text-navy hover:underline font-medium"
+                                >
+                                  변경
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
