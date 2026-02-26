@@ -103,19 +103,19 @@ export default function Classroom() {
   useEffect(() => {
     const loadSession = async () => {
       let sessionData: any = null;
-      if (!urlSessionId) {
-        // Try to get student_name from auth session for filtering
-        let studentNameFilter: string | null = null;
-        const { data: { session: authSession } } = await supabase.auth.getSession();
-        if (authSession) {
-          const { data: profile } = await supabase
-            .from("student_profiles")
-            .select("student_name")
-            .eq("user_id", authSession.user.id)
-            .maybeSingle();
-          if (profile?.student_name) studentNameFilter = profile.student_name;
-        }
+      // Try to get student_name from auth session for filtering
+      let studentNameFilter: string | null = null;
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (authSession) {
+        const { data: profile } = await supabase
+          .from("student_profiles")
+          .select("student_name")
+          .eq("user_id", authSession.user.id)
+          .maybeSingle();
+        if (profile?.student_name) studentNameFilter = profile.student_name;
+      }
 
+      if (!urlSessionId) {
         let query = supabase
           .from("class_sessions")
           .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
@@ -150,6 +150,23 @@ export default function Classroom() {
           .eq("student_name", sessionData.student_name)
           .lte("scheduled_at", sessionData.scheduled_at);
         setSessionNumber(count ?? null);
+      } else {
+        // No session found — fill in student info from instructor_students
+        const studentName = studentNameFilter ?? "";
+        if (studentName) {
+          const { data: isData } = await supabase
+            .from("instructor_students")
+            .select("level, instructor_name, meet_link")
+            .eq("student_name", studentName)
+            .maybeSingle();
+          setSession(prev => ({
+            ...prev,
+            studentName,
+            level: isData?.level ?? prev.level,
+            instructorName: isData?.instructor_name ?? prev.instructorName,
+            meetLink: isData?.meet_link ?? "",
+          }));
+        }
       }
       setSessionLoading(false);
     };
