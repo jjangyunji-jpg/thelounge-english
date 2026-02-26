@@ -1239,15 +1239,17 @@ export default function InstructorDashboard() {
               <div className="space-y-4">
                 {/* Next class day prep */}
                 {nextClassDaySessions.length > 0 && (
-                  <div className="rounded-xl border border-navy/20 bg-navy/5 p-4">
-                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <details className="rounded-xl border border-navy/20 bg-navy/5 overflow-hidden">
+                    <summary className="px-4 py-3 flex items-center gap-2 cursor-pointer list-none select-none hover:bg-navy/10 transition-colors">
                       <CalendarDays className="w-4 h-4 text-navy" />
-                      다음 수업 준비
+                      <span className="text-sm font-semibold text-foreground">다음 수업 준비</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy">
                         {new Date(nextClassDaySessions[0].scheduled_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}
                       </span>
-                    </h3>
-                    <div className="space-y-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{nextClassDaySessions.length}건</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground ml-auto transition-transform [[open]>&]:rotate-90" />
+                    </summary>
+                    <div className="px-4 pb-4 space-y-2">
                       {nextClassDaySessions.map((s) => (
                         <a
                           key={s.id}
@@ -1263,7 +1265,7 @@ export default function InstructorDashboard() {
                         </a>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 )}
 
                 {/* Today's sessions */}
