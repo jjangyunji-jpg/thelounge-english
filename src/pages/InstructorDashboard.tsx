@@ -336,10 +336,17 @@ function StudentEditModal({
   const [meetLink, setMeetLink] = useState(student.meet_link || "");
   const [phone, setPhone] = useState(student.phone || "");
   const [status, setStatus] = useState(student.status || "active");
-  const [lessonGoal, setLessonGoal] = useState(student.lesson_goal || "");
-  const [lessonGoalCount, setLessonGoalCount] = useState(student.lesson_goal_count || 0);
-  const [extraLessons, setExtraLessons] = useState(student.extra_lessons || 0);
   const [saving, setSaving] = useState(false);
+
+  // Lesson goals as list
+  const [goals, setGoals] = useState<string[]>(() => {
+    try {
+      const parsed = student.lesson_goal ? JSON.parse(student.lesson_goal) : [];
+      return Array.isArray(parsed) ? parsed : student.lesson_goal ? [student.lesson_goal] : [];
+    } catch { return student.lesson_goal ? [student.lesson_goal] : []; }
+  });
+  const [newGoal, setNewGoal] = useState("");
+  const [addingGoal, setAddingGoal] = useState(false);
 
   // Schedule slots
   const [slots, setSlots] = useState<ScheduleSlot[]>(() => {
@@ -397,8 +404,7 @@ function StudentEditModal({
       level, schedules: slots.length > 0 ? JSON.stringify(slots) : null,
       meet_link: meetLink.trim() || null,
       phone: phone.trim() || null, status,
-      lesson_goal: lessonGoal.trim() || null, lesson_goal_count: lessonGoalCount,
-      extra_lessons: extraLessons,
+      lesson_goal: goals.length > 0 ? JSON.stringify(goals) : null,
     }).eq("id", student.id);
     if (error) {
       toast({ title: "저장 실패", description: error.message, variant: "destructive" });
@@ -492,19 +498,39 @@ function StudentEditModal({
             <Label className="text-xs text-muted-foreground">연락처</Label>
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" className="h-9 text-sm" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">목표 수업 수</Label>
-              <Input type="number" value={lessonGoalCount} onChange={(e) => setLessonGoalCount(Number(e.target.value))} min={0} className="h-9 text-sm" />
+          {/* Learning Goals */}
+          <div className="space-y-2 pt-1 border-t border-border">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <GraduationCap className="w-3.5 h-3.5" /> 학습 목표
+              </Label>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">보강 횟수</Label>
-              <Input type="number" value={extraLessons} onChange={(e) => setExtraLessons(Number(e.target.value))} min={0} className="h-9 text-sm" />
+            <div className="space-y-1.5">
+              {goals.map((g, i) => (
+                <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-muted/20 group">
+                  <span className="text-xs font-medium text-foreground flex-1">{g}</span>
+                  <button onClick={() => setGoals((p) => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">학습 목표</Label>
-            <Input value={lessonGoal} onChange={(e) => setLessonGoal(e.target.value)} placeholder="예: TOEIC 900점" className="h-9 text-sm" />
+            {addingGoal ? (
+              <div className="flex gap-1.5">
+                <Input value={newGoal} onChange={(e) => setNewGoal(e.target.value)} placeholder="예: 시제 마스터하기" className="h-8 text-xs flex-1" autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter" && newGoal.trim()) { setGoals((p) => [...p, newGoal.trim()]); setNewGoal(""); setAddingGoal(false); } }}
+                />
+                <Button size="sm" className="h-8 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
+                  disabled={!newGoal.trim()}
+                  onClick={() => { setGoals((p) => [...p, newGoal.trim()]); setNewGoal(""); setAddingGoal(false); }}
+                >추가</Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setAddingGoal(false); setNewGoal(""); }}>취소</Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 border-dashed w-full" onClick={() => setAddingGoal(true)}>
+                <Plus className="w-3 h-3" /> 학습 목표 추가
+              </Button>
+            )}
           </div>
 
           {/* Preset Homework */}
