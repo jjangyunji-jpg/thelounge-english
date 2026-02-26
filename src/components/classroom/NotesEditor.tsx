@@ -8,12 +8,13 @@ import Placeholder from "@tiptap/extension-placeholder";
 
 import Underline from "@tiptap/extension-underline";
 import { Callout } from "./CalloutExtension";
+import { Suggestion } from "./SuggestionExtension";
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
-  MessageSquareQuote,
+  MessageSquareQuote, PenLine,
 } from "lucide-react";
 
 interface NotesEditorProps {
@@ -69,6 +70,7 @@ export default function NotesEditor({
       TableCell,
       TableHeader,
       Callout,
+      Suggestion,
       Placeholder.configure({ placeholder }),
     ],
     content: content || "",
@@ -282,6 +284,9 @@ export default function NotesEditor({
       case "callout":
         editor.chain().focus().toggleCallout({ type: "info" }).run();
         break;
+      case "suggestion":
+        editor.chain().focus().toggleSuggestion().run();
+        break;
     }
   }, [editor]);
 
@@ -293,6 +298,7 @@ export default function NotesEditor({
     { type: "hr", icon: Minus, label: "구분선" },
     { type: "table", icon: Table2, label: "표 삽입" },
     { type: "callout", icon: MessageSquareQuote, label: "콜아웃", isActive: editor?.isActive("callout") },
+    { type: "suggestion", icon: PenLine, label: "편집 제안 (파란 글씨)", isActive: editor?.isActive("suggestion") },
   ];
 
   return (

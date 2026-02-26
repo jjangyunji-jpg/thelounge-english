@@ -265,3 +265,13 @@
   background-color: hsl(210 90% 96%);
   border-left-color: hsl(210 80% 55%);
 }
+
+/* Suggestion mark (편집 제안) */
+.tiptap .suggestion-mark,
+.notes-mirror-content .suggestion-mark {
+  color: hsl(210 80% 50%);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: hsl(210 80% 70%);
+  text-underline-offset: 2px;
+}
