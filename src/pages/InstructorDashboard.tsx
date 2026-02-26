@@ -121,6 +121,23 @@ function isToday(iso: string) {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
 
+function fmtSchedules(raw: string | null): string {
+  if (!raw) return "";
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || arr.length === 0) return "";
+    return arr.map((s: { day: string; time: string }) => `${s.day} ${s.time}`).join(", ");
+  } catch { return raw; }
+}
+
+function fmtGoals(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [raw];
+  } catch { return raw ? [raw] : []; }
+}
+
 // ── Big Calendar ──────────────────────────────────────────────────────────────
 function BigCalendar({
   sessions,
@@ -979,10 +996,9 @@ export default function InstructorDashboard() {
                   <div className="space-y-2.5">
                     {students.filter(s => s.status === "active").map((st) => {
                       const stats = getStudentStats(st.student_name);
-                      const goalCount = st.lesson_goal_count || 0;
-                      const progressPct = goalCount > 0 ? Math.min(100, Math.round((stats.completedSessions / goalCount) * 100)) : 0;
+                          const goals = fmtGoals(st.lesson_goal);
 
-                      return (
+                          return (
                         <div key={st.id} className="px-3 py-2.5 rounded-lg border border-border bg-muted/20 space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -991,18 +1007,16 @@ export default function InstructorDashboard() {
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-foreground">{st.student_name}</p>
-                                <p className="text-[10px] text-muted-foreground">{st.level} · {st.schedules || "미정"}</p>
+                                <p className="text-[10px] text-muted-foreground">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
                               </div>
                             </div>
-                            <span className="text-[10px] text-muted-foreground">{stats.completedSessions}/{goalCount || "∞"}회</span>
+                            <span className="text-[10px] text-muted-foreground">{stats.completedSessions}회 완료</span>
                           </div>
-                          {/* Progress bar */}
-                          {goalCount > 0 && (
-                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-navy transition-all"
-                                style={{ width: `${progressPct}%` }}
-                              />
+                          {goals.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {goals.map((g, i) => (
+                                <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{g}</span>
+                              ))}
                             </div>
                           )}
                           <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
@@ -1059,8 +1073,7 @@ export default function InstructorDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {students.map((st) => {
                 const stats = getStudentStats(st.student_name);
-                const goalCount = st.lesson_goal_count || 0;
-                const progressPct = goalCount > 0 ? Math.min(100, Math.round((stats.completedSessions / goalCount) * 100)) : 0;
+                const goals = fmtGoals(st.lesson_goal);
                 const statusLabel = st.status === "active" ? "수강 중" : st.status === "paused" ? "휴강" : "수료";
                 const statusColor = st.status === "active" ? "bg-success/10 text-success" : st.status === "paused" ? "bg-gold/10 text-gold-dark" : "bg-muted text-muted-foreground";
 
@@ -1080,7 +1093,7 @@ export default function InstructorDashboard() {
                         </div>
                         <div>
                           <p className="font-semibold text-sm text-foreground">{st.student_name}</p>
-                          <p className="text-[10px] text-muted-foreground">{st.level} · {st.schedules || "일정 미정"}</p>
+                          <p className="text-[10px] text-muted-foreground">{st.level} · {fmtSchedules(st.schedules) || "일정 미정"}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1096,21 +1109,20 @@ export default function InstructorDashboard() {
                     </div>
 
                     <div className="p-4 space-y-3">
-                      {/* Progress */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-muted-foreground">수업 진도</span>
-                          <span className="font-medium text-foreground">{stats.completedSessions}/{goalCount || "∞"}회 {goalCount > 0 ? `(${progressPct}%)` : ""}</span>
-                        </div>
-                        {goalCount > 0 && (
-                          <div className="h-2 rounded-full bg-muted overflow-hidden">
-                            <div className="h-full rounded-full bg-navy transition-all" style={{ width: `${progressPct}%` }} />
+                      {/* Goals */}
+                      {goals.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-semibold text-muted-foreground">학습 목표</p>
+                          <div className="flex flex-wrap gap-1">
+                            {goals.map((g, i) => (
+                              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">{g}</span>
+                            ))}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Stats grid */}
-                      <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="grid grid-cols-2 gap-2 text-center">
                         <div className="py-1.5 rounded-lg bg-muted/30">
                           <p className="text-xs font-bold text-foreground">{stats.completedSessions}</p>
                           <p className="text-[9px] text-muted-foreground">완료 수업</p>
@@ -1118,10 +1130,6 @@ export default function InstructorDashboard() {
                         <div className="py-1.5 rounded-lg bg-muted/30">
                           <p className="text-xs font-bold text-foreground">{stats.hwRate}%</p>
                           <p className="text-[9px] text-muted-foreground">숙제 제출률</p>
-                        </div>
-                        <div className="py-1.5 rounded-lg bg-muted/30">
-                          <p className="text-xs font-bold text-foreground">{st.extra_lessons || 0}</p>
-                          <p className="text-[9px] text-muted-foreground">보강</p>
                         </div>
                       </div>
 
