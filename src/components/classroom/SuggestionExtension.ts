@@ -1,8 +1,13 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+
+/* ── 편집 제안: 삭제 표시 (빨간 취소선) ── */
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
+    suggestionDelete: {
+      setSuggestionDelete: () => ReturnType;
+      unsetSuggestionDelete: () => ReturnType;
+    };
     suggestion: {
       setSuggestion: () => ReturnType;
       unsetSuggestion: () => ReturnType;
@@ -11,11 +16,41 @@ declare module "@tiptap/core" {
   }
 }
 
-const suggestionPluginKey = new PluginKey("suggestion");
+export const SuggestionDelete = Mark.create({
+  name: "suggestionDelete",
+  keepOnSplit: false,
+
+  parseHTML() {
+    return [{ tag: "span[data-suggestion-delete]" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "span",
+      mergeAttributes(HTMLAttributes, {
+        "data-suggestion-delete": "",
+        class: "suggestion-delete-mark",
+      }),
+      0,
+    ];
+  },
+
+  addCommands() {
+    return {
+      setSuggestionDelete:
+        () =>
+        ({ commands }) => commands.setMark(this.name),
+      unsetSuggestionDelete:
+        () =>
+        ({ commands }) => commands.unsetMark(this.name),
+    };
+  },
+});
+
+/* ── 편집 제안: 추가 표시 (파란 밑줄) ── */
 
 export const Suggestion = Mark.create({
   name: "suggestion",
-
   keepOnSplit: true,
 
   parseHTML() {
@@ -45,23 +80,5 @@ export const Suggestion = Mark.create({
         () =>
         ({ commands }) => commands.toggleMark(this.name),
     };
-  },
-
-  addProseMirrorPlugins() {
-    const markType = this.type;
-    return [
-      new Plugin({
-        key: suggestionPluginKey,
-        appendTransaction(transactions, _oldState, newState) {
-          // If the suggestion mark is in storedMarks, keep it active
-          // This ensures typing preserves the mark
-          const storedMarks = newState.storedMarks;
-          if (storedMarks && storedMarks.some((m) => m.type === markType)) {
-            return null; // marks are already stored, nothing to do
-          }
-          return null;
-        },
-      }),
-    ];
   },
 });

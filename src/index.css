@@ -266,12 +266,20 @@
   border-left-color: hsl(210 80% 55%);
 }
 
-/* Suggestion mark (편집 제안) */
+/* Suggestion mark - 교정 추가 (파란 밑줄) */
 .tiptap .suggestion-mark,
 .notes-mirror-content .suggestion-mark {
   color: hsl(210 80% 50%);
-  font-weight: 600;
   text-decoration: underline;
   text-decoration-color: hsl(210 80% 70%);
   text-underline-offset: 2px;
+}
+
+/* Suggestion delete mark - 삭제 표시 (빨간 취소선) */
+.tiptap .suggestion-delete-mark,
+.notes-mirror-content .suggestion-delete-mark {
+  color: hsl(0 70% 55%);
+  text-decoration: line-through;
+  text-decoration-color: hsl(0 70% 55%);
+  opacity: 0.7;
 }
