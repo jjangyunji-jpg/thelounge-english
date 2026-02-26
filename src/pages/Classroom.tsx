@@ -5,7 +5,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked,
-  Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2, Monitor,
+  Loader2, Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InstructorSTTPanel from "@/components/classroom/InstructorSTTPanel";
 import WordLookupPanel from "@/components/classroom/WordLookupPanel";
+import NotesEditor from "@/components/classroom/NotesEditor";
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
 import { supabase } from "@/integrations/supabase/client";
@@ -194,49 +195,9 @@ export default function Classroom() {
   const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(true);
   const [isAutoCorrecting, setIsAutoCorrecting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const notesRef = useRef<HTMLTextAreaElement | null>(null);
   const autoCorrectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCorrectedText = useRef("");
-
-  const applyFormat = useCallback((type: "bold" | "h1" | "h2" | "h3" | "hr" | "table") => {
-    const el = notesRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const selected = notes.slice(start, end);
-    let newText = notes;
-    let newStart = start;
-    let newEnd = end;
-
-    if (type === "bold") {
-      const replacement = `**${selected || "텍스트"}**`;
-      newText = notes.slice(0, start) + replacement + notes.slice(end);
-      newStart = start + 2;
-      newEnd = newStart + (selected || "텍스트").length;
-    } else if (type === "h1" || type === "h2" || type === "h3") {
-      const prefix = type === "h1" ? "# " : type === "h2" ? "## " : "### ";
-      const lineStart = notes.lastIndexOf("\n", start - 1) + 1;
-      newText = notes.slice(0, lineStart) + prefix + notes.slice(lineStart);
-      newStart = start + prefix.length;
-      newEnd = end + prefix.length;
-    } else if (type === "hr") {
-      const ins = "\n\n---\n\n";
-      newText = notes.slice(0, end) + ins + notes.slice(end);
-      newStart = newEnd = end + ins.length;
-    } else if (type === "table") {
-      const ins = "\n\n| 열1 | 열2 | 열3 |\n| --- | --- | --- |\n| 내용 | 내용 | 내용 |\n\n";
-      newText = notes.slice(0, end) + ins + notes.slice(end);
-      newStart = newEnd = end + ins.length;
-    }
-
-    setNotes(newText);
-    lastCorrectedText.current = newText;
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(newStart, newEnd);
-    }, 0);
-  }, [notes]);
 
   const triggerAutoCorrect = useCallback(async (text: string) => {
     if (!text.trim() || isAutoCorrecting) return;
@@ -246,18 +207,8 @@ export default function Classroom() {
         body: { text, mode: "typo" },
       });
       if (!error && data?.corrected && data.corrected !== text) {
-        const el = notesRef.current;
-        const cursorPos = el?.selectionStart ?? text.length;
         setNotes(data.corrected);
         lastCorrectedText.current = data.corrected;
-        // Restore cursor position
-        setTimeout(() => {
-          if (el) {
-            el.focus();
-            const newPos = Math.min(cursorPos, data.corrected.length);
-            el.setSelectionRange(newPos, newPos);
-          }
-        }, 0);
       } else {
         lastCorrectedText.current = text;
       }
@@ -667,62 +618,23 @@ export default function Classroom() {
                     </Button>
                   </div>
                 </div>
-                {/* ── Formatting toolbar ── */}
-                {notesEditMode && !isDisabled && (
-                  <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border bg-muted/20 flex-wrap">
-                    {([
-                      { type: "bold" as const, icon: Bold, label: "굵게 (Ctrl+B)" },
-                      { type: "h1" as const, icon: Heading1, label: "제목 1" },
-                      { type: "h2" as const, icon: Heading2, label: "제목 2" },
-                      { type: "h3" as const, icon: Heading3, label: "제목 3" },
-                      { type: "hr" as const, icon: Minus, label: "구분선" },
-                      { type: "table" as const, icon: Table2, label: "표 삽입" },
-                    ] as const).map(({ type, icon: Icon, label }) => (
-                      <button
-                        key={type}
-                        title={label}
-                        onMouseDown={(e) => { e.preventDefault(); applyFormat(type); }}
-                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                      </button>
-                    ))}
-                     <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">Ctrl+B 굵게</span>
-                     <button
-                       onClick={() => setAutoCorrectEnabled(v => !v)}
-                       className={cn("ml-2 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all border",
-                         autoCorrectEnabled
-                           ? "border-success/40 bg-success/10 text-success"
-                           : "border-muted-foreground/20 text-muted-foreground hover:bg-muted"
-                       )}
-                     >
-                       {isAutoCorrecting && <Loader2 className="w-3 h-3 animate-spin" />}
-                       {autoCorrectEnabled ? "자동교정 ON" : "자동교정 OFF"}
-                     </button>
-                   </div>
-                )}
-                <Textarea
-                  ref={notesRef}
-                  value={notes} onChange={(e) => {
-                    const newVal = e.target.value;
+                <NotesEditor
+                  content={notes}
+                  onChange={(newVal) => {
                     setNotes(newVal);
-                    // Debounced auto-save for realtime mirroring
                     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
                     autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 1500);
-                    // Debounced auto-correct
                     if (autoCorrectEnabled && newVal.trim() && newVal !== lastCorrectedText.current) {
                       if (autoCorrectTimer.current) clearTimeout(autoCorrectTimer.current);
-                      autoCorrectTimer.current = setTimeout(() => triggerAutoCorrect(newVal), 3000);
+                      autoCorrectTimer.current = setTimeout(() => triggerAutoCorrect(newVal), 1500);
                     }
                   }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey && e.key === "b") { e.preventDefault(); applyFormat("bold"); }
-                  }}
-                  spellCheck
-                  placeholder={`수업 내용을 자유롭게 타이핑하세요.\n\nToday's topic: ${session.topic}\n\n- Key expressions:\n- Grammar points:\n- Notes:`}
-                  disabled={isDisabled} readOnly={!notesEditMode}
-                  className={cn("h-[420px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto",
-                    !notesEditMode && "cursor-default text-muted-foreground")}
+                  editable={notesEditMode}
+                  disabled={isDisabled}
+                  placeholder={`수업 내용을 자유롭게 타이핑하세요...\n\nToday's topic: ${session.topic}`}
+                  autoCorrectEnabled={autoCorrectEnabled}
+                  onAutoCorrectToggle={() => setAutoCorrectEnabled(v => !v)}
+                  isAutoCorrecting={isAutoCorrecting}
                 />
                 {classState === "active" && (
                   <div className="px-4 py-2.5 border-t border-border bg-muted/20 flex items-center gap-3">

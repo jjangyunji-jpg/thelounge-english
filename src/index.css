@@ -175,3 +175,52 @@
     color: hsl(38 75% 42%);
   }
 }
+
+/* TipTap Editor Styles */
+.tiptap {
+  outline: none;
+}
+.tiptap h1 {
+  @apply text-2xl font-bold mt-4 mb-2 text-foreground;
+}
+.tiptap h2 {
+  @apply text-xl font-bold mt-3 mb-1.5 text-foreground;
+}
+.tiptap h3 {
+  @apply text-lg font-semibold mt-2 mb-1 text-foreground;
+}
+.tiptap p {
+  @apply mb-1;
+}
+.tiptap strong {
+  @apply font-bold;
+}
+.tiptap em {
+  @apply italic;
+}
+.tiptap hr {
+  @apply my-4 border-border;
+}
+.tiptap ul {
+  @apply list-disc pl-5 mb-2;
+}
+.tiptap ol {
+  @apply list-decimal pl-5 mb-2;
+}
+.tiptap table {
+  @apply border-collapse w-full my-3;
+}
+.tiptap th,
+.tiptap td {
+  @apply border border-border px-3 py-1.5 text-sm;
+}
+.tiptap th {
+  @apply bg-muted/50 font-semibold;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  @apply text-muted-foreground/50;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
