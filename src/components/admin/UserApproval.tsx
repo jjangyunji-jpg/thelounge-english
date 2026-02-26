@@ -1,8 +1,23 @@
 import { useState, useEffect } from "react";
-import { Check, X, Loader2, UserCheck, Clock } from "lucide-react";
+import { Check, X, Loader2, UserCheck, Clock, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,12 +29,42 @@ interface PendingUser {
   approved: boolean;
 }
 
-export default function UserApproval() {
+type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+const LEVELS: Level[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
+const DAYS_OF_WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+
+interface ScheduleSlot { day: string; time: string; }
+
+interface StudentSetupForm {
+  phone: string;
+  level: Level | "";
+  instructor: string;
+  startDate: string;
+  extraLessons: number;
+  schedules: ScheduleSlot[];
+}
+
+const initialSetupForm: StudentSetupForm = {
+  phone: "", level: "B1", instructor: "", startDate: "", extraLessons: 0, schedules: [],
+};
+
+interface Props {
+  onNavigate?: (tab: string) => void;
+}
+
+export default function UserApproval({ onNavigate }: Props) {
   const { toast } = useToast();
   const [pending, setPending] = useState<PendingUser[]>([]);
   const [approved, setApproved] = useState<PendingUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+
+  // Student setup dialog
+  const [setupDialogOpen, setSetupDialogOpen] = useState(false);
+  const [setupUser, setSetupUser] = useState<PendingUser | null>(null);
+  const [setupForm, setSetupForm] = useState<StudentSetupForm>(initialSetupForm);
+  const [instructorNames, setInstructorNames] = useState<string[]>([]);
+  const [savingSetup, setSavingSetup] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -35,7 +80,15 @@ export default function UserApproval() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    supabase
+      .from("instructors")
+      .select("name")
+      .eq("active", true)
+      .order("name")
+      .then(({ data }) => setInstructorNames((data || []).map(i => i.name)));
+  }, []);
 
   const handleApprove = async (user: PendingUser) => {
     setActing(user.id);
@@ -46,16 +99,25 @@ export default function UserApproval() {
 
     if (error) {
       toast({ title: "승인 실패", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `${user.display_name || "사용자"} 승인 완료 ✓` });
-      load();
+      setActing(null);
+      return;
     }
+
+    toast({ title: `${user.display_name || "사용자"} 승인 완료 ✓` });
     setActing(null);
+
+    if (user.role === "student") {
+      // Open student setup dialog
+      setSetupUser(user);
+      setSetupForm(initialSetupForm);
+      setSetupDialogOpen(true);
+    }
+
+    load();
   };
 
   const handleReject = async (user: PendingUser) => {
     setActing(user.id);
-    // Delete role record + auth user via edge function
     const { error } = await supabase.functions.invoke("delete-user", {
       body: { userId: user.user_id },
     });
@@ -66,6 +128,48 @@ export default function UserApproval() {
       load();
     }
     setActing(null);
+  };
+
+  const handleSaveStudentSetup = async () => {
+    if (!setupUser || !setupForm.level || !setupForm.instructor) {
+      toast({ title: "레벨과 담당 강사를 선택해주세요.", variant: "destructive" });
+      return;
+    }
+    setSavingSetup(true);
+
+    // Find instructor_id
+    const { data: instrData } = await supabase
+      .from("instructors")
+      .select("id")
+      .eq("name", setupForm.instructor)
+      .eq("active", true)
+      .maybeSingle();
+
+    const { error } = await supabase
+      .from("instructor_students")
+      .insert({
+        student_name: setupUser.display_name || "Unknown",
+        instructor_id: instrData?.id ?? "00000000-0000-0000-0000-000000000000",
+        instructor_name: setupForm.instructor,
+        phone: setupForm.phone || null,
+        level: setupForm.level,
+        start_date: setupForm.startDate || null,
+        extra_lessons: setupForm.extraLessons,
+        schedules: setupForm.schedules.length > 0 ? JSON.stringify(setupForm.schedules) : null,
+        status: "active",
+      });
+
+    setSavingSetup(false);
+
+    if (error) {
+      toast({ title: "수강생 등록 실패", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    toast({ title: `${setupUser.display_name} 수강생 정보 등록 완료 ✓` });
+    setSetupDialogOpen(false);
+    setSetupUser(null);
+    onNavigate?.("students");
   };
 
   const roleLabel = (r: string) => r === "student" ? "학생" : r === "instructor" ? "강사" : r;
@@ -158,6 +262,155 @@ export default function UserApproval() {
           )}
         </CardContent>
       </Card>
+
+      {/* Student Setup Dialog */}
+      <Dialog open={setupDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setSetupDialogOpen(false);
+          setSetupUser(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>수강생 기본 정보 설정</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{setupUser?.display_name}</span> 님의 수업 정보를 설정합니다.
+          </p>
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">레벨</Label>
+                <Select
+                  value={setupForm.level}
+                  onValueChange={(v) => setSetupForm(p => ({ ...p, level: v as Level }))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">담당 강사</Label>
+                <Select
+                  value={setupForm.instructor}
+                  onValueChange={(v) => setSetupForm(p => ({ ...p, instructor: v }))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {instructorNames.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">연락처</Label>
+                <Input
+                  placeholder="010-0000-0000"
+                  className="h-9"
+                  value={setupForm.phone}
+                  onChange={(e) => setSetupForm(p => ({ ...p, phone: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">수업 시작일</Label>
+                <Input
+                  type="date"
+                  className="h-9"
+                  value={setupForm.startDate}
+                  onChange={(e) => setSetupForm(p => ({ ...p, startDate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {/* Schedules */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  수업 일정
+                </Label>
+                <button
+                  type="button"
+                  className="text-xs text-navy hover:underline flex items-center gap-1"
+                  onClick={() =>
+                    setSetupForm(p => ({
+                      ...p,
+                      schedules: [...p.schedules, { day: "월", time: "10:00" }],
+                    }))
+                  }
+                >
+                  <Plus className="w-3 h-3" /> 추가
+                </button>
+              </div>
+              {setupForm.schedules.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-1">수업 일정을 추가하세요</p>
+              ) : (
+                <div className="space-y-2">
+                  {setupForm.schedules.map((slot, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Select
+                        value={slot.day}
+                        onValueChange={(v) =>
+                          setSetupForm(p => ({
+                            ...p,
+                            schedules: p.schedules.map((s, i) => i === idx ? { ...s, day: v } : s),
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-20 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DAYS_OF_WEEK.map(d => <SelectItem key={d} value={d}>{d}요일</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="time"
+                        className="h-8 flex-1 text-xs"
+                        value={slot.time}
+                        onChange={(e) =>
+                          setSetupForm(p => ({
+                            ...p,
+                            schedules: p.schedules.map((s, i) => i === idx ? { ...s, time: e.target.value } : s),
+                          }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() =>
+                          setSetupForm(p => ({
+                            ...p,
+                            schedules: p.schedules.filter((_, i) => i !== idx),
+                          }))
+                        }
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Button
+              className="w-full gap-2 bg-navy hover:bg-navy-light text-primary-foreground"
+              disabled={savingSetup || !setupForm.level || !setupForm.instructor}
+              onClick={handleSaveStudentSetup}
+            >
+              {savingSetup && <Loader2 className="w-4 h-4 animate-spin" />}
+              저장 후 수강생 관리로 이동
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
