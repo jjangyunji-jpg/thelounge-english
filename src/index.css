@@ -268,10 +268,15 @@
 
 /* Toggle List (details/summary) */
 .tiptap .toggle-list {
-  @apply my-2 rounded-md border border-border bg-muted/30 px-3 py-2;
+  @apply my-2 py-1;
 }
 .tiptap .toggle-list > summary.toggle-summary {
   @apply cursor-pointer font-semibold text-sm list-none flex items-center gap-1;
+}
+.tiptap .toggle-list > summary.toggle-summary:empty::after {
+  content: "제목을 입력하세요";
+  color: hsl(var(--muted-foreground) / 0.4);
+  font-weight: normal;
 }
 .tiptap .toggle-list > summary.toggle-summary::before {
   content: "▶";
@@ -279,6 +284,7 @@
   font-size: 0.65em;
   transition: transform 0.15s ease;
   margin-right: 4px;
+  flex-shrink: 0;
 }
 .tiptap .toggle-list[open] > summary.toggle-summary::before {
   transform: rotate(90deg);
@@ -286,8 +292,15 @@
 .tiptap .toggle-list .toggle-list-content {
   @apply mt-1 pl-4 text-sm;
 }
+.tiptap .toggle-list .toggle-list-content > p.is-empty:first-child::before {
+  content: "내용을 입력하세요";
+  color: hsl(var(--muted-foreground) / 0.4);
+  float: left;
+  pointer-events: none;
+  height: 0;
+}
 .notes-mirror-content .toggle-list {
-  @apply my-2 rounded-md border border-border bg-muted/30 px-3 py-2;
+  @apply my-2 py-1;
 }
 .notes-mirror-content .toggle-list > summary {
   @apply cursor-pointer font-semibold text-sm;

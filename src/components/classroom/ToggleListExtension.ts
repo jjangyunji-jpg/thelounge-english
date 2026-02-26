@@ -18,8 +18,12 @@ export const DetailsSummary = Node.create({
     return [{ tag: "summary" }];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    return ["summary", mergeAttributes(HTMLAttributes, { class: "toggle-summary" }), 0];
+  renderHTML({ node, HTMLAttributes }) {
+    const attrs = { ...HTMLAttributes, class: "toggle-summary" };
+    if (node.content.size === 0) {
+      attrs.class += " is-empty";
+    }
+    return ["summary", mergeAttributes(attrs), 0];
   },
 });
 
@@ -63,7 +67,6 @@ export const DetailsBlock = Node.create({
               content: [
                 {
                   type: "detailsSummary",
-                  content: [{ type: "text", text: "Toggle" }],
                 },
                 {
                   type: "paragraph",
