@@ -4,7 +4,7 @@ import {
   Calendar, Clock, ChevronRight, Check, X, Loader2,
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
-  PenLine, Mic, Brain, Edit2, Trash2, RefreshCw,
+  PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -930,6 +930,20 @@ export default function InstructorDashboard() {
   const upcomingSessions = sessions.filter((s) => msUntil(s.scheduled_at) > 0)
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
+  // Next class day sessions (first future date that has sessions, excluding today)
+  const nextClassDaySessions = (() => {
+    const todayStr = new Date().toDateString();
+    const futureSessions = sessions
+      .filter((s) => {
+        const d = new Date(s.scheduled_at);
+        return d.toDateString() !== todayStr && d.getTime() > Date.now();
+      })
+      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+    if (futureSessions.length === 0) return [];
+    const nextDateStr = new Date(futureSessions[0].scheduled_at).toDateString();
+    return futureSessions.filter((s) => new Date(s.scheduled_at).toDateString() === nextDateStr);
+  })();
+
   const myAssignments = assignments.filter((a) => myStudentNames.has(a.student_name));
   const uncheckedHw = myAssignments.filter((a) => {
     const sub = submissions.find((s) => s.assignment_id === a.id);
@@ -1223,8 +1237,37 @@ export default function InstructorDashboard() {
                 )}
               </div>
 
-              {/* RIGHT: Progress + Today + Homework */}
+              {/* RIGHT: Next Class Prep + Today + Progress + Homework */}
               <div className="space-y-4">
+                {/* Next class day prep */}
+                {nextClassDaySessions.length > 0 && (
+                  <div className="rounded-xl border border-navy/20 bg-navy/5 p-4">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-navy" />
+                      다음 수업 준비
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy">
+                        {new Date(nextClassDaySessions[0].scheduled_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}
+                      </span>
+                    </h3>
+                    <div className="space-y-2">
+                      {nextClassDaySessions.map((s) => (
+                        <a
+                          key={s.id}
+                          href={`/t/classroom?sessionId=${s.id}`}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-navy/15 bg-card hover:bg-navy/10 transition-colors group"
+                        >
+                          <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground">{s.student_name}</p>
+                            <p className="text-[11px] text-muted-foreground">{s.level} · 수업노트 준비</p>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-navy/40 group-hover:text-navy transition-colors" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Today's sessions */}
                 <div className="rounded-xl border border-border bg-card p-4">
                   <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
