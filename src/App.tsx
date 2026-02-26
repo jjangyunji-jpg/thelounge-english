@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Admin from "./pages/Admin";
 import Classroom from "./pages/Classroom";
+import ClassroomNotesMirror from "./pages/ClassroomNotesMirror";
 import StudentDashboard from "./pages/StudentDashboard";
 import InstructorDashboard from "./pages/InstructorDashboard";
 import NotFound from "./pages/NotFound";
@@ -35,6 +36,7 @@ const App = () => (
           {/* /t/* 강사 전용 라우트 */}
           <Route path="/t/dashboard" element={<InstructorDashboard />} />
           <Route path="/t/classroom" element={<Classroom />} />
+          <Route path="/t/classroom/notes" element={<ClassroomNotesMirror />} />
           <Route path="/t/profile" element={<MyProfile />} />
           {/* /my/* 학생 전용 라우트 */}
           <Route path="/my/profile" element={<MyProfile />} />

@@ -5,7 +5,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked,
-  Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
+  Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2, Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -196,6 +196,7 @@ export default function Classroom() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const notesRef = useRef<HTMLTextAreaElement | null>(null);
   const autoCorrectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCorrectedText = useRef("");
 
   const applyFormat = useCallback((type: "bold" | "h1" | "h2" | "h3" | "hr" | "table") => {
@@ -263,6 +264,17 @@ export default function Classroom() {
     } catch { /* silent */ }
     finally { setIsAutoCorrecting(false); }
   }, [isAutoCorrecting]);
+
+  // Auto-save notes to DB for realtime mirroring (debounced 1.5s)
+  const autoSaveNotes = useCallback(async (text: string) => {
+    if (!session.sessionId || !text.trim()) return;
+    await supabase.from("class_sessions").update({ notes: text.trim() }).eq("id", session.sessionId);
+  }, [session.sessionId]);
+
+  const handleOpenMirror = () => {
+    if (!session.sessionId) return;
+    window.open(`/t/classroom/notes?sessionId=${session.sessionId}`, "_blank", "noopener");
+  };
 
   const [addingHw, setAddingHw] = useState(false);
   const [newHwType, setNewHwType] = useState<HwType>("writing");
@@ -645,8 +657,13 @@ export default function Classroom() {
                     <Button size="sm" variant="outline" onClick={handleSave} disabled={isDisabled || !notes.trim()}
                       className={cn("h-7 text-xs gap-1.5 transition-all", saveFlash && "border-success text-success")}
                     >
-                      <BookMarked className="w-3 h-3" style={{ display: "none" }} />
                       {saveFlash ? "저장됨 ✓" : "저장"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleOpenMirror} disabled={!session.sessionId}
+                      className="h-7 text-xs gap-1.5 border-purple-300 text-purple-600 hover:bg-purple-50"
+                    >
+                      <Monitor className="w-3 h-3" />
+                      <span className="hidden sm:inline">노트 공유</span>
                     </Button>
                   </div>
                 </div>
@@ -689,6 +706,9 @@ export default function Classroom() {
                   value={notes} onChange={(e) => {
                     const newVal = e.target.value;
                     setNotes(newVal);
+                    // Debounced auto-save for realtime mirroring
+                    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+                    autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 1500);
                     // Debounced auto-correct
                     if (autoCorrectEnabled && newVal.trim() && newVal !== lastCorrectedText.current) {
                       if (autoCorrectTimer.current) clearTimeout(autoCorrectTimer.current);
