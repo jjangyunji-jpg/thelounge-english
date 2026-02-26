@@ -286,7 +286,12 @@ export default function Classroom() {
 
   const handleStartClass = () => {
     setClassState("active");
-    if (session.meetLink) window.open(session.meetLink, "_blank", "noopener,noreferrer");
+    if (session.meetLink) {
+      const w = window.open(session.meetLink, "_blank", "noopener,noreferrer");
+      if (!w) {
+        toast({ title: "팝업이 차단됐습니다", description: "브라우저 팝업 차단을 해제하거나 Meet 재접속 버튼을 이용해주세요.", variant: "destructive" });
+      }
+    }
     setMeetConnected(true);
   };
 
@@ -470,13 +475,11 @@ export default function Classroom() {
               <ExternalLink className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Meet 재접속</span>
             </Button>
-            {role === "instructor" && (
-              <Button size="sm" onClick={handleEndClass}
-                className="h-8 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-1.5"
-              >
-                <VideoOff className="w-3.5 h-3.5" />수업 종료
-              </Button>
-            )}
+            <Button size="sm" onClick={handleEndClass}
+              className="h-8 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-1.5"
+            >
+              <VideoOff className="w-3.5 h-3.5" />{role === "instructor" ? "수업 종료" : "수업 나가기"}
+            </Button>
           </div>
         )}
 
