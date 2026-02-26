@@ -147,7 +147,12 @@ function BigCalendar({
     if (!sessionsByDate.has(key)) sessionsByDate.set(key, []);
     sessionsByDate.get(key)!.push(s);
   });
-  const meetingDates = new Set(meetings.map((m) => new Date(m.scheduled_at).toDateString()));
+  const meetingsByDate = new Map<string, BusinessMeeting[]>();
+  meetings.forEach((m) => {
+    const key = new Date(m.scheduled_at).toDateString();
+    if (!meetingsByDate.has(key)) meetingsByDate.set(key, []);
+    meetingsByDate.get(key)!.push(m);
+  });
 
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
@@ -184,7 +189,7 @@ function BigCalendar({
           const date = new Date(year, month, day);
           const dateStr = date.toDateString();
           const daySessions = sessionsByDate.get(dateStr) || [];
-          const hasMeeting = meetingDates.has(dateStr);
+          const dayMeetings = meetingsByDate.get(dateStr) || [];
           const todayFlag = dateStr === new Date().toDateString();
           const isSelected = selectedDate && dateStr === selectedDate.toDateString();
           const dayOfWeek = date.getDay();
@@ -194,26 +199,35 @@ function BigCalendar({
               key={idx}
               onClick={() => onSelectDate(date)}
               className={cn(
-                "aspect-square flex flex-col items-center justify-start rounded-lg p-1 transition-all text-xs relative hover:bg-muted/50",
+                "min-h-[72px] flex flex-col items-start rounded-lg p-1 transition-all text-xs relative hover:bg-muted/50",
                 todayFlag && "ring-2 ring-navy/50",
                 isSelected && "bg-navy/10 ring-2 ring-navy",
               )}
             >
               <span className={cn(
-                "text-[11px] font-medium",
+                "text-[11px] font-medium mb-0.5",
                 todayFlag ? "text-navy font-bold" : dayOfWeek === 0 ? "text-destructive/70" : dayOfWeek === 6 ? "text-blue-400" : "text-foreground",
               )}>
                 {day}
               </span>
-              {(daySessions.length > 0 || hasMeeting) && (
-                <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
-                  {daySessions.slice(0, 3).map((s, i) => (
-                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-navy" />
-                  ))}
-                  {daySessions.length > 3 && <span className="text-[8px] text-navy font-bold">+{daySessions.length - 3}</span>}
-                  {hasMeeting && <div className="w-1.5 h-1.5 rounded-full bg-gold" />}
-                </div>
-              )}
+              <div className="w-full space-y-0.5 overflow-hidden">
+                {daySessions.slice(0, 2).map((s, i) => (
+                  <div key={i} className="w-full truncate text-[9px] leading-tight px-1 py-0.5 rounded bg-navy/10 text-navy font-medium">
+                    {new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} {s.student_name}
+                  </div>
+                ))}
+                {daySessions.length > 2 && (
+                  <span className="text-[8px] text-navy font-bold px-1">+{daySessions.length - 2}건</span>
+                )}
+                {dayMeetings.slice(0, 1).map((m, i) => (
+                  <div key={`m${i}`} className="w-full truncate text-[9px] leading-tight px-1 py-0.5 rounded bg-gold/15 text-gold-dark font-medium">
+                    {m.notes ? m.notes : "업무미팅"}
+                  </div>
+                ))}
+                {dayMeetings.length > 1 && (
+                  <span className="text-[8px] text-gold-dark font-bold px-1">+{dayMeetings.length - 1}건</span>
+                )}
+              </div>
             </button>
           );
         })}
