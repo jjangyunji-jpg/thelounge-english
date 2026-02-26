@@ -225,7 +225,17 @@ export default function ClassNote() {
 
               <div
                 className="tiptap h-[420px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground"
-                dangerouslySetInnerHTML={{ __html: selectedSession.notes || "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>" }}
+                dangerouslySetInnerHTML={{ __html: (() => {
+                  const raw = selectedSession.notes || "";
+                  if (!raw) return "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>";
+                  // If notes look like escaped HTML (starts with &lt;), unescape
+                  if (raw.includes("&lt;") || raw.includes("&amp;")) {
+                    const tmp = document.createElement("textarea");
+                    tmp.innerHTML = raw;
+                    return tmp.value;
+                  }
+                  return raw;
+                })() }}
               />
             </div>
           )}
@@ -276,7 +286,7 @@ export default function ClassNote() {
                       {s.topic || "수업"} · {formatTime(s.scheduled_at)}
                     </p>
                     {s.notes && (
-                      <p className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">{s.notes.slice(0, 30)}…</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">{s.notes.replace(/<[^>]*>/g, '').slice(0, 30)}…</p>
                     )}
                   </button>
                 ))}
