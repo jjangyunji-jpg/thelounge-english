@@ -1010,35 +1010,33 @@ export default function InstructorDashboard() {
   const getStudentStats = (studentName: string, studentSchedules: string | null) => {
     const now = new Date();
 
-    // Monthly sessions: completed vs total scheduled this month
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    // Period-based sessions: use active schedule_periods instead of calendar month
+    const periodStart = period ? new Date(period.start_date + "T00:00:00") : new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = period ? new Date(period.end_date + "T23:59:59") : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     const sSessions = sessions.filter((s) => s.student_name === studentName);
-    const monthSessions = sSessions.filter((s) => {
+    const periodSess = sSessions.filter((s) => {
       const d = new Date(s.scheduled_at);
-      return d >= monthStart && d <= monthEnd;
+      return d >= periodStart && d <= periodEnd;
     });
-    const completedMonthSessions = monthSessions.filter((s) => new Date(s.scheduled_at) < now).length;
+    const completedMonthSessions = periodSess.filter((s) => new Date(s.scheduled_at) < now).length;
 
-    // Total scheduled this month from recurring schedules
+    // Total scheduled in period from recurring schedules
     let totalMonthScheduled = 0;
     const hSet = buildHolidaySet(holidays);
     try {
       const slots: ScheduleSlot[] = studentSchedules ? JSON.parse(studentSchedules) : [];
       if (Array.isArray(slots)) {
-        const daysInMonth = monthEnd.getDate();
-        for (let d = 1; d <= daysInMonth; d++) {
-          const date = new Date(now.getFullYear(), now.getMonth(), d);
-          if (date.getDay() === 2) continue; // 화요일 제외
-          const dStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
+          if (d.getDay() === 2) continue; // 화요일 제외
+          const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
           if (hSet.has(dStr)) continue; // 공휴일 제외
-          const dayName = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
+          const dayName = ["일", "월", "화", "수", "목", "금", "토"][d.getDay()];
           if (slots.some((sl) => sl.day === dayName)) totalMonthScheduled++;
         }
       }
     } catch { /* ignore */ }
     // Use max of actual or scheduled
-    const monthTotal = Math.max(totalMonthScheduled, monthSessions.length);
+    const monthTotal = Math.max(totalMonthScheduled, periodSess.length);
 
     // Weekly homework: this week Mon-Sun
     const weekDay = now.getDay();
