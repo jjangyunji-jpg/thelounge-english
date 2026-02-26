@@ -696,24 +696,21 @@ export default function StudentDashboard() {
                   <p className="text-[10px] mt-0.5 text-primary-foreground/60">{nextClassDate ? timeUntilLabel(nextClassDate.toISOString()) : "예정 없음"}</p>
                 </div>
               </button>
-              {/* 보강 신청하기 - 준비중 */}
-              <div className="relative group">
-                <button
-                  disabled
-                  className="w-full rounded-lg p-3 flex flex-col items-start gap-2 text-left bg-muted/30 border border-border opacity-50 cursor-not-allowed"
-                >
-                  <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
-                    <RotateCcw className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold leading-none text-muted-foreground">보강 신청하기</p>
-                    <p className="text-[10px] mt-0.5 text-muted-foreground">일정 조율</p>
-                  </div>
-                </button>
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-md bg-foreground text-background text-[10px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-                  준비중입니다 ☕
+              {/* 보강 신청하기 */}
+              <a
+                href="https://naver.me/57QYErVk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
+              >
+                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
+                  <RotateCcw className="w-4 h-4 text-navy" />
                 </div>
-              </div>
+                <div>
+                  <p className="text-xs font-bold leading-none text-foreground">보강 신청하기</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">일정 조율</p>
+                </div>
+              </a>
               {/* 수업 노트 */}
               <button
                 onClick={() => navigate(`/my/classnote?name=${encodeURIComponent(student)}`)}
