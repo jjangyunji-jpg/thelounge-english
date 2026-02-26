@@ -616,12 +616,20 @@ export default function StudentDashboard() {
             </a>
           )}
           {authStudent && (
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              로그아웃
-            </button>
+            <>
+              <button
+                onClick={() => navigate("/my/profile")}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                마이페이지
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                로그아웃
+              </button>
+            </>
           )}
         </div>
       </header>

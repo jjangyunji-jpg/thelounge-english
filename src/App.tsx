@@ -12,10 +12,11 @@ import StudentSetup from "./pages/StudentSetup";
 import SetPassword from "./pages/SetPassword";
 import MakeupRequest from "./pages/MakeupRequest";
 import ClassNote from "./pages/ClassNote";
-import ForgotPassword from "./pages/ForgotPassword";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import Signup from "./pages/Signup";
 import Vocabulary from "./pages/Vocabulary";
+import MyProfile from "./pages/MyProfile";
 
 const queryClient = new QueryClient();
 
@@ -37,8 +38,14 @@ const App = () => (
           <Route path="/student-setup" element={<StudentSetup />} />
           <Route path="/makeup" element={<MakeupRequest />} />
           <Route path="/classnote" element={<ClassNote />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/vocabulary" element={<Vocabulary />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          {/* /my/* 학생 전용 라우트 */}
+          <Route path="/my/profile" element={<MyProfile />} />
+          <Route path="/my/classroom" element={<Classroom />} />
+          <Route path="/my/vocabulary" element={<Vocabulary />} />
+          <Route path="/my/classnote" element={<ClassNote />} />
+          <Route path="/my/dashboard" element={<StudentDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
