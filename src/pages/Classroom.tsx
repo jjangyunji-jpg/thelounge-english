@@ -104,12 +104,27 @@ export default function Classroom() {
     const loadSession = async () => {
       let sessionData: any = null;
       if (!urlSessionId) {
-        const { data } = await supabase
+        // Try to get student_name from auth session for filtering
+        let studentNameFilter: string | null = null;
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession) {
+          const { data: profile } = await supabase
+            .from("student_profiles")
+            .select("student_name")
+            .eq("user_id", authSession.user.id)
+            .maybeSingle();
+          if (profile?.student_name) studentNameFilter = profile.student_name;
+        }
+
+        let query = supabase
           .from("class_sessions")
           .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
           .order("scheduled_at", { ascending: false })
-          .limit(1)
-          .single();
+          .limit(1);
+        if (studentNameFilter) {
+          query = query.eq("student_name", studentNameFilter);
+        }
+        const { data } = await query.maybeSingle();
         sessionData = data;
       } else {
         const { data } = await supabase
@@ -129,7 +144,6 @@ export default function Classroom() {
           meetLink: sessionData.meet_link || "",
           topic: sessionData.topic || "",
         });
-        // 이 학생의 세션 중 현재 세션이 몇 번째인지 계산
         const { count } = await supabase
           .from("class_sessions")
           .select("id", { count: "exact", head: true })
