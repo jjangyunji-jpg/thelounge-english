@@ -429,7 +429,7 @@ export default function StudentVocabPanel({
                   weekLabel={wk}
                   words={byWeek[wk]}
                   lessonNumber={lessonNumber}
-                  onDownloadPdf={() => exportWordsPdf(byWeek[wk], studentName)}
+                  onDownloadPdf={() => { exportWordsPdf(byWeek[wk], studentName); }}
                 />
               ))}
             </div>
