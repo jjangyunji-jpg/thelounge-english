@@ -329,8 +329,10 @@ function BigCalendar({
           const dayOfWeek = date.getDay();
 
           // Merge: show actual sessions, then virtual ones not covered by actual sessions
+          // Hide past virtual schedules with no actual session (rescheduled/cancelled)
           const actualStudents = new Set(daySessions.map(s => s.student_name));
-          const unmatched = dayVirtual.filter(v => !actualStudents.has(v.student_name));
+          const isPast = date < new Date(new Date().toDateString());
+          const unmatched = dayVirtual.filter(v => !actualStudents.has(v.student_name) && !isPast);
 
           // Combined entries for display (max 2)
           const displayItems: { label: string; type: "actual" | "virtual" | "meeting" }[] = [];
@@ -1043,6 +1045,9 @@ export default function InstructorDashboard() {
   // Virtual schedules for selected date
   const selectedDayVirtual = (() => {
     if (!selectedDate) return [];
+    // Hide past virtual schedules (rescheduled/cancelled)
+    const isPastDate = selectedDate < new Date(new Date().toDateString());
+    if (isPastDate) return [];
     // Skip Tuesdays
     if (selectedDate.getDay() === 2) return [];
     // Skip holidays
