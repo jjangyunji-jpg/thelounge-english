@@ -265,3 +265,30 @@
   background-color: hsl(210 90% 96%);
   border-left-color: hsl(210 80% 55%);
 }
+
+/* Toggle List (details/summary) */
+.tiptap .toggle-list {
+  @apply my-2 rounded-md border border-border bg-muted/30 px-3 py-2;
+}
+.tiptap .toggle-list > summary.toggle-summary {
+  @apply cursor-pointer font-semibold text-sm list-none flex items-center gap-1;
+}
+.tiptap .toggle-list > summary.toggle-summary::before {
+  content: "▶";
+  display: inline-block;
+  font-size: 0.65em;
+  transition: transform 0.15s ease;
+  margin-right: 4px;
+}
+.tiptap .toggle-list[open] > summary.toggle-summary::before {
+  transform: rotate(90deg);
+}
+.tiptap .toggle-list .toggle-list-content {
+  @apply mt-1 pl-4 text-sm;
+}
+.notes-mirror-content .toggle-list {
+  @apply my-2 rounded-md border border-border bg-muted/30 px-3 py-2;
+}
+.notes-mirror-content .toggle-list > summary {
+  @apply cursor-pointer font-semibold text-sm;
+}
