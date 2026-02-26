@@ -1160,7 +1160,7 @@ export default function InstructorDashboard() {
                             </div>
                             <a href={`/t/classroom?student=${encodeURIComponent(v.student_name)}`}>
                               <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 px-2">
-                                <Video className="w-3 h-3" /> 수업 시작
+                                <FileText className="w-3 h-3" /> 수업노트
                               </Button>
                             </a>
                           </div>
