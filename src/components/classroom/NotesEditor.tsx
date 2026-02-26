@@ -1,5 +1,6 @@
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, Extension } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { InputRule } from "@tiptap/core";
 import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
@@ -11,7 +12,7 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
-  MessageSquareQuote, Type, AlertTriangle, CheckCircle, XCircle,
+  MessageSquareQuote,
 } from "lucide-react";
 
 interface NotesEditorProps {
@@ -69,6 +70,19 @@ export default function NotesEditor({
         rightArrow: '→',
         leftArrow: '←',
         emDash: '—',
+      }),
+      Extension.create({
+        name: 'doubleArrow',
+        addInputRules() {
+          return [
+            new InputRule({
+              find: /<->$/,
+              handler: ({ state, range }) => {
+                state.tr.insertText('↔', range.from, range.to);
+              },
+            }),
+          ];
+        },
       }),
       Placeholder.configure({ placeholder }),
     ],
@@ -130,24 +144,9 @@ export default function NotesEditor({
 
   const slashItems: SlashMenuItem[] = [
     {
-      label: "콜아웃 (정보)",
-      icon: <MessageSquareQuote className="w-4 h-4 text-navy" />,
+      label: "콜아웃",
+      icon: <MessageSquareQuote className="w-4 h-4 text-primary" />,
       action: () => executeSlashCommand(() => editor?.chain().focus().toggleCallout({ type: "info" }).run()),
-    },
-    {
-      label: "콜아웃 (경고)",
-      icon: <AlertTriangle className="w-4 h-4 text-[hsl(var(--warning))]" />,
-      action: () => executeSlashCommand(() => editor?.chain().focus().toggleCallout({ type: "warning" }).run()),
-    },
-    {
-      label: "콜아웃 (성공)",
-      icon: <CheckCircle className="w-4 h-4 text-[hsl(var(--success))]" />,
-      action: () => executeSlashCommand(() => editor?.chain().focus().toggleCallout({ type: "success" }).run()),
-    },
-    {
-      label: "콜아웃 (위험)",
-      icon: <XCircle className="w-4 h-4 text-destructive" />,
-      action: () => executeSlashCommand(() => editor?.chain().focus().toggleCallout({ type: "danger" }).run()),
     },
     {
       label: "제목 1",
