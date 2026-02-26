@@ -5,7 +5,7 @@ import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
-import Typography from "@tiptap/extension-typography";
+
 import Underline from "@tiptap/extension-underline";
 import { Callout } from "./CalloutExtension";
 import { useEffect, useCallback, useRef, useState } from "react";
@@ -67,12 +67,6 @@ export default function NotesEditor({
       TableRow,
       TableCell,
       TableHeader,
-      Callout,
-      Typography.configure({
-        rightArrow: false,
-        leftArrow: false,
-        emDash: '—',
-      }),
       Placeholder.configure({ placeholder }),
     ],
     content: content || "",
@@ -152,6 +146,21 @@ export default function NotesEditor({
               if (t2 === "->") {
                 editor.chain().focus().deleteRange({ from: pos - 2, to: pos }).insertContent("→").run();
                 return;
+              }
+            }
+          }, 0);
+          return false;
+        }
+
+        // -- → — (em dash)
+        if (event.key === "-") {
+          setTimeout(() => {
+            if (!editor) return;
+            const pos = editor.state.selection.from;
+            if (pos >= 2) {
+              const t2 = editor.state.doc.textBetween(pos - 2, pos, "");
+              if (t2 === "--") {
+                editor.chain().focus().deleteRange({ from: pos - 2, to: pos }).insertContent("—").run();
               }
             }
           }, 0);

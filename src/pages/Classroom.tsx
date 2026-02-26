@@ -200,29 +200,40 @@ export default function Classroom() {
   const lastCorrectedText = useRef("");
 
   const triggerAutoCorrect = useCallback(async (html: string) => {
-    // Extract plain text from HTML for typo correction
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
     const plainText = tmp.textContent || tmp.innerText || "";
-    if (!plainText.trim() || isAutoCorrecting) return;
+    
+    // Extract only English words/sentences for typo checking
+    const englishParts = plainText.match(/[a-zA-Z][a-zA-Z\s',.\-!?;:]+/g);
+    if (!englishParts || englishParts.length === 0 || isAutoCorrecting) return;
+    const englishText = englishParts.join(" ").trim();
+    if (!englishText || englishText.length < 3) return;
+
     setIsAutoCorrecting(true);
     try {
       const { data, error } = await supabase.functions.invoke("ai-correct", {
-        body: { text: plainText, mode: "typo" },
+        body: { text: englishText, mode: "typo" },
       });
-      if (!error && data?.corrected && data.corrected !== plainText) {
-        // Replace text content in HTML while preserving structure
-        // Simple approach: replace in the HTML string
+      if (!error && data?.corrected && data.corrected !== englishText) {
         let correctedHtml = html;
-        const origWords = plainText.split(/\s+/);
+        const origWords = englishText.split(/\s+/);
         const corrWords = (data.corrected as string).split(/\s+/);
         for (let i = 0; i < origWords.length && i < corrWords.length; i++) {
           if (origWords[i] !== corrWords[i] && origWords[i].length > 0) {
-            correctedHtml = correctedHtml.replace(origWords[i], corrWords[i]);
+            // Use word-boundary aware replacement (first occurrence only)
+            correctedHtml = correctedHtml.replace(
+              new RegExp(`(?<=>|^|\\s)${origWords[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=<|$|\\s|[.,!?;:])`, ''),
+              corrWords[i]
+            );
           }
         }
-        setNotes(correctedHtml);
-        lastCorrectedText.current = correctedHtml;
+        if (correctedHtml !== html) {
+          setNotes(correctedHtml);
+          lastCorrectedText.current = correctedHtml;
+        } else {
+          lastCorrectedText.current = html;
+        }
       } else {
         lastCorrectedText.current = html;
       }
