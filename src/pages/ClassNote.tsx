@@ -87,11 +87,13 @@ export default function ClassNote() {
     load();
   }, [student]);
 
-  // 주차 계산: scheduled_at 오름차순 인덱스
-  const sessionWeekMap = new Map<string, number>();
-  [...sessions].sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at)).forEach((s, i) => {
-    sessionWeekMap.set(s.id, i + 1);
-  });
+  // 주차 계산: scheduled_at 기준 n월 n주차
+  const sessionWeekLabel = (s: typeof sessions[number]) => {
+    const d = new Date(s.scheduled_at);
+    const month = d.getMonth() + 1;
+    const weekOfMonth = Math.ceil(d.getDate() / 7);
+    return `${month}월 ${weekOfMonth}주차`;
+  };
 
   const pastSessions = sessions.filter(
     (s) => new Date(s.scheduled_at) <= new Date()
@@ -152,7 +154,7 @@ export default function ClassNote() {
                     )}
                   >
                     <p className="font-semibold text-foreground">
-                      <span className="text-gold font-bold">{sessionWeekMap.get(s.id)}주차</span>
+                      <span className="text-gold font-bold">{sessionWeekLabel(s)}</span>
                       {" "}{formatDate(s.scheduled_at)}
                     </p>
                     <p className="text-muted-foreground mt-0.5">
@@ -280,7 +282,7 @@ export default function ClassNote() {
                       "text-[11px] font-semibold",
                       selectedSession?.id === s.id ? "text-gold-dark" : "text-foreground"
                     )}>
-                      <span className="text-gold font-bold">{sessionWeekMap.get(s.id)}주차</span>
+                      <span className="text-gold font-bold">{sessionWeekLabel(s)}</span>
                       {" "}{formatDate(s.scheduled_at).slice(0, -5)}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5 truncate">

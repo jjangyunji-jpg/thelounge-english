@@ -99,7 +99,7 @@ export default function Classroom() {
 
   const [session, setSession] = useState<SessionData>(DEFAULT_SESSION);
   const [sessionLoading, setSessionLoading] = useState(true);
-  const [sessionNumber, setSessionNumber] = useState<number | null>(null);
+  const [sessionNumber, setSessionNumber] = useState<string | null>(null);
 
   // Load session from DB if sessionId provided
   useEffect(() => {
@@ -178,12 +178,10 @@ export default function Classroom() {
           meetLink: sessionData.meet_link || "",
           topic: sessionData.topic || "",
         });
-        const { count } = await supabase
-          .from("class_sessions")
-          .select("id", { count: "exact", head: true })
-          .eq("student_name", sessionData.student_name)
-          .lte("scheduled_at", sessionData.scheduled_at);
-        setSessionNumber(count ?? null);
+        const sd = new Date(sessionData.scheduled_at);
+        const month = sd.getMonth() + 1;
+        const weekOfMonth = Math.ceil(sd.getDate() / 7);
+        setSessionNumber(`${month}월 ${weekOfMonth}주차`);
       } else {
         // No session found — fill in student info from instructor_students
         const studentName = studentNameFilter ?? "";
@@ -456,7 +454,7 @@ export default function Classroom() {
             <span className="font-bold text-sidebar-accent-foreground text-sm">{session.studentName}</span>
             <span className="text-xs px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground font-medium">{session.level}</span>
             {sessionNumber && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-gold/20 text-gold font-bold">{sessionNumber}주차</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-gold/20 text-gold font-bold">{sessionNumber}</span>
             )}
             <span className="text-sidebar-foreground/60 text-xs hidden sm:inline">with {session.instructorName}</span>
             {sessionTopic && <span className="text-gold text-xs hidden md:inline">· {sessionTopic}</span>}
