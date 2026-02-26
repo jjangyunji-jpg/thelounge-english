@@ -407,6 +407,7 @@ export default function Classroom() {
     const { data, error } = await supabase.from("homework_assignments").insert({
       student_name: session.studentName, title: newHwTitle.trim(),
       description: newHwDesc.trim() || null, type: newHwType, is_preset: false,
+      session_id: session.sessionId || null,
     }).select().single();
     if (!error && data) {
       setHwList((prev) => [...prev, { id: data.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: false, saved: true }]);
