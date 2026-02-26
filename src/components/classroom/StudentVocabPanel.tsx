@@ -119,11 +119,11 @@ function WordRow({ word }: { word: VocabWord }) {
 function WeekGroup({ weekLabel, words, lessonNumber, onDownloadPdf }: {
   weekLabel: string;
   words: VocabWord[];
-  lessonNumber: number | null;
+  lessonNumber: string | null;
   onDownloadPdf: () => void;
 }) {
   const [open, setOpen] = useState(true);
-  const label = lessonNumber != null ? `${lessonNumber}회차 수업` : weekLabel.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`);
+  const label = lessonNumber != null ? `${lessonNumber} 수업` : weekLabel.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`);
   return (
     <div>
       <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
@@ -235,7 +235,7 @@ export default function StudentVocabPanel({
   const [loadingTests, setLoadingTests] = useState(true);
   const [testHistory, setTestHistory] = useState<TestRecord[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [lessonNumber, setLessonNumber] = useState<number | null>(null);
+  const [lessonNumber, setLessonNumber] = useState<string | null>(null);
   const [selectedTest, setSelectedTest] = useState<TestRecord | null>(null);
   const [testDetails, setTestDetails] = useState<TestResultDetail[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -271,12 +271,10 @@ export default function StudentVocabPanel({
   };
 
   const loadLessonNumber = async () => {
-    const { count } = await supabase
-      .from("class_sessions")
-      .select("id", { count: "exact", head: true })
-      .eq("student_name", studentName)
-      .lte("scheduled_at", scheduledAt.toISOString());
-    setLessonNumber(count ?? null);
+    const d = new Date(scheduledAt);
+    const month = d.getMonth() + 1;
+    const weekOfMonth = Math.ceil(d.getDate() / 7);
+    setLessonNumber(`${month}월 ${weekOfMonth}주차`);
   };
 
   useEffect(() => { load(); loadTestCount(); loadLessonNumber(); }, [studentName, sessionId]);
