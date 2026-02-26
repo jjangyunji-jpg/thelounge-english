@@ -8,7 +8,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 
 import Underline from "@tiptap/extension-underline";
 import { Callout } from "./CalloutExtension";
-import { Suggestion } from "./SuggestionExtension";
+import { Suggestion, SuggestionDelete } from "./SuggestionExtension";
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -71,6 +71,7 @@ export default function NotesEditor({
       TableHeader,
       Callout,
       Suggestion,
+      SuggestionDelete,
       Placeholder.configure({ placeholder }),
     ],
     content: content || "",
@@ -286,17 +287,21 @@ export default function NotesEditor({
         break;
       case "suggestion": {
         const isActive = editor.isActive("suggestion");
-        if (!isActive) {
-          // Collapse selection to end, then activate mark
-          const { to } = editor.state.selection;
-          editor.commands.setTextSelection(to);
-          editor.commands.setSuggestion();
-        } else {
+        if (isActive) {
+          // Turn off suggestion mode
           editor.commands.unsetSuggestion();
+        } else {
+          const { from, to } = editor.state.selection;
+          if (from !== to) {
+            // Has selection → mark it as deleted (red strikethrough), then activate blue mode
+            editor.chain().focus().setSuggestionDelete().setTextSelection(to).setSuggestion().run();
+          } else {
+            // No selection → just toggle blue mode
+            editor.commands.setSuggestion();
+          }
         }
         break;
       }
-        break;
     }
   }, [editor]);
 
