@@ -999,12 +999,13 @@ export default function InstructorDashboard() {
     });
   });
   completedPeriodMeetings.forEach((m) => {
+    const meetingPay = BASE_PAY + Math.round((m.duration_minutes / 60) * (instructor?.meeting_rate ?? 20000));
     settlementRows.push({
       date: new Date(m.scheduled_at),
       type: 'meeting',
-      description: m.notes || '업무 미팅',
+      description: `${m.notes || '업무 미팅'} (${m.duration_minutes}분)`,
       time: fmtTime(m.scheduled_at),
-      pay: BASE_PAY,
+      pay: meetingPay,
     });
   });
   settlementRows.sort((a, b) => a.date.getTime() - b.date.getTime());

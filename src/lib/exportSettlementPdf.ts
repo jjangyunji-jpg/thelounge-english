@@ -51,7 +51,7 @@ async function registerKoreanFont(doc: jsPDF) {
   doc.setFont("SpoqaHanSansNeo");
 }
 
-function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodStart: string, periodEnd: string) {
+function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodStart: string, periodEnd: string, meetingRate: number = 20000) {
   const start = new Date(periodStart);
   const end = new Date(periodEnd);
   const now = new Date();
@@ -75,12 +75,13 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
   meetings.forEach((m) => {
     const d = new Date(m.scheduled_at);
     if (d >= start && d <= end && d <= now) {
+      const meetingPay = BASE_PAY + Math.round((m.duration_minutes / 60) * meetingRate);
       rows.push({
         date: d,
         type: "미팅",
-        description: m.notes || "업무 미팅",
+        description: `${m.notes || "업무 미팅"} (${m.duration_minutes}분)`,
         time: d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
-        pay: BASE_PAY,
+        pay: meetingPay,
       });
     }
   });
@@ -95,17 +96,17 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
 }
 
 export async function exportAllSettlementsPdf(
-  instructors: { info: InstructorInfo; sessions: Session[]; meetings: Meeting[] }[],
+  instructors: { info: InstructorInfo; sessions: Session[]; meetings: Meeting[]; meetingRate?: number }[],
   period: PeriodInfo,
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   await registerKoreanFont(doc);
 
   for (let i = 0; i < instructors.length; i++) {
-    const { info, sessions, meetings } = instructors[i];
+    const { info, sessions, meetings, meetingRate } = instructors[i];
     if (i > 0) doc.addPage();
 
-    const rows = buildSettlementRows(sessions, meetings, period.start_date, period.end_date);
+    const rows = buildSettlementRows(sessions, meetings, period.start_date, period.end_date, meetingRate);
     const totalPay = rows.length > 0 ? rows[rows.length - 1].cumulative : 0;
 
     // Header

@@ -218,6 +218,7 @@ export default function InstructorManagement() {
             info: { name: ins.name, email: ins.email },
             sessions: sessRes.data || [],
             meetings: meetRes.data || [],
+            meetingRate: ins.meeting_rate,
           };
         })
       );
