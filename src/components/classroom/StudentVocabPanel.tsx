@@ -37,6 +37,13 @@ interface TestRecord {
   completed_at: string | null;
 }
 
+interface TestResultDetail {
+  id: string;
+  word_id: string | null;
+  student_answer: string | null;
+  is_correct: boolean | null;
+}
+
 // ── TTS Button ────────────────────────────────────────────────────────────────
 function TTSButton({ word }: { word: VocabWord }) {
   const [loading, setLoading] = useState(false);
@@ -109,21 +116,104 @@ function WordRow({ word }: { word: VocabWord }) {
   );
 }
 
-function WeekGroup({ weekLabel, words }: { weekLabel: string; words: VocabWord[] }) {
+function WeekGroup({ weekLabel, words, lessonNumber, onDownloadPdf }: {
+  weekLabel: string;
+  words: VocabWord[];
+  lessonNumber: number | null;
+  onDownloadPdf: () => void;
+}) {
   const [open, setOpen] = useState(true);
-  const pretty = weekLabel.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`);
+  const label = lessonNumber != null ? `${lessonNumber}회차 수업` : weekLabel.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`);
   return (
     <div>
-      <button onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 hover:bg-muted/60 transition-colors text-left"
-      >
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{pretty}</span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">{words.length}개</span>
+      <div className="flex items-center justify-between px-3 py-2 bg-muted/40">
+        <button onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+        >
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
+          <span className="text-xs text-muted-foreground">({words.length}개)</span>
           {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
-        </div>
-      </button>
+        </button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 text-[10px] gap-1 text-muted-foreground hover:text-foreground px-2"
+          onClick={onDownloadPdf}
+        >
+          <Download className="w-3 h-3" />
+          PDF
+        </Button>
+      </div>
       {open && words.map((w) => <WordRow key={w.id} word={w} />)}
+    </div>
+  );
+}
+
+// ── Test Detail Modal ─────────────────────────────────────────────────────────
+function TestDetailView({
+  testRecord,
+  results,
+  allWords,
+  onClose,
+}: {
+  testRecord: TestRecord;
+  results: TestResultDetail[];
+  allWords: VocabWord[];
+  onClose: () => void;
+}) {
+  const wordMap = new Map(allWords.map((w) => [w.id, w]));
+  const pct = testRecord.score != null && testRecord.total ? Math.round((testRecord.score / testRecord.total) * 100) : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/30">
+          <div>
+            <p className="font-bold text-sm text-foreground">테스트 상세 결과</p>
+            <p className="text-[10px] text-muted-foreground">
+              {testRecord.completed_at ? new Date(testRecord.completed_at).toLocaleString("ko-KR") : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={cn("text-lg font-bold",
+              pct >= 80 ? "text-success" : pct >= 60 ? "text-gold-dark" : "text-destructive"
+            )}>{pct}점</span>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">✕</button>
+          </div>
+        </div>
+        <div className="overflow-y-auto flex-1 p-4 space-y-2">
+          {results.map((r) => {
+            const word = r.word_id ? wordMap.get(r.word_id) : null;
+            return (
+              <div key={r.id} className={cn("rounded-lg p-3 border text-sm space-y-1",
+                r.is_correct ? "bg-success/5 border-success/20" : "bg-destructive/5 border-destructive/20"
+              )}>
+                <div className="flex items-center gap-2">
+                  {r.is_correct
+                    ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                    : <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />}
+                  <span className="font-medium text-foreground text-xs">
+                    {word?.korean_meaning ?? "(알 수 없음)"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    정답: <span className="font-mono font-semibold">{word?.english_word ?? "-"}</span>
+                  </span>
+                </div>
+                {!r.is_correct && (
+                  <div className="pl-6">
+                    <p className="text-[11px] text-destructive/80">
+                      내 답: <span className="font-mono">{r.student_answer || "(미입력)"}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="px-4 py-3 border-t border-border">
+          <Button className="w-full bg-navy hover:bg-navy-light text-primary-foreground" size="sm" onClick={onClose}>닫기</Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -145,6 +235,10 @@ export default function StudentVocabPanel({
   const [loadingTests, setLoadingTests] = useState(true);
   const [testHistory, setTestHistory] = useState<TestRecord[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [lessonNumber, setLessonNumber] = useState<number | null>(null);
+  const [selectedTest, setSelectedTest] = useState<TestRecord | null>(null);
+  const [testDetails, setTestDetails] = useState<TestResultDetail[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Use the session's word week label instead of current calendar week
   const sessionWeekLabel = words.length > 0 ? words[0].week_label : getWeekLabel();
@@ -176,7 +270,27 @@ export default function StudentVocabPanel({
     setLoadingTests(false);
   };
 
-  useEffect(() => { load(); loadTestCount(); }, [studentName, sessionId]);
+  const loadLessonNumber = async () => {
+    const { count } = await supabase
+      .from("class_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("student_name", studentName)
+      .lte("scheduled_at", scheduledAt.toISOString());
+    setLessonNumber(count ?? null);
+  };
+
+  useEffect(() => { load(); loadTestCount(); loadLessonNumber(); }, [studentName, sessionId]);
+
+  const openTestDetail = async (test: TestRecord) => {
+    setSelectedTest(test);
+    setLoadingDetails(true);
+    const { data } = await supabase
+      .from("vocabulary_test_results")
+      .select("id, word_id, student_answer, is_correct")
+      .eq("test_id", test.id);
+    setTestDetails((data ?? []) as TestResultDetail[]);
+    setLoadingDetails(false);
+  };
 
   const byWeek = words.reduce<Record<string, VocabWord[]>>((acc, w) => {
     if (!acc[w.week_label]) acc[w.week_label] = [];
@@ -191,9 +305,6 @@ export default function StudentVocabPanel({
     const d = new Date(iso);
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
-
-  const fmtWeek = (wl: string | null) =>
-    wl ? wl.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`) : "-";
 
   return (
     <>
@@ -217,7 +328,7 @@ export default function StudentVocabPanel({
           </button>
         </div>
 
-        {/* Test & PDF Button Section */}
+        {/* Test Button Section */}
         {!loading && currentWeekWords.length >= 5 && (
           <div className="px-3 py-2.5 border-b border-border flex items-center justify-between gap-2 bg-muted/10">
             <div className="flex items-center gap-2 min-w-0">
@@ -246,21 +357,6 @@ export default function StudentVocabPanel({
           </div>
         )}
 
-        {/* PDF Export */}
-        {!loading && words.length > 0 && (
-          <div className="px-3 py-2 border-b border-border flex items-center justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs gap-1"
-              onClick={() => exportWordsPdf(words, studentName)}
-            >
-              <Download className="w-3 h-3" />
-              PDF 다운로드
-            </Button>
-          </div>
-        )}
-
         {/* Test History */}
         {testHistory.length > 0 && (
           <div className="border-b border-border">
@@ -280,7 +376,11 @@ export default function StudentVocabPanel({
                 {testHistory.map((t, i) => {
                   const pct = t.score != null && t.total ? Math.round((t.score / t.total) * 100) : null;
                   return (
-                    <div key={t.id} className="flex items-center gap-3 px-3 py-2">
+                    <div
+                      key={t.id}
+                      className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
+                      onClick={() => openTestDetail(t)}
+                    >
                       <div className={cn("w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
                         pct == null ? "bg-muted" : pct >= 80 ? "bg-success/15" : pct >= 60 ? "bg-gold/15" : "bg-destructive/10"
                       )}>
@@ -289,7 +389,7 @@ export default function StudentVocabPanel({
                           : <Type className={cn("w-3 h-3", pct != null && pct >= 80 ? "text-success" : pct != null && pct >= 60 ? "text-gold" : "text-destructive")} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground">{fmtWeek(t.week_label)} · {i + 1 === testHistory.length ? "1회차" : `${testHistory.length - i}회차`}</p>
+                        <p className="text-xs font-medium text-foreground">{testHistory.length - i}회차</p>
                         <p className="text-[10px] text-muted-foreground">{t.completed_at ? fmtDate(t.completed_at) : "-"}</p>
                       </div>
                       <div className="flex-shrink-0 text-right">
@@ -300,6 +400,7 @@ export default function StudentVocabPanel({
                           </>
                         ) : <span className="text-xs text-muted-foreground">-</span>}
                       </div>
+                      <ChevronDown className="w-3 h-3 text-muted-foreground -rotate-90 flex-shrink-0" />
                     </div>
                   );
                 })}
@@ -323,7 +424,13 @@ export default function StudentVocabPanel({
           ) : (
             <div>
               {weeks.map((wk) => (
-                <WeekGroup key={wk} weekLabel={wk} words={byWeek[wk]} />
+                <WeekGroup
+                  key={wk}
+                  weekLabel={wk}
+                  words={byWeek[wk]}
+                  lessonNumber={lessonNumber}
+                  onDownloadPdf={() => exportWordsPdf(byWeek[wk], studentName)}
+                />
               ))}
             </div>
           )}
@@ -339,6 +446,15 @@ export default function StudentVocabPanel({
           scheduledAt={scheduledAt}
           onClose={() => setTestModalOpen(false)}
           onTestComplete={() => { loadTestCount(); setHistoryOpen(true); setTestModalOpen(false); }}
+        />
+      )}
+
+      {selectedTest && !loadingDetails && (
+        <TestDetailView
+          testRecord={selectedTest}
+          results={testDetails}
+          allWords={words}
+          onClose={() => setSelectedTest(null)}
         />
       )}
     </>
