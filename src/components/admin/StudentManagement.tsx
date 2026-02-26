@@ -346,9 +346,15 @@ export default function StudentManagement() {
     );
   };
 
-  const saveMeetLink = (studentId: number) => {
+  const saveMeetLink = async (studentId: number) => {
     const url = meetLinkInput.trim();
     if (url && !url.startsWith("http")) return;
+    const student = students.find(s => s.id === studentId);
+    if (student?.dbId) {
+      const { error } = await supabase.from("instructor_students").update({ meet_link: url || null }).eq("id", student.dbId);
+      if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "Meet 링크가 저장됐습니다 ✓" });
+    }
     setStudents((prev) =>
       prev.map((s) => s.id === studentId ? { ...s, meetLink: url } : s)
     );
@@ -356,7 +362,11 @@ export default function StudentManagement() {
     setMeetLinkInput("");
   };
 
-  const deleteMeetLink = (studentId: number) => {
+  const deleteMeetLink = async (studentId: number) => {
+    const student = students.find(s => s.id === studentId);
+    if (student?.dbId) {
+      await supabase.from("instructor_students").update({ meet_link: null }).eq("id", student.dbId);
+    }
     setStudents((prev) =>
       prev.map((s) => s.id === studentId ? { ...s, meetLink: "" } : s)
     );
