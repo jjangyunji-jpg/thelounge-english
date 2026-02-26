@@ -49,7 +49,7 @@ export default function SetPassword() {
       toast({ title: "오류", description: error.message, variant: "destructive" });
     } else {
       setDone(true);
-      setTimeout(() => navigate("/admin"), 2500);
+      setTimeout(() => navigate("/login"), 2500);
     }
     setLoading(false);
   };

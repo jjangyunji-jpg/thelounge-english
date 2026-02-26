@@ -134,6 +134,12 @@ export default function Login() {
           </form>
 
           <p className="text-center text-xs text-muted-foreground">
+            <Link to="/forgot-password" className="text-gold-dark font-medium hover:underline">
+              비밀번호를 잊으셨나요?
+            </Link>
+          </p>
+
+          <p className="text-center text-xs text-muted-foreground">
             계정이 없으신가요?{" "}
             <Link to="/signup" className="text-gold-dark font-medium hover:underline">
               회원가입
