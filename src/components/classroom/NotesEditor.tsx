@@ -69,8 +69,8 @@ export default function NotesEditor({
       TableHeader,
       Callout,
       Typography.configure({
-        rightArrow: '→',
-        leftArrow: '←',
+        rightArrow: false,
+        leftArrow: false,
         emDash: '—',
       }),
       Placeholder.configure({ placeholder }),
@@ -135,20 +135,27 @@ export default function NotesEditor({
           return true;
         }
 
-        // <-> → ↔ replacement
+        // Arrow replacements: -> → , <-> ↔
         if (event.key === ">") {
-          const { from } = view.state.selection;
-          const textBefore = view.state.doc.textBetween(Math.max(0, from - 2), from, "");
-          if (textBefore === "<-") {
-            // Replace "<-" + ">" with "↔"
-            setTimeout(() => {
-              if (editor) {
-                const pos = editor.state.selection.from;
+          setTimeout(() => {
+            if (!editor) return;
+            const pos = editor.state.selection.from;
+            if (pos >= 3) {
+              const t3 = editor.state.doc.textBetween(pos - 3, pos, "");
+              if (t3 === "<->") {
                 editor.chain().focus().deleteRange({ from: pos - 3, to: pos }).insertContent("↔").run();
+                return;
               }
-            }, 0);
-            return false;
-          }
+            }
+            if (pos >= 2) {
+              const t2 = editor.state.doc.textBetween(pos - 2, pos, "");
+              if (t2 === "->") {
+                editor.chain().focus().deleteRange({ from: pos - 2, to: pos }).insertContent("→").run();
+                return;
+              }
+            }
+          }, 0);
+          return false;
         }
 
         return false;
