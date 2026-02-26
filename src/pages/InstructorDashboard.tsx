@@ -138,15 +138,51 @@ function fmtGoals(raw: string | null): string[] {
   } catch { return raw ? [raw] : []; }
 }
 
+// ── helpers: generate virtual schedule entries from recurring student schedules
+const DAY_MAP: Record<string, number> = { "일": 0, "월": 1, "화": 2, "수": 3, "목": 4, "금": 5, "토": 6 };
+
+interface VirtualSchedule {
+  student_name: string;
+  time: string;
+  meet_link: string | null;
+  level: string | null;
+}
+
+function buildVirtualSchedules(students: StudentFull[], year: number, month: number): Map<string, VirtualSchedule[]> {
+  const map = new Map<string, VirtualSchedule[]>();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  students.forEach((st) => {
+    if (st.status !== "active" || !st.schedules) return;
+    let slots: ScheduleSlot[] = [];
+    try { slots = JSON.parse(st.schedules); } catch { return; }
+    if (!Array.isArray(slots)) return;
+    slots.forEach((slot) => {
+      const targetDay = DAY_MAP[slot.day];
+      if (targetDay === undefined) return;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d);
+        if (date.getDay() === targetDay) {
+          const key = date.toDateString();
+          if (!map.has(key)) map.set(key, []);
+          map.get(key)!.push({ student_name: st.student_name, time: slot.time, meet_link: st.meet_link, level: st.level });
+        }
+      }
+    });
+  });
+  return map;
+}
+
 // ── Big Calendar ──────────────────────────────────────────────────────────────
 function BigCalendar({
   sessions,
   meetings,
+  students,
   selectedDate,
   onSelectDate,
 }: {
   sessions: ClassSession[];
   meetings: BusinessMeeting[];
+  students: StudentFull[];
   selectedDate: Date | null;
   onSelectDate: (d: Date) => void;
 }) {
@@ -170,6 +206,9 @@ function BigCalendar({
     if (!meetingsByDate.has(key)) meetingsByDate.set(key, []);
     meetingsByDate.get(key)!.push(m);
   });
+
+  // Virtual (recurring) schedules
+  const virtualByDate = buildVirtualSchedules(students, year, month);
 
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
@@ -207,9 +246,28 @@ function BigCalendar({
           const dateStr = date.toDateString();
           const daySessions = sessionsByDate.get(dateStr) || [];
           const dayMeetings = meetingsByDate.get(dateStr) || [];
+          const dayVirtual = virtualByDate.get(dateStr) || [];
           const todayFlag = dateStr === new Date().toDateString();
           const isSelected = selectedDate && dateStr === selectedDate.toDateString();
           const dayOfWeek = date.getDay();
+
+          // Merge: show actual sessions, then virtual ones not covered by actual sessions
+          const actualStudents = new Set(daySessions.map(s => s.student_name));
+          const unmatched = dayVirtual.filter(v => !actualStudents.has(v.student_name));
+
+          // Combined entries for display (max 2)
+          const displayItems: { label: string; type: "actual" | "virtual" | "meeting" }[] = [];
+          daySessions.slice(0, 2).forEach(s => displayItems.push({
+            label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} ${s.student_name}`,
+            type: "actual",
+          }));
+          if (displayItems.length < 2) {
+            unmatched.slice(0, 2 - displayItems.length).forEach(v => displayItems.push({
+              label: `${v.time} ${v.student_name}`,
+              type: "virtual",
+            }));
+          }
+          const remaining = (daySessions.length + unmatched.length) - displayItems.filter(d => d.type !== "meeting").length;
 
           return (
             <button
@@ -228,13 +286,16 @@ function BigCalendar({
                 {day}
               </span>
               <div className="w-full space-y-0.5 overflow-hidden">
-                {daySessions.slice(0, 2).map((s, i) => (
-                  <div key={i} className="w-full truncate text-[9px] leading-tight px-1 py-0.5 rounded bg-navy/10 text-navy font-medium">
-                    {new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} {s.student_name}
+                {displayItems.map((item, i) => (
+                  <div key={i} className={cn(
+                    "w-full truncate text-[9px] leading-tight px-1 py-0.5 rounded font-medium",
+                    item.type === "actual" ? "bg-navy/10 text-navy" : "bg-navy/5 text-navy/60 border border-dashed border-navy/20",
+                  )}>
+                    {item.label}
                   </div>
                 ))}
-                {daySessions.length > 2 && (
-                  <span className="text-[8px] text-navy font-bold px-1">+{daySessions.length - 2}건</span>
+                {remaining > 0 && (
+                  <span className="text-[8px] text-navy font-bold px-1">+{remaining}건</span>
                 )}
                 {dayMeetings.slice(0, 1).map((m, i) => (
                   <div key={`m${i}`} className="w-full truncate text-[9px] leading-tight px-1 py-0.5 rounded bg-gold/15 text-gold-dark font-medium">
@@ -253,7 +314,10 @@ function BigCalendar({
       {/* Legend */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <div className="w-2 h-2 rounded-full bg-navy" /> 수업
+          <div className="w-2 h-2 rounded-full bg-navy" /> 수업 (완료/진행)
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <div className="w-2 h-2 rounded-full bg-navy/30 border border-dashed border-navy/50" /> 예정 수업
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <div className="w-2 h-2 rounded-full bg-gold" /> 업무미팅
@@ -806,12 +870,33 @@ export default function InstructorDashboard() {
   const meetingHours = +(periodMeetings.reduce((s, m) => s + m.duration_minutes, 0) / 60).toFixed(1);
   const totalAmount = lessonHours * instructor.lesson_rate + meetingHours * instructor.meeting_rate;
 
-  // Selected date sessions
+  // Selected date sessions + virtual schedules
   const selectedDateStr = selectedDate?.toDateString();
   const selectedDaySessions = selectedDateStr
     ? sessions.filter((s) => new Date(s.scheduled_at).toDateString() === selectedDateStr)
         .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
     : [];
+
+  // Virtual schedules for selected date
+  const selectedDayVirtual = (() => {
+    if (!selectedDate) return [];
+    const dayName = ["일", "월", "화", "수", "목", "금", "토"][selectedDate.getDay()];
+    const actualStudents = new Set(selectedDaySessions.map(s => s.student_name));
+    const result: VirtualSchedule[] = [];
+    students.forEach((st) => {
+      if (st.status !== "active" || !st.schedules) return;
+      if (actualStudents.has(st.student_name)) return;
+      let slots: ScheduleSlot[] = [];
+      try { slots = JSON.parse(st.schedules); } catch { return; }
+      if (!Array.isArray(slots)) return;
+      slots.forEach((slot) => {
+        if (slot.day === dayName) {
+          result.push({ student_name: st.student_name, time: slot.time, meet_link: st.meet_link, level: st.level });
+        }
+      });
+    });
+    return result.sort((a, b) => a.time.localeCompare(b.time));
+  })();
 
   // Per-student stats
   const getStudentStats = (studentName: string) => {
@@ -905,6 +990,7 @@ export default function InstructorDashboard() {
                   <BigCalendar
                     sessions={sessions}
                     meetings={meetings}
+                    students={students}
                     selectedDate={selectedDate}
                     onSelectDate={setSelectedDate}
                   />
@@ -914,10 +1000,10 @@ export default function InstructorDashboard() {
                 {selectedDate && (
                   <div className="rounded-xl border border-border bg-card p-4">
                     <h3 className="text-sm font-semibold text-foreground mb-3">
-                      {selectedDate.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })} 수업
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{selectedDaySessions.length}건</span>
+                      {selectedDate.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })} 일정
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{selectedDaySessions.length + selectedDayVirtual.length}건</span>
                     </h3>
-                    {selectedDaySessions.length === 0 ? (
+                    {selectedDaySessions.length === 0 && selectedDayVirtual.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2">예정된 수업이 없습니다</p>
                     ) : (
                       <div className="space-y-2">
@@ -946,6 +1032,24 @@ export default function InstructorDashboard() {
                                 </a>
                               )}
                             </div>
+                          </div>
+                        ))}
+                        {selectedDayVirtual.map((v, i) => (
+                          <div key={`v${i}`} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-navy/20 bg-navy/5 hover:bg-navy/10 transition-colors">
+                            <div className="text-center w-12 flex-shrink-0">
+                              <p className="text-xs font-bold text-navy/60">{v.time}</p>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground/70">{v.student_name}</p>
+                              <p className="text-[11px] text-muted-foreground">{v.level || "—"} · 예정</p>
+                            </div>
+                            {v.meet_link && (
+                              <a href={`/classroom?student=${encodeURIComponent(v.student_name)}`}>
+                                <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 px-2">
+                                  <Video className="w-3 h-3" /> 수업 시작
+                                </Button>
+                              </a>
+                            )}
                           </div>
                         ))}
                       </div>
