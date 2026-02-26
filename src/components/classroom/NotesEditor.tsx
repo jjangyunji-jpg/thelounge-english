@@ -5,16 +5,17 @@ import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Callout } from "./CalloutExtension";
 import { useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
+  Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2, MessageSquareQuote,
 } from "lucide-react";
 
 interface NotesEditorProps {
   content: string;
-  onChange: (text: string) => void;
+  onChange: (html: string) => void;
   editable: boolean;
   disabled?: boolean;
   placeholder?: string;
@@ -51,14 +52,14 @@ export default function NotesEditor({
       TableRow,
       TableCell,
       TableHeader,
+      Callout,
       Placeholder.configure({ placeholder }),
     ],
     content: content || "",
     editable: editable && !disabled,
     onUpdate: ({ editor }) => {
       if (isUpdatingRef.current) return;
-      const text = editor.getText();
-      onChange(text);
+      onChange(editor.getHTML());
     },
     editorProps: {
       attributes: {
@@ -75,10 +76,9 @@ export default function NotesEditor({
   // Sync external content changes (e.g. from auto-correct)
   useEffect(() => {
     if (!editor) return;
-    const currentText = editor.getText();
-    if (content !== currentText) {
+    const currentHtml = editor.getHTML();
+    if (content !== currentHtml) {
       isUpdatingRef.current = true;
-      // Preserve cursor position
       const { from, to } = editor.state.selection;
       editor.commands.setContent(content || "");
       try {
@@ -103,6 +103,9 @@ export default function NotesEditor({
       case "table":
         editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
         break;
+      case "callout":
+        (editor.chain().focus() as any).toggleCallout({ type: "info" }).run();
+        break;
     }
   }, [editor]);
 
@@ -113,6 +116,7 @@ export default function NotesEditor({
     { type: "h3", icon: Heading3, label: "제목 3", isActive: editor?.isActive("heading", { level: 3 }) },
     { type: "hr", icon: Minus, label: "구분선" },
     { type: "table", icon: Table2, label: "표 삽입" },
+    { type: "callout", icon: MessageSquareQuote, label: "콜아웃", isActive: editor?.isActive("callout") },
   ];
 
   return (

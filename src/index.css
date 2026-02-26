@@ -224,3 +224,48 @@
   height: 0;
   pointer-events: none;
 }
+
+/* Callout Styles */
+.tiptap .callout {
+  @apply rounded-lg px-4 py-3 my-3 border-l-4;
+}
+.tiptap .callout-info {
+  background-color: hsl(var(--navy) / 0.06);
+  border-left-color: hsl(var(--navy));
+}
+.tiptap .callout-warning {
+  background-color: hsl(var(--warning) / 0.08);
+  border-left-color: hsl(var(--warning));
+}
+.tiptap .callout-success {
+  background-color: hsl(var(--success) / 0.08);
+  border-left-color: hsl(var(--success));
+}
+.tiptap .callout-danger {
+  background-color: hsl(var(--destructive) / 0.08);
+  border-left-color: hsl(var(--destructive));
+}
+.tiptap .callout p {
+  @apply mb-0;
+}
+
+/* Mirror page callout styles */
+.notes-mirror-content .callout {
+  @apply rounded-lg px-4 py-3 my-3 border-l-4;
+}
+.notes-mirror-content .callout-info {
+  background-color: hsl(var(--navy) / 0.06);
+  border-left-color: hsl(var(--navy));
+}
+.notes-mirror-content .callout-warning {
+  background-color: hsl(var(--warning) / 0.08);
+  border-left-color: hsl(var(--warning));
+}
+.notes-mirror-content .callout-success {
+  background-color: hsl(var(--success) / 0.08);
+  border-left-color: hsl(var(--success));
+}
+.notes-mirror-content .callout-danger {
+  background-color: hsl(var(--destructive) / 0.08);
+  border-left-color: hsl(var(--destructive));
+}
