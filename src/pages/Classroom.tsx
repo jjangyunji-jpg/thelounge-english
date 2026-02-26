@@ -178,10 +178,19 @@ export default function Classroom() {
           meetLink: sessionData.meet_link || "",
           topic: sessionData.topic || "",
         });
-        const sd = new Date(sessionData.scheduled_at);
-        const month = sd.getMonth() + 1;
-        const weekOfMonth = Math.ceil(sd.getDate() / 7);
-        setSessionNumber(`${month}월 ${weekOfMonth}주차`);
+        // Calculate session number based on order (N회차) instead of calendar week
+        const { data: allSessions } = await supabase
+          .from("class_sessions")
+          .select("id,scheduled_at")
+          .eq("student_name", sessionData.student_name)
+          .eq("instructor_name", sessionData.instructor_name)
+          .order("scheduled_at", { ascending: true });
+        if (allSessions) {
+          const idx = allSessions.findIndex(s => s.id === sessionData!.id);
+          setSessionNumber(`${idx + 1}회차`);
+        } else {
+          setSessionNumber("1회차");
+        }
       } else {
         // No session found — fill in student info from instructor_students
         const studentName = studentNameFilter ?? "";
