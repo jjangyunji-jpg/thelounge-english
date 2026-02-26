@@ -243,7 +243,7 @@ export default function Classroom() {
     setIsAutoCorrecting(true);
     try {
       const { data, error } = await supabase.functions.invoke("ai-correct", {
-        body: { text, mode: "correct" },
+        body: { text, mode: "typo" },
       });
       if (!error && data?.corrected && data.corrected !== text) {
         const el = notesRef.current;
