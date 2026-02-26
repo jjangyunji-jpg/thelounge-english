@@ -32,6 +32,10 @@ interface PendingUser {
 type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 const LEVELS: Level[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 const DAYS_OF_WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+const HOURS = Array.from({ length: 17 }, (_, i) => {
+  const h = i + 6;
+  return `${h.toString().padStart(2, "0")}:00`;
+});
 
 interface ScheduleSlot { day: string; time: string; }
 
@@ -431,17 +435,24 @@ export default function UserApproval({ onNavigate }: Props) {
                           {DAYS_OF_WEEK.map(d => <SelectItem key={d} value={d}>{d}요일</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <Input
-                        type="time"
-                        className="h-8 flex-1 text-xs"
+                      <Select
                         value={slot.time}
-                        onChange={(e) =>
+                        onValueChange={(v) =>
                           setSetupForm(p => ({
                             ...p,
-                            schedules: p.schedules.map((s, i) => i === idx ? { ...s, time: e.target.value } : s),
+                            schedules: p.schedules.map((s, i) => i === idx ? { ...s, time: v } : s),
                           }))
                         }
-                      />
+                      >
+                        <SelectTrigger className="h-8 flex-1 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {HOURS.map((h) => (
+                            <SelectItem key={h} value={h}>{h}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <button
                         type="button"
                         className="text-muted-foreground hover:text-destructive"

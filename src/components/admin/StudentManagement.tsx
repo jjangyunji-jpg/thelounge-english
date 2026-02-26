@@ -53,6 +53,10 @@ interface LessonHistory {
 }
 
 const DAYS_OF_WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+const HOURS = Array.from({ length: 17 }, (_, i) => {
+  const h = i + 6;
+  return `${h.toString().padStart(2, "0")}:00`;
+});
 
 interface ScheduleSlot {
   day: string;
@@ -613,17 +617,24 @@ export default function StudentManagement() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Input
-                            type="time"
-                            className="h-8 flex-1 text-xs"
+                          <Select
                             value={slot.time}
-                            onChange={(e) =>
+                            onValueChange={(v) =>
                               setNewStudent((p) => ({
                                 ...p,
-                                schedules: p.schedules.map((s, i) => i === idx ? { ...s, time: e.target.value } : s),
+                                schedules: p.schedules.map((s, i) => i === idx ? { ...s, time: v } : s),
                               }))
                             }
-                          />
+                          >
+                            <SelectTrigger className="h-8 flex-1 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {HOURS.map((h) => (
+                                <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <button
                             type="button"
                             className="text-muted-foreground hover:text-destructive"
