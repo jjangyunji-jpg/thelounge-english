@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   BookOpen, Users, AlertCircle, Video, Plus, LogOut,
   Calendar, Clock, ChevronRight, Check, X, Loader2,
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
+  GraduationCap, ClipboardCheck, Settings2, CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,13 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface Instructor {
@@ -22,8 +30,20 @@ interface Instructor {
   active: boolean;
 }
 
-interface StudentRecord {
+interface StudentFull {
+  id: string;
   student_name: string;
+  level: string | null;
+  schedules: string | null;
+  meet_link: string | null;
+  phone: string | null;
+  status: string | null;
+  lesson_goal: string | null;
+  lesson_goal_count: number | null;
+  extra_lessons: number | null;
+  start_date: string | null;
+  instructor_id: string;
+  instructor_name: string | null;
 }
 
 interface ClassSession {
@@ -84,29 +104,32 @@ function isToday(iso: string) {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
 
-// ── Mini Calendar ──────────────────────────────────────────────────────────────
-function MiniCalendar({
-  period,
+// ── Big Calendar ──────────────────────────────────────────────────────────────
+function BigCalendar({
   sessions,
   meetings,
+  selectedDate,
+  onSelectDate,
 }: {
-  period: SchedulePeriod | null;
   sessions: ClassSession[];
   meetings: BusinessMeeting[];
+  selectedDate: Date | null;
+  onSelectDate: (d: Date) => void;
 }) {
   const [viewDate, setViewDate] = useState(new Date());
-
-  if (!period) return <p className="text-sm text-muted-foreground">수업 기간이 설정되지 않았습니다</p>;
-
-  const start = new Date(period.start_date);
-  const end = new Date(period.end_date);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const sessionDates = new Set(sessions.map((s) => new Date(s.scheduled_at).toDateString()));
+  // Group sessions by date
+  const sessionsByDate = new Map<string, ClassSession[]>();
+  sessions.forEach((s) => {
+    const key = new Date(s.scheduled_at).toDateString();
+    if (!sessionsByDate.has(key)) sessionsByDate.set(key, []);
+    sessionsByDate.get(key)!.push(s);
+  });
   const meetingDates = new Set(meetings.map((m) => new Date(m.scheduled_at).toDateString()));
 
   const cells: (number | null)[] = [
@@ -115,64 +138,72 @@ function MiniCalendar({
   ];
 
   return (
-    <div className="space-y-3">
-      {/* Period label */}
+    <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{period.label}</span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-navy/10 text-navy font-medium">
-            {fmt(period.start_date)} ~ {fmt(period.end_date)}
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="w-6 h-6 rounded-md hover:bg-muted flex items-center justify-center">
-            <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
+          <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center">
+            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
           </button>
-          <span className="text-xs font-medium text-foreground px-2">{year}년 {month + 1}월</span>
-          <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="w-6 h-6 rounded-md hover:bg-muted flex items-center justify-center">
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-base font-bold text-foreground min-w-[120px] text-center">{year}년 {month + 1}월</span>
+          <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center">
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
+        <button onClick={() => setViewDate(new Date())} className="text-xs text-navy hover:underline font-medium">오늘</button>
       </div>
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 text-center">
-        {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-          <div key={d} className="text-[10px] font-medium text-muted-foreground py-1">{d}</div>
+        {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
+          <div key={d} className={cn("text-xs font-semibold py-2", i === 0 ? "text-destructive/70" : i === 6 ? "text-blue-400" : "text-muted-foreground")}>{d}</div>
         ))}
       </div>
 
       {/* Days */}
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 gap-1">
         {cells.map((day, idx) => {
-          if (day === null) return <div key={idx} />;
+          if (day === null) return <div key={idx} className="aspect-square" />;
           const date = new Date(year, month, day);
           const dateStr = date.toDateString();
-          const inPeriod = date >= start && date <= end;
-          const hasSession = sessionDates.has(dateStr);
+          const daySessions = sessionsByDate.get(dateStr) || [];
           const hasMeeting = meetingDates.has(dateStr);
-          const todayFlag = date.toDateString() === new Date().toDateString();
+          const todayFlag = dateStr === new Date().toDateString();
+          const isSelected = selectedDate && dateStr === selectedDate.toDateString();
+          const dayOfWeek = date.getDay();
 
           return (
-            <div key={idx} className={cn(
-              "aspect-square flex flex-col items-center justify-center rounded-lg text-xs transition-colors relative",
-              inPeriod ? "bg-navy/5" : "opacity-40",
-              todayFlag ? "ring-1 ring-navy font-bold" : "",
-            )}>
-              <span className={cn("text-[11px]", todayFlag ? "text-navy font-bold" : "text-foreground")}>{day}</span>
-              {(hasSession || hasMeeting) && (
-                <div className="flex gap-0.5 mt-0.5">
-                  {hasSession && <div className="w-1 h-1 rounded-full bg-navy" />}
-                  {hasMeeting && <div className="w-1 h-1 rounded-full bg-gold" />}
+            <button
+              key={idx}
+              onClick={() => onSelectDate(date)}
+              className={cn(
+                "aspect-square flex flex-col items-center justify-start rounded-lg p-1 transition-all text-xs relative hover:bg-muted/50",
+                todayFlag && "ring-2 ring-navy/50",
+                isSelected && "bg-navy/10 ring-2 ring-navy",
+              )}
+            >
+              <span className={cn(
+                "text-[11px] font-medium",
+                todayFlag ? "text-navy font-bold" : dayOfWeek === 0 ? "text-destructive/70" : dayOfWeek === 6 ? "text-blue-400" : "text-foreground",
+              )}>
+                {day}
+              </span>
+              {(daySessions.length > 0 || hasMeeting) && (
+                <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
+                  {daySessions.slice(0, 3).map((s, i) => (
+                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-navy" />
+                  ))}
+                  {daySessions.length > 3 && <span className="text-[8px] text-navy font-bold">+{daySessions.length - 3}</span>}
+                  {hasMeeting && <div className="w-1.5 h-1.5 rounded-full bg-gold" />}
                 </div>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 pt-1">
+      <div className="flex items-center gap-4">
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <div className="w-2 h-2 rounded-full bg-navy" /> 수업
         </div>
@@ -226,9 +257,7 @@ function AddMeetingModal({
       <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-sm text-foreground">업무 미팅 추가</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
         </div>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -261,141 +290,170 @@ function AddMeetingModal({
   );
 }
 
-// ── Settlement Row ─────────────────────────────────────────────────────────────
-function SettlementRow({
-  instructor,
-  sessions,
-  meetings,
-  period,
-  onViewLog,
+// ── Student Edit Modal ─────────────────────────────────────────────────────────
+function StudentEditModal({
+  student,
+  onClose,
+  onSaved,
 }: {
-  instructor: Instructor;
-  sessions: ClassSession[];
-  meetings: BusinessMeeting[];
-  period: SchedulePeriod | null;
-  onViewLog: (instructor: Instructor) => void;
+  student: StudentFull;
+  onClose: () => void;
+  onSaved: () => void;
 }) {
-  // Filter to period
-  const start = period ? new Date(period.start_date) : null;
-  const end = period ? new Date(period.end_date) : null;
+  const { toast } = useToast();
+  const [level, setLevel] = useState(student.level || "B1");
+  const [schedules, setSchedules] = useState(student.schedules || "");
+  const [meetLink, setMeetLink] = useState(student.meet_link || "");
+  const [phone, setPhone] = useState(student.phone || "");
+  const [status, setStatus] = useState(student.status || "active");
+  const [lessonGoal, setLessonGoal] = useState(student.lesson_goal || "");
+  const [lessonGoalCount, setLessonGoalCount] = useState(student.lesson_goal_count || 0);
+  const [extraLessons, setExtraLessons] = useState(student.extra_lessons || 0);
+  const [saving, setSaving] = useState(false);
 
-  const periodSessions = sessions.filter((s) => {
-    if (!start || !end) return true;
-    const d = new Date(s.scheduled_at);
-    return d >= start && d <= end;
-  });
-
-  const periodMeetings = meetings.filter((m) => {
-    if (!start || !end) return true;
-    const d = new Date(m.scheduled_at);
-    return d >= start && d <= end;
-  });
-
-  // 1 session = 1 hour by default
-  const lessonHours = periodSessions.length;
-  const meetingHours = +(periodMeetings.reduce((s, m) => s + m.duration_minutes, 0) / 60).toFixed(1);
-  const total = lessonHours * instructor.lesson_rate + meetingHours * instructor.meeting_rate;
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await supabase.from("instructor_students").update({
+      level, schedules: schedules.trim() || null, meet_link: meetLink.trim() || null,
+      phone: phone.trim() || null, status,
+      lesson_goal: lessonGoal.trim() || null, lesson_goal_count: lessonGoalCount,
+      extra_lessons: extraLessons,
+    }).eq("id", student.id);
+    if (error) {
+      toast({ title: "저장 실패", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "학생 정보 수정 완료 ✓" });
+      onSaved();
+      onClose();
+    }
+    setSaving(false);
+  };
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3.5 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
-      <div className="w-9 h-9 rounded-full bg-navy/10 flex items-center justify-center flex-shrink-0">
-        <span className="text-navy font-bold text-sm">{instructor.name.charAt(0)}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-foreground">{instructor.name}</p>
-        <p className="text-[11px] text-muted-foreground">수업 {instructor.lesson_rate.toLocaleString()}원/h · 미팅 {instructor.meeting_rate.toLocaleString()}원/h</p>
-      </div>
-      <div className="hidden sm:flex items-center gap-6 text-center text-sm">
-        <div>
-          <p className="font-semibold text-foreground">{lessonHours}h</p>
-          <p className="text-[10px] text-muted-foreground">수업</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold text-foreground">{student.student_name} — 학생 정보 수정</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
         </div>
-        <div>
-          <p className="font-semibold text-foreground">{meetingHours}h</p>
-          <p className="text-[10px] text-muted-foreground">미팅</p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">레벨</Label>
+              <Select value={level} onValueChange={setLevel}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["A1", "A2", "B1", "B2", "C1", "C2"].map((l) => (
+                    <SelectItem key={l} value={l}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">상태</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">수강 중</SelectItem>
+                  <SelectItem value="paused">휴강</SelectItem>
+                  <SelectItem value="graduated">수료</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">수업 일정 (예: 월수금 19:00)</Label>
+            <Input value={schedules} onChange={(e) => setSchedules(e.target.value)} placeholder="월수금 19:00" className="h-9 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Google Meet 링크</Label>
+            <Input value={meetLink} onChange={(e) => setMeetLink(e.target.value)} placeholder="https://meet.google.com/..." className="h-9 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">연락처</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" className="h-9 text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">목표 수업 수</Label>
+              <Input type="number" value={lessonGoalCount} onChange={(e) => setLessonGoalCount(Number(e.target.value))} min={0} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">보강 횟수</Label>
+              <Input type="number" value={extraLessons} onChange={(e) => setExtraLessons(Number(e.target.value))} min={0} className="h-9 text-sm" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">학습 목표</Label>
+            <Input value={lessonGoal} onChange={(e) => setLessonGoal(e.target.value)} placeholder="예: TOEIC 900점" className="h-9 text-sm" />
+          </div>
         </div>
-        <div>
-          <p className="font-semibold text-gold-dark">₩{total.toLocaleString()}</p>
-          <p className="text-[10px] text-muted-foreground">합계</p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onClose} className="flex-1 h-9 text-sm">취소</Button>
+          <Button onClick={handleSave} disabled={saving} className="flex-1 h-9 text-sm bg-navy hover:bg-navy-light text-primary-foreground gap-1.5">
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} 저장
+          </Button>
         </div>
       </div>
-      <button
-        onClick={() => onViewLog(instructor)}
-        className="text-xs text-navy font-medium flex items-center gap-1 hover:underline flex-shrink-0"
-      >
-        상세 <ChevronRight className="w-3.5 h-3.5" />
-      </button>
     </div>
   );
 }
 
-// ── Session Log Modal ──────────────────────────────────────────────────────────
-function SessionLogModal({
-  instructor,
-  sessions,
-  meetings,
+// ── Session Reschedule Modal ──────────────────────────────────────────────────
+function RescheduleModal({
+  session,
   onClose,
+  onSaved,
 }: {
-  instructor: Instructor;
-  sessions: ClassSession[];
-  meetings: BusinessMeeting[];
+  session: ClassSession;
   onClose: () => void;
+  onSaved: () => void;
 }) {
+  const { toast } = useToast();
+  const orig = new Date(session.scheduled_at);
+  const [date, setDate] = useState(orig.toISOString().slice(0, 10));
+  const [time, setTime] = useState(orig.toTimeString().slice(0, 5));
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const newScheduled = new Date(`${date}T${time}:00`).toISOString();
+    const { error } = await supabase.from("class_sessions").update({ scheduled_at: newScheduled }).eq("id", session.id);
+    if (error) {
+      toast({ title: "변경 실패", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "수업 일정이 변경되었습니다 ✓" });
+      onSaved();
+      onClose();
+    }
+    setSaving(false);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/30">
+      <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="font-bold text-sm text-foreground">{instructor.name} — 수업 로그</p>
-            <p className="text-[10px] text-muted-foreground">{sessions.length}회 수업 · {meetings.length}회 미팅</p>
+            <h2 className="font-bold text-sm text-foreground">수업 일정 변경</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{session.student_name} · {fmtDateTime(session.scheduled_at)}</p>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="w-5 h-5" />
-          </button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* Sessions */}
-          {sessions.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <BookOpen className="w-3 h-3" /> 수업 ({sessions.length}회)
-              </p>
-              {sessions.map((s) => (
-                <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
-                  <Calendar className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-foreground">{s.student_name}</p>
-                    <p className="text-[11px] text-muted-foreground">{fmtDateTime(s.scheduled_at)}</p>
-                    {s.topic && <p className="text-[11px] text-muted-foreground truncate">📝 {s.topic}</p>}
-                  </div>
-                  <span className="text-xs text-navy font-medium flex-shrink-0">
-                    ₩{instructor.lesson_rate.toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Meetings */}
-          {meetings.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                <Coffee className="w-3 h-3" /> 업무 미팅 ({meetings.length}회)
-              </p>
-              {meetings.map((m) => (
-                <div key={m.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
-                  <Coffee className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-foreground">{fmtDateTime(m.scheduled_at)}</p>
-                    <p className="text-[11px] text-muted-foreground">{m.duration_minutes}분{m.notes ? ` · ${m.notes}` : ""}</p>
-                  </div>
-                  <span className="text-xs text-gold-dark font-medium flex-shrink-0">
-                    ₩{Math.round((m.duration_minutes / 60) * instructor.meeting_rate).toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">날짜</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">시간</Label>
+            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-9 text-sm" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onClose} className="flex-1 h-9 text-sm">취소</Button>
+          <Button onClick={handleSave} disabled={saving} className="flex-1 h-9 text-sm bg-navy hover:bg-navy-light text-primary-foreground gap-1.5">
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} 변경
+          </Button>
         </div>
       </div>
     </div>
@@ -408,35 +466,28 @@ export default function InstructorDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [instructor, setInstructor] = useState<Instructor | null>(null);
-  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [students, setStudents] = useState<StudentFull[]>([]);
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [meetings, setMeetings] = useState<BusinessMeeting[]>([]);
   const [period, setPeriod] = useState<SchedulePeriod | null>(null);
-  const [allInstructors, setAllInstructors] = useState<Instructor[]>([]);
-  const [allSessions, setAllSessions] = useState<ClassSession[]>([]);
-  const [allMeetings, setAllMeetings] = useState<BusinessMeeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
-  const [logInstructor, setLogInstructor] = useState<Instructor | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "settlement">("overview");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "students">("dashboard");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
+  const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
 
-  useEffect(() => {
-    init();
-  }, []);
+  useEffect(() => { init(); }, []);
 
   const init = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { navigate("/login"); return; }
     setUser({ email: user.email ?? "" });
 
-    // Find instructor record
     const { data: ins } = await supabase
-      .from("instructors")
-      .select("*")
-      .eq("email", user.email)
-      .maybeSingle();
+      .from("instructors").select("*").eq("email", user.email).maybeSingle();
 
     if (!ins) {
       toast({ title: "강사 계정을 찾을 수 없습니다", variant: "destructive" });
@@ -444,22 +495,18 @@ export default function InstructorDashboard() {
       return;
     }
     setInstructor(ins);
-
     await loadData(ins);
   };
 
-  const loadData = async (ins: Instructor) => {
+  const loadData = useCallback(async (ins: Instructor) => {
     setLoading(true);
-    const [studRes, sessRes, hwRes, subRes, meetRes, periodRes, allInsRes, allSessRes, allMeetRes] = await Promise.all([
-      supabase.from("instructor_students").select("student_name").eq("instructor_id", ins.id),
+    const [studRes, sessRes, hwRes, subRes, meetRes, periodRes] = await Promise.all([
+      supabase.from("instructor_students").select("*").eq("instructor_id", ins.id),
       supabase.from("class_sessions").select("*").eq("instructor_name", ins.name).order("scheduled_at", { ascending: false }),
       supabase.from("homework_assignments").select("id,title,student_name"),
       supabase.from("homework_submissions").select("id,assignment_id,status,student_name"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).maybeSingle(),
-      supabase.from("instructors").select("*").eq("active", true),
-      supabase.from("class_sessions").select("*").order("scheduled_at", { ascending: false }),
-      supabase.from("business_meetings").select("*"),
     ]);
 
     setStudents(studRes.data || []);
@@ -468,11 +515,8 @@ export default function InstructorDashboard() {
     setSubmissions(subRes.data || []);
     setMeetings(meetRes.data || []);
     setPeriod(periodRes.data || null);
-    setAllInstructors(allInsRes.data || []);
-    setAllSessions(allSessRes.data || []);
-    setAllMeetings(allMeetRes.data || []);
     setLoading(false);
-  };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -501,11 +545,11 @@ export default function InstructorDashboard() {
   }
 
   // ── Derived stats ──
+  const myStudentNames = new Set(students.map((s) => s.student_name));
   const todaySessions = sessions.filter((s) => isToday(s.scheduled_at));
   const upcomingSessions = sessions.filter((s) => msUntil(s.scheduled_at) > 0)
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
-  const myStudentNames = new Set(students.map((s) => s.student_name));
   const myAssignments = assignments.filter((a) => myStudentNames.has(a.student_name));
   const uncheckedHw = myAssignments.filter((a) => {
     const sub = submissions.find((s) => s.assignment_id === a.id);
@@ -529,6 +573,24 @@ export default function InstructorDashboard() {
   const meetingHours = +(periodMeetings.reduce((s, m) => s + m.duration_minutes, 0) / 60).toFixed(1);
   const totalAmount = lessonHours * instructor.lesson_rate + meetingHours * instructor.meeting_rate;
 
+  // Selected date sessions
+  const selectedDateStr = selectedDate?.toDateString();
+  const selectedDaySessions = selectedDateStr
+    ? sessions.filter((s) => new Date(s.scheduled_at).toDateString() === selectedDateStr)
+        .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+    : [];
+
+  // Per-student stats
+  const getStudentStats = (studentName: string) => {
+    const sSessions = sessions.filter((s) => s.student_name === studentName);
+    const completedSessions = sSessions.filter((s) => new Date(s.scheduled_at) < new Date()).length;
+    const sAssignments = assignments.filter((a) => a.student_name === studentName);
+    const sSubmissions = submissions.filter((s) => s.student_name === studentName);
+    const submittedCount = sAssignments.filter((a) => sSubmissions.some((s) => s.assignment_id === a.id)).length;
+    const hwRate = sAssignments.length > 0 ? Math.round((submittedCount / sAssignments.length) * 100) : 0;
+    return { totalSessions: sSessions.length, completedSessions, assignmentCount: sAssignments.length, submittedCount, hwRate };
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -539,7 +601,7 @@ export default function InstructorDashboard() {
           </div>
           <div>
             <p className="font-bold text-sm text-foreground">The Lounge English</p>
-            <p className="text-[10px] text-muted-foreground">{instructor.name}</p>
+            <p className="text-[10px] text-muted-foreground">{instructor.name} · 강사</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -556,209 +618,328 @@ export default function InstructorDashboard() {
 
       {/* Tab Nav */}
       <div className="border-b border-border bg-card px-5">
-        <div className="flex gap-0 max-w-3xl mx-auto">
-          {[{ id: "overview", label: "내 현황" }, { id: "settlement", label: "정산 대시보드" }].map((t) => (
+        <div className="flex gap-0 max-w-5xl mx-auto">
+          {[
+            { id: "dashboard" as const, label: "대시보드", icon: CalendarDays },
+            { id: "students" as const, label: "학생 관리", icon: Users },
+          ].map((t) => (
             <button
               key={t.id}
-              onClick={() => setActiveTab(t.id as typeof activeTab)}
-              className={cn("px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+              onClick={() => setActiveTab(t.id)}
+              className={cn("flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
                 activeTab === t.id
                   ? "border-navy text-navy"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
+              <t.icon className="w-3.5 h-3.5" />
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+      <main className="max-w-5xl mx-auto px-4 py-6">
 
-        {/* ── OVERVIEW TAB ── */}
-        {activeTab === "overview" && (
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* ═══ DASHBOARD TAB ═══════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "dashboard" && (
           <>
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Stats row */}
+            <div className="grid grid-cols-4 gap-3 mb-6">
               {[
-                { label: "이번 기간 수업", value: `${lessonHours}회`, icon: BookOpen, color: "text-navy", bg: "bg-navy/10" },
-                { label: "업무 미팅", value: `${meetingHours}h`, icon: Coffee, color: "text-gold-dark", bg: "bg-gold/10" },
-                { label: "정산 예정액", value: `₩${totalAmount.toLocaleString()}`, icon: Banknote, color: "text-success", bg: "bg-success/10" },
+                { label: "담당 학생", value: `${students.filter(s => s.status === "active").length}명`, icon: Users, color: "text-navy", bg: "bg-navy/10" },
+                { label: "이번 기간 수업", value: `${lessonHours}회`, icon: BookOpen, color: "text-gold-dark", bg: "bg-gold/10" },
+                { label: "미확인 숙제", value: `${uncheckedHw.length}건`, icon: ClipboardCheck, color: uncheckedHw.length > 0 ? "text-destructive" : "text-success", bg: uncheckedHw.length > 0 ? "bg-destructive/10" : "bg-success/10" },
+                { label: "정산 예정", value: `₩${totalAmount.toLocaleString()}`, icon: Banknote, color: "text-success", bg: "bg-success/10" },
               ].map(({ label, value, icon: Icon, color, bg }) => (
-                <div key={label} className="rounded-2xl border border-border bg-card p-4 space-y-2">
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", bg)}>
-                    <Icon className={cn("w-4 h-4", color)} />
+                <div key={label} className="rounded-xl border border-border bg-card p-3.5 space-y-1.5">
+                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", bg)}>
+                    <Icon className={cn("w-3.5 h-3.5", color)} />
                   </div>
-                  <p className={cn("text-lg font-bold leading-tight", color)}>{value}</p>
+                  <p className={cn("text-base font-bold leading-tight", color)}>{value}</p>
                   <p className="text-[10px] text-muted-foreground">{label}</p>
                 </div>
               ))}
             </div>
 
-            {/* Calendar */}
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold text-foreground mb-4">📅 수업 캘린더</h2>
-              <MiniCalendar period={period} sessions={sessions} meetings={meetings} />
-            </div>
-
-            {/* Today */}
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold text-foreground mb-3">오늘의 수업
-                <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{todaySessions.length}건</span>
-              </h2>
-              {todaySessions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">오늘 예정된 수업이 없습니다</p>
-              ) : (
-                <div className="space-y-2">
-                  {todaySessions.map((s) => (
-                    <div key={s.id} className="flex items-center gap-3 px-3.5 py-3 rounded-xl border border-border bg-muted/20">
-                      <div className="text-center w-12 flex-shrink-0">
-                        <p className="text-xs font-bold text-navy">{fmtTime(s.scheduled_at)}</p>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{s.student_name}</p>
-                        <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
-                      </div>
-                      {s.meet_link && (
-                        <a href={s.meet_link} target="_blank" rel="noopener noreferrer">
-                          <Button size="sm" className="h-7 text-xs gap-1 bg-navy hover:bg-navy-light text-primary-foreground">
-                            <Video className="w-3 h-3" /> 입장
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                  ))}
+            {/* Two columns */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* LEFT: Calendar */}
+              <div className="space-y-4">
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <BigCalendar
+                    sessions={sessions}
+                    meetings={meetings}
+                    selectedDate={selectedDate}
+                    onSelectDate={setSelectedDate}
+                  />
                 </div>
-              )}
-            </div>
 
-            {/* Unchecked homework */}
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold text-foreground mb-3">미확인 숙제
-                {uncheckedHw.length > 0 && (
-                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">{uncheckedHw.length}</span>
+                {/* Selected date detail */}
+                {selectedDate && (
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <h3 className="text-sm font-semibold text-foreground mb-3">
+                      {selectedDate.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })} 수업
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{selectedDaySessions.length}건</span>
+                    </h3>
+                    {selectedDaySessions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-2">예정된 수업이 없습니다</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedDaySessions.map((s) => (
+                          <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
+                            <div className="text-center w-12 flex-shrink-0">
+                              <p className="text-xs font-bold text-navy">{fmtTime(s.scheduled_at)}</p>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground">{s.student_name}</p>
+                              <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => setRescheduleSession(s)}
+                                className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-1 rounded hover:bg-muted"
+                                title="일정 변경"
+                              >
+                                <CalendarDays className="w-3.5 h-3.5" />
+                              </button>
+                              {s.meet_link && (
+                                <a href={s.meet_link} target="_blank" rel="noopener noreferrer">
+                                  <Button size="sm" className="h-6 text-[10px] gap-1 bg-navy hover:bg-navy-light text-primary-foreground px-2">
+                                    <Video className="w-3 h-3" /> 입장
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
-              </h2>
-              {uncheckedHw.length === 0 ? (
-                <div className="flex items-center gap-2 text-sm text-success">
-                  <Check className="w-4 h-4" /> 모든 숙제를 확인했습니다
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {uncheckedHw.map((a) => (
-                    <div key={a.id} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-destructive/20 bg-destructive/5">
-                      <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground">{a.title}</p>
-                        <p className="text-[11px] text-muted-foreground">{a.student_name}</p>
-                      </div>
-                      <a href="/admin">
-                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
-                          확인 <ChevronRight className="w-3 h-3" />
-                        </Button>
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+              </div>
 
-            {/* Students */}
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold text-foreground mb-3">담당 학생
-                <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{students.length}명</span>
-              </h2>
-              {students.length === 0 ? (
-                <p className="text-sm text-muted-foreground">담당 학생이 없습니다</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {students.map((s) => (
-                    <div key={s.student_name} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-muted/30 text-sm font-medium text-foreground">
-                      <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                      {s.student_name}
+              {/* RIGHT: Progress + Today + Homework */}
+              <div className="space-y-4">
+                {/* Today's sessions */}
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-gold" />
+                    오늘의 수업
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{todaySessions.length}건</span>
+                  </h3>
+                  {todaySessions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-1">오늘 예정된 수업이 없습니다</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {todaySessions.map((s) => (
+                        <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
+                          <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground">{s.student_name}</p>
+                            <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
+                          </div>
+                          {s.meet_link && (
+                            <a href={`/t/classroom?sessionId=${s.id}`}>
+                              <Button size="sm" className="h-7 text-xs gap-1 bg-navy hover:bg-navy-light text-primary-foreground">
+                                <Video className="w-3 h-3" /> 교실
+                              </Button>
+                            </a>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
+
+                {/* Student progress */}
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-navy" />
+                    학생별 학습 현황
+                  </h3>
+                  <div className="space-y-2.5">
+                    {students.filter(s => s.status === "active").map((st) => {
+                      const stats = getStudentStats(st.student_name);
+                      const goalCount = st.lesson_goal_count || 0;
+                      const progressPct = goalCount > 0 ? Math.min(100, Math.round((stats.completedSessions / goalCount) * 100)) : 0;
+
+                      return (
+                        <div key={st.id} className="px-3 py-2.5 rounded-lg border border-border bg-muted/20 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-navy/10 flex items-center justify-center">
+                                <span className="text-navy font-bold text-[10px]">{st.student_name.charAt(0)}</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{st.student_name}</p>
+                                <p className="text-[10px] text-muted-foreground">{st.level} · {st.schedules || "미정"}</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">{stats.completedSessions}/{goalCount || "∞"}회</span>
+                          </div>
+                          {/* Progress bar */}
+                          {goalCount > 0 && (
+                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-navy transition-all"
+                                style={{ width: `${progressPct}%` }}
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                            <span>수업 {stats.completedSessions}회</span>
+                            <span>숙제 {stats.submittedCount}/{stats.assignmentCount}건 ({stats.hwRate}%)</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {students.filter(s => s.status === "active").length === 0 && (
+                      <p className="text-xs text-muted-foreground py-2">담당 학생이 없습니다</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Unchecked homework */}
+                {uncheckedHw.length > 0 && (
+                  <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+                    <h3 className="text-sm font-semibold text-destructive mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      미확인 숙제
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">{uncheckedHw.length}</span>
+                    </h3>
+                    <div className="space-y-1.5">
+                      {uncheckedHw.map((a) => (
+                        <div key={a.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground">{a.title}</p>
+                            <p className="text-[10px] text-muted-foreground">{a.student_name}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
 
-        {/* ── SETTLEMENT TAB ── */}
-        {activeTab === "settlement" && (
-          <>
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold text-foreground">정산 현황</h2>
-                  {period && (
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{period.label} ({fmt(period.start_date)} ~ {fmt(period.end_date)})</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <TrendingUp className="w-4 h-4 text-gold" />
-                </div>
-              </div>
-
-              {/* Total */}
-              <div className="grid grid-cols-3 gap-3">
-                {(() => {
-                  const totalLessonH = allInstructors.reduce((sum, ins) => {
-                    const s = allSessions.filter((sess) => {
-                      const inPeriod = start && end && new Date(sess.scheduled_at) >= start && new Date(sess.scheduled_at) <= end;
-                      return sess.instructor_name === ins.name && inPeriod;
-                    }).length;
-                    return sum + s;
-                  }, 0);
-                  const totalMeetH = allMeetings.reduce((sum, m) => {
-                    const inPeriod = start && end && new Date(m.scheduled_at) >= start && new Date(m.scheduled_at) <= end;
-                    return sum + (inPeriod ? m.duration_minutes / 60 : 0);
-                  }, 0);
-                  const totalAmt = allInstructors.reduce((sum, ins) => {
-                    const s = allSessions.filter((sess) => {
-                      const inPeriod = start && end && new Date(sess.scheduled_at) >= start && new Date(sess.scheduled_at) <= end;
-                      return sess.instructor_name === ins.name && inPeriod;
-                    }).length * ins.lesson_rate;
-                    const m = allMeetings.filter((meet) => {
-                      const matchIns = allInstructors.find((i) => i.id === meet.instructor_id)?.name === ins.name;
-                      const inPeriod = start && end && new Date(meet.scheduled_at) >= start && new Date(meet.scheduled_at) <= end;
-                      return matchIns && inPeriod;
-                    }).reduce((ms, meet) => ms + (meet.duration_minutes / 60) * ins.meeting_rate, 0);
-                    return sum + s + m;
-                  }, 0);
-                  return [
-                    { label: "전체 수업 시간", value: `${totalLessonH}h`, color: "text-navy" },
-                    { label: "전체 미팅 시간", value: `${totalMeetH.toFixed(1)}h`, color: "text-gold-dark" },
-                    { label: "지급 예정 합계", value: `₩${Math.round(totalAmt).toLocaleString()}`, color: "text-success" },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="text-center p-3 rounded-xl bg-muted/30 border border-border">
-                      <p className={cn("font-bold text-base", color)}>{value}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
-                    </div>
-                  ));
-                })()}
-              </div>
-
-              {/* Per-instructor rows */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">강사별 내역</p>
-                {allInstructors.map((ins) => {
-                  const insSessions = allSessions.filter((s) => s.instructor_name === ins.name);
-                  const insMeetings = allMeetings.filter((m) => m.instructor_id === ins.id);
-                  return (
-                    <SettlementRow
-                      key={ins.id}
-                      instructor={ins}
-                      sessions={insSessions}
-                      meetings={insMeetings}
-                      period={period}
-                      onViewLog={setLogInstructor}
-                    />
-                  );
-                })}
-              </div>
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* ═══ STUDENTS TAB ════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "students" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                <Users className="w-4 h-4 text-navy" />
+                담당 학생 관리
+                <span className="text-xs px-2 py-0.5 rounded-full bg-navy/10 text-navy font-medium">{students.length}명</span>
+              </h2>
             </div>
-          </>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {students.map((st) => {
+                const stats = getStudentStats(st.student_name);
+                const goalCount = st.lesson_goal_count || 0;
+                const progressPct = goalCount > 0 ? Math.min(100, Math.round((stats.completedSessions / goalCount) * 100)) : 0;
+                const statusLabel = st.status === "active" ? "수강 중" : st.status === "paused" ? "휴강" : "수료";
+                const statusColor = st.status === "active" ? "bg-success/10 text-success" : st.status === "paused" ? "bg-gold/10 text-gold-dark" : "bg-muted text-muted-foreground";
+
+                // Upcoming sessions for this student
+                const studentUpcoming = sessions
+                  .filter((s) => s.student_name === st.student_name && msUntil(s.scheduled_at) > 0)
+                  .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+                  .slice(0, 3);
+
+                return (
+                  <div key={st.id} className="rounded-xl border border-border bg-card overflow-hidden">
+                    {/* Card header */}
+                    <div className="px-4 py-3 bg-muted/30 border-b border-border flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-full bg-navy/10 flex items-center justify-center">
+                          <span className="text-navy font-bold text-sm">{st.student_name.charAt(0)}</span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-foreground">{st.student_name}</p>
+                          <p className="text-[10px] text-muted-foreground">{st.level} · {st.schedules || "일정 미정"}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColor)}>{statusLabel}</span>
+                        <button
+                          onClick={() => setEditStudent(st)}
+                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          title="학생 정보 수정"
+                        >
+                          <Settings2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-4 space-y-3">
+                      {/* Progress */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-muted-foreground">수업 진도</span>
+                          <span className="font-medium text-foreground">{stats.completedSessions}/{goalCount || "∞"}회 {goalCount > 0 ? `(${progressPct}%)` : ""}</span>
+                        </div>
+                        {goalCount > 0 && (
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full bg-navy transition-all" style={{ width: `${progressPct}%` }} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="py-1.5 rounded-lg bg-muted/30">
+                          <p className="text-xs font-bold text-foreground">{stats.completedSessions}</p>
+                          <p className="text-[9px] text-muted-foreground">완료 수업</p>
+                        </div>
+                        <div className="py-1.5 rounded-lg bg-muted/30">
+                          <p className="text-xs font-bold text-foreground">{stats.hwRate}%</p>
+                          <p className="text-[9px] text-muted-foreground">숙제 제출률</p>
+                        </div>
+                        <div className="py-1.5 rounded-lg bg-muted/30">
+                          <p className="text-xs font-bold text-foreground">{st.extra_lessons || 0}</p>
+                          <p className="text-[9px] text-muted-foreground">보강</p>
+                        </div>
+                      </div>
+
+                      {/* Upcoming sessions */}
+                      {studentUpcoming.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">예정 수업</p>
+                          {studentUpcoming.map((s) => (
+                            <div key={s.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/20 border border-border">
+                              <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                              <span className="text-[11px] text-foreground flex-1">{fmtDateTime(s.scheduled_at)}</span>
+                              <button
+                                onClick={() => setRescheduleSession(s)}
+                                className="text-[10px] text-navy hover:underline font-medium"
+                              >
+                                변경
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {students.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <Users className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">담당 학생이 없습니다</p>
+              </div>
+            )}
+          </div>
         )}
       </main>
 
@@ -770,12 +951,18 @@ export default function InstructorDashboard() {
           onAdded={() => loadData(instructor)}
         />
       )}
-      {logInstructor && (
-        <SessionLogModal
-          instructor={logInstructor}
-          sessions={allSessions.filter((s) => s.instructor_name === logInstructor.name)}
-          meetings={allMeetings.filter((m) => m.instructor_id === logInstructor.id)}
-          onClose={() => setLogInstructor(null)}
+      {editStudent && (
+        <StudentEditModal
+          student={editStudent}
+          onClose={() => setEditStudent(null)}
+          onSaved={() => loadData(instructor)}
+        />
+      )}
+      {rescheduleSession && (
+        <RescheduleModal
+          session={rescheduleSession}
+          onClose={() => setRescheduleSession(null)}
+          onSaved={() => loadData(instructor)}
         />
       )}
     </div>
