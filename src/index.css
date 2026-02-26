@@ -218,10 +218,24 @@
 }
 .tiptap th,
 .tiptap td {
-  @apply border border-border px-3 py-1.5 text-sm;
+  @apply border border-border px-3 py-1.5 text-sm relative;
+  min-width: 60px;
 }
 .tiptap th {
   @apply bg-muted/50 font-semibold;
+}
+.tiptap .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: hsl(var(--accent));
+  cursor: col-resize;
+  z-index: 20;
+}
+.tiptap.resize-cursor {
+  cursor: col-resize;
 }
 .tiptap p.is-editor-empty:first-child::before {
   @apply text-muted-foreground/50;

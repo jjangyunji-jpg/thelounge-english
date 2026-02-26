@@ -63,7 +63,7 @@ export default function NotesEditor({
         blockquote: {},
       }),
       Underline,
-      Table.configure({ resizable: false }),
+      Table.configure({ resizable: true }),
       TableRow,
       TableCell,
       TableHeader,
