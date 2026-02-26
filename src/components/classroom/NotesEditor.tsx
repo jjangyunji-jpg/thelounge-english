@@ -146,7 +146,13 @@ export default function NotesEditor({
     {
       label: "콜아웃",
       icon: <MessageSquareQuote className="w-4 h-4 text-primary" />,
-      action: () => executeSlashCommand(() => editor?.chain().focus().toggleCallout({ type: "info" }).run()),
+      action: () => executeSlashCommand(() => {
+        editor?.chain().focus().toggleCallout({ type: "info" }).run();
+        // Insert h3 heading inside the callout
+        setTimeout(() => {
+          editor?.chain().focus().toggleHeading({ level: 3 }).run();
+        }, 20);
+      }),
     },
     {
       label: "제목 1",
