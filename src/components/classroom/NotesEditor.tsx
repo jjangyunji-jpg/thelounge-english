@@ -8,6 +8,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 
 import Underline from "@tiptap/extension-underline";
 import { Callout } from "./CalloutExtension";
+import { DetailsBlock, DetailsSummary } from "./ToggleListExtension";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -68,6 +69,8 @@ export default function NotesEditor({
       TableCell,
       TableHeader,
       Callout,
+      DetailsBlock,
+      DetailsSummary,
       Placeholder.configure({ placeholder }),
     ],
     content: content || "",
@@ -153,11 +156,27 @@ export default function NotesEditor({
           return false;
         }
 
+        // > + space at line start → toggle list
         // <- + space → ←
         if (event.key === " ") {
           setTimeout(() => {
             if (!editor) return;
             const pos = editor.state.selection.from;
+
+            // Check for ">" at start of current block → toggle list
+            const $pos = editor.state.doc.resolve(pos);
+            const blockStart = $pos.start();
+            const textInBlock = editor.state.doc.textBetween(blockStart, pos, "");
+            if (textInBlock === "> ") {
+              event.preventDefault();
+              editor.chain().focus().deleteRange({ from: blockStart, to: pos }).run();
+              setTimeout(() => {
+                editor.chain().focus().setDetailsBlock().run();
+              }, 10);
+              return;
+            }
+
+            // <- + space → ←
             if (pos >= 3) {
               const t3 = editor.state.doc.textBetween(pos - 3, pos, "");
               if (t3 === "<- ") {
