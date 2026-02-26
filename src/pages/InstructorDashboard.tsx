@@ -930,12 +930,16 @@ export default function InstructorDashboard() {
   const meetingHours = +(periodMeetings.reduce((s, m) => s + m.duration_minutes, 0) / 60).toFixed(1);
   const totalAmount = lessonHours * instructor.lesson_rate + meetingHours * instructor.meeting_rate;
 
-  // Selected date sessions + virtual schedules
-  const selectedDateStr = selectedDate?.toDateString();
-  const selectedDaySessions = selectedDateStr
-    ? sessions.filter((s) => new Date(s.scheduled_at).toDateString() === selectedDateStr)
-        .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
-    : [];
+   // Selected date sessions + meetings + virtual schedules
+    const selectedDateStr = selectedDate?.toDateString();
+    const selectedDaySessions = selectedDateStr
+      ? sessions.filter((s) => new Date(s.scheduled_at).toDateString() === selectedDateStr)
+          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+      : [];
+    const selectedDayMeetings = selectedDateStr
+      ? meetings.filter((m) => new Date(m.scheduled_at).toDateString() === selectedDateStr)
+          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+      : [];
 
   // Virtual schedules for selected date
   const selectedDayVirtual = (() => {
@@ -1112,12 +1116,13 @@ export default function InstructorDashboard() {
                   <div className="rounded-xl border border-border bg-card p-4">
                     <h3 className="text-sm font-semibold text-foreground mb-3">
                       {selectedDate.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })} 일정
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{selectedDaySessions.length + selectedDayVirtual.length}건</span>
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{selectedDaySessions.length + selectedDayVirtual.length + selectedDayMeetings.length}건</span>
                     </h3>
-                    {selectedDaySessions.length === 0 && selectedDayVirtual.length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-2">예정된 수업이 없습니다</p>
+                    {selectedDaySessions.length === 0 && selectedDayVirtual.length === 0 && selectedDayMeetings.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-2">예정된 일정이 없습니다</p>
                     ) : (
                       <div className="space-y-2">
+                        {/* Actual sessions */}
                         {selectedDaySessions.map((s) => (
                           <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
                             <div className="text-center w-12 flex-shrink-0">
@@ -1135,16 +1140,15 @@ export default function InstructorDashboard() {
                               >
                                 <CalendarDays className="w-3.5 h-3.5" />
                               </button>
-                              {s.meet_link && (
-                                <a href={s.meet_link} target="_blank" rel="noopener noreferrer">
-                                  <Button size="sm" className="h-6 text-[10px] gap-1 bg-navy hover:bg-navy-light text-primary-foreground px-2">
-                                    <Video className="w-3 h-3" /> 입장
-                                  </Button>
-                                </a>
-                              )}
+                              <a href={`/t/classroom?sessionId=${s.id}`}>
+                                <Button size="sm" className="h-6 text-[10px] gap-1 bg-navy hover:bg-navy-light text-primary-foreground px-2">
+                                  <FileText className="w-3 h-3" /> 수업노트
+                                </Button>
+                              </a>
                             </div>
                           </div>
                         ))}
+                        {/* Virtual (planned) sessions */}
                         {selectedDayVirtual.map((v, i) => (
                           <div key={`v${i}`} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-navy/20 bg-navy/5 hover:bg-navy/10 transition-colors">
                             <div className="text-center w-12 flex-shrink-0">
@@ -1154,13 +1158,28 @@ export default function InstructorDashboard() {
                               <p className="text-sm font-medium text-foreground/70">{v.student_name}</p>
                               <p className="text-[11px] text-muted-foreground">{v.level || "—"} · 예정</p>
                             </div>
-                            {v.meet_link && (
-                              <a href={`/classroom?student=${encodeURIComponent(v.student_name)}`}>
-                                <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 px-2">
-                                  <Video className="w-3 h-3" /> 수업 시작
-                                </Button>
-                              </a>
-                            )}
+                            <a href={`/t/classroom?student=${encodeURIComponent(v.student_name)}`}>
+                              <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 px-2">
+                                <Video className="w-3 h-3" /> 수업 시작
+                              </Button>
+                            </a>
+                          </div>
+                        ))}
+                        {/* Business meetings */}
+                        {selectedDayMeetings.map((m) => (
+                          <div key={m.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gold/30 bg-gold/5 hover:bg-gold/10 transition-colors">
+                            <div className="text-center w-12 flex-shrink-0">
+                              <p className="text-xs font-bold text-gold-dark">{fmtTime(m.scheduled_at)}</p>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground">{m.notes || "업무 미팅"}</p>
+                              <p className="text-[11px] text-muted-foreground">{m.duration_minutes}분</p>
+                            </div>
+                            <a href={`https://meet.google.com`} target="_blank" rel="noopener noreferrer">
+                              <Button size="sm" className="h-6 text-[10px] gap-1 bg-gold hover:bg-gold-dark text-accent-foreground px-2">
+                                <Video className="w-3 h-3" /> 미팅 시작
+                              </Button>
+                            </a>
                           </div>
                         ))}
                       </div>
@@ -1208,56 +1227,37 @@ export default function InstructorDashboard() {
                     <GraduationCap className="w-4 h-4 text-navy" />
                     학생별 학습 현황
                   </h3>
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {students.filter(s => s.status === "active").map((st) => {
                       const stats = getStudentStats(st.student_name, st.schedules);
                       const goals = fmtGoals(st.lesson_goal);
 
                       return (
-                        <div key={st.id} className="px-3 py-3 rounded-lg border border-border bg-muted/20 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-navy/10 flex items-center justify-center">
-                              <span className="text-navy font-bold text-[10px]">{st.student_name.charAt(0)}</span>
+                        <div key={st.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
+                          {/* Left: student info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <div className="w-6 h-6 rounded-full bg-navy/10 flex items-center justify-center flex-shrink-0">
+                                <span className="text-navy font-bold text-[9px]">{st.student_name.charAt(0)}</span>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-foreground leading-tight">{st.student_name}</p>
+                                <p className="text-[10px] text-muted-foreground leading-tight">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-foreground">{st.student_name}</p>
-                              <p className="text-[10px] text-muted-foreground">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
-                            </div>
+                            {goals.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1 ml-8">
+                                {goals.map((g, i) => (
+                                  <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{g}</span>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          {goals.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {goals.map((g, i) => (
-                                <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{g}</span>
-                              ))}
-                            </div>
-                          )}
-                          {/* Donut charts row */}
-                          <div className="grid grid-cols-3 gap-2">
-                            <DonutStat
-                              value={stats.completedMonthSessions}
-                              total={stats.monthTotal}
-                              label="수업횟수"
-                              unit="회"
-                              color="hsl(var(--navy))"
-                              trackColor="hsl(var(--navy) / 0.15)"
-                            />
-                            <DonutStat
-                              value={stats.weekSubmittedHw}
-                              total={stats.totalHw}
-                              label="숙제 제출"
-                              unit="건"
-                              color="hsl(var(--gold-dark))"
-                              trackColor="hsl(var(--gold) / 0.2)"
-                            />
-                            <DonutStat
-                              value={stats.weekVocabCount}
-                              total={0}
-                              label="단어 테스트"
-                              unit="회"
-                              color="hsl(var(--success))"
-                              trackColor="hsl(var(--success) / 0.15)"
-                              isCount
-                            />
+                          {/* Right: donut charts inline */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <DonutStat value={stats.completedMonthSessions} total={stats.monthTotal} label="수업" unit="회" color="hsl(var(--navy))" trackColor="hsl(var(--navy) / 0.15)" />
+                            <DonutStat value={stats.weekSubmittedHw} total={stats.totalHw} label="숙제" unit="건" color="hsl(var(--gold-dark))" trackColor="hsl(var(--gold) / 0.2)" />
+                            <DonutStat value={stats.weekVocabCount} total={0} label="단어" unit="회" color="hsl(var(--success))" trackColor="hsl(var(--success) / 0.15)" isCount />
                           </div>
                         </div>
                       );
