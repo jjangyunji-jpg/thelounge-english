@@ -473,9 +473,11 @@ export default function Classroom() {
                 {generatingObjectives ? "수업목표 생성 중..." : "노트 저장 시 수업목표가 자동 생성됩니다"}
               </span>
             )}
-            <span className="text-sidebar-foreground/40 text-xs font-mono hidden sm:inline">
-              · {formatDate(session.scheduledAt)} {formatTime(session.scheduledAt)}
-            </span>
+            {session.sessionId && (
+              <span className="text-sidebar-foreground/40 text-xs font-mono hidden sm:inline">
+                · {formatDate(session.scheduledAt)} {formatTime(session.scheduledAt)}
+              </span>
+            )}
           </div>
         </div>
 
@@ -625,9 +627,11 @@ export default function Classroom() {
                 <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
                   <FileText className="w-4 h-4 text-gold" />
                   <span className="font-semibold text-sm text-foreground">수업 노트</span>
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {formatDate(session.scheduledAt)} {formatTime(session.scheduledAt)}
-                  </span>
+                  {session.sessionId && (
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {formatDate(session.scheduledAt)} {formatTime(session.scheduledAt)}
+                    </span>
+                  )}
                 </div>
                 <Textarea
                   value={notes}
@@ -649,9 +653,11 @@ export default function Classroom() {
                     <FileText className="w-4 h-4 text-gold" />
                     <span className="font-semibold text-sm text-foreground">수업 노트</span>
                     {classState === "active" && <span className="w-2 h-2 rounded-full bg-success animate-pulse" />}
-                    <span className="text-xs text-muted-foreground ml-2">
-                      {formatDate(session.scheduledAt)} {formatTime(session.scheduledAt)}
-                    </span>
+                    {session.sessionId && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {formatDate(session.scheduledAt)} {formatTime(session.scheduledAt)}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Button size="sm" variant="outline" onClick={handleExtractVocab}
