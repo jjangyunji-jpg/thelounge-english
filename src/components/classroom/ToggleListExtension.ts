@@ -79,7 +79,7 @@ export const DetailsBlock = Node.create({
   },
 
   addNodeView() {
-    return ({ node, HTMLAttributes, getPos, editor }) => {
+    return ({ node, getPos, editor }) => {
       const details = document.createElement("details");
       details.classList.add("toggle-list");
       if (node.attrs.open) details.setAttribute("open", "");
@@ -98,11 +98,8 @@ export const DetailsBlock = Node.create({
         }
       });
 
-      const contentDOM = document.createElement("div");
-      contentDOM.classList.add("toggle-list-content");
-      details.appendChild(contentDOM);
-
-      return { dom: details, contentDOM };
+      // contentDOM is details itself so summary + body render as direct children
+      return { dom: details, contentDOM: details };
     };
   },
 });
