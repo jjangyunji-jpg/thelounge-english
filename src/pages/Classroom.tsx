@@ -631,11 +631,16 @@ export default function Classroom() {
                     </span>
                   )}
                 </div>
-                <Textarea
-                  value={notes}
-                  readOnly
-                  placeholder="강사가 수업 노트를 작성하면 여기에 표시됩니다."
-                  className="h-[420px] resize-none text-sm leading-relaxed border-0 focus-visible:ring-0 bg-transparent p-4 rounded-none overflow-y-auto cursor-default text-muted-foreground"
+                <div
+                  className="tiptap h-[420px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground"
+                  dangerouslySetInnerHTML={{ __html: (() => {
+                    const raw = notes || "";
+                    if (!raw) return "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>";
+                    try {
+                      const decoded = new DOMParser().parseFromString(raw, "text/html").body.innerHTML;
+                      return decoded;
+                    } catch { return raw; }
+                  })() }}
                 />
               </div>
               {/* 숙제 */}
