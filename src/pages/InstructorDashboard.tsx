@@ -428,7 +428,7 @@ export default function InstructorDashboard() {
 
   const init = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { navigate("/instructor/login"); return; }
+    if (!user) { navigate("/login"); return; }
     setUser({ email: user.email ?? "" });
 
     // Find instructor record
@@ -476,7 +476,7 @@ export default function InstructorDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/instructor/login");
+    navigate("/login");
   };
 
   if (loading) {
