@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Plus, Trash2, Save, Info, BanIcon, Bell, AlertTriangle } from "lucide-react";
+import { Calendar, Plus, Trash2, Save, Info, BanIcon, Bell, AlertTriangle, Loader2, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,7 @@ export default function SystemSettings() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editVals, setEditVals] = useState({ label: "", start_date: "", end_date: "" });
   const [savingPeriod, setSavingPeriod] = useState(false);
+  const [generatingPeriodId, setGeneratingPeriodId] = useState<string | null>(null);
 
   // Holiday notices
   const [notices, setNotices] = useState<HolidayNotice[]>([]);
@@ -173,7 +174,28 @@ export default function SystemSettings() {
     setEditVals({ label: defaultLabel, start_date: "", end_date: "" });
   };
 
-  // Upcoming vs past notices
+  const generateSessions = async (periodId: string) => {
+    setGeneratingPeriodId(periodId);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-sessions", {
+        body: { period_id: periodId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: `세션 ${data.created}개가 생성되었습니다 ✓`,
+        description: `${data.period} 기간 · 학생 ${data.students}명 · 휴일 ${data.skipped_holidays}일 제외`,
+      });
+    } catch (e: any) {
+      toast({
+        title: "세션 생성 실패",
+        description: e.message || "알 수 없는 오류",
+        variant: "destructive",
+      });
+    }
+    setGeneratingPeriodId(null);
+  };
+
   const today = new Date().toISOString().slice(0, 10);
   const upcomingNotices = notices.filter((n) => n.date_end >= today);
   const pastNotices = notices.filter((n) => n.date_end < today);
@@ -270,20 +292,37 @@ export default function SystemSettings() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground text-xs">시작</span>
-                        <span className="font-medium text-foreground text-sm">{formatDateKo(period.start_date) || "미설정"}</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground text-xs">시작</span>
+                          <span className="font-medium text-foreground text-sm">{formatDateKo(period.start_date) || "미설정"}</span>
+                        </div>
+                        <span className="text-muted-foreground">→</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground text-xs">종료</span>
+                          <span className="font-medium text-foreground text-sm">{formatDateKo(period.end_date) || "미설정"}</span>
+                        </div>
+                        {period.start_date && period.end_date && (
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {Math.ceil((new Date(period.end_date).getTime() - new Date(period.start_date).getTime()) / (1000 * 60 * 60 * 24))}일
+                          </span>
+                        )}
                       </div>
-                      <span className="text-muted-foreground">→</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground text-xs">종료</span>
-                        <span className="font-medium text-foreground text-sm">{formatDateKo(period.end_date) || "미설정"}</span>
-                      </div>
-                      {period.start_date && period.end_date && (
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {Math.ceil((new Date(period.end_date).getTime() - new Date(period.start_date).getTime()) / (1000 * 60 * 60 * 24))}일
-                        </span>
+                      {period.start_date && period.end_date && !period.isNew && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1.5 border-gold/30 text-gold-dark hover:bg-gold/10"
+                          disabled={generatingPeriodId === period.id}
+                          onClick={() => generateSessions(period.id)}
+                        >
+                          {generatingPeriodId === period.id ? (
+                            <><Loader2 className="w-3 h-3 animate-spin" /> 생성 중...</>
+                          ) : (
+                            <><Sparkles className="w-3 h-3" /> 수업 세션 일괄 생성</>
+                          )}
+                        </Button>
                       )}
                     </div>
                   )}
