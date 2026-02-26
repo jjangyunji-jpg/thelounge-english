@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { exportAllSettlementsPdf } from "@/lib/exportSettlementPdf";
 
 interface Instructor {
   id: string;
@@ -59,6 +60,7 @@ export default function InstructorManagement() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [form, setForm] = useState<NewInstructorForm>({
     name: "",
     email: "",
@@ -190,6 +192,48 @@ export default function InstructorManagement() {
 
   const activeCount = instructors.filter((i) => i.active).length;
 
+  const handleDownloadSettlement = async () => {
+    setDownloadingPdf(true);
+    try {
+      // Get current period
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const { data: periods } = await supabase
+        .from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true });
+      const period = (periods || []).find(p => p.start_date <= todayStr && p.end_date >= todayStr) || (periods || [])[0];
+      if (!period) {
+        toast({ title: "활성 기간이 없습니다", variant: "destructive" });
+        setDownloadingPdf(false);
+        return;
+      }
+
+      // Fetch sessions & meetings for all active instructors
+      const activeInstructors = instructors.filter(i => i.active);
+      const allData = await Promise.all(
+        activeInstructors.map(async (ins) => {
+          const [sessRes, meetRes] = await Promise.all([
+            supabase.from("class_sessions").select("scheduled_at,student_name,level").eq("instructor_name", ins.name),
+            supabase.from("business_meetings").select("scheduled_at,duration_minutes,notes").eq("instructor_id", ins.id),
+          ]);
+          return {
+            info: { name: ins.name, email: ins.email },
+            sessions: sessRes.data || [],
+            meetings: meetRes.data || [],
+          };
+        })
+      );
+
+      await exportAllSettlementsPdf(allData, {
+        label: period.label,
+        start_date: period.start_date,
+        end_date: period.end_date,
+      });
+      toast({ title: "정산 자료 PDF 다운로드 완료" });
+    } catch (err: unknown) {
+      toast({ title: "다운로드 실패", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
+    }
+    setDownloadingPdf(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -211,8 +255,10 @@ export default function InstructorManagement() {
             variant="outline"
             size="sm"
             className="gap-2 border-gold text-gold-dark hover:bg-gold/8"
+            onClick={handleDownloadSettlement}
+            disabled={downloadingPdf}
           >
-            <Download className="w-4 h-4" />
+            {downloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             노무사 전달자료 다운받기
           </Button>
           <Button

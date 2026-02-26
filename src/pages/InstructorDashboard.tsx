@@ -850,7 +850,7 @@ export default function InstructorDashboard() {
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "students">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement">("dashboard");
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
@@ -961,25 +961,61 @@ export default function InstructorDashboard() {
     'B1': 19000, 'B2': 19000,
     'C1': 24000, 'C2': 24000,
   };
+  const getLevelCategory = (level: string) => {
+    if (['A1', 'A2'].includes(level)) return '초급';
+    if (['B1', 'B2'].includes(level)) return '중급';
+    if (['C1', 'C2'].includes(level)) return '고급';
+    return '중급';
+  };
   const start = period ? new Date(period.start_date) : null;
   const end = period ? new Date(period.end_date) : null;
+  const now = new Date();
   const periodSessions = sessions.filter((s) => {
     if (!start || !end) return false;
     const d = new Date(s.scheduled_at);
     return d >= start && d <= end;
   });
+  const completedPeriodSessions = periodSessions.filter((s) => new Date(s.scheduled_at) <= now);
   const periodMeetings = meetings.filter((m) => {
     if (!start || !end) return false;
     const d = new Date(m.scheduled_at);
     return d >= start && d <= end;
   });
+  const completedPeriodMeetings = periodMeetings.filter((m) => new Date(m.scheduled_at) <= now);
   const lessonHours = periodSessions.length;
-  const lessonAmount = periodSessions.reduce((sum, s) => {
+
+  // Settlement items for the table
+  type SettlementRow = { date: Date; type: 'lesson' | 'meeting'; description: string; time: string; pay: number; };
+  const settlementRows: SettlementRow[] = [];
+  completedPeriodSessions.forEach((s) => {
     const levelRate = LEVEL_RATES[s.level] || 19000;
-    return sum + BASE_PAY + levelRate;
-  }, 0);
-  const meetingAmount = periodMeetings.length * BASE_PAY;
-  const totalAmount = lessonAmount + meetingAmount;
+    const pay = BASE_PAY + levelRate;
+    settlementRows.push({
+      date: new Date(s.scheduled_at),
+      type: 'lesson',
+      description: `${s.student_name} 수업 (${getLevelCategory(s.level)})`,
+      time: fmtTime(s.scheduled_at),
+      pay,
+    });
+  });
+  completedPeriodMeetings.forEach((m) => {
+    settlementRows.push({
+      date: new Date(m.scheduled_at),
+      type: 'meeting',
+      description: m.notes || '업무 미팅',
+      time: fmtTime(m.scheduled_at),
+      pay: BASE_PAY,
+    });
+  });
+  settlementRows.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  let cumulative = 0;
+  const settlementWithCumulative = settlementRows.map((row) => {
+    cumulative += row.pay;
+    return { ...row, cumulative };
+  });
+
+  const totalAmount = cumulative;
 
    // Selected date sessions + meetings + virtual schedules
     const selectedDateStr = selectedDate?.toDateString();
@@ -1115,6 +1151,7 @@ export default function InstructorDashboard() {
           {[
             { id: "dashboard" as const, label: "대시보드", icon: CalendarDays },
             { id: "students" as const, label: "학생 관리", icon: Users },
+            { id: "settlement" as const, label: "정산 관리", icon: Banknote },
           ].map((t) => (
             <button
               key={t.id}
@@ -1503,6 +1540,114 @@ export default function InstructorDashboard() {
                 <p className="text-sm">담당 학생이 없습니다</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* ═══ SETTLEMENT TAB ══════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "settlement" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                <Banknote className="w-4 h-4 text-success" />
+                정산 관리
+                {period && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">
+                    {period.label} ({period.start_date} ~ {period.end_date})
+                  </span>
+                )}
+              </h2>
+            </div>
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                <p className="text-[10px] text-muted-foreground">완료 수업</p>
+                <p className="text-lg font-bold text-navy">{completedPeriodSessions.length}회</p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                <p className="text-[10px] text-muted-foreground">업무 미팅</p>
+                <p className="text-lg font-bold text-gold-dark">{completedPeriodMeetings.length}건</p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
+                <p className="text-[10px] text-muted-foreground">정산 예정</p>
+                <p className="text-lg font-bold text-success">₩{totalAmount.toLocaleString()}</p>
+              </div>
+            </div>
+
+            {/* Settlement table */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/40 border-b border-border">
+                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">일자</th>
+                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">구분</th>
+                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">업무내용</th>
+                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">시간</th>
+                      <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">급여</th>
+                      <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">누적 금액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settlementWithCumulative.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-8 text-xs text-muted-foreground">
+                          이번 기간에 완료된 업무가 없습니다
+                        </td>
+                      </tr>
+                    ) : (
+                      settlementWithCumulative.map((row, idx) => (
+                        <tr key={idx} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-2.5 text-xs text-foreground">
+                            {row.date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" })}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className={cn(
+                              "text-[10px] px-2 py-0.5 rounded-full font-medium",
+                              row.type === 'lesson' ? "bg-navy/10 text-navy" : "bg-gold/10 text-gold-dark"
+                            )}>
+                              {row.type === 'lesson' ? '수업' : '미팅'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-xs text-foreground">{row.description}</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.time}</td>
+                          <td className="px-4 py-2.5 text-xs text-right font-medium text-foreground">₩{row.pay.toLocaleString()}</td>
+                          <td className="px-4 py-2.5 text-xs text-right font-bold text-success">₩{row.cumulative.toLocaleString()}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                  {settlementWithCumulative.length > 0 && (
+                    <tfoot>
+                      <tr className="bg-muted/30 border-t border-border">
+                        <td colSpan={4} className="px-4 py-3 text-xs font-bold text-foreground">합계</td>
+                        <td className="px-4 py-3 text-xs text-right font-bold text-foreground">₩{totalAmount.toLocaleString()}</td>
+                        <td className="px-4 py-3"></td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            {/* Pay rate info */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2">💰 급여 기준</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="text-center p-2 rounded-lg bg-muted/30">
+                  <p className="text-[10px] text-muted-foreground">기본급</p>
+                  <p className="text-xs font-bold text-foreground">₩{BASE_PAY.toLocaleString()}</p>
+                </div>
+                {Object.entries(LEVEL_RATES).filter(([k]) => ['A2', 'B1', 'C1'].includes(k)).map(([level, rate]) => (
+                  <div key={level} className="text-center p-2 rounded-lg bg-muted/30">
+                    <p className="text-[10px] text-muted-foreground">{getLevelCategory(level)}반 합계</p>
+                    <p className="text-xs font-bold text-foreground">₩{(BASE_PAY + rate).toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </main>
