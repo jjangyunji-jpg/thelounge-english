@@ -28,6 +28,7 @@ interface Instructor {
   email: string;
   lesson_rate: number;
   meeting_rate: number;
+  meet_link: string | null;
   active: boolean;
 }
 
@@ -1291,11 +1292,13 @@ export default function InstructorDashboard() {
                               <p className="text-sm font-medium text-foreground">{m.notes || "업무 미팅"}</p>
                               <p className="text-[11px] text-muted-foreground">{m.duration_minutes}분</p>
                             </div>
-                            <a href={`https://meet.google.com`} target="_blank" rel="noopener noreferrer">
-                              <Button size="sm" className="h-6 text-[10px] gap-1 bg-gold hover:bg-gold-dark text-accent-foreground px-2">
-                                <Video className="w-3 h-3" /> 미팅 시작
-                              </Button>
-                            </a>
+                            {instructor?.meet_link && (
+                              <a href={instructor.meet_link} target="_blank" rel="noopener noreferrer">
+                                <Button size="sm" className="h-6 text-[10px] gap-1 bg-gold hover:bg-gold-dark text-accent-foreground px-2">
+                                  <Video className="w-3 h-3" /> 미팅 시작
+                                </Button>
+                              </a>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1390,7 +1393,15 @@ export default function InstructorDashboard() {
                                 <p className="text-sm font-medium text-foreground">업무 미팅</p>
                                 <p className="text-[11px] text-muted-foreground">{m.duration_minutes}분{m.notes ? ` · ${m.notes}` : ""}</p>
                               </div>
-                              <Coffee className="w-4 h-4 text-gold" />
+                              {instructor?.meet_link ? (
+                                <a href={instructor.meet_link} target="_blank" rel="noopener noreferrer">
+                                  <Button size="sm" className="h-7 text-[10px] gap-1 bg-gold hover:bg-gold-dark text-accent-foreground px-2">
+                                    <Video className="w-3 h-3" /> 미팅 시작
+                                  </Button>
+                                </a>
+                              ) : (
+                                <Coffee className="w-4 h-4 text-gold" />
+                              )}
                             </div>
                           ))}
                         </div>
