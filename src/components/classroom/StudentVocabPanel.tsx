@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Volume2, Loader2, Square, ChevronDown, ChevronUp, BookOpen,
-  RefreshCw, ClipboardCheck, AlertTriangle, Trophy, History,
+  RefreshCw, ClipboardCheck, History, Download,
   CheckCircle2, XCircle, Mic, Type,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import VocabTestModal from "@/components/classroom/VocabTestModal";
+import { exportWordsPdf } from "@/lib/exportVocabPdf";
 
 function getWeekLabel(date = new Date()) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -147,10 +148,7 @@ export default function StudentVocabPanel({
 
   // Use the session's word week label instead of current calendar week
   const sessionWeekLabel = words.length > 0 ? words[0].week_label : getWeekLabel();
-  const msUntilClass = scheduledAt.getTime() - Date.now();
-  const within48h = msUntilClass > 0 && msUntilClass <= 48 * 3600 * 1000;
-  const isMandatoryFinalTest = within48h && completedTests < 2;
-  const canTest = completedTests < 2 && words.length >= 5;
+  const canTest = words.length >= 5;
 
   const load = async () => {
     setLoading(true);
@@ -219,53 +217,47 @@ export default function StudentVocabPanel({
           </button>
         </div>
 
-        {/* Test Button Section */}
+        {/* Test & PDF Button Section */}
         {!loading && currentWeekWords.length >= 5 && (
-          <div className={cn(
-            "px-3 py-2.5 border-b border-border flex items-center justify-between gap-2",
-            isMandatoryFinalTest ? "bg-destructive/8" : "bg-muted/10"
-          )}>
+          <div className="px-3 py-2.5 border-b border-border flex items-center justify-between gap-2 bg-muted/10">
             <div className="flex items-center gap-2 min-w-0">
-              {isMandatoryFinalTest ? (
-                <AlertTriangle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
-              ) : (
-                <ClipboardCheck className="w-3.5 h-3.5 text-gold flex-shrink-0" />
-              )}
+              <ClipboardCheck className="w-3.5 h-3.5 text-gold flex-shrink-0" />
               <div className="min-w-0">
-                <p className={cn("text-xs font-semibold", isMandatoryFinalTest ? "text-destructive" : "text-foreground")}>
-                  {isMandatoryFinalTest
-                    ? "최종 테스트 필수!"
-                    : completedTests >= 2
-                    ? "이번 주 테스트 완료"
-                    : `이번 주 테스트 ${completedTests}/2`}
+                <p className="text-xs font-semibold text-foreground">
+                  단어 테스트 ({completedTests}회 완료)
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate">
-                  {completedTests >= 2
-                    ? "수고하셨습니다 🎉"
-                    : isMandatoryFinalTest
-                    ? "수업 전 완료 필수입니다"
-                    : "현재 주차 단어로 실력을 확인하세요"}
+                  현재 주차 단어로 실력을 확인하세요
                 </p>
               </div>
             </div>
 
-            {completedTests < 2 && !loadingTests ? (
+            {!loadingTests && (
               <Button
                 size="sm"
                 onClick={() => setTestModalOpen(true)}
                 disabled={!canTest}
-                className={cn("h-7 text-xs flex-shrink-0 gap-1",
-                  isMandatoryFinalTest
-                    ? "bg-destructive hover:bg-destructive/85 text-destructive-foreground"
-                    : "bg-navy hover:bg-navy-light text-primary-foreground"
-                )}
+                className="h-7 text-xs flex-shrink-0 gap-1 bg-navy hover:bg-navy-light text-primary-foreground"
               >
                 <ClipboardCheck className="w-3 h-3" />
-                {isMandatoryFinalTest ? "최종 테스트 시작" : "테스트"}
+                테스트
               </Button>
-            ) : completedTests >= 2 ? (
-              <Trophy className="w-4 h-4 text-gold flex-shrink-0" />
-            ) : null}
+            )}
+          </div>
+        )}
+
+        {/* PDF Export */}
+        {!loading && words.length > 0 && (
+          <div className="px-3 py-2 border-b border-border flex items-center justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1"
+              onClick={() => exportWordsPdf(words, studentName)}
+            >
+              <Download className="w-3 h-3" />
+              PDF 다운로드
+            </Button>
           </div>
         )}
 

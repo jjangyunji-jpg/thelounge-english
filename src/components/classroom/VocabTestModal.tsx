@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import {
   X, ChevronRight, CheckCircle2,
-  XCircle, Loader2, Trophy, AlertTriangle,
+  XCircle, Loader2, Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,9 +149,6 @@ export default function VocabTestModal({
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const isFinal = completedTests === 1;
-  const msUntilClass = scheduledAt.getTime() - Date.now();
-  const within48h = msUntilClass > 0 && msUntilClass <= 48 * 3600 * 1000;
   const questionCount = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
 
   const startTest = () => {
@@ -232,7 +229,7 @@ export default function VocabTestModal({
             <p className="text-[10px] text-muted-foreground">
               {weekLabel.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`)}
               {" · "}
-              {isFinal ? "최종 테스트" : `${completedTests + 1}회차`}
+              {`${completedTests + 1}회차`}
             </p>
           </div>
           {phase !== "testing" && (
@@ -248,14 +245,6 @@ export default function VocabTestModal({
           {/* ── Confirm ── */}
           {phase === "confirm" && (
             <div className="space-y-5">
-              {within48h && isFinal && (
-                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-destructive/10 border border-destructive/30">
-                  <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
-                  <p className="text-xs text-destructive font-medium">
-                    수업 48시간 전입니다. 최종 테스트를 완료해야 합니다.
-                  </p>
-                </div>
-              )}
 
               <div className="text-center space-y-3 py-4">
                 <div className="w-14 h-14 rounded-2xl bg-navy/10 flex items-center justify-center mx-auto">
