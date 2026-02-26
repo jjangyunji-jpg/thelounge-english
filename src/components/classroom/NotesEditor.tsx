@@ -1,6 +1,5 @@
-import { useEditor, EditorContent, Extension } from "@tiptap/react";
+import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { InputRule } from "@tiptap/core";
 import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
@@ -74,19 +73,6 @@ export default function NotesEditor({
         leftArrow: '←',
         emDash: '—',
       }),
-      Extension.create({
-        name: 'doubleArrow',
-        addInputRules() {
-          return [
-            new InputRule({
-              find: /<->$/,
-              handler: ({ state, range }) => {
-                state.tr.insertText('↔', range.from, range.to);
-              },
-            }),
-          ];
-        },
-      }),
       Placeholder.configure({ placeholder }),
     ],
     content: content || "",
@@ -125,11 +111,46 @@ export default function NotesEditor({
       attributes: {
         class: "outline-none min-h-[500px] px-4 py-4 text-sm leading-relaxed",
       },
-      handleKeyDown: (_view, event) => {
+      handleKeyDown: (view, event) => {
         if (slashMenuOpen && event.key === "Escape") {
           setSlashMenuOpen(false);
           return true;
         }
+
+        // "/" + space → auto-insert callout with h3
+        if (slashMenuOpen && event.key === " ") {
+          event.preventDefault();
+          if (slashRangeRef.current && editor) {
+            const { from, to } = slashRangeRef.current;
+            editor.chain().focus().deleteRange({ from, to }).run();
+            setSlashMenuOpen(false);
+            slashRangeRef.current = null;
+            setTimeout(() => {
+              editor.chain().focus().toggleCallout({ type: "info" }).run();
+              setTimeout(() => {
+                editor.chain().focus().toggleHeading({ level: 3 }).run();
+              }, 20);
+            }, 10);
+          }
+          return true;
+        }
+
+        // <-> → ↔ replacement
+        if (event.key === ">") {
+          const { from } = view.state.selection;
+          const textBefore = view.state.doc.textBetween(Math.max(0, from - 2), from, "");
+          if (textBefore === "<-") {
+            // Replace "<-" + ">" with "↔"
+            setTimeout(() => {
+              if (editor) {
+                const pos = editor.state.selection.from;
+                editor.chain().focus().deleteRange({ from: pos - 3, to: pos }).insertContent("↔").run();
+              }
+            }, 0);
+            return false;
+          }
+        }
+
         return false;
       },
     },
