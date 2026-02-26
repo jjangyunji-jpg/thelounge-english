@@ -24,7 +24,7 @@ export default function Admin() {
       case "students":
         return <StudentManagement />;
       case "approval":
-        return <UserApproval />;
+        return <UserApproval onNavigate={(tab) => setActiveTab(tab as AdminTab)} />;
       case "messages":
         return <MessageCenter />;
       case "settings":
