@@ -7,6 +7,7 @@ import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
+import Underline from "@tiptap/extension-underline";
 import { Callout } from "./CalloutExtension";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -60,7 +61,9 @@ export default function NotesEditor({
         italic: {},
         bulletList: {},
         orderedList: {},
+        blockquote: {},
       }),
+      Underline,
       Table.configure({ resizable: false }),
       TableRow,
       TableCell,
@@ -120,7 +123,7 @@ export default function NotesEditor({
     },
     editorProps: {
       attributes: {
-        class: "outline-none min-h-[380px] px-4 py-4 text-sm leading-relaxed",
+        class: "outline-none min-h-[500px] px-4 py-4 text-sm leading-relaxed",
       },
       handleKeyDown: (_view, event) => {
         if (slashMenuOpen && event.key === "Escape") {
@@ -273,7 +276,7 @@ export default function NotesEditor({
       <div
         ref={editorContainerRef}
         className={cn(
-          "h-[420px] overflow-y-auto relative",
+          "h-[546px] overflow-y-auto relative",
           !editable && "cursor-default opacity-70"
         )}
       >
