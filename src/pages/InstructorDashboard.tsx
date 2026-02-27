@@ -1381,6 +1381,19 @@ export default function InstructorDashboard() {
                               >
                                 <CalendarDays className="w-3.5 h-3.5" />
                               </button>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`${s.student_name} 수업을 삭제하시겠습니까?`)) return;
+                                  const { error } = await supabase.from("class_sessions").delete().eq("id", s.id);
+                                  if (error) { toast({ title: "삭제 실패", description: error.message, variant: "destructive" }); return; }
+                                  setSessions(prev => prev.filter(x => x.id !== s.id));
+                                  toast({ title: "수업 삭제 완료" });
+                                }}
+                                className="text-[10px] text-muted-foreground hover:text-destructive px-1.5 py-1 rounded hover:bg-destructive/10"
+                                title="수업 삭제"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                               <a href={`/t/classroom?sessionId=${s.id}`}>
                                 <Button size="sm" className="h-6 text-[10px] gap-1 bg-navy hover:bg-navy-light text-primary-foreground px-2">
                                   <FileText className="w-3 h-3" /> 수업노트
@@ -1416,13 +1429,29 @@ export default function InstructorDashboard() {
                               <p className="text-sm font-medium text-foreground">{m.notes || "업무 미팅"}</p>
                               <p className="text-[11px] text-muted-foreground">{m.duration_minutes}분</p>
                             </div>
-                            {instructor?.meet_link && (
-                              <a href={instructor.meet_link} target="_blank" rel="noopener noreferrer">
-                                <Button size="sm" className="h-6 text-[10px] gap-1 bg-gold hover:bg-gold-dark text-accent-foreground px-2">
-                                  <Video className="w-3 h-3" /> 미팅 시작
-                                </Button>
-                              </a>
-                            )}
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={async () => {
+                                  if (!confirm("이 미팅을 삭제하시겠습니까?")) return;
+                                  await supabase.from("business_meeting_attendees").delete().eq("meeting_id", m.id);
+                                  const { error } = await supabase.from("business_meetings").delete().eq("id", m.id);
+                                  if (error) { toast({ title: "삭제 실패", description: error.message, variant: "destructive" }); return; }
+                                  setMeetings(prev => prev.filter(x => x.id !== m.id));
+                                  toast({ title: "미팅 삭제 완료" });
+                                }}
+                                className="text-[10px] text-muted-foreground hover:text-destructive px-1.5 py-1 rounded hover:bg-destructive/10"
+                                title="미팅 삭제"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                              {instructor?.meet_link && (
+                                <a href={instructor.meet_link} target="_blank" rel="noopener noreferrer">
+                                  <Button size="sm" className="h-6 text-[10px] gap-1 bg-gold hover:bg-gold-dark text-accent-foreground px-2">
+                                    <Video className="w-3 h-3" /> 미팅 시작
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
