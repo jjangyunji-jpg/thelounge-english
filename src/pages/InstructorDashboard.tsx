@@ -435,8 +435,10 @@ function BigCalendar({
 }
 
 // ── Collapsible Sessions List ─────────────────────────────────────────────────
-function CollapsibleSessions({ sessions, onReschedule }: { sessions: ClassSession[]; onReschedule: (s: ClassSession) => void }) {
+function CollapsibleSessions({ sessions, onReschedule, onTopicChange }: { sessions: ClassSession[]; onReschedule: (s: ClassSession) => void; onTopicChange?: (sessionId: string, topic: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
   return (
     <div className="space-y-1.5">
       <button
@@ -447,17 +449,59 @@ function CollapsibleSessions({ sessions, onReschedule }: { sessions: ClassSessio
         수업 일정 ({sessions.length}회)
       </button>
       {open && sessions.map((s) => (
-        <div key={s.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/20 border border-border ml-4">
-          <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-          <span className="text-[11px] text-foreground flex-1">{fmtDateTime(s.scheduled_at)}</span>
-          {new Date(s.scheduled_at) <= new Date() ? (
-            <span className="text-[10px] text-success font-medium">완료</span>
+        <div key={s.id} className="px-2.5 py-1.5 rounded-lg bg-muted/20 border border-border ml-4 space-y-1">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            <span className="text-[11px] text-foreground flex-1">{fmtDateTime(s.scheduled_at)}</span>
+            {new Date(s.scheduled_at) <= new Date() ? (
+              <span className="text-[10px] text-success font-medium">완료</span>
+            ) : (
+              <button
+                onClick={() => onReschedule(s)}
+                className="text-[10px] text-navy hover:underline font-medium"
+              >
+                변경
+              </button>
+            )}
+          </div>
+          {/* Inline topic editing */}
+          {editingId === s.id ? (
+            <div className="flex items-center gap-1 ml-5">
+              <Input
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                placeholder="수업 목표 입력 (예: 과거형, 시간 전치사)"
+                className="h-6 text-[10px] flex-1"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    onTopicChange?.(s.id, editValue);
+                    setEditingId(null);
+                  } else if (e.key === "Escape") {
+                    setEditingId(null);
+                  }
+                }}
+              />
+              <button
+                onClick={() => { onTopicChange?.(s.id, editValue); setEditingId(null); }}
+                className="text-success hover:text-success/80"
+              >
+                <Check className="w-3 h-3" />
+              </button>
+              <button onClick={() => setEditingId(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
           ) : (
             <button
-              onClick={() => onReschedule(s)}
-              className="text-[10px] text-navy hover:underline font-medium"
+              onClick={() => { setEditingId(s.id); setEditValue(s.topic || ""); }}
+              className="ml-5 text-[10px] text-muted-foreground hover:text-foreground transition-colors truncate block max-w-full text-left"
             >
-              변경
+              {s.topic ? (
+                <span className="text-foreground/80">{s.topic}</span>
+              ) : (
+                <span className="italic">+ 수업 목표 추가</span>
+              )}
             </button>
           )}
         </div>
@@ -1816,6 +1860,10 @@ export default function InstructorDashboard() {
                         <CollapsibleSessions
                           sessions={studentPeriodSessions}
                           onReschedule={(s) => setRescheduleSession(s)}
+                          onTopicChange={async (sessionId, topic) => {
+                            await supabase.from("class_sessions").update({ topic }).eq("id", sessionId);
+                            setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, topic } : s));
+                          }}
                         />
                       )}
                     </div>
