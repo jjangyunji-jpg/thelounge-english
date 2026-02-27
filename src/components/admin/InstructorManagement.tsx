@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,6 +76,9 @@ interface NewInstructorForm {
 export default function InstructorManagement() {
   const { toast } = useToast();
   const [instructors, setInstructors] = useState<Instructor[]>([]);
+  const [deactivateTarget, setDeactivateTarget] = useState<Instructor | null>(null);
+  const [deactivateReason, setDeactivateReason] = useState("");
+  const [deactivating, setDeactivating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -703,16 +707,7 @@ export default function InstructorManagement() {
                         size="sm"
                         variant="outline"
                         className="gap-1.5 h-7 text-xs border-destructive/50 text-destructive hover:bg-destructive/10"
-                        onClick={async () => {
-                          if (!window.confirm(`${ins.name} 강사를 퇴사 처리하시겠습니까?\n비활성으로 전환됩니다.`)) return;
-                          const { error } = await supabase.from("instructors").update({ active: false }).eq("id", ins.id);
-                          if (error) {
-                            toast({ title: "퇴사 처리 실패", description: error.message, variant: "destructive" });
-                          } else {
-                            setInstructors(prev => prev.map(i => i.id === ins.id ? { ...i, active: false } : i));
-                            toast({ title: `${ins.name} 강사 퇴사 처리 완료` });
-                          }
-                        }}
+                        onClick={() => { setDeactivateTarget(ins); setDeactivateReason(""); }}
                       >
                         <UserX className="w-3 h-3" />
                         퇴사 처리
@@ -808,6 +803,60 @@ export default function InstructorManagement() {
                 취소
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivation reason dialog */}
+      <Dialog open={!!deactivateTarget} onOpenChange={(open) => { if (!open) setDeactivateTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserX className="w-4 h-4 text-destructive" />
+              퇴사 처리
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{deactivateTarget?.name}</span> 강사를 퇴사 처리합니다.
+          </p>
+          <div className="space-y-2">
+            <Label className="text-xs">퇴사 사유 (선택)</Label>
+            <Textarea
+              value={deactivateReason}
+              onChange={(e) => setDeactivateReason(e.target.value)}
+              placeholder="퇴사 사유를 입력하세요..."
+              className="h-20 text-sm resize-none"
+              maxLength={500}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setDeactivateTarget(null)}>취소</Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={deactivating}
+              className="gap-1.5"
+              onClick={async () => {
+                if (!deactivateTarget) return;
+                setDeactivating(true);
+                const { error } = await supabase.from("instructors").update({
+                  active: false,
+                  deactivation_reason: deactivateReason.trim() || null,
+                }).eq("id", deactivateTarget.id);
+                if (error) {
+                  toast({ title: "퇴사 처리 실패", description: error.message, variant: "destructive" });
+                } else {
+                  setInstructors(prev => prev.map(i => i.id === deactivateTarget.id ? { ...i, active: false } : i));
+                  toast({ title: `${deactivateTarget.name} 강사 퇴사 처리 완료` });
+                }
+                setDeactivating(false);
+                setDeactivateTarget(null);
+                setDeactivateReason("");
+              }}
+            >
+              {deactivating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              퇴사 처리
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
