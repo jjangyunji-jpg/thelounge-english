@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Video, VideoOff, Clock, FileText, CheckSquare,
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import NotesEditor from "@/components/classroom/NotesEditor";
+import MaterialPickerModal from "@/components/classroom/MaterialPickerModal";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
@@ -265,6 +266,8 @@ export default function Classroom() {
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notesEditorRef = useRef<any>(null);
+  const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
 
 
 
@@ -702,6 +705,12 @@ export default function Classroom() {
                     )}
                   </div>
                   <div className="flex items-center gap-1.5">
+                    <Button size="sm" variant="outline" onClick={() => setMaterialPickerOpen(true)}
+                      disabled={isDisabled}
+                      className="h-7 text-xs gap-1.5 transition-all border-gold/30 text-gold-dark hover:bg-gold/10"
+                    >
+                      <FileText className="w-3 h-3" />자료
+                    </Button>
                     <Button size="sm" variant="outline" onClick={handleExtractVocab}
                       disabled={isDisabled || extracting || !notes.trim()}
                       className={cn("h-7 text-xs gap-1.5 transition-all border-navy/30 text-navy hover:bg-navy/10", extracted && "border-success/40 text-success")}
@@ -732,6 +741,7 @@ export default function Classroom() {
                   editable={notesEditMode}
                   disabled={isDisabled}
                   placeholder={`수업 내용을 자유롭게 타이핑하세요...\n\nToday's topic: ${session.topic}`}
+                  editorRef={notesEditorRef}
                 />
                 {classState === "active" && (
                   <div className="px-4 py-2.5 border-t border-border bg-muted/20 flex items-center gap-3">
@@ -875,6 +885,17 @@ export default function Classroom() {
       )}
     </div>
 
+    <MaterialPickerModal
+      open={materialPickerOpen}
+      onOpenChange={setMaterialPickerOpen}
+      onInsert={(content) => {
+        const editor = notesEditorRef.current;
+        if (editor) {
+          editor.chain().focus().insertContent(content).run();
+          setNotes(editor.getHTML());
+        }
+      }}
+    />
     </>
   );
 }

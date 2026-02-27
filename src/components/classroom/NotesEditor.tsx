@@ -30,6 +30,7 @@ interface NotesEditorProps {
   isAutoCorrecting?: boolean;
   className?: string;
   onScrollRatio?: (ratio: number) => void;
+  editorRef?: React.MutableRefObject<any>;
 }
 
 interface SlashMenuItem {
@@ -49,6 +50,7 @@ export default function NotesEditor({
   isAutoCorrecting = false,
   className,
   onScrollRatio,
+  editorRef,
 }: NotesEditorProps) {
   const { toast } = useToast();
   const isUpdatingRef = useRef(false);
@@ -252,6 +254,11 @@ export default function NotesEditor({
   const filteredSlashItems = slashItems.filter((item) =>
     slashFilter === "" || item.label.toLowerCase().includes(slashFilter)
   );
+
+  // Expose editor instance via ref
+  useEffect(() => {
+    if (editorRef && editor) editorRef.current = editor;
+  }, [editor, editorRef]);
 
   // Sync editable state
   useEffect(() => {
