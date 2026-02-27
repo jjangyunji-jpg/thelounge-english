@@ -87,7 +87,7 @@ export default function NotesEditor({
         from,
         "\n"
       );
-      const slashMatch = textBefore.match(/\/([a-zA-Z가-힣]*)$/);
+      const slashMatch = textBefore.match(/\/([a-zA-Z가-힣\/]*)$/);
       if (slashMatch) {
         setSlashFilter(slashMatch[1].toLowerCase());
         slashRangeRef.current = { from: from - slashMatch[0].length, to: from };
@@ -116,8 +116,8 @@ export default function NotesEditor({
           return true;
         }
 
-        // "/" + space → auto-insert callout with h3
-        if (slashMenuOpen && event.key === " ") {
+        // "//" + space → auto-insert callout with h3
+        if (slashMenuOpen && event.key === " " && slashFilter === "/") {
           event.preventDefault();
           if (slashRangeRef.current && editor) {
             const { from, to } = slashRangeRef.current;
