@@ -194,125 +194,101 @@ function TTSButton({ word }: { word: VocabWord }) {
 }
 
 // ── Mini Calendar ──────────────────────────────────────────────────────────────
-function MiniCalendar({ allCalendarDates, holidays, schedulePeriods }: {
+function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
   allCalendarDates: Set<string>;
   holidays: HolidayNotice[];
-  schedulePeriods: SchedulePeriod[];
+  selectedPeriod: SchedulePeriod | null;
 }) {
   const today = new Date();
-  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // Determine which months to render based on the selected period
+  const monthsToRender: { year: number; month: number }[] = [];
+  if (selectedPeriod) {
+    const ps = new Date(selectedPeriod.start_date + "T00:00:00");
+    const pe = new Date(selectedPeriod.end_date + "T00:00:00");
+    let cur = new Date(ps.getFullYear(), ps.getMonth(), 1);
+    const last = new Date(pe.getFullYear(), pe.getMonth(), 1);
+    while (cur <= last) {
+      monthsToRender.push({ year: cur.getFullYear(), month: cur.getMonth() });
+      cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+    }
+  } else {
+    monthsToRender.push({ year: today.getFullYear(), month: today.getMonth() });
+  }
 
   const holidayRanges = holidays.map(h => ({
     start: new Date(h.date_start + "T00:00:00"),
     end: new Date(h.date_end + "T23:59:59"),
   }));
 
-  // 현재 보이는 달에 해당하는 수업 기간
-  const activePeriods = schedulePeriods.filter(p => {
-    const ps = new Date(p.start_date + "T00:00:00");
-    const pe = new Date(p.end_date + "T23:59:59");
-    const monthStart = new Date(year, month, 1);
-    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
-    return ps <= monthEnd && pe >= monthStart;
-  });
-
-  const isInPeriod = (d: Date) =>
-    activePeriods.some(p => {
-      const ps = new Date(p.start_date + "T00:00:00");
-      const pe = new Date(p.end_date + "T23:59:59");
-      return d >= ps && d <= pe;
-    });
+  const isInPeriod = (d: Date) => {
+    if (!selectedPeriod) return false;
+    const ps = new Date(selectedPeriod.start_date + "T00:00:00");
+    const pe = new Date(selectedPeriod.end_date + "T23:59:59");
+    return d >= ps && d <= pe;
+  };
 
   const isHoliday = (d: Date) =>
     holidayRanges.some(r => d >= r.start && d <= r.end);
-
-  // 화요일(day 2) 정기 휴무
   const isTuesdayOff = (d: Date) => d.getDay() === 2;
 
-  const hasSession = (day: number) => {
-    const d = new Date(year, month, day);
-    return allCalendarDates.has(d.toDateString());
-  };
-  const isToday = (day: number) =>
-    today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
-
-  const prev = () => setViewDate(new Date(year, month - 1, 1));
-  const next = () => setViewDate(new Date(year, month + 1, 1));
-
-  const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  // 이번 달 기간 범위 표시 텍스트
-  const periodLabel = activePeriods.length > 0
-    ? activePeriods.map(p => {
-        const ps = new Date(p.start_date + "T00:00:00");
-        const pe = new Date(p.end_date + "T00:00:00");
-        return `${p.label} (${ps.getMonth()+1}/${ps.getDate()} ~ ${pe.getMonth()+1}/${pe.getDate()})`;
-      }).join(", ")
-    : null;
-
   return (
-    <div className="space-y-2">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-1">
-        <button onClick={prev} className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors">
-          <ChevronLeft className="w-3.5 h-3.5 text-foreground" />
-        </button>
-        <span className="font-bold text-foreground text-sm">{year}년 {month + 1}월</span>
-        <button onClick={next} className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors">
-          <ChevronRight className="w-3.5 h-3.5 text-foreground" />
-        </button>
-      </div>
-      {/* Period label */}
-      {periodLabel && (
-        <p className="text-[9px] text-navy/70 font-medium text-center">{periodLabel}</p>
-      )}
-      {/* Day labels */}
-      <div className="grid grid-cols-7 text-center">
-        {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
-          <div key={d} className={cn(
-            "text-[10px] font-semibold pb-1",
-            i === 0 ? "text-destructive/70" : i === 2 ? "text-muted-foreground/40" : "text-muted-foreground"
-          )}>{d}</div>
-        ))}
-      </div>
-      {/* Grid */}
-      <div className="grid grid-cols-7 gap-px">
-        {cells.map((day, idx) => {
-          if (!day) return <div key={idx} />;
-          const date = new Date(year, month, day);
-          const holiday = isHoliday(date);
-          const tuesdayOff = isTuesdayOff(date);
-          const inPeriod = isInPeriod(date);
-          const session = hasSession(day);
-          const todayMark = isToday(day);
-          const isOff = holiday || tuesdayOff;
-          return (
-            <div key={idx} className={cn(
-              "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all",
-              todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
-                : session && !isOff ? "bg-gold/15 text-gold-dark font-semibold"
-                : holiday ? "text-muted-foreground/30"
-                : tuesdayOff ? "text-muted-foreground/30"
-                : inPeriod ? "text-foreground hover:bg-muted/50"
-                : "text-muted-foreground/40 hover:bg-muted/30",
-            )}>
-              {day}
-              {session && !todayMark && !isOff && (
-                <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
-              )}
-              {holiday && !todayMark && (
-                <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-muted-foreground/30" />
-              )}
+    <div className="space-y-4">
+      {monthsToRender.map(({ year, month }) => {
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+        while (cells.length % 7 !== 0) cells.push(null);
+
+        const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+        return (
+          <div key={`${year}-${month}`} className="space-y-2">
+            <div className="text-center">
+              <span className="font-bold text-foreground text-sm">{year}년 {month + 1}월</span>
             </div>
-          );
-        })}
-      </div>
+            <div className="grid grid-cols-7 text-center">
+              {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
+                <div key={d} className={cn(
+                  "text-[10px] font-semibold pb-1",
+                  i === 0 ? "text-destructive/70" : i === 2 ? "text-muted-foreground/40" : "text-muted-foreground"
+                )}>{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-px">
+              {cells.map((day, idx) => {
+                if (!day) return <div key={idx} />;
+                const date = new Date(year, month, day);
+                const holiday = isHoliday(date);
+                const tuesdayOff = isTuesdayOff(date);
+                const inPeriod = isInPeriod(date);
+                const session = allCalendarDates.has(date.toDateString());
+                const todayMark = isCurrentMonth && today.getDate() === day;
+                const isOff = holiday || tuesdayOff;
+                return (
+                  <div key={idx} className={cn(
+                    "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all",
+                    todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
+                      : session && !isOff ? "bg-gold/15 text-gold-dark font-semibold"
+                      : holiday ? "text-muted-foreground/30"
+                      : tuesdayOff ? "text-muted-foreground/30"
+                      : inPeriod ? "text-foreground hover:bg-muted/50"
+                      : "text-muted-foreground/40 hover:bg-muted/30",
+                  )}>
+                    {day}
+                    {session && !todayMark && !isOff && (
+                      <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
+                    )}
+                    {holiday && !todayMark && (
+                      <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-muted-foreground/30" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
       {/* Legend */}
       <div className="flex items-center gap-3 pt-1 text-[10px] text-muted-foreground flex-wrap">
         <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gold" />수업일</div>
@@ -937,7 +913,7 @@ export default function StudentDashboard() {
               <span className="text-xs font-semibold text-foreground">수업 캘린더</span>
             </div>
             <div className="p-3">
-              <MiniCalendar allCalendarDates={allCalendarDates} holidays={holidays} schedulePeriods={schedulePeriods} />
+              <MiniCalendar allCalendarDates={allCalendarDates} holidays={holidays} selectedPeriod={selectedPeriod} />
             </div>
             {/* Upcoming next session inside calendar */}
             {nextClassDate && (
