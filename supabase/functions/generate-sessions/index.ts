@@ -50,13 +50,19 @@ serve(async (req) => {
       .gte("date_end", period.start_date)
       .lte("date_start", period.end_date);
 
-    // Build holiday date set (YYYY-MM-DD strings)
+    // Build holiday date set (YYYY-MM-DD strings in KST)
     const holidayDates = new Set<string>();
     for (const h of holidays || []) {
-      const start = new Date(h.date_start + "T00:00:00+09:00");
-      const end = new Date(h.date_end + "T00:00:00+09:00");
+      // Use plain date strings (YYYY-MM-DD) to avoid UTC/KST shift issues
+      const startParts = h.date_start.split("-").map(Number);
+      const endParts = h.date_end.split("-").map(Number);
+      const start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+      const end = new Date(endParts[0], endParts[1] - 1, endParts[2]);
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        holidayDates.add(d.toISOString().slice(0, 10));
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        holidayDates.add(`${yyyy}-${mm}-${dd}`);
       }
     }
 
@@ -69,16 +75,21 @@ serve(async (req) => {
 
     const existingSet = new Set<string>();
     for (const s of existingSessions || []) {
-      // Normalize to date+student key
+      // Normalize to KST date+student key
       const d = new Date(s.scheduled_at);
-      const dateStr = d.toISOString().slice(0, 10);
+      // Convert to KST by adding 9 hours
+      const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+      const dateStr = `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, "0")}-${String(kst.getUTCDate()).padStart(2, "0")}`;
       existingSet.add(`${s.student_name}|${dateStr}`);
     }
 
     // 5. Generate sessions
     const sessionsToInsert: any[] = [];
-    const periodStart = new Date(period.start_date + "T00:00:00+09:00");
-    const periodEnd = new Date(period.end_date + "T00:00:00+09:00");
+    // Use locale-safe dates to avoid UTC/KST shift
+    const psParts = period.start_date.split("-").map(Number);
+    const peParts = period.end_date.split("-").map(Number);
+    const periodStart = new Date(psParts[0], psParts[1] - 1, psParts[2]);
+    const periodEnd = new Date(peParts[0], peParts[1] - 1, peParts[2]);
 
     for (const student of students) {
       let schedules: { day: string; time: string }[] = [];
@@ -98,7 +109,10 @@ serve(async (req) => {
         d.setDate(d.getDate() + 1)
       ) {
         const dayOfWeek = d.getDay();
-        const dateStr = d.toISOString().slice(0, 10);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const dateStr = `${yyyy}-${mm}-${dd}`;
 
         // Skip Tuesdays (정기 휴일)
         if (dayOfWeek === 2) continue;
