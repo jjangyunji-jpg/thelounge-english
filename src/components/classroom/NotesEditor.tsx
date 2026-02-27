@@ -408,7 +408,7 @@ export default function NotesEditor({
     { type: "hr", icon: Minus, label: "구분선" },
     { type: "table", icon: Table2, label: "표 삽입" },
     { type: "callout", icon: MessageSquareQuote, label: "콜아웃", isActive: editor?.isActive("callout") },
-    { type: "suggestion", icon: PenLine, label: "편집 제안 (파란 글씨)", isActive: editor?.isActive("suggestion") },
+    
   ];
 
   return (

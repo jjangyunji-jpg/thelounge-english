@@ -5,7 +5,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked,
-  Loader2, Maximize2,
+  Loader2,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
@@ -719,12 +719,6 @@ export default function Classroom() {
                       className={cn("h-7 text-xs gap-1.5 transition-all", saveFlash && "border-success text-success")}
                     >
                       {saveFlash ? "저장됨 ✓" : "저장"}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={handleOpenNotesNewTab} disabled={!session.sessionId}
-                      className="h-7 text-xs gap-1.5 border-muted-foreground/30 text-muted-foreground hover:bg-muted"
-                    >
-                      <Maximize2 className="w-3 h-3" />
-                      <span className="hidden sm:inline">새 탭</span>
                     </Button>
                   </div>
                 </div>
