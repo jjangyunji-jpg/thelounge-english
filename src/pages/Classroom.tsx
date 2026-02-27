@@ -95,7 +95,7 @@ function formatCountdown(ms: number) {
 
 export default function Classroom() {
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlSessionId = searchParams.get("sessionId");
   const urlStudentName = searchParams.get("student");
 
@@ -106,6 +106,12 @@ export default function Classroom() {
   // Load session from DB if sessionId provided
   useEffect(() => {
     const loadSession = async () => {
+      setSessionLoading(true);
+      setNotes("");
+      setHwList([]);
+      setObjectives([]);
+      setSessionTopic("");
+      setExtracted(false);
       let sessionData: any = null;
       // Try to get student_name from auth session for filtering
       let studentNameFilter: string | null = null;
@@ -670,9 +676,11 @@ export default function Classroom() {
             sessions={sidebarSessions}
             selectedId={session.sessionId}
             onSelect={(id) => {
-              const url = new URL(window.location.href);
-              url.searchParams.set("sessionId", id);
-              window.location.href = url.toString();
+              setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.set("sessionId", id);
+                return next;
+              });
             }}
             loading={sidebarLoading}
           />
