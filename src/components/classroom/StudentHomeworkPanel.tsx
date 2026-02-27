@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Mic, Square, Play, Pause, Send, CheckCircle2, RotateCcw,
   PenLine, BookOpen, Brain, ChevronDown, ChevronUp, Loader2,
-  Clock, MessageSquare, CheckSquare,
+  Clock, MessageSquare, CheckSquare, ExternalLink, Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,7 +44,43 @@ const HW_META: Record<HwType, {
   memorizing: { label: "외우기", icon: Brain,     color: "text-purple-500",              requiresText: false, requiresAudio: false, hint: "녹음 선택" },
 };
 
-// ── Audio Recorder ─────────────────────────────────────────────────────────────
+// ── URL detection helpers ──────────────────────────────────────────────────────
+const URL_REGEX = /https?:\/\/[^\s<>"']+/g;
+
+function extractUrls(text: string | null): string[] {
+  if (!text) return [];
+  return text.match(URL_REGEX) || [];
+}
+
+function getDomain(url: string) {
+  try { return new URL(url).hostname.replace("www.", ""); } catch { return url; }
+}
+
+function removeUrls(text: string): string {
+  return text.replace(URL_REGEX, "").replace(/\n{2,}/g, "\n").trim();
+}
+
+function BookmarkCard({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/30 hover:bg-muted/60 hover:border-[hsl(var(--gold)/0.5)] transition-all group"
+    >
+      <div className="flex-shrink-0 w-8 h-8 rounded-md bg-[hsl(var(--gold)/0.15)] flex items-center justify-center">
+        <Link2 className="w-4 h-4 text-[hsl(var(--gold-dark))]" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-foreground truncate group-hover:text-[hsl(var(--gold-dark))] transition-colors">
+          {getDomain(url)}
+        </p>
+        <p className="text-[10px] text-muted-foreground truncate">{url}</p>
+      </div>
+      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-[hsl(var(--gold-dark))] flex-shrink-0 transition-colors" />
+    </a>
+  );
+}
 function useAudioRecorder() {
   const [recording, setRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -252,8 +288,17 @@ function SubmissionCard({
                 {descOpen ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
               </button>
               {descOpen && (
-                <div className="px-3 py-2.5 bg-muted/20">
-                  <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">{assignment.description}</p>
+                <div className="px-3 py-2.5 bg-muted/20 space-y-2">
+                  {/* Bookmark cards for URLs */}
+                  {extractUrls(assignment.description).map((url, i) => (
+                    <BookmarkCard key={i} url={url} />
+                  ))}
+                  {/* Remaining text */}
+                  {removeUrls(assignment.description) && (
+                    <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                      {removeUrls(assignment.description)}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
