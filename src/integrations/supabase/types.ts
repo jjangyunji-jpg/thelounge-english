@@ -411,6 +411,7 @@ export type Database = {
           age: number | null
           bio_notes: string | null
           created_at: string
+          deactivation_reason: string | null
           education: string | null
           email: string
           gender: string | null
@@ -430,6 +431,7 @@ export type Database = {
           age?: number | null
           bio_notes?: string | null
           created_at?: string
+          deactivation_reason?: string | null
           education?: string | null
           email: string
           gender?: string | null
@@ -449,6 +451,7 @@ export type Database = {
           age?: number | null
           bio_notes?: string | null
           created_at?: string
+          deactivation_reason?: string | null
           education?: string | null
           email?: string
           gender?: string | null
