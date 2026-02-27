@@ -77,7 +77,9 @@ export default function ClassNote() {
         .limit(30);
       const list = (data ?? []) as ClassSession[];
       setSessions(list);
-      if (list.length > 0) setSelectedSession(list[0]);
+      // 완료된(ended_at이 있는) 세션 중 가장 최근 것을 우선 선택
+      const completed = list.find(s => s.ended_at);
+      setSelectedSession(completed || list[0] || null);
       setLoadingSessions(false);
     };
     load();
