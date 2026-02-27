@@ -1188,13 +1188,6 @@ export default function StudentDashboard() {
                     <span className="text-[10px] font-bold text-gold">{timeUntilLabel(nextClassDate.toISOString())}</span>
                   </div>
                 </div>
-                {!nextClassIsVirtual && nextSessionFromDB?.meet_link && (
-                  <a href={nextSessionFromDB.meet_link} target="_blank" rel="noopener noreferrer" className="block">
-                    <button className="w-full py-2 rounded-md bg-navy text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-navy-light transition-colors">
-                      <Video className="w-3.5 h-3.5" /> 수업 입장하기
-                    </button>
-                  </a>
-                )}
                 {(nextClassDate.getTime() - Date.now()) <= 48 * 3600 * 1000 && pendingHw.length > 0 && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-destructive/8 border border-destructive/20">
                     <AlertCircle className="w-3 h-3 text-destructive flex-shrink-0" />
