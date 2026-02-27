@@ -336,10 +336,31 @@ function BigCalendar({
           const dayOfWeek = date.getDay();
 
           // Merge: show actual sessions, then virtual ones not covered by actual sessions
-          // Hide past virtual schedules with no actual session (rescheduled/cancelled)
+          // Hide virtual schedules when:
+          // 1. Past dates with no actual session (rescheduled/cancelled)
+          // 2. Future dates where the student already has a session on a different day in the same week (rescheduled)
           const actualStudents = new Set(daySessions.map(s => s.student_name));
           const isPast = date < new Date(new Date().toDateString());
-          const unmatched = dayVirtual.filter(v => !actualStudents.has(v.student_name) && !isPast);
+
+          // Build set of students who have actual sessions in the same week (Mon-Sun) but on a different date
+          const weekStart = new Date(date);
+          weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7)); // Monday
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6); // Sunday
+
+          const rescheduledStudents = new Set<string>();
+          sessions.forEach(s => {
+            const sDate = new Date(s.scheduled_at);
+            if (sDate >= weekStart && sDate <= weekEnd && sDate.toDateString() !== dateStr) {
+              rescheduledStudents.add(s.student_name);
+            }
+          });
+
+          const unmatched = dayVirtual.filter(v =>
+            !actualStudents.has(v.student_name) &&
+            !isPast &&
+            !rescheduledStudents.has(v.student_name)
+          );
 
           // Combined entries for display (max 2)
           const displayItems: { label: string; type: "actual" | "virtual" | "meeting" }[] = [];
