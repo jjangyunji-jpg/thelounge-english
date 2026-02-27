@@ -113,6 +113,7 @@ interface VocabWord {
   part_of_speech: string | null;
   audio_url: string | null;
   week_label: string;
+  created_at: string;
 }
 
 interface TestRecord {
@@ -366,6 +367,7 @@ export default function StudentDashboard() {
   const [testHistoryOpen, setTestHistoryOpen] = useState(false);
   const [classHistoryOpen, setClassHistoryOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(false);
+  const [vocabListOpen, setVocabListOpen] = useState(false);
   const [vocabStudyOpen] = useState(false); // kept for potential future use
 
   // Feedback survey state
@@ -455,8 +457,8 @@ export default function StudentDashboard() {
         .eq("student_name", student).order("created_at", { ascending: false }),
       supabase.from("homework_submissions").select("id,assignment_id,status,text_content,audio_url,instructor_note,reviewed_at")
         .eq("student_name", student),
-      supabase.from("vocabulary_words").select("id,english_word,korean_meaning,part_of_speech,audio_url,week_label")
-        .eq("student_name", student).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
+      supabase.from("vocabulary_words").select("id,english_word,korean_meaning,part_of_speech,audio_url,week_label,created_at")
+        .eq("student_name", student).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
       supabase.from("instructor_students").select("schedules,start_date,level,instructor_name")
@@ -1142,22 +1144,56 @@ export default function StudentDashboard() {
             )}
           </div>
 
-          {/* 단어 공부 section removed */}
-
-          {/* Vocab - Link to page */}
-          <button
-            onClick={() => navigate(`/my/vocabulary?name=${encodeURIComponent(student)}`)}
-            className="w-full rounded-lg border border-border bg-card shadow-sm overflow-hidden hover:bg-muted/30 transition-colors"
-          >
-            <div className="flex items-center justify-between px-3 py-2.5">
+          {/* Vocab - 최근 3개월 단어 리스트 */}
+          <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+            <button
+              onClick={() => setVocabListOpen(v => !v)}
+              className="w-full flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30 hover:bg-muted/50 transition-colors"
+            >
               <div className="flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 text-gold" />
-                <span className="text-xs font-semibold text-foreground">전체 단어장</span>
+                <span className="text-xs font-semibold text-foreground">단어장</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{vocabWords.length}개</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">전체 보기 →</span>
-            </div>
-          </button>
+              <span className="text-[10px] text-muted-foreground">최근 3개월</span>
+            </button>
+            {vocabListOpen && (
+              <div className="max-h-80 overflow-y-auto">
+                {vocabWeeks.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">등록된 단어가 없습니다</p>
+                ) : (
+                  vocabWeeks.map(week => (
+                    <div key={week}>
+                      <div className="px-3 py-1.5 bg-muted/20 border-b border-border/50">
+                        <span className="text-[10px] font-bold text-muted-foreground">{fmtWeek(week)}</span>
+                        <span className="text-[10px] text-muted-foreground ml-1.5">({vocabByWeek[week].length}단어)</span>
+                      </div>
+                      <div className="divide-y divide-border/30">
+                        {vocabByWeek[week].map(w => (
+                          <div key={w.id} className="flex items-center gap-2.5 px-3 py-2">
+                            <TTSButton word={w} />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-semibold text-foreground">{w.english_word}</span>
+                              {w.part_of_speech && (
+                                <span className="text-[10px] text-muted-foreground ml-1">({w.part_of_speech})</span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground flex-shrink-0">{w.korean_meaning}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+                <button
+                  onClick={() => navigate(`/my/vocabulary?name=${encodeURIComponent(student)}`)}
+                  className="w-full text-center text-[11px] text-navy font-medium py-2.5 hover:bg-muted/30 transition-colors border-t border-border"
+                >
+                  전체 단어장 & 테스트 →
+                </button>
+              </div>
+            )}
+          </div>
           <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <button
               onClick={() => setTestHistoryOpen(v => !v)}
