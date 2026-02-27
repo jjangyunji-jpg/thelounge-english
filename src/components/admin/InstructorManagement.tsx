@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Eye, EyeOff, Star, MessageSquare, Filter } from "lucide-react";
+import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Eye, EyeOff, Star, MessageSquare, Filter, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -316,7 +316,16 @@ export default function InstructorManagement() {
           <h1 className="text-2xl font-bold text-foreground">강사 관리</h1>
           <p className="text-muted-foreground text-sm mt-1">담당 강사 프로필 및 정산 설정</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => window.open("/t/dashboard", "_blank")}
+          >
+            <ExternalLink className="w-4 h-4" />
+            강사 대시보드
+          </Button>
           <Button
             variant="outline"
             size="sm"
