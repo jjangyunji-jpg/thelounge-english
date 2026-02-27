@@ -361,6 +361,7 @@ export default function StudentDashboard() {
   const [holidays, setHolidays] = useState<HolidayNotice[]>([]);
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriod[]>([]);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("dismissed_holiday_ids") || "[]"); } catch { return []; }
   });
@@ -476,6 +477,13 @@ export default function StudentDashboard() {
     setVocabWords(vocRes.data || []);
     setTestHistory(testRes.data || []);
     setSchedulePeriods(periodsRes.data || []);
+
+    // Auto-select current period
+    if (!selectedPeriodId && periodsRes.data?.length) {
+      const today = new Date().toISOString().slice(0, 10);
+      const current = periodsRes.data.find((p: SchedulePeriod) => p.start_date <= today && p.end_date >= today);
+      setSelectedPeriodId(current?.id || periodsRes.data[periodsRes.data.length - 1].id);
+    }
 
     // 팝업은 미래 휴강만 (date_end >= today)
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -597,12 +605,60 @@ export default function StudentDashboard() {
     ...recurringDates.map(d => d.toDateString()).filter(d => !holidayDateStrings.has(d)),
   ]);
 
-  // ── Derived stats ──
-  const pendingHw = assignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
-  const submittedHw = assignments.filter(a => { const sub = getSubmission(a.id); return sub && sub.status !== "pending"; });
-  const latestTest = testHistory[0];
-  const avgScore = testHistory.length > 0
-    ? Math.round(testHistory.reduce((acc, t) => acc + (t.total ? (t.score ?? 0) / t.total : 0), 0) / testHistory.length * 100)
+  // ── Period-based filtering ──
+  const selectedPeriod = schedulePeriods.find(p => p.id === selectedPeriodId) || null;
+  const periodStart = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00") : null;
+  const periodEnd = selectedPeriod ? new Date(selectedPeriod.end_date + "T23:59:59") : null;
+
+  const periodSessions = selectedPeriod
+    ? allSessions.filter(s => {
+        const d = new Date(s.scheduled_at);
+        return d >= periodStart! && d <= periodEnd!;
+      })
+    : allSessions;
+
+  const periodSessionIds = new Set(periodSessions.map(s => s.id));
+
+  const periodAssignments = selectedPeriod
+    ? assignments.filter(a => a.session_id ? periodSessionIds.has(a.session_id) : false)
+    : assignments;
+
+  const periodVocabWords = selectedPeriod
+    ? vocabWords.filter(w => {
+        const d = new Date(w.created_at);
+        return d >= periodStart! && d <= periodEnd!;
+      })
+    : vocabWords;
+
+  const periodTestHistory = selectedPeriod
+    ? testHistory.filter(t => {
+        if (!t.completed_at) return false;
+        const d = new Date(t.completed_at);
+        return d >= periodStart! && d <= periodEnd!;
+      })
+    : testHistory;
+
+  // Period navigation helpers
+  const sortedPeriods = [...schedulePeriods].sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const currentPeriodIdx = sortedPeriods.findIndex(p => p.id === selectedPeriodId);
+  const canGoPrev = currentPeriodIdx > 0;
+  const canGoNext = currentPeriodIdx < sortedPeriods.length - 1;
+  const periodLabel = selectedPeriod?.label
+    ? (() => {
+        const m = selectedPeriod.label.match(/(\d{4})-(\d{2})/);
+        return m ? `${m[1]}년 ${parseInt(m[2])}월` : selectedPeriod.label;
+      })()
+    : "";
+  const periodDateRange = selectedPeriod
+    ? `${selectedPeriod.start_date.replace(/-/g, ".")} ~ ${selectedPeriod.end_date.replace(/-/g, ".")}`
+    : "";
+
+  // ── Derived stats (period-scoped) ──
+  const pendingHw = periodAssignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
+  const submittedHw = periodAssignments.filter(a => { const sub = getSubmission(a.id); return sub && sub.status !== "pending"; });
+  const latestTest = periodTestHistory[0];
+  const avgScore = periodTestHistory.length > 0
+    ? Math.round(periodTestHistory.reduce((acc, t) => acc + (t.total ? (t.score ?? 0) / t.total : 0), 0) / periodTestHistory.length * 100)
     : null;
 
   // 함께한 시간 (개월)
@@ -688,7 +744,7 @@ export default function StudentDashboard() {
     return false;
   })();
 
-  const vocabByWeek = vocabWords.reduce<Record<string, VocabWord[]>>((acc, w) => {
+  const vocabByWeek = periodVocabWords.reduce<Record<string, VocabWord[]>>((acc, w) => {
     if (!acc[w.week_label]) acc[w.week_label] = [];
     acc[w.week_label].push(w);
     return acc;
@@ -842,6 +898,32 @@ export default function StudentDashboard() {
         </div>
       </header>
 
+      {/* ── Period Navigation ── */}
+      {schedulePeriods.length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="flex items-center justify-center gap-3">
+            <button
+              disabled={!canGoPrev}
+              onClick={() => canGoPrev && setSelectedPeriodId(sortedPeriods[currentPeriodIdx - 1].id)}
+              className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4 text-foreground" />
+            </button>
+            <div className="text-center">
+              <p className="text-sm font-bold text-foreground">{periodLabel}</p>
+              <p className="text-[10px] text-muted-foreground">{periodDateRange}</p>
+            </div>
+            <button
+              disabled={!canGoNext}
+              onClick={() => canGoNext && setSelectedPeriodId(sortedPeriods[currentPeriodIdx + 1].id)}
+              className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4 text-foreground" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── 2-Column Layout ── */}
       <div className="max-w-6xl mx-auto px-4 py-5 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
 
@@ -990,7 +1072,7 @@ export default function StudentDashboard() {
               {
                 icon: BookOpen,
                 label: "숙제 제출",
-                value: `${submittedHw.length}/${assignments.length}`,
+                value: `${submittedHw.length}/${periodAssignments.length}`,
                 sub: pendingHw.length === 0 ? "모두 완료!" : `${pendingHw.length}개 남음`,
                 alert: pendingHw.length > 0,
               },
@@ -998,7 +1080,7 @@ export default function StudentDashboard() {
                 icon: Trophy,
                 label: "평균 점수",
                 value: avgScore !== null ? `${avgScore}%` : "-",
-                sub: `${testHistory.length}회 테스트`,
+                sub: `${periodTestHistory.length}회 테스트`,
               },
             ].map((stat) => (
               <div
@@ -1058,15 +1140,12 @@ export default function StudentDashboard() {
 
           {/* Weekly Tasks */}
           <WeeklyTasksSection
-            assignments={assignments}
+            assignments={periodAssignments}
             submissions={submissions}
-            sessions={[...sessions, ...allSessions].reduce<ClassSession[]>((acc, s) => {
-              if (!acc.find(x => x.id === s.id)) acc.push(s);
-              return acc;
-            }, [])}
+            sessions={periodSessions}
             studentName={student}
-            vocabWords={vocabWords}
-            testHistory={testHistory}
+            vocabWords={periodVocabWords}
+            testHistory={periodTestHistory}
             onSubmissionUpdate={(sub) => {
               setSubmissions(prev => {
                 const idx = prev.findIndex(s => s.assignment_id === sub.assignment_id);
@@ -1093,25 +1172,24 @@ export default function StudentDashboard() {
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">{pendingHw.length}미제출</span>
                 )}
               </div>
-              <span className="text-[10px] text-muted-foreground">{assignments.length}개 전체</span>
+              <span className="text-[10px] text-muted-foreground">{periodAssignments.length}개 전체</span>
             </button>
             {hwOpen && (
               <div className="divide-y divide-border/50">
-                {assignments.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">배정된 숙제가 없습니다</p>
+                {periodAssignments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">이 기간에 배정된 숙제가 없습니다</p>
                 ) : (
-                  assignments.slice(0, 5).map((a) => {
+                  periodAssignments.slice(0, 5).map((a) => {
                     const sub = getSubmission(a.id);
                     const status = sub?.status || "pending";
                     const meta = HW_META[a.type as HwType];
                     const Icon = meta?.icon ?? Brain;
-                    // Derive week label from linked session
+                    // Derive week label relative to period start
                     const linkedSession = a.session_id ? allSessions.find(s => s.id === a.session_id) : null;
-                    const weekPrefix = linkedSession?.scheduled_at
+                    const weekPrefix = linkedSession?.scheduled_at && periodStart
                       ? (() => {
                           const d = new Date(linkedSession.scheduled_at);
-                          const jan1 = new Date(d.getFullYear(), 0, 1);
-                          const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+                          const week = Math.floor((d.getTime() - periodStart.getTime()) / (7 * 86400000)) + 1;
                           return `${week}주차`;
                         })()
                       : null;
@@ -1145,12 +1223,12 @@ export default function StudentDashboard() {
                     );
                   })
                 )}
-                {assignments.length > 5 && (
+                {periodAssignments.length > 5 && (
                   <button
                     onClick={() => navigate("/my/classnote")}
                     className="w-full text-center text-[11px] text-muted-foreground py-2 hover:text-foreground transition-colors"
                   >
-                    +{assignments.length - 5}개 더보기
+                    +{periodAssignments.length - 5}개 더보기
                   </button>
                 )}
               </div>
@@ -1166,9 +1244,9 @@ export default function StudentDashboard() {
               <div className="flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 text-gold" />
                 <span className="text-xs font-semibold text-foreground">단어장</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{vocabWords.length}개</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{periodVocabWords.length}개</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">최근 3개월</span>
+              <span className="text-[10px] text-muted-foreground">{periodLabel || "전체"}</span>
             </button>
             {vocabListOpen && (
               <div className="max-h-80 overflow-y-auto">
