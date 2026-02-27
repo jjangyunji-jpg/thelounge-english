@@ -332,7 +332,10 @@ function SubmissionCard({
                     ? "여기에 작성하세요 (필수)"
                     : "메모 또는 자유 작성 (선택)"
                 }
-                className="min-h-[100px] resize-none text-sm"
+                className={cn(
+                  "resize-none text-sm",
+                  assignment.type === "writing" ? "min-h-[200px]" : "min-h-[100px]"
+                )}
               />
             </div>
           )}
