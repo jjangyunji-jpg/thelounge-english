@@ -25,9 +25,9 @@ interface NotesEditorProps {
   editable: boolean;
   disabled?: boolean;
   placeholder?: string;
-  autoCorrectEnabled: boolean;
-  onAutoCorrectToggle: () => void;
-  isAutoCorrecting: boolean;
+  autoCorrectEnabled?: boolean;
+  onAutoCorrectToggle?: () => void;
+  isAutoCorrecting?: boolean;
   className?: string;
   onScrollRatio?: (ratio: number) => void;
 }
@@ -44,9 +44,9 @@ export default function NotesEditor({
   editable,
   disabled = false,
   placeholder = "수업 내용을 자유롭게 타이핑하세요...",
-  autoCorrectEnabled,
+  autoCorrectEnabled = false,
   onAutoCorrectToggle,
-  isAutoCorrecting,
+  isAutoCorrecting = false,
   className,
   onScrollRatio,
 }: NotesEditorProps) {
@@ -446,17 +446,19 @@ export default function NotesEditor({
           </button>
 
           <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">/ 슬래시 명령</span>
-          <button
-            onClick={onAutoCorrectToggle}
-            className={cn("ml-2 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all border",
-              autoCorrectEnabled
-                ? "border-success/40 bg-success/10 text-success"
-                : "border-muted-foreground/20 text-muted-foreground hover:bg-muted"
-            )}
-          >
-            {isAutoCorrecting && <Loader2 className="w-3 h-3 animate-spin" />}
-            {autoCorrectEnabled ? "자동교정 ON" : "자동교정 OFF"}
-          </button>
+          {onAutoCorrectToggle && (
+            <button
+              onClick={onAutoCorrectToggle}
+              className={cn("ml-2 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all border",
+                autoCorrectEnabled
+                  ? "border-success/40 bg-success/10 text-success"
+                  : "border-muted-foreground/20 text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {isAutoCorrecting && <Loader2 className="w-3 h-3 animate-spin" />}
+              {autoCorrectEnabled ? "자동교정 ON" : "자동교정 OFF"}
+            </button>
+          )}
         </div>
       )}
 
