@@ -153,16 +153,18 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
                 <p className="font-semibold text-foreground text-base">{currentCategory.label}</p>
                 <p className="text-xs text-muted-foreground mt-1">{currentCategory.description}</p>
               </div>
-              <StarRating
-                value={ratings[currentCategory.key] || 0}
-                onChange={(v) => {
-                  setRatings(prev => ({ ...prev, [currentCategory.key]: v }));
-                  setTimeout(() => setStep(s => Math.min(s + 1, totalSteps - 1)), 300);
-                }}
-              />
-              <div className="flex gap-1 justify-center text-[10px] text-muted-foreground">
+              <div className="flex justify-center">
+                <StarRating
+                  value={ratings[currentCategory.key] || 0}
+                  onChange={(v) => {
+                    setRatings(prev => ({ ...prev, [currentCategory.key]: v }));
+                    setTimeout(() => setStep(s => Math.min(s + 1, totalSteps - 1)), 300);
+                  }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground w-[175px] mx-auto">
                 <span>매우 불만족</span>
-                <span className="mx-4">보통</span>
+                <span>보통</span>
                 <span>매우 만족</span>
               </div>
             </div>
