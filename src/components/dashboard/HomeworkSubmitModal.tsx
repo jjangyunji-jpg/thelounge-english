@@ -1,0 +1,279 @@
+import { useState, useRef, useCallback } from "react";
+import {
+  Mic, Square, Play, Pause, Send, RotateCcw, Loader2, X,
+  PenLine, BookOpen, Brain,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+
+type HwType = "writing" | "reading" | "speaking" | "memorizing";
+
+const HW_META: Record<HwType, {
+  label: string; icon: React.ElementType; color: string;
+  requiresText: boolean; requiresAudio: boolean;
+}> = {
+  writing:    { label: "쓰기",   icon: PenLine,  color: "text-[hsl(var(--navy))]",      requiresText: true,  requiresAudio: false },
+  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]", requiresText: false, requiresAudio: false },
+  speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]",   requiresText: false, requiresAudio: true },
+  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",              requiresText: false, requiresAudio: false },
+};
+
+interface Assignment {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  session_id: string | null;
+}
+
+interface Submission {
+  id: string;
+  assignment_id: string | null;
+  status: string;
+  text_content: string | null;
+  audio_url: string | null;
+  instructor_note: string | null;
+  reviewed_at: string | null;
+}
+
+function useAudioRecorder() {
+  const [recording, setRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const start = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      mediaRef.current = mr;
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setAudioBlob(blob);
+        setAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mr.start();
+      setRecording(true);
+      setDuration(0);
+      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+    } catch { alert("마이크 접근 권한이 필요합니다."); }
+  }, []);
+
+  const stop = useCallback(() => {
+    mediaRef.current?.stop();
+    setRecording(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
+  const reset = useCallback(() => { setAudioBlob(null); setAudioUrl(null); setDuration(0); setPlaying(false); }, []);
+
+  const togglePlay = useCallback(() => {
+    if (!audioUrl) return;
+    if (playing) { audioRef.current?.pause(); setPlaying(false); }
+    else {
+      const a = new Audio(audioUrl);
+      audioRef.current = a;
+      a.onended = () => setPlaying(false);
+      a.play(); setPlaying(true);
+    }
+  }, [audioUrl, playing]);
+
+  const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  return { recording, audioBlob, audioUrl, playing, duration, start, stop, reset, togglePlay, fmt };
+}
+
+export default function HomeworkSubmitModal({
+  assignment, submission, studentName, onClose, onSubmitted,
+}: {
+  assignment: Assignment;
+  submission: Submission | null;
+  studentName: string;
+  onClose: () => void;
+  onSubmitted: (sub: Submission) => void;
+}) {
+  const { toast } = useToast();
+  const [text, setText] = useState(submission?.text_content ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const meta = HW_META[assignment.type as HwType] ?? HW_META.writing;
+  const Icon = meta.icon;
+  const recorder = useAudioRecorder();
+
+  const showTextArea = meta.requiresText || assignment.type === "memorizing";
+  const showAudio = meta.requiresAudio || assignment.type === "memorizing";
+
+  const canSubmit =
+    (!meta.requiresText || text.trim().length > 0) &&
+    (!meta.requiresAudio || recorder.audioBlob !== null);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    let audioStorageUrl: string | null = null;
+    try {
+      if (recorder.audioBlob) {
+        const path = `${studentName}/${assignment.id}/${Date.now()}.webm`;
+        const { error: upErr } = await supabase.storage
+          .from("homework-audio")
+          .upload(path, recorder.audioBlob, { contentType: "audio/webm", upsert: true });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from("homework-audio").getPublicUrl(path);
+        audioStorageUrl = pub.publicUrl;
+      }
+
+      let resultSub: Submission | null = null;
+      if (submission) {
+        const { data, error } = await supabase
+          .from("homework_submissions")
+          .update({
+            text_content: text.trim() || null,
+            audio_url: audioStorageUrl ?? submission.audio_url,
+            status: "submitted",
+            submitted_at: new Date().toISOString(),
+          })
+          .eq("id", submission.id)
+          .select()
+          .single();
+        if (error) throw error;
+        resultSub = data;
+      } else {
+        const { data, error } = await supabase
+          .from("homework_submissions")
+          .insert({
+            assignment_id: assignment.id,
+            student_name: studentName,
+            text_content: text.trim() || null,
+            audio_url: audioStorageUrl,
+            status: "submitted",
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        resultSub = data;
+      }
+
+      toast({ title: "숙제가 제출됐습니다 ✓" });
+      if (resultSub) onSubmitted(resultSub);
+      onClose();
+    } catch (e: unknown) {
+      toast({ title: "제출 실패", description: e instanceof Error ? e.message : "오류 발생", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md bg-card rounded-xl shadow-2xl border border-border overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-2">
+            <Icon className={cn("w-4 h-4", meta.color)} />
+            <span className="text-sm font-bold text-foreground">{assignment.title}</span>
+            <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>{meta.label}</span>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+          {/* Description */}
+          {assignment.description && (
+            <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/30 rounded-lg p-3 border border-border/50">
+              {assignment.description}
+            </p>
+          )}
+
+          {/* Previous submission */}
+          {submission?.audio_url && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-1">이전 녹음</p>
+              <audio controls src={submission.audio_url} className="w-full h-8" />
+            </div>
+          )}
+
+          {/* Instructor note */}
+          {submission?.instructor_note && (
+            <div className="px-3 py-2 rounded-lg bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)]">
+              <p className="text-xs font-semibold text-[hsl(var(--success))] mb-0.5">강사 피드백</p>
+              <p className="text-xs text-foreground">{submission.instructor_note}</p>
+            </div>
+          )}
+
+          {/* Text area */}
+          {showTextArea && (
+            <Textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              spellCheck lang="en"
+              placeholder={meta.requiresText ? "여기에 작성하세요 (필수)" : "메모 또는 자유 작성 (선택)"}
+              className={cn("resize-none text-sm", assignment.type === "writing" ? "min-h-[200px]" : "min-h-[100px]")}
+            />
+          )}
+
+          {/* Audio recorder */}
+          {showAudio && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-2">
+                {meta.requiresAudio ? "음성 녹음 (필수)" : "음성 녹음 (선택)"}
+              </p>
+              {!recorder.audioBlob ? (
+                <div className="flex items-center gap-2">
+                  {!recorder.recording ? (
+                    <Button size="sm" onClick={recorder.start}
+                      className="gap-2 h-8 text-xs bg-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.85)] text-white">
+                      <Mic className="w-3.5 h-3.5" /> 녹음 시작
+                    </Button>
+                  ) : (
+                    <>
+                      <span className="flex items-center gap-1.5 text-xs text-destructive font-mono font-bold">
+                        <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                        {recorder.fmt(recorder.duration)}
+                      </span>
+                      <Button size="sm" onClick={recorder.stop}
+                        className="gap-2 h-8 text-xs bg-destructive hover:bg-destructive/85 text-destructive-foreground">
+                        <Square className="w-3 h-3 fill-white" /> 녹음 중지
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 border border-border">
+                  <Button size="icon" variant="ghost" className="w-7 h-7" onClick={recorder.togglePlay}>
+                    {recorder.playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                  </Button>
+                  <span className="text-xs text-muted-foreground flex-1">녹음 완료 ({recorder.fmt(recorder.duration)})</span>
+                  <Button size="sm" variant="ghost" onClick={recorder.reset}
+                    className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground">
+                    <RotateCcw className="w-3 h-3" /> 다시
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-border bg-muted/20">
+          <Button size="sm" onClick={handleSubmit}
+            disabled={!canSubmit || submitting || recorder.recording}
+            className="w-full h-9 text-sm gap-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground">
+            {submitting
+              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />제출 중...</>
+              : <><Send className="w-3.5 h-3.5" />숙제 제출하기</>}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
