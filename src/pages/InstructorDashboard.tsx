@@ -413,12 +413,14 @@ function BigCalendar({
 function AddMeetingModal({
   instructorId,
   position,
+  meetLink,
   allInstructors,
   onClose,
   onAdded,
 }: {
   instructorId: string;
   position: string;
+  meetLink: string | null;
   allInstructors: { id: string; name: string }[];
   onClose: () => void;
   onAdded: () => void;
@@ -449,7 +451,8 @@ function AddMeetingModal({
       scheduled_at: scheduledAt,
       duration_minutes: duration,
       notes: notes.trim() || null,
-    }).select().single();
+      meet_link: meetLink,
+    } as any).select().single();
     if (error || !meeting) {
       toast({ title: "저장 실패", description: error?.message, variant: "destructive" });
       setSaving(false);
@@ -1841,6 +1844,7 @@ export default function InstructorDashboard() {
         <AddMeetingModal
           instructorId={instructor.id}
           position={instructor.position}
+          meetLink={instructor.meet_link}
           allInstructors={allInstructors}
           onClose={() => setShowMeetingModal(false)}
           onAdded={() => loadData(instructor)}
