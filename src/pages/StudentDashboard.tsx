@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import FeedbackSurveyModal from "@/components/classroom/FeedbackSurveyModal";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Trophy, Calendar, Video, Clock, Check,
@@ -365,6 +366,13 @@ export default function StudentDashboard() {
   const [hwOpen, setHwOpen] = useState(true);
   const [vocabStudyOpen, setVocabStudyOpen] = useState(false);
 
+  // Feedback survey state
+  const [feedbackNeeded, setFeedbackNeeded] = useState<{
+    periodId: string;
+    periodLabel: string;
+    instructorName: string;
+  } | null>(null);
+
   // ── 인증: auth 세션 → student_name 로드, 없으면 URL 파라미터 폴백 ──
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [authNickname, setAuthNickname] = useState<string | null>(null);
@@ -464,6 +472,50 @@ export default function StudentDashboard() {
     }
 
     setLoading(false);
+
+    // ── 피드백 설문조사 체크 ──
+    // 현재 기간의 마지막 세션(4주차)이 종료되었는지 확인
+    const periods = periodsRes.data || [];
+    const todayDate = new Date();
+    const allStudentSessions = allSessRes.data || [];
+    const studentRec = studentRes.data;
+    const instrName = studentRec?.instructor_name;
+
+    for (const period of periods) {
+      const periodEnd = new Date(period.end_date + "T23:59:59");
+      // 기간 종료일이 지났거나, 종료일 7일 전부터 체크
+      const checkStart = new Date(periodEnd);
+      checkStart.setDate(checkStart.getDate() - 7);
+
+      if (todayDate >= checkStart && instrName) {
+        // 이 기간의 세션 중 ended_at이 있는 세션이 있는지 확인
+        const periodSessions = allStudentSessions.filter(s => {
+          const sDate = new Date(s.scheduled_at);
+          const pStart = new Date(period.start_date + "T00:00:00");
+          return sDate >= pStart && sDate <= periodEnd;
+        });
+        const hasCompletedSessions = periodSessions.some(s => s.ended_at);
+
+        if (hasCompletedSessions || todayDate > periodEnd) {
+          // 이미 피드백을 제출했는지 확인
+          const { data: existingFeedback } = await supabase
+            .from("class_feedback")
+            .select("id")
+            .eq("student_name", student)
+            .eq("period_id", period.id)
+            .maybeSingle();
+
+          if (!existingFeedback) {
+            setFeedbackNeeded({
+              periodId: period.id,
+              periodLabel: period.label,
+              instructorName: instrName,
+            });
+            break;
+          }
+        }
+      }
+    }
   };
 
   const getSubmission = (aId: string) => submissions.find(s => s.assignment_id === aId);
@@ -596,6 +648,17 @@ export default function StudentDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Feedback Survey Popup ── */}
+      {feedbackNeeded && (
+        <FeedbackSurveyModal
+          studentName={student}
+          instructorName={feedbackNeeded.instructorName}
+          periodId={feedbackNeeded.periodId}
+          periodLabel={feedbackNeeded.periodLabel}
+          onComplete={() => setFeedbackNeeded(null)}
+        />
       )}
 
       {/* ── Header ── */}

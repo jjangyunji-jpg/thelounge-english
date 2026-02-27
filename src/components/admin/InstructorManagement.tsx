@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Eye, EyeOff } from "lucide-react";
+import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Eye, EyeOff, Star, MessageSquare } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { exportAllSettlementsPdf } from "@/lib/exportSettlementPdf";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+interface FeedbackRecord {
+  id: string;
+  student_name: string;
+  period_label: string;
+  satisfaction: number;
+  teaching_quality: number;
+  communication: number;
+  lesson_preparation: number;
+  comment: string | null;
+  created_at: string;
+}
 
 interface Instructor {
   id: string;
@@ -68,9 +81,11 @@ export default function InstructorManagement() {
     password: "",
     phone: "",
   });
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackRecord[]>>({});
 
   useEffect(() => {
     fetchInstructors();
+    fetchAllFeedback();
   }, []);
 
   const fetchInstructors = async () => {
@@ -86,6 +101,22 @@ export default function InstructorManagement() {
       setInstructors(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchAllFeedback = async () => {
+    const { data } = await supabase
+      .from("class_feedback")
+      .select("id,student_name,instructor_name,period_label,satisfaction,teaching_quality,communication,lesson_preparation,comment,created_at")
+      .order("created_at", { ascending: false });
+    if (data) {
+      const map: Record<string, FeedbackRecord[]> = {};
+      for (const fb of data as FeedbackRecord[]) {
+        const key = (fb as any).instructor_name;
+        if (!map[key]) map[key] = [];
+        map[key].push(fb);
+      }
+      setFeedbackMap(map);
+    }
   };
 
   const toggleActive = async (ins: Instructor) => {
@@ -485,6 +516,76 @@ export default function InstructorManagement() {
                     )}
                   </div>
                 </div>
+
+                {/* Feedback Results */}
+                <div className="p-4 rounded-lg bg-card border border-border">
+                  <Collapsible defaultOpen={false}>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full">
+                      <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-gold" />
+                        수업 피드백
+                        {(feedbackMap[ins.name] || []).length > 0 && (
+                          <Badge variant="outline" className="text-[10px] ml-1">{(feedbackMap[ins.name] || []).length}건</Badge>
+                        )}
+                      </h4>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      {(() => {
+                        const feedbacks = feedbackMap[ins.name] || [];
+                        if (feedbacks.length === 0) {
+                          return <p className="text-xs text-muted-foreground py-3 text-center">아직 피드백이 없습니다</p>;
+                        }
+                        const avgSat = Math.round(feedbacks.reduce((a, f) => a + f.satisfaction, 0) / feedbacks.length * 10) / 10;
+                        const avgTeach = Math.round(feedbacks.reduce((a, f) => a + f.teaching_quality, 0) / feedbacks.length * 10) / 10;
+                        const avgComm = Math.round(feedbacks.reduce((a, f) => a + f.communication, 0) / feedbacks.length * 10) / 10;
+                        const avgPrep = Math.round(feedbacks.reduce((a, f) => a + f.lesson_preparation, 0) / feedbacks.length * 10) / 10;
+                        const overallAvg = Math.round((avgSat + avgTeach + avgComm + avgPrep) / 4 * 10) / 10;
+                        return (
+                          <div className="space-y-3 pt-3">
+                            <div className="grid grid-cols-5 gap-2">
+                              {[
+                                { label: "종합", value: overallAvg },
+                                { label: "만족도", value: avgSat },
+                                { label: "퀄리티", value: avgTeach },
+                                { label: "소통", value: avgComm },
+                                { label: "준비도", value: avgPrep },
+                              ].map(item => (
+                                <div key={item.label} className="text-center p-2 rounded-lg bg-muted/50">
+                                  <div className="flex items-center justify-center gap-0.5">
+                                    <Star className={`w-3 h-3 ${item.value >= 4 ? "text-gold fill-gold" : item.value >= 3 ? "text-amber-400 fill-amber-400" : "text-muted-foreground"}`} />
+                                    <span className="text-sm font-bold text-foreground">{item.value}</span>
+                                  </div>
+                                  <p className="text-[9px] text-muted-foreground mt-0.5">{item.label}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {feedbacks.map(fb => (
+                                <div key={fb.id} className="p-2.5 rounded-lg border border-border bg-muted/20 space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-foreground">{fb.student_name}</span>
+                                    <span className="text-[10px] text-muted-foreground">{fb.period_label}</span>
+                                  </div>
+                                  <div className="flex gap-2 text-[10px] text-muted-foreground">
+                                    <span>만족 {fb.satisfaction}★</span>
+                                    <span>퀄리티 {fb.teaching_quality}★</span>
+                                    <span>소통 {fb.communication}★</span>
+                                    <span>준비 {fb.lesson_preparation}★</span>
+                                  </div>
+                                  {fb.comment && (
+                                    <p className="text-xs text-foreground/80 italic">"{fb.comment}"</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+
 
                 <div className="flex items-center justify-between pt-2">
                   <button
