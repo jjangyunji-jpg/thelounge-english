@@ -711,40 +711,23 @@ export default function StudentDashboard() {
     return Math.max(1, diff);
   })();
 
-  // 이번달 수업 횟수
+  // 이번달 수업 횟수 (현재 기간 기준, scheduled_at <= now 인 수업 / 전체 기간 수업)
   const thisMonthStats = (() => {
+    if (!selectedPeriod) return { completed: 0, total: 0 };
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    
-    // Total scheduled this month (from recurring schedules)
-    const totalMonthly = studentRecord?.schedules
-      ? (() => {
-          const slots = studentRecord.schedules;
-          let count = 0;
-          const cursor = new Date(monthStart);
-          while (cursor <= monthEnd) {
-            const dayNum = cursor.getDay();
-            for (const slot of slots) {
-              const slotDay = DAY_KO_TO_NUM[slot.day];
-              if (slotDay === dayNum && dayNum !== 2) count++; // exclude Tuesdays
-            }
-            cursor.setDate(cursor.getDate() + 1);
-          }
-          return count;
-        })()
-      : 0;
-    
-    const completedThisMonth = allSessions.filter(s => {
-      const d = new Date(s.scheduled_at);
-      return d >= monthStart && d <= monthEnd && s.ended_at;
-    }).length;
-    return { completed: completedThisMonth, total: totalMonthly };
+    const total = periodSessions.length;
+    const completed = periodSessions.filter(s => new Date(s.scheduled_at) <= now).length;
+    return { completed, total };
   })();
 
-  // 이번주 숙제: 가장 최근 세션의 숙제만
+  // 이번주 숙제: 현재 날짜 기준 직전 수업(scheduled_at <= now)의 숙제
   const latestSessionHwStats = (() => {
-    const latestSession = periodSessions.find(s => s.ended_at);
+    const now = new Date();
+    // 날짜 내림차순으로 정렬된 sessions에서 현재 이전 세션 찾기
+    const pastSess = [...allSessions]
+      .filter(s => new Date(s.scheduled_at) <= now)
+      .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+    const latestSession = pastSess[0];
     if (!latestSession) return { submitted: 0, total: 0, pending: 0 };
     const sessionHw = assignments.filter(a => a.session_id === latestSession.id);
     const submitted = sessionHw.filter(a => {
