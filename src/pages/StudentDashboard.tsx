@@ -925,15 +925,17 @@ export default function StudentDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {nextSessionFromDB?.meet_link && (
-            <a href={nextSessionFromDB.meet_link} target="_blank" rel="noopener noreferrer">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy text-primary-foreground text-xs font-bold shadow-sm hover:bg-navy-light transition-colors">
-                <Video className="w-3.5 h-3.5" /> 수업 입장
-              </button>
-            </a>
-          )}
           {authStudent && (
             <>
+              <button
+                onClick={async () => {
+                  const { exportStudentGuidePdf } = await import("@/lib/exportStudentGuide");
+                  exportStudentGuidePdf();
+                }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                이용가이드
+              </button>
               <button
                 onClick={() => navigate("/my/profile")}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -1114,22 +1116,6 @@ export default function StudentDashboard() {
                   </div>
                 </div>
               )}
-              {/* 이용 가이드 */}
-              <button
-                onClick={async () => {
-                  const { exportStudentGuidePdf } = await import("@/lib/exportStudentGuide");
-                  exportStudentGuidePdf();
-                }}
-                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
-              >
-                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
-                  <BookOpen className="w-4 h-4 text-navy" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold leading-none text-foreground">이용 가이드</p>
-                  <p className="text-[10px] mt-0.5 text-muted-foreground">PDF 다운로드</p>
-                </div>
-              </button>
             </div>
           </div>
         </div>
