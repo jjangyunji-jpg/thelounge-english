@@ -56,7 +56,7 @@ export default function InstructorManagement() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFields, setEditFields] = useState({ phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "", meet_link: "" });
+  const [editFields, setEditFields] = useState({ phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "", meet_link: "", position: "강사", lesson_rate: "30000" });
   const [savingId, setSavingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -113,6 +113,8 @@ export default function InstructorManagement() {
       education: ins.education || "",
       bio_notes: ins.bio_notes || "",
       meet_link: ins.meet_link || "",
+      position: ins.position || "강사",
+      lesson_rate: ins.lesson_rate?.toString() || "30000",
     });
   };
 
@@ -128,6 +130,8 @@ export default function InstructorManagement() {
         education: editFields.education || null,
         bio_notes: editFields.bio_notes || null,
         meet_link: editFields.meet_link || null,
+        position: editFields.position || "강사",
+        lesson_rate: editFields.lesson_rate ? parseInt(editFields.lesson_rate) : 30000,
       })
       .eq("id", id);
 
@@ -144,6 +148,8 @@ export default function InstructorManagement() {
           education: editFields.education || null,
           bio_notes: editFields.bio_notes || null,
           meet_link: editFields.meet_link || null,
+          position: editFields.position || "강사",
+          lesson_rate: editFields.lesson_rate ? parseInt(editFields.lesson_rate) : 30000,
         } : i))
       );
       setEditingId(null);
@@ -314,6 +320,13 @@ export default function InstructorManagement() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-foreground">{ins.name}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    ins.position === '대표' ? 'bg-gold/20 text-gold-dark' :
+                    ins.position === '매니저' ? 'bg-navy/10 text-navy' :
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {ins.position || '강사'}
+                  </span>
                   <span className={ins.active ? "status-active" : "status-inactive"}>
                     {ins.active ? "활성" : "비활성"}
                   </span>
@@ -328,8 +341,10 @@ export default function InstructorManagement() {
 
               <div className="hidden md:flex items-center gap-4 text-sm">
                 <div className="text-center">
-                  <p className="font-semibold text-foreground">₩{BASE_SALARY.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">기본급</p>
+                  <p className="font-semibold text-foreground">
+                    {ins.position === '대표' ? `₩${ins.lesson_rate.toLocaleString()}` : `₩${BASE_SALARY.toLocaleString()}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{ins.position === '대표' ? '시급' : '기본급'}</p>
                 </div>
               </div>
 
@@ -346,26 +361,35 @@ export default function InstructorManagement() {
                   {/* Salary info */}
                   <div className="p-4 rounded-lg bg-card border border-border">
                     <h4 className="text-sm font-semibold text-foreground mb-3">💰 급여 체계</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-muted-foreground">기본급</span>
-                        <span className="text-sm font-semibold text-foreground">₩{BASE_SALARY.toLocaleString()}</span>
-                      </div>
-                      {Object.entries(LEVEL_BONUS).map(([level, bonus]) => (
-                        <div key={level} className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">{level}반 수업 수당</span>
-                          <span className="text-sm font-medium text-foreground">+₩{bonus.toLocaleString()}</span>
+                    {ins.position === '대표' ? (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">시급 (모든 업무 동일)</span>
+                          <span className="text-sm font-semibold text-navy">₩{ins.lesson_rate.toLocaleString()}</span>
                         </div>
-                      ))}
-                      <div className="border-t border-border pt-2 mt-2">
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">기본급</span>
+                          <span className="text-sm font-semibold text-foreground">₩{BASE_SALARY.toLocaleString()}</span>
+                        </div>
                         {Object.entries(LEVEL_BONUS).map(([level, bonus]) => (
-                          <div key={level} className="flex justify-between items-center text-xs">
-                            <span className="text-muted-foreground">{level}반 합계</span>
-                            <span className="font-semibold text-navy">₩{(BASE_SALARY + bonus).toLocaleString()}</span>
+                          <div key={level} className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">{level}반 수업 수당</span>
+                            <span className="text-sm font-medium text-foreground">+₩{bonus.toLocaleString()}</span>
                           </div>
                         ))}
+                        <div className="border-t border-border pt-2 mt-2">
+                          {Object.entries(LEVEL_BONUS).map(([level, bonus]) => (
+                            <div key={level} className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">{level}반 합계</span>
+                              <span className="font-semibold text-navy">₩{(BASE_SALARY + bonus).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Personal info */}
@@ -381,6 +405,20 @@ export default function InstructorManagement() {
                     {editingId === ins.id ? (
                       <div className="space-y-2">
                         <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-[10px] text-muted-foreground">직책</Label>
+                            <select className="w-full h-7 text-xs mt-0.5 rounded-md border border-input bg-background px-2" value={editFields.position} onChange={(e) => setEditFields(f => ({ ...f, position: e.target.value }))}>
+                              <option value="대표">대표</option>
+                              <option value="매니저">매니저</option>
+                              <option value="강사">강사</option>
+                            </select>
+                          </div>
+                          {editFields.position === '대표' && (
+                            <div>
+                              <Label className="text-[10px] text-muted-foreground">시급 (원)</Label>
+                              <Input type="number" className="h-7 text-xs mt-0.5" value={editFields.lesson_rate} onChange={(e) => setEditFields(f => ({ ...f, lesson_rate: e.target.value }))} />
+                            </div>
+                          )}
                           <div>
                             <Label className="text-[10px] text-muted-foreground">연락처</Label>
                             <Input className="h-7 text-xs mt-0.5" value={editFields.phone} onChange={(e) => setEditFields(f => ({ ...f, phone: e.target.value }))} />
@@ -419,6 +457,7 @@ export default function InstructorManagement() {
                       </div>
                     ) : (
                       <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">직책</span><span className="text-xs font-medium">{ins.position || '강사'}</span></div>
                         <div className="flex justify-between"><span className="text-xs text-muted-foreground">이메일</span><span className="text-xs font-medium">{ins.email}</span></div>
                         <div className="flex justify-between"><span className="text-xs text-muted-foreground">연락처</span><span className="text-xs font-medium">{ins.phone || "—"}</span></div>
                         <div className="flex justify-between"><span className="text-xs text-muted-foreground">입사일</span><span className="text-xs font-medium">{ins.join_date || "—"}</span></div>
