@@ -719,14 +719,6 @@ export default function InstructorManagement() {
                       </Button>
                     )}
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5 h-7 text-xs border-gold text-gold-dark hover:bg-gold/8"
-                  >
-                    <Download className="w-3 h-3" />
-                    개인 정산서
-                  </Button>
                 </div>
               </div>
             )}
