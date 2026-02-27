@@ -7,6 +7,7 @@ import {
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
   Shield,
 } from "lucide-react";
+import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,6 +66,7 @@ interface ClassSession {
 interface HomeworkAssignment {
   id: string;
   title: string;
+  type: string;
   student_name: string;
 }
 
@@ -74,6 +76,8 @@ interface HomeworkSubmission {
   status: string;
   student_name: string;
   submitted_at: string;
+  text_content: string | null;
+  audio_url: string | null;
 }
 
 interface BusinessMeeting {
@@ -927,6 +931,7 @@ export default function InstructorDashboard() {
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [reviewHw, setReviewHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
 
   useEffect(() => { init(); }, []);
 
@@ -960,8 +965,8 @@ export default function InstructorDashboard() {
     const [studRes, sessRes, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
       supabase.from("instructor_students").select("*").eq("instructor_id", ins.id),
       supabase.from("class_sessions").select("*").eq("instructor_name", ins.name).order("scheduled_at", { ascending: false }),
-      supabase.from("homework_assignments").select("id,title,student_name"),
-      supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at"),
+      supabase.from("homework_assignments").select("id,title,type,student_name"),
+      supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,student_name,started_at,completed_at,score,total"),
@@ -1508,50 +1513,51 @@ export default function InstructorDashboard() {
                   );
                 })()}
 
-                {/* Student progress with donut charts */}
+                {/* Student progress - today's students only */}
                 <div className="rounded-xl border border-border bg-card p-4">
                   <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                     <GraduationCap className="w-4 h-4 text-navy" />
-                    학생별 학습 현황
+                    오늘의 학생 현황
                   </h3>
                   <div className="space-y-2">
-                    {students.filter(s => s.status === "active").map((st) => {
-                      const stats = getStudentStats(st.student_name, st.schedules);
-                      const goals = fmtGoals(st.lesson_goal);
-
-                      return (
-                        <div key={st.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
-                          {/* Left: student info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <div className="w-6 h-6 rounded-full bg-navy/10 flex items-center justify-center flex-shrink-0">
-                                <span className="text-navy font-bold text-[9px]">{st.student_name.charAt(0)}</span>
+                    {(() => {
+                      const todayStudentNames = new Set(todaySessions.map(s => s.student_name));
+                      const todayStudents = students.filter(s => s.status === "active" && todayStudentNames.has(s.student_name));
+                      if (todayStudents.length === 0) {
+                        return <p className="text-xs text-muted-foreground py-2">오늘 수업이 없습니다</p>;
+                      }
+                      return todayStudents.map((st) => {
+                        const stats = getStudentStats(st.student_name, st.schedules);
+                        const goals = fmtGoals(st.lesson_goal);
+                        return (
+                          <div key={st.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <div className="w-6 h-6 rounded-full bg-navy/10 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-navy font-bold text-[9px]">{st.student_name.charAt(0)}</span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold text-foreground leading-tight">{st.student_name}</p>
+                                  <p className="text-[10px] text-muted-foreground leading-tight">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
+                                </div>
                               </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-foreground leading-tight">{st.student_name}</p>
-                                <p className="text-[10px] text-muted-foreground leading-tight">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
-                              </div>
+                              {goals.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1 ml-8">
+                                  {goals.map((g, i) => (
+                                    <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{g}</span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            {goals.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1 ml-8">
-                                {goals.map((g, i) => (
-                                  <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{g}</span>
-                                ))}
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <DonutStat value={stats.completedMonthSessions} total={stats.monthTotal} label="수업" unit="회" color="hsl(var(--navy))" trackColor="hsl(var(--navy) / 0.15)" />
+                              <DonutStat value={stats.weekSubmittedHw} total={stats.totalHw} label="숙제" unit="건" color="hsl(var(--gold-dark))" trackColor="hsl(var(--gold) / 0.2)" />
+                              <DonutStat value={stats.weekVocabCount} total={0} label="단어" unit="회" color="hsl(var(--success))" trackColor="hsl(var(--success) / 0.15)" isCount />
+                            </div>
                           </div>
-                          {/* Right: donut charts inline */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <DonutStat value={stats.completedMonthSessions} total={stats.monthTotal} label="수업" unit="회" color="hsl(var(--navy))" trackColor="hsl(var(--navy) / 0.15)" />
-                            <DonutStat value={stats.weekSubmittedHw} total={stats.totalHw} label="숙제" unit="건" color="hsl(var(--gold-dark))" trackColor="hsl(var(--gold) / 0.2)" />
-                            <DonutStat value={stats.weekVocabCount} total={0} label="단어" unit="회" color="hsl(var(--success))" trackColor="hsl(var(--success) / 0.15)" isCount />
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {students.filter(s => s.status === "active").length === 0 && (
-                      <p className="text-xs text-muted-foreground py-2">담당 학생이 없습니다</p>
-                    )}
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
 
@@ -1564,14 +1570,54 @@ export default function InstructorDashboard() {
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">{uncheckedHw.length}</span>
                     </h3>
                     <div className="space-y-1.5">
-                      {uncheckedHw.map((a) => (
-                        <div key={a.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-foreground">{a.title}</p>
-                            <p className="text-[10px] text-muted-foreground">{a.student_name}</p>
+                      {uncheckedHw.map((a) => {
+                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "submitted");
+                        const hwType = a.type as HwType;
+                        const meta = HW_TYPE_META[hwType];
+                        const Icon = meta?.icon || FileText;
+                        const isQuickCheck = hwType === "reading" || hwType === "memorizing";
+
+                        return (
+                          <div
+                            key={a.id}
+                            onClick={() => {
+                              if (!isQuickCheck && sub) {
+                                setReviewHw({ assignment: a, submission: sub });
+                              }
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border",
+                              !isQuickCheck && "cursor-pointer hover:bg-muted/40 transition-colors"
+                            )}
+                          >
+                            <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground">{a.title}</p>
+                              <p className="text-[10px] text-muted-foreground">{a.student_name} · {meta?.label || a.type}</p>
+                            </div>
+                            {isQuickCheck && sub ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] gap-1 border-[hsl(var(--success)/0.4)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.1)]"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await supabase.from("homework_submissions").update({
+                                    status: "reviewed",
+                                    reviewed_at: new Date().toISOString(),
+                                  }).eq("id", sub.id);
+                                  toast({ title: "확인 완료 ✓" });
+                                  if (instructor) loadData(instructor);
+                                }}
+                              >
+                                <Check className="w-3 h-3" /> 확인
+                              </Button>
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1862,6 +1908,18 @@ export default function InstructorDashboard() {
           session={rescheduleSession}
           onClose={() => setRescheduleSession(null)}
           onSaved={() => loadData(instructor)}
+        />
+      )}
+      {reviewHw && (
+        <HomeworkReviewModal
+          assignmentTitle={reviewHw.assignment.title}
+          assignmentType={reviewHw.assignment.type as "writing" | "speaking"}
+          studentName={reviewHw.assignment.student_name}
+          submissionId={reviewHw.submission.id}
+          textContent={reviewHw.submission.text_content}
+          audioUrl={reviewHw.submission.audio_url}
+          onClose={() => setReviewHw(null)}
+          onReviewed={() => { if (instructor) loadData(instructor); }}
         />
       )}
     </div>
