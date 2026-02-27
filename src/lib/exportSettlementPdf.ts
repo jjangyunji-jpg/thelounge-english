@@ -39,8 +39,7 @@ interface PeriodInfo {
 }
 
 async function registerKoreanFont(doc: jsPDF) {
-  const fontUrl =
-    "https://cdn.jsdelivr.net/gh/spoqa/spoqa-han-sans/Subset/SpoqaHanSansNeo/SpoqaHanSansNeo-Regular.ttf";
+  const fontUrl = "/fonts/SpoqaHanSansNeo-Regular.ttf";
   const res = await fetch(fontUrl);
   const buf = await res.arrayBuffer();
   const base64 = btoa(
