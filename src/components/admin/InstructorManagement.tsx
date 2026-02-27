@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Eye, EyeOff, Star, MessageSquare, Filter, ExternalLink } from "lucide-react";
+import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Eye, EyeOff, Star, MessageSquare, Filter, ExternalLink, UserX } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -436,122 +436,8 @@ export default function InstructorManagement() {
 
             {expandedId === ins.id && (
               <div className="border-t border-border bg-muted/20 p-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Salary info */}
-                  <div className="p-4 rounded-lg bg-card border border-border">
-                    <h4 className="text-sm font-semibold text-foreground mb-3">💰 급여 체계</h4>
-                    {ins.position === '대표' ? (
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">시급 (모든 업무 동일)</span>
-                          <span className="text-sm font-semibold text-navy">₩{ins.lesson_rate.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">기본급</span>
-                          <span className="text-sm font-semibold text-foreground">₩{BASE_SALARY.toLocaleString()}</span>
-                        </div>
-                        {Object.entries(LEVEL_BONUS).map(([level, bonus]) => (
-                          <div key={level} className="flex justify-between items-center">
-                            <span className="text-xs text-muted-foreground">{level}반 수업 수당</span>
-                            <span className="text-sm font-medium text-foreground">+₩{bonus.toLocaleString()}</span>
-                          </div>
-                        ))}
-                        <div className="border-t border-border pt-2 mt-2">
-                          {Object.entries(LEVEL_BONUS).map(([level, bonus]) => (
-                            <div key={level} className="flex justify-between items-center text-xs">
-                              <span className="text-muted-foreground">{level}반 합계</span>
-                              <span className="font-semibold text-navy">₩{(BASE_SALARY + bonus).toLocaleString()}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Personal info */}
-                  <div className="p-4 rounded-lg bg-card border border-border">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-foreground">📋 강사 정보</h4>
-                      {editingId !== ins.id && (
-                        <Button size="sm" variant="outline" className="h-6 text-xs gap-1" onClick={() => startEdit(ins)}>
-                          <Edit2 className="w-3 h-3" /> 수정
-                        </Button>
-                      )}
-                    </div>
-                    {editingId === ins.id ? (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-[10px] text-muted-foreground">직책</Label>
-                            <select className="w-full h-7 text-xs mt-0.5 rounded-md border border-input bg-background px-2" value={editFields.position} onChange={(e) => setEditFields(f => ({ ...f, position: e.target.value }))}>
-                              <option value="대표">대표</option>
-                              <option value="매니저">매니저</option>
-                              <option value="강사">강사</option>
-                            </select>
-                          </div>
-                          {editFields.position === '대표' && (
-                            <div>
-                              <Label className="text-[10px] text-muted-foreground">시급 (원)</Label>
-                              <Input type="number" className="h-7 text-xs mt-0.5" value={editFields.lesson_rate} onChange={(e) => setEditFields(f => ({ ...f, lesson_rate: e.target.value }))} />
-                            </div>
-                          )}
-                          <div>
-                            <Label className="text-[10px] text-muted-foreground">연락처</Label>
-                            <Input className="h-7 text-xs mt-0.5" value={editFields.phone} onChange={(e) => setEditFields(f => ({ ...f, phone: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] text-muted-foreground">입사일</Label>
-                            <Input type="date" className="h-7 text-xs mt-0.5" value={editFields.join_date} onChange={(e) => setEditFields(f => ({ ...f, join_date: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] text-muted-foreground">성별</Label>
-                            <Input className="h-7 text-xs mt-0.5" placeholder="남/여" value={editFields.gender} onChange={(e) => setEditFields(f => ({ ...f, gender: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] text-muted-foreground">나이</Label>
-                            <Input type="number" className="h-7 text-xs mt-0.5" value={editFields.age} onChange={(e) => setEditFields(f => ({ ...f, age: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] text-muted-foreground">최종학력</Label>
-                            <Input className="h-7 text-xs mt-0.5" value={editFields.education} onChange={(e) => setEditFields(f => ({ ...f, education: e.target.value }))} />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] text-muted-foreground">비고</Label>
-                            <Input className="h-7 text-xs mt-0.5" value={editFields.bio_notes} onChange={(e) => setEditFields(f => ({ ...f, bio_notes: e.target.value }))} />
-                          </div>
-                          <div className="col-span-2">
-                            <Label className="text-[10px] text-muted-foreground">구글 미트 링크 (업무 미팅용)</Label>
-                            <Input className="h-7 text-xs mt-0.5" placeholder="https://meet.google.com/xxx-xxxx-xxx" value={editFields.meet_link} onChange={(e) => setEditFields(f => ({ ...f, meet_link: e.target.value }))} />
-                          </div>
-                        </div>
-                        <div className="flex gap-2 pt-1">
-                          <Button size="sm" onClick={() => saveEdit(ins.id)} disabled={savingId === ins.id} className="bg-navy text-primary-foreground hover:bg-navy-light h-7 text-xs">
-                            {savingId === ins.id && <Loader2 className="w-3 h-3 animate-spin mr-1" />}저장
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="h-7 text-xs">취소</Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5 text-sm">
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">직책</span><span className="text-xs font-medium">{ins.position || '강사'}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">이메일</span><span className="text-xs font-medium">{ins.email}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">연락처</span><span className="text-xs font-medium">{ins.phone || "—"}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">입사일</span><span className="text-xs font-medium">{ins.join_date || "—"}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">성별</span><span className="text-xs font-medium">{ins.gender || "—"}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">나이</span><span className="text-xs font-medium">{ins.age || "—"}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">최종학력</span><span className="text-xs font-medium">{ins.education || "—"}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">비고</span><span className="text-xs font-medium">{ins.bio_notes || "—"}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">미팅 링크</span><span className="text-xs font-medium truncate max-w-[180px]">{ins.meet_link ? <a href={ins.meet_link} target="_blank" rel="noopener noreferrer" className="text-navy underline">{ins.meet_link}</a> : "—"}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground">계정</span><span className={`text-xs font-medium ${ins.user_id ? "text-success" : "text-muted-foreground"}`}>{ins.user_id ? "연결됨" : "미연결"}</span></div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Feedback Results */}
+                {/* Feedback Results — moved above salary & info */}
                 <div className="p-4 rounded-lg bg-card border border-border">
                   <Collapsible defaultOpen={false}>
                     <CollapsibleTrigger className="flex items-center justify-between w-full">
@@ -594,7 +480,6 @@ export default function InstructorManagement() {
                           return <p className="text-xs text-muted-foreground py-3 text-center">해당 기간의 피드백이 없습니다</p>;
                         }
 
-                        // Use dynamic categories; fall back to legacy columns
                         const cats = feedbackCategories.length > 0
                           ? feedbackCategories
                           : [
@@ -608,7 +493,6 @@ export default function InstructorManagement() {
                           if (fb.ratings && typeof fb.ratings === "object" && key in fb.ratings) {
                             return fb.ratings[key] || 0;
                           }
-                          // legacy columns
                           if (key === "satisfaction") return fb.satisfaction;
                           if (key === "teaching_quality") return fb.teaching_quality;
                           if (key === "communication") return fb.communication;
@@ -667,19 +551,174 @@ export default function InstructorManagement() {
                   </Collapsible>
                 </div>
 
+                {/* Salary & Info — collapsible toggles */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Salary info */}
+                  <div className="p-4 rounded-lg bg-card border border-border">
+                    <Collapsible defaultOpen={false}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full">
+                        <h4 className="text-sm font-semibold text-foreground">💰 급여 체계</h4>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="pt-3">
+                          {ins.position === '대표' ? (
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">시급 (모든 업무 동일)</span>
+                                <span className="text-sm font-semibold text-navy">₩{ins.lesson_rate.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">기본급</span>
+                                <span className="text-sm font-semibold text-foreground">₩{BASE_SALARY.toLocaleString()}</span>
+                              </div>
+                              {Object.entries(LEVEL_BONUS).map(([level, bonus]) => (
+                                <div key={level} className="flex justify-between items-center">
+                                  <span className="text-xs text-muted-foreground">{level}반 수업 수당</span>
+                                  <span className="text-sm font-medium text-foreground">+₩{bonus.toLocaleString()}</span>
+                                </div>
+                              ))}
+                              <div className="border-t border-border pt-2 mt-2">
+                                {Object.entries(LEVEL_BONUS).map(([level, bonus]) => (
+                                  <div key={level} className="flex justify-between items-center text-xs">
+                                    <span className="text-muted-foreground">{level}반 합계</span>
+                                    <span className="font-semibold text-navy">₩{(BASE_SALARY + bonus).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+
+                  {/* Personal info */}
+                  <div className="p-4 rounded-lg bg-card border border-border">
+                    <Collapsible defaultOpen={false}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full">
+                        <h4 className="text-sm font-semibold text-foreground">📋 강사 정보</h4>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="pt-3">
+                          <div className="flex items-center justify-end mb-2">
+                            {editingId !== ins.id && (
+                              <Button size="sm" variant="outline" className="h-6 text-xs gap-1" onClick={() => startEdit(ins)}>
+                                <Edit2 className="w-3 h-3" /> 수정
+                              </Button>
+                            )}
+                          </div>
+                          {editingId === ins.id ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground">직책</Label>
+                                  <select className="w-full h-7 text-xs mt-0.5 rounded-md border border-input bg-background px-2" value={editFields.position} onChange={(e) => setEditFields(f => ({ ...f, position: e.target.value }))}>
+                                    <option value="대표">대표</option>
+                                    <option value="매니저">매니저</option>
+                                    <option value="강사">강사</option>
+                                  </select>
+                                </div>
+                                {editFields.position === '대표' && (
+                                  <div>
+                                    <Label className="text-[10px] text-muted-foreground">시급 (원)</Label>
+                                    <Input type="number" className="h-7 text-xs mt-0.5" value={editFields.lesson_rate} onChange={(e) => setEditFields(f => ({ ...f, lesson_rate: e.target.value }))} />
+                                  </div>
+                                )}
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground">연락처</Label>
+                                  <Input className="h-7 text-xs mt-0.5" value={editFields.phone} onChange={(e) => setEditFields(f => ({ ...f, phone: e.target.value }))} />
+                                </div>
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground">입사일</Label>
+                                  <Input type="date" className="h-7 text-xs mt-0.5" value={editFields.join_date} onChange={(e) => setEditFields(f => ({ ...f, join_date: e.target.value }))} />
+                                </div>
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground">성별</Label>
+                                  <Input className="h-7 text-xs mt-0.5" placeholder="남/여" value={editFields.gender} onChange={(e) => setEditFields(f => ({ ...f, gender: e.target.value }))} />
+                                </div>
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground">나이</Label>
+                                  <Input type="number" className="h-7 text-xs mt-0.5" value={editFields.age} onChange={(e) => setEditFields(f => ({ ...f, age: e.target.value }))} />
+                                </div>
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground">최종학력</Label>
+                                  <Input className="h-7 text-xs mt-0.5" value={editFields.education} onChange={(e) => setEditFields(f => ({ ...f, education: e.target.value }))} />
+                                </div>
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground">비고</Label>
+                                  <Input className="h-7 text-xs mt-0.5" value={editFields.bio_notes} onChange={(e) => setEditFields(f => ({ ...f, bio_notes: e.target.value }))} />
+                                </div>
+                                <div className="col-span-2">
+                                  <Label className="text-[10px] text-muted-foreground">구글 미트 링크 (업무 미팅용)</Label>
+                                  <Input className="h-7 text-xs mt-0.5" placeholder="https://meet.google.com/xxx-xxxx-xxx" value={editFields.meet_link} onChange={(e) => setEditFields(f => ({ ...f, meet_link: e.target.value }))} />
+                                </div>
+                              </div>
+                              <div className="flex gap-2 pt-1">
+                                <Button size="sm" onClick={() => saveEdit(ins.id)} disabled={savingId === ins.id} className="bg-navy text-primary-foreground hover:bg-navy-light h-7 text-xs">
+                                  {savingId === ins.id && <Loader2 className="w-3 h-3 animate-spin mr-1" />}저장
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="h-7 text-xs">취소</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5 text-sm">
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">직책</span><span className="text-xs font-medium">{ins.position || '강사'}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">이메일</span><span className="text-xs font-medium">{ins.email}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">연락처</span><span className="text-xs font-medium">{ins.phone || "—"}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">입사일</span><span className="text-xs font-medium">{ins.join_date || "—"}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">성별</span><span className="text-xs font-medium">{ins.gender || "—"}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">나이</span><span className="text-xs font-medium">{ins.age || "—"}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">최종학력</span><span className="text-xs font-medium">{ins.education || "—"}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">비고</span><span className="text-xs font-medium">{ins.bio_notes || "—"}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">미팅 링크</span><span className="text-xs font-medium truncate max-w-[180px]">{ins.meet_link ? <a href={ins.meet_link} target="_blank" rel="noopener noreferrer" className="text-navy underline">{ins.meet_link}</a> : "—"}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">계정</span><span className={`text-xs font-medium ${ins.user_id ? "text-success" : "text-muted-foreground"}`}>{ins.user_id ? "연결됨" : "미연결"}</span></div>
+                            </div>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                </div>
 
                 <div className="flex items-center justify-between pt-2">
-                  <button
-                    onClick={() => toggleActive(ins)}
-                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {ins.active ? (
-                      <ToggleRight className="w-5 h-5 text-success" />
-                    ) : (
-                      <ToggleLeft className="w-5 h-5 text-muted-foreground" />
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleActive(ins)}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {ins.active ? (
+                        <ToggleRight className="w-5 h-5 text-success" />
+                      ) : (
+                        <ToggleLeft className="w-5 h-5 text-muted-foreground" />
+                      )}
+                      {ins.active ? "활성 상태 (비활성으로 전환)" : "비활성 상태 (활성으로 전환)"}
+                    </button>
+                    {ins.active && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 h-7 text-xs border-destructive/50 text-destructive hover:bg-destructive/10"
+                        onClick={async () => {
+                          if (!window.confirm(`${ins.name} 강사를 퇴사 처리하시겠습니까?\n비활성으로 전환됩니다.`)) return;
+                          const { error } = await supabase.from("instructors").update({ active: false }).eq("id", ins.id);
+                          if (error) {
+                            toast({ title: "퇴사 처리 실패", description: error.message, variant: "destructive" });
+                          } else {
+                            setInstructors(prev => prev.map(i => i.id === ins.id ? { ...i, active: false } : i));
+                            toast({ title: `${ins.name} 강사 퇴사 처리 완료` });
+                          }
+                        }}
+                      >
+                        <UserX className="w-3 h-3" />
+                        퇴사 처리
+                      </Button>
                     )}
-                    {ins.active ? "활성 상태 (비활성으로 전환)" : "비활성 상태 (활성으로 전환)"}
-                  </button>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
