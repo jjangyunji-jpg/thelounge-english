@@ -320,7 +320,7 @@ function SubmissionCard({
           )}
 
           {/* Text area */}
-          {(meta.requiresText || assignment.type === "reading" || assignment.type === "memorizing") && (
+          {(meta.requiresText || assignment.type === "memorizing") && (
             <div className="mt-3">
               <Textarea
                 value={text}
