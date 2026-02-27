@@ -146,7 +146,7 @@ export default function ClassNote() {
           </div>
           {selectedSession && (
             <p className="text-sidebar-foreground/50 text-xs mt-0.5">
-              {formatDate(selectedSession.scheduled_at)} · {instructorDisplayName || selectedSession.instructor_name}
+              {formatDate(selectedSession.scheduled_at)} · {selectedSession.instructor_name}
             </p>
           )}
         </div>
@@ -209,7 +209,7 @@ export default function ClassNote() {
                     <BookOpen className="w-3.5 h-3.5" /> {selectedSession.level}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" /> {instructorDisplayName || selectedSession.instructor_name}
+                    <Clock className="w-3.5 h-3.5" /> {selectedSession.instructor_name}
                   </span>
                   {selectedSession.topic && (
                     <span className="text-gold-dark font-medium">{selectedSession.topic}</span>
