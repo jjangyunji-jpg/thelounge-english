@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, Library } from "lucide-react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, Library, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -83,7 +83,14 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
       </nav>
 
       {/* Footer - logged in user */}
-      <div className="px-4 py-4 border-t border-sidebar-border space-y-3">
+      <div className="px-4 py-4 border-t border-sidebar-border space-y-2">
+        <button
+          onClick={() => navigate("/t/dashboard")}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-gold hover:bg-sidebar-accent/50 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          강사 대시보드로 이동
+        </button>
         {email && (
           <p className="text-sidebar-foreground/70 text-xs truncate" title={email}>
             🔑 {email}
