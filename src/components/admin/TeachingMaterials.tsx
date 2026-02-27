@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff, Loader2, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import NotesEditor from "@/components/classroom/NotesEditor";
 
 interface Material {
   id: string;
@@ -96,6 +96,9 @@ export default function TeachingMaterials() {
     setEditContent(m.content);
   };
 
+  // Dummy handlers for NotesEditor props (auto-correct not needed here)
+  const noopToggle = () => {};
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -124,7 +127,17 @@ export default function TeachingMaterials() {
       {adding && (
         <div className="rounded-xl border border-gold/30 bg-card p-5 space-y-3">
           <Input placeholder="자료 제목" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="text-sm" />
-          <Textarea placeholder="자료 내용 (HTML 가능)" value={newContent} onChange={e => setNewContent(e.target.value)} rows={10} className="text-sm font-mono" />
+          <div className="rounded-lg border border-border overflow-hidden">
+            <NotesEditor
+              content={newContent}
+              onChange={setNewContent}
+              editable={true}
+              placeholder="자료 내용을 입력하세요..."
+              autoCorrectEnabled={false}
+              onAutoCorrectToggle={noopToggle}
+              isAutoCorrecting={false}
+            />
+          </div>
           <div className="flex gap-2 justify-end">
             <Button size="sm" variant="outline" onClick={() => { setAdding(false); setNewTitle(""); setNewContent(""); }}>취소</Button>
             <Button size="sm" onClick={handleAdd} disabled={saving || !newTitle.trim()}>
@@ -146,7 +159,17 @@ export default function TeachingMaterials() {
               {editing === m.id ? (
                 <div className="space-y-3">
                   <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="text-sm" />
-                  <Textarea value={editContent} onChange={e => setEditContent(e.target.value)} rows={10} className="text-sm font-mono" />
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <NotesEditor
+                      content={editContent}
+                      onChange={setEditContent}
+                      editable={true}
+                      placeholder="자료 내용을 입력하세요..."
+                      autoCorrectEnabled={false}
+                      onAutoCorrectToggle={noopToggle}
+                      isAutoCorrecting={false}
+                    />
+                  </div>
                   <div className="flex gap-2 justify-end">
                     <Button size="sm" variant="outline" onClick={() => setEditing(null)}>취소</Button>
                     <Button size="sm" onClick={handleSaveEdit} disabled={saving}>
