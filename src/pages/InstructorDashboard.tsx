@@ -1750,6 +1750,23 @@ export default function InstructorDashboard() {
               </div>
             </div>
 
+            {/* Pay rate info */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2">💰 급여 기준</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="text-center p-2 rounded-lg bg-muted/30">
+                  <p className="text-[10px] text-muted-foreground">기본급</p>
+                  <p className="text-xs font-bold text-foreground">₩{BASE_PAY.toLocaleString()}</p>
+                </div>
+                {Object.entries(LEVEL_RATES).filter(([k]) => ['A2', 'B1', 'C1'].includes(k)).map(([level, rate]) => (
+                  <div key={level} className="text-center p-2 rounded-lg bg-muted/30">
+                    <p className="text-[10px] text-muted-foreground">{getLevelCategory(level)}반 합계</p>
+                    <p className="text-xs font-bold text-foreground">₩{(BASE_PAY + rate).toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Settlement table */}
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="overflow-x-auto">
@@ -1813,23 +1830,6 @@ export default function InstructorDashboard() {
                     </tfoot>
                   )}
                 </table>
-              </div>
-            </div>
-
-            {/* Pay rate info */}
-            <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2">💰 급여 기준</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <div className="text-center p-2 rounded-lg bg-muted/30">
-                  <p className="text-[10px] text-muted-foreground">기본급</p>
-                  <p className="text-xs font-bold text-foreground">₩{BASE_PAY.toLocaleString()}</p>
-                </div>
-                {Object.entries(LEVEL_RATES).filter(([k]) => ['A2', 'B1', 'C1'].includes(k)).map(([level, rate]) => (
-                  <div key={level} className="text-center p-2 rounded-lg bg-muted/30">
-                    <p className="text-[10px] text-muted-foreground">{getLevelCategory(level)}반 합계</p>
-                    <p className="text-xs font-bold text-foreground">₩{(BASE_PAY + rate).toLocaleString()}</p>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
