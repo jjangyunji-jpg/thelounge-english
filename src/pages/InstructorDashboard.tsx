@@ -1018,7 +1018,7 @@ export default function InstructorDashboard() {
       type: 'meeting',
       description: m.notes || '업무 미팅',
       durationHours,
-      payPerHour: BASE_PAY + (instructor?.meeting_rate ?? 20000),
+      payPerHour: BASE_PAY,
     });
   });
   settlementRows.sort((a, b) => a.date.getTime() - b.date.getTime());

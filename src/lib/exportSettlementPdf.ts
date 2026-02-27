@@ -76,7 +76,7 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
     const d = new Date(m.scheduled_at);
     if (d >= start && d <= end && d <= now) {
       const durationHours = m.duration_minutes / 60;
-      const meetingPay = Math.round(durationHours * (BASE_PAY + meetingRate));
+      const meetingPay = Math.round(durationHours * BASE_PAY);
       rows.push({
         date: d,
         type: "미팅",
