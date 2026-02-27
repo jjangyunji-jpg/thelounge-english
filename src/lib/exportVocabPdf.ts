@@ -35,7 +35,7 @@ export async function exportWordsPdf(words: VocabWord[], studentName: string) {
   doc.text(`Vocabulary List - ${studentName}`, 14, 18);
   doc.setFontSize(10);
   doc.setTextColor(120);
-  doc.text(`Generated: ${new Date().toLocaleDateString("ko-KR")}`, 14, 25);
+  doc.text(`Generated: ${new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}`, 14, 25);
 
   // Group by week
   const byWeek: Record<string, VocabWord[]> = {};
