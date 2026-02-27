@@ -430,7 +430,8 @@ export default function StudentDashboard() {
     navigate("/login");
   };
 
-  const visibleHolidays = holidays.filter(h => h.notify_students && !dismissedIds.includes(h.id));
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const visibleHolidays = holidays.filter(h => h.notify_students && !dismissedIds.includes(h.id) && h.date_end >= todayStr);
   const currentPopup = visibleHolidays[0] ?? null;
 
   const dismissPopup = (id: string) => {
@@ -481,9 +482,8 @@ export default function StudentDashboard() {
       setSelectedPeriodId(current?.id || periodsRes.data[periodsRes.data.length - 1].id);
     }
 
-    // 팝업은 미래 휴강만 (date_end >= today)
-    const todayStr = new Date().toISOString().slice(0, 10);
-    setHolidays((holidaysRes.data || []).filter((h: HolidayNotice) => h.date_end >= todayStr));
+    // 캘린더용은 전체 휴강, 팝업 필터링은 visibleHolidays에서 처리
+    setHolidays(holidaysRes.data || []);
 
     if (studentRes.data) {
       let schedules: ScheduleSlot[] = [];
