@@ -14,8 +14,10 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
-  MessageSquareQuote, PenLine,
+  MessageSquareQuote, PenLine, Sparkles,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface NotesEditorProps {
   content: string;
@@ -46,12 +48,14 @@ export default function NotesEditor({
   isAutoCorrecting,
   className,
 }: NotesEditorProps) {
+  const { toast } = useToast();
   const isUpdatingRef = useRef(false);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [slashFilter, setSlashFilter] = useState("");
   const slashRangeRef = useRef<{ from: number; to: number } | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const [aiCorrecting, setAiCorrecting] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -322,6 +326,78 @@ export default function NotesEditor({
     }
   }, [editor]);
 
+  const runAiCorrection = useCallback(async () => {
+    if (!editor || aiCorrecting) return;
+    const { from, to } = editor.state.selection;
+    if (from === to) {
+      toast({ title: "교정할 텍스트를 드래그로 선택하세요", variant: "destructive" });
+      return;
+    }
+    const selectedText = editor.state.doc.textBetween(from, to, " ");
+    if (!selectedText.trim()) return;
+
+    setAiCorrecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-correct", {
+        body: { text: selectedText, mode: "notes_correct" },
+      });
+      if (error) throw error;
+      const errors: { original: string; corrected: string }[] = data?.errors || [];
+      if (errors.length === 0) {
+        toast({ title: "교정할 내용이 없습니다 ✓" });
+        return;
+      }
+
+      // Apply inline corrections using suggestion marks
+      // Work backwards through selection to preserve positions
+      const fullText = editor.state.doc.textBetween(from, to, "\0");
+      let offset = from;
+      let remaining = fullText;
+
+      const tr = editor.state.tr;
+      const deleteMarkType = editor.schema.marks.suggestionDelete;
+      const suggestMarkType = editor.schema.marks.suggestion;
+
+      // Sort errors by position (first occurrence)
+      const sortedErrors = [...errors].sort((a, b) => {
+        const posA = remaining.toLowerCase().indexOf(a.original.toLowerCase());
+        const posB = remaining.toLowerCase().indexOf(b.original.toLowerCase());
+        return posA - posB;
+      });
+
+      let drift = 0; // track inserted characters shifting positions
+      let tempRemaining = fullText;
+      let tempOffset = from;
+
+      for (const err of sortedErrors) {
+        const idx = tempRemaining.toLowerCase().indexOf(err.original.toLowerCase());
+        if (idx === -1) continue;
+
+        const errFrom = tempOffset + idx + drift;
+        const errTo = errFrom + err.original.length;
+
+        // Add strikethrough mark on original
+        tr.addMark(errFrom, errTo, deleteMarkType.create());
+
+        // Insert corrected text after the original with suggestion mark
+        const correctedText = editor.schema.text(err.corrected, [suggestMarkType.create()]);
+        tr.insert(errTo, correctedText);
+
+        drift += err.corrected.length;
+        tempRemaining = tempRemaining.slice(idx + err.original.length);
+        tempOffset = tempOffset + idx + err.original.length;
+      }
+
+      editor.view.dispatch(tr);
+      onChange(editor.getHTML());
+      toast({ title: "AI 교정 완료 ✓" });
+    } catch (e: any) {
+      toast({ title: "AI 교정 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setAiCorrecting(false);
+    }
+  }, [editor, aiCorrecting, onChange, toast]);
+
   const toolbarItems = [
     { type: "bold", icon: Bold, label: "굵게 (Ctrl+B)", isActive: editor?.isActive("bold") },
     { type: "h1", icon: Heading1, label: "제목 1", isActive: editor?.isActive("heading", { level: 1 }) },
@@ -351,6 +427,22 @@ export default function NotesEditor({
               <Icon className="w-3.5 h-3.5" />
             </button>
           ))}
+
+          {/* AI Correction button */}
+          <button
+            title="AI 교정 (텍스트 선택 후 클릭)"
+            onMouseDown={(e) => { e.preventDefault(); runAiCorrection(); }}
+            disabled={aiCorrecting}
+            className={cn(
+              "p-1.5 rounded transition-colors",
+              aiCorrecting
+                ? "text-[hsl(var(--navy))] animate-pulse"
+                : "text-muted-foreground hover:text-[hsl(var(--navy))] hover:bg-muted"
+            )}
+          >
+            {aiCorrecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+          </button>
+
           <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">/ 슬래시 명령</span>
           <button
             onClick={onAutoCorrectToggle}
