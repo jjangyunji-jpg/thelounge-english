@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Eye, EyeOff, Star, MessageSquare } from "lucide-react";
+import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Eye, EyeOff, Star, MessageSquare, Filter } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { exportAllSettlementsPdf } from "@/lib/exportSettlementPdf";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -91,6 +92,8 @@ export default function InstructorManagement() {
   });
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackRecord[]>>({});
   const [feedbackCategories, setFeedbackCategories] = useState<FeedbackCategory[]>([]);
+  const [periodLabels, setPeriodLabels] = useState<string[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
 
   useEffect(() => {
     fetchInstructors();
@@ -120,12 +123,15 @@ export default function InstructorManagement() {
       .order("created_at", { ascending: false });
     if (data) {
       const map: Record<string, FeedbackRecord[]> = {};
+      const labels = new Set<string>();
       for (const fb of data as any[]) {
         const key = fb.instructor_name;
         if (!map[key]) map[key] = [];
         map[key].push(fb as FeedbackRecord);
+        labels.add(fb.period_label);
       }
       setFeedbackMap(map);
+      setPeriodLabels(Array.from(labels).sort().reverse());
     }
   };
 
@@ -550,10 +556,33 @@ export default function InstructorManagement() {
                       <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
                     </CollapsibleTrigger>
                     <CollapsibleContent>
+                      {/* Period filter */}
+                      {(feedbackMap[ins.name] || []).length > 0 && (
+                        <div className="flex items-center gap-2 pt-3 pb-1">
+                          <Filter className="w-3 h-3 text-muted-foreground" />
+                          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                            <SelectTrigger className="h-7 text-xs w-[160px]">
+                              <SelectValue placeholder="기간 선택" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">전체 기간</SelectItem>
+                              {periodLabels.map(label => (
+                                <SelectItem key={label} value={label}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       {(() => {
-                        const feedbacks = feedbackMap[ins.name] || [];
-                        if (feedbacks.length === 0) {
+                        const allFeedbacks = feedbackMap[ins.name] || [];
+                        const feedbacks = selectedPeriod === "all"
+                          ? allFeedbacks
+                          : allFeedbacks.filter(fb => fb.period_label === selectedPeriod);
+                        if (allFeedbacks.length === 0) {
                           return <p className="text-xs text-muted-foreground py-3 text-center">아직 피드백이 없습니다</p>;
+                        }
+                        if (feedbacks.length === 0) {
+                          return <p className="text-xs text-muted-foreground py-3 text-center">해당 기간의 피드백이 없습니다</p>;
                         }
 
                         // Use dynamic categories; fall back to legacy columns
