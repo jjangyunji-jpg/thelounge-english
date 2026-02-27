@@ -5,7 +5,7 @@ import {
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
-  Shield, Paperclip, CheckCircle, ChevronDown,
+  Shield, Paperclip, CheckCircle, ChevronDown, User, Lock,
 } from "lucide-react";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
@@ -1050,7 +1050,13 @@ export default function InstructorDashboard() {
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "profile">("dashboard");
+  const [profileName, setProfileName] = useState("");
+  const [profileNickname, setProfileNickname] = useState("");
+  const [profileNewPw, setProfileNewPw] = useState("");
+  const [profileConfirmPw, setProfileConfirmPw] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profilePwSaving, setProfilePwSaving] = useState(false);
   const [durationOverrides, setDurationOverrides] = useState<Record<string, number>>({});
   const [studentTabPeriodIdx, setStudentTabPeriodIdx] = useState(-1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -1084,6 +1090,15 @@ export default function InstructorDashboard() {
       return;
     }
     setInstructor(ins);
+    setProfileName(ins.name);
+    // Load display_name from user_roles
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("display_name")
+      .eq("user_id", user.id)
+      .eq("role", "instructor")
+      .maybeSingle();
+    setProfileNickname(roleData?.display_name || "");
     await loadData(ins);
   };
 
@@ -1417,6 +1432,7 @@ export default function InstructorDashboard() {
             { id: "dashboard" as const, label: "대시보드", icon: CalendarDays },
             { id: "students" as const, label: "학생 관리", icon: Users },
             { id: "settlement" as const, label: "정산 관리", icon: Banknote },
+            { id: "profile" as const, label: "마이페이지", icon: User },
           ].map((t) => (
             <button
               key={t.id}
@@ -2086,6 +2102,137 @@ export default function InstructorDashboard() {
                   )}
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* ═══ PROFILE TAB ═════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "profile" && instructor && (
+          <div className="max-w-md space-y-6">
+            {/* Name & Nickname */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <User className="w-4 h-4 text-navy" />
+                기본 정보
+              </h3>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">이름</Label>
+                  <Input
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    placeholder="이름을 입력하세요"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">닉네임 (표시 이름)</Label>
+                  <Input
+                    value={profileNickname}
+                    onChange={(e) => setProfileNickname(e.target.value)}
+                    placeholder="닉네임을 입력하세요"
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
+              <Button
+                size="sm"
+                disabled={profileSaving}
+                className="h-8 text-xs bg-navy hover:bg-navy-light"
+                onClick={async () => {
+                  if (!profileName.trim()) {
+                    toast({ title: "이름을 입력해주세요", variant: "destructive" });
+                    return;
+                  }
+                  setProfileSaving(true);
+                  try {
+                    const { error: insErr } = await supabase
+                      .from("instructors")
+                      .update({ name: profileName.trim() })
+                      .eq("id", instructor.id);
+                    if (insErr) throw insErr;
+
+                    const { data: { user: currentUser } } = await supabase.auth.getUser();
+                    if (currentUser) {
+                      await supabase
+                        .from("user_roles")
+                        .update({ display_name: profileNickname.trim() || null })
+                        .eq("user_id", currentUser.id)
+                        .eq("role", "instructor");
+                    }
+
+                    setInstructor({ ...instructor, name: profileName.trim() });
+                    toast({ title: "정보가 저장되었습니다 ✓" });
+                  } catch (e: any) {
+                    toast({ title: "저장 실패", description: e.message, variant: "destructive" });
+                  } finally {
+                    setProfileSaving(false);
+                  }
+                }}
+              >
+                {profileSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "저장"}
+              </Button>
+            </div>
+
+            {/* Password Change */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Lock className="w-4 h-4 text-navy" />
+                비밀번호 변경
+              </h3>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">새 비밀번호</Label>
+                  <Input
+                    type="password"
+                    value={profileNewPw}
+                    onChange={(e) => setProfileNewPw(e.target.value)}
+                    placeholder="6자 이상"
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">비밀번호 확인</Label>
+                  <Input
+                    type="password"
+                    value={profileConfirmPw}
+                    onChange={(e) => setProfileConfirmPw(e.target.value)}
+                    placeholder="비밀번호를 다시 입력하세요"
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
+              <Button
+                size="sm"
+                disabled={profilePwSaving}
+                className="h-8 text-xs bg-navy hover:bg-navy-light"
+                onClick={async () => {
+                  if (profileNewPw.length < 6) {
+                    toast({ title: "비밀번호는 6자 이상이어야 합니다", variant: "destructive" });
+                    return;
+                  }
+                  if (profileNewPw !== profileConfirmPw) {
+                    toast({ title: "비밀번호가 일치하지 않습니다", variant: "destructive" });
+                    return;
+                  }
+                  setProfilePwSaving(true);
+                  try {
+                    const { error } = await supabase.auth.updateUser({ password: profileNewPw });
+                    if (error) throw error;
+                    setProfileNewPw("");
+                    setProfileConfirmPw("");
+                    toast({ title: "비밀번호가 변경되었습니다 ✓" });
+                  } catch (e: any) {
+                    toast({ title: "변경 실패", description: e.message, variant: "destructive" });
+                  } finally {
+                    setProfilePwSaving(false);
+                  }
+                }}
+              >
+                {profilePwSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "비밀번호 변경"}
+              </Button>
             </div>
           </div>
         )}
