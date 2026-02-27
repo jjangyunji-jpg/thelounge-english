@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, FileText, Loader2 } from "lucide-react";
+import { Search, FileText, Loader2, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Material {
@@ -11,6 +11,12 @@ interface Material {
   title: string;
   category: string;
   content: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 interface MaterialPickerModalProps {
@@ -22,6 +28,8 @@ interface MaterialPickerModalProps {
 export default function MaterialPickerModal({ open, onOpenChange, onInsert }: MaterialPickerModalProps) {
   const [search, setSearch] = useState("");
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -29,10 +37,19 @@ export default function MaterialPickerModal({ open, onOpenChange, onInsert }: Ma
     if (!open) return;
     setSearch("");
     setSelectedId(null);
+    loadCategories();
     loadMaterials();
   }, [open]);
 
-  const loadMaterials = async (q?: string) => {
+  const loadCategories = async () => {
+    const { data } = await supabase
+      .from("teaching_material_categories")
+      .select("id, name, slug")
+      .order("sort_order", { ascending: true });
+    setCategories(data ?? []);
+  };
+
+  const loadMaterials = async (q?: string, cat?: string | null) => {
     setLoading(true);
     let query = supabase
       .from("teaching_materials")
@@ -42,6 +59,9 @@ export default function MaterialPickerModal({ open, onOpenChange, onInsert }: Ma
     if (q?.trim()) {
       query = query.ilike("title", `%${q.trim()}%`);
     }
+    if (cat) {
+      query = query.eq("category", cat);
+    }
     const { data } = await query.limit(50);
     setMaterials(data ?? []);
     setLoading(false);
@@ -49,7 +69,16 @@ export default function MaterialPickerModal({ open, onOpenChange, onInsert }: Ma
 
   const handleSearch = (val: string) => {
     setSearch(val);
-    loadMaterials(val);
+    loadMaterials(val, selectedCategory);
+  };
+
+  const handleCategoryFilter = (slug: string | null) => {
+    setSelectedCategory(slug);
+    loadMaterials(search, slug);
+  };
+
+  const getCategoryName = (slug: string) => {
+    return categories.find(c => c.slug === slug)?.name ?? slug;
   };
 
   const selectedMaterial = materials.find(m => m.id === selectedId);
@@ -69,6 +98,34 @@ export default function MaterialPickerModal({ open, onOpenChange, onInsert }: Ma
             수업 자료 삽입
           </DialogTitle>
         </DialogHeader>
+
+        {/* Category filter tabs */}
+        {categories.length > 1 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              onClick={() => handleCategoryFilter(null)}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+                !selectedCategory ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"
+              )}
+            >
+              전체
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => handleCategoryFilter(cat.slug)}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+                  selectedCategory === cat.slug ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <FolderOpen className="w-3 h-3" />
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -103,7 +160,7 @@ export default function MaterialPickerModal({ open, onOpenChange, onInsert }: Ma
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm text-foreground">{m.title}</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                    {m.category === "book_talk" ? "Book Talk" : m.category}
+                    {getCategoryName(m.category)}
                   </span>
                 </div>
                 {selectedId === m.id && m.content && (
