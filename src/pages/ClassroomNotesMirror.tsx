@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText } from "lucide-react";
@@ -12,6 +12,7 @@ export default function ClassroomNotesMirror() {
   const [topic, setTopic] = useState("");
   const [level, setLevel] = useState("");
   const [loading, setLoading] = useState(true);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Initial load
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function ClassroomNotesMirror() {
     load();
   }, [sessionId]);
 
-  // Realtime subscription
+  // Realtime subscription for content
   useEffect(() => {
     if (!sessionId) return;
     const channel = supabase
@@ -58,6 +59,24 @@ export default function ClassroomNotesMirror() {
     return () => { supabase.removeChannel(channel); };
   }, [sessionId]);
 
+  // Realtime scroll sync via Broadcast
+  useEffect(() => {
+    if (!sessionId) return;
+    const channel = supabase
+      .channel(`scroll-sync-${sessionId}`)
+      .on("broadcast", { event: "scroll" }, (payload) => {
+        const ratio = payload?.payload?.ratio;
+        if (typeof ratio === "number" && contentRef.current) {
+          const el = contentRef.current;
+          const maxScroll = el.scrollHeight - el.clientHeight;
+          el.scrollTop = ratio * maxScroll;
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [sessionId]);
+
   if (!sessionId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -74,7 +93,6 @@ export default function ClassroomNotesMirror() {
     );
   }
 
-  // Check if content looks like HTML
   const isHtml = notes.startsWith("<") || notes.includes("<p>") || notes.includes("<table");
 
   return (
@@ -102,8 +120,8 @@ export default function ClassroomNotesMirror() {
         </div>
       </header>
 
-      {/* Notes content */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-8 py-6">
+      {/* Notes content - scrollable with sync */}
+      <main ref={contentRef} className="flex-1 max-w-4xl w-full mx-auto px-8 py-6 overflow-y-auto" style={{ height: "calc(100vh - 56px)" }}>
         {isHtml ? (
           <div
             className="tiptap notes-mirror-content text-base leading-relaxed text-foreground"

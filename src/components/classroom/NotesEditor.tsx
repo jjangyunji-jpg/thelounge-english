@@ -29,6 +29,7 @@ interface NotesEditorProps {
   onAutoCorrectToggle: () => void;
   isAutoCorrecting: boolean;
   className?: string;
+  onScrollRatio?: (ratio: number) => void;
 }
 
 interface SlashMenuItem {
@@ -47,6 +48,7 @@ export default function NotesEditor({
   onAutoCorrectToggle,
   isAutoCorrecting,
   className,
+  onScrollRatio,
 }: NotesEditorProps) {
   const { toast } = useToast();
   const isUpdatingRef = useRef(false);
@@ -465,6 +467,13 @@ export default function NotesEditor({
           "h-[546px] overflow-y-auto relative",
           !editable && "cursor-default opacity-70"
         )}
+        onScroll={(e) => {
+          if (onScrollRatio) {
+            const el = e.currentTarget;
+            const maxScroll = el.scrollHeight - el.clientHeight;
+            if (maxScroll > 0) onScrollRatio(el.scrollTop / maxScroll);
+          }
+        }}
       >
         <EditorContent editor={editor} />
 

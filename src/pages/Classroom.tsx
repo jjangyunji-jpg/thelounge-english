@@ -321,6 +321,24 @@ export default function Classroom() {
     await supabase.from("class_sessions").update({ notes: text.trim() }).eq("id", session.sessionId);
   }, [session.sessionId]);
 
+  // Broadcast scroll position for mirror page
+  const scrollChannelRef = useRef<any>(null);
+  useEffect(() => {
+    if (!session.sessionId) return;
+    const ch = supabase.channel(`scroll-sync-${session.sessionId}`);
+    ch.subscribe();
+    scrollChannelRef.current = ch;
+    return () => { supabase.removeChannel(ch); };
+  }, [session.sessionId]);
+
+  const handleEditorScroll = useCallback((ratio: number) => {
+    scrollChannelRef.current?.send({
+      type: "broadcast",
+      event: "scroll",
+      payload: { ratio },
+    });
+  }, []);
+
   const handleOpenMirror = () => {
     if (!session.sessionId) return;
     window.open(`/t/classroom/notes?sessionId=${session.sessionId}`, "_blank", "noopener");
@@ -791,6 +809,7 @@ export default function Classroom() {
                   autoCorrectEnabled={autoCorrectEnabled}
                   onAutoCorrectToggle={() => setAutoCorrectEnabled(v => !v)}
                   isAutoCorrecting={isAutoCorrecting}
+                  onScrollRatio={handleEditorScroll}
                 />
                 {classState === "active" && (
                   <div className="px-4 py-2.5 border-t border-border bg-muted/20 flex items-center gap-3">
