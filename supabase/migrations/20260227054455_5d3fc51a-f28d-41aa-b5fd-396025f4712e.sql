@@ -1,0 +1,1 @@
+ALTER TABLE public.business_meetings ADD COLUMN meet_link text;

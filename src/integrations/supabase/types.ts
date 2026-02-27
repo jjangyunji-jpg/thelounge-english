@@ -56,6 +56,7 @@ export type Database = {
           duration_minutes: number
           id: string
           instructor_id: string
+          meet_link: string | null
           notes: string | null
           scheduled_at: string
         }
@@ -64,6 +65,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           instructor_id: string
+          meet_link?: string | null
           notes?: string | null
           scheduled_at: string
         }
@@ -72,6 +74,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           instructor_id?: string
+          meet_link?: string | null
           notes?: string | null
           scheduled_at?: string
         }
