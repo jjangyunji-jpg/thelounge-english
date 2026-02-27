@@ -1065,7 +1065,7 @@ export default function StudentDashboard() {
                 </div>
                 <div>
                   <p className="text-xs font-bold leading-none text-foreground">보강 신청하기</p>
-                  <p className="text-[10px] mt-0.5 text-muted-foreground">수업 시작 48시간 전에만 가능</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">수업 48시간 전까지 가능</p>
                 </div>
               </a>
               {/* 수업료 결제하기 */}
