@@ -128,6 +128,8 @@ export async function exportAllSettlementsPdf(
       continue;
     }
 
+    const fmt = (n: number) => n.toLocaleString("en-US");
+
     autoTable(doc, {
       startY: 42,
       head: [["일자", "구분", "업무내용", "시간", "급여", "누적 금액"]],
@@ -136,10 +138,10 @@ export async function exportAllSettlementsPdf(
         r.type,
         r.description,
         `${r.durationHours}시간`,
-        `₩${r.pay.toLocaleString()}`,
-        `₩${r.cumulative.toLocaleString()}`,
+        `${fmt(r.pay)}원`,
+        `${fmt(r.cumulative)}원`,
       ]),
-      foot: [["합계", "", "", "", `₩${totalPay.toLocaleString()}`, ""]],
+      foot: [["합계", "", "", "", `${fmt(totalPay)}원`, ""]],
       styles: { fontSize: 8, cellPadding: 2, font: "SpoqaHanSansNeo" },
       headStyles: { fillColor: [30, 58, 95], textColor: 255, fontStyle: "bold", font: "SpoqaHanSansNeo" },
       footStyles: { fillColor: [240, 240, 240], textColor: [30, 30, 30], fontStyle: "bold", font: "SpoqaHanSansNeo" },
