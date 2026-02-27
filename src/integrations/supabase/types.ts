@@ -49,6 +49,56 @@ export type Database = {
           },
         ]
       }
+      class_feedback: {
+        Row: {
+          comment: string | null
+          communication: number
+          created_at: string
+          id: string
+          instructor_name: string
+          lesson_preparation: number
+          period_id: string | null
+          period_label: string
+          satisfaction: number
+          student_name: string
+          teaching_quality: number
+        }
+        Insert: {
+          comment?: string | null
+          communication: number
+          created_at?: string
+          id?: string
+          instructor_name: string
+          lesson_preparation: number
+          period_id?: string | null
+          period_label: string
+          satisfaction: number
+          student_name: string
+          teaching_quality: number
+        }
+        Update: {
+          comment?: string | null
+          communication?: number
+          created_at?: string
+          id?: string
+          instructor_name?: string
+          lesson_preparation?: number
+          period_id?: string | null
+          period_label?: string
+          satisfaction?: number
+          student_name?: string
+          teaching_quality?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_feedback_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_sessions: {
         Row: {
           created_at: string
