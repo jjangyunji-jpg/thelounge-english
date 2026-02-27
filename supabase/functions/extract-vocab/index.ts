@@ -104,14 +104,22 @@ If no clear English-Korean pairs are found, return { "words": [] }.`;
       });
     }
 
-    // 해당 주차 기존 단어 전체 삭제 후 새 단어로 대체
-    const { error: deleteError } = await supabase
-      .from("vocabulary_words")
-      .delete()
-      .eq("student_name", studentName)
-      .eq("week_label", weekLabel);
-
-    if (deleteError) throw deleteError;
+    // 해당 세션의 기존 단어 삭제 후 새 단어로 대체 (sessionId가 있으면 세션 기준, 없으면 주차 기준)
+    if (sessionId) {
+      const { error: deleteError } = await supabase
+        .from("vocabulary_words")
+        .delete()
+        .eq("student_name", studentName)
+        .eq("session_id", sessionId);
+      if (deleteError) throw deleteError;
+    } else {
+      const { error: deleteError } = await supabase
+        .from("vocabulary_words")
+        .delete()
+        .eq("student_name", studentName)
+        .eq("week_label", weekLabel);
+      if (deleteError) throw deleteError;
+    }
 
     const toInsert = words
       .filter((w) => w.english_word && w.korean_meaning)
