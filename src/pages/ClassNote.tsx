@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, FileText, CheckSquare, Clock, BookOpen, ChevronDown,
+  ArrowLeft, FileText, Clock, BookOpen, ChevronDown,
   Calendar, Loader2,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
-
+import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 
 interface ClassSession {
   id: string;
@@ -24,11 +24,7 @@ interface ClassSession {
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   return d.toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-    timeZone: "Asia/Seoul",
+    year: "numeric", month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul",
   });
 }
 
@@ -42,7 +38,6 @@ export default function ClassNote() {
   const [searchParams] = useSearchParams();
   const urlStudent = searchParams.get("name") || "";
 
-  // 인증 기반 학생 식별 (URL 파라미터 폴백)
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -87,17 +82,14 @@ export default function ClassNote() {
     load();
   }, [student]);
 
-  // 주차 계산: scheduled_at 기준 n월 n주차
-  const sessionWeekLabel = (s: typeof sessions[number]) => {
+  const sessionWeekLabel = (s: ClassSession) => {
     const d = new Date(s.scheduled_at);
     const month = d.getMonth() + 1;
     const weekOfMonth = Math.ceil(d.getDate() / 7);
     return `${month}월 ${weekOfMonth}주차`;
   };
 
-  const pastSessions = sessions.filter(
-    (s) => new Date(s.scheduled_at) <= new Date()
-  );
+  const pastSessions = sessions.filter((s) => new Date(s.scheduled_at) <= new Date());
   const displaySessions = pastSessions.length > 0 ? pastSessions : sessions;
 
   return (
@@ -168,42 +160,39 @@ export default function ClassNote() {
         )}
       </header>
 
-      {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <div className="flex-1 flex gap-5 px-4 py-5 max-w-5xl w-full mx-auto">
+      {/* ── MAIN CONTENT (Classroom student layout) ──────────────────────── */}
+      {/* Loading / Empty states */}
+      {!student && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-2">
+            <FileText className="w-10 h-10 text-muted-foreground/30 mx-auto" />
+            <p className="text-sm font-semibold text-muted-foreground">학생을 선택해주세요</p>
+          </div>
+        </div>
+      )}
 
-        {/* ── LEFT COLUMN: 수업 노트 ──────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col gap-5 min-w-0">
+      {student && loadingSessions && (
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
 
-          {/* No student */}
-          {!student && (
-            <div className="rounded-xl border border-border bg-card shadow-sm flex items-center justify-center py-16">
-              <div className="text-center space-y-2">
-                <FileText className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-                <p className="text-sm font-semibold text-muted-foreground">학생을 선택해주세요</p>
-                <p className="text-xs text-muted-foreground/60">대시보드에서 수업 노트 버튼을 눌러주세요</p>
-              </div>
-            </div>
-          )}
+      {student && !loadingSessions && sessions.length === 0 && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-2">
+            <Calendar className="w-10 h-10 text-muted-foreground/30 mx-auto" />
+            <p className="text-sm font-semibold text-muted-foreground">수업 이력이 없습니다</p>
+          </div>
+        </div>
+      )}
 
-          {/* Loading */}
-          {student && loadingSessions && (
-            <div className="rounded-xl border border-border bg-card shadow-sm flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-          )}
+      {/* Main two-column layout matching Classroom student view */}
+      {student && !loadingSessions && selectedSession && (
+        <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto">
 
-          {/* No sessions */}
-          {student && !loadingSessions && sessions.length === 0 && (
-            <div className="rounded-xl border border-border bg-card shadow-sm flex items-center justify-center py-16">
-              <div className="text-center space-y-2">
-                <Calendar className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-                <p className="text-sm font-semibold text-muted-foreground">수업 이력이 없습니다</p>
-              </div>
-            </div>
-          )}
-
-          {/* Notes panel */}
-          {student && !loadingSessions && selectedSession && (
+          {/* ── LEFT COLUMN: Notes + Homework ────────────────────────────── */}
+          <div className="flex-1 flex flex-col gap-5 min-w-0">
+            {/* 수업 노트 (읽기 전용) */}
             <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
               <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
                 <FileText className="w-4 h-4 text-gold" />
@@ -232,13 +221,11 @@ export default function ClassNote() {
                   const raw = selectedSession.notes || "";
                   if (!raw) return "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>";
                   let html = raw;
-                  // If notes look like escaped HTML (starts with &lt;), unescape
                   if (html.includes("&lt;") || html.includes("&amp;")) {
                     const tmp = document.createElement("textarea");
                     tmp.innerHTML = html;
                     html = tmp.value;
                   }
-                  // Auto-link bare URLs that are not already inside an <a> tag
                   html = html.replace(
                     /(?<![="'>])(https?:\/\/[^\s<>"']+)/g,
                     '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
@@ -247,63 +234,21 @@ export default function ClassNote() {
                 })() }}
               />
             </div>
-          )}
 
-          {/* Homework panel */}
-          {student && !loadingSessions && selectedSession && (
-            <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
-                <CheckSquare className="w-4 h-4 text-gold" />
-                <span className="font-semibold text-sm text-foreground">이 수업의 숙제</span>
-              </div>
-              <div className="p-4">
-                <StudentHomeworkPanel
-                  studentName={student}
-                  sessionId={selectedSession.id}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── RIGHT COLUMN: 수업 이력 목록 ────────────────────────────────── */}
-        {student && !loadingSessions && displaySessions.length > 0 && (
-          <div className="w-52 flex-shrink-0 hidden lg:flex flex-col gap-3">
-            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-              <div className="px-3 py-2.5 border-b border-border bg-muted/30 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-gold" />
-                <span className="text-xs font-semibold text-foreground">수업 이력</span>
-              </div>
-              <div className="divide-y divide-border/50 max-h-[calc(100vh-200px)] overflow-y-auto">
-                {displaySessions.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedSession(s)}
-                    className={cn(
-                      "w-full text-left px-3 py-2.5 hover:bg-muted/40 transition-colors",
-                      selectedSession?.id === s.id && "bg-gold/8 border-l-2 border-l-gold"
-                    )}
-                  >
-                    <p className={cn(
-                      "text-[11px] font-semibold",
-                      selectedSession?.id === s.id ? "text-gold-dark" : "text-foreground"
-                    )}>
-                      <span className="text-gold font-bold">{sessionWeekLabel(s)}</span>
-                      {" "}{formatDate(s.scheduled_at).slice(0, -5)}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                      {s.topic || "수업"} · {formatTime(s.scheduled_at)}
-                    </p>
-                    {s.notes && (
-                      <p className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">{s.notes.replace(/<[^>]*>/g, '').slice(0, 30)}…</p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* 숙제 */}
+            <StudentHomeworkPanel studentName={student} sessionId={selectedSession.id} />
           </div>
-        )}
-      </div>
+
+          {/* ── RIGHT COLUMN: Vocabulary + Test ──────────────────────────── */}
+          <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
+            <StudentVocabPanel
+              studentName={student}
+              scheduledAt={new Date(selectedSession.scheduled_at)}
+              sessionId={selectedSession.id}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Click-outside overlay for session selector */}
       {selectorOpen && (
