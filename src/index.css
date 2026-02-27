@@ -191,6 +191,7 @@
 }
 .tiptap p {
   @apply mb-1;
+  min-height: 1em;
 }
 .tiptap strong {
   @apply font-bold;
