@@ -10,7 +10,18 @@ interface VocabWord {
 }
 
 function fmtWeek(label: string) {
-  return label.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y} Week ${parseInt(w)}`);
+  const m = label.match(/(\d{4})-W(\d{2})/);
+  if (!m) return label;
+  const year = parseInt(m[1]);
+  const week = parseInt(m[2]);
+  const jan4 = new Date(year, 0, 4);
+  const dayOfWeek = jan4.getDay() || 7;
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
+  const month = monday.getMonth() + 1;
+  const firstOfMonth = new Date(monday.getFullYear(), monday.getMonth(), 1);
+  const weekOfMonth = Math.ceil((monday.getDate() + firstOfMonth.getDay()) / 7);
+  return `${month}월 ${weekOfMonth}주차`;
 }
 
 async function registerKoreanFont(doc: jsPDF) {
