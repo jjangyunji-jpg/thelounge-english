@@ -39,6 +39,7 @@ interface Submission {
   file_url: string | null;
   instructor_note: string | null;
   reviewed_at: string | null;
+  ai_correction: any | null;
 }
 
 function useAudioRecorder() {

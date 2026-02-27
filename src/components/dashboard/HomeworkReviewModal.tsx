@@ -137,6 +137,7 @@ export default function HomeworkReviewModal({
           status: "reviewed",
           instructor_note: instructorNote.trim() || null,
           reviewed_at: new Date().toISOString(),
+          ai_correction: aiResult ? JSON.parse(JSON.stringify(aiResult)) : null,
         })
         .eq("id", submissionId);
       if (error) throw error;
