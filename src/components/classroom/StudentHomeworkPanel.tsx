@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Mic, Square, Play, Pause, Send, CheckCircle2, RotateCcw,
   PenLine, BookOpen, Brain, ChevronDown, ChevronUp, Loader2,
-  Clock, MessageSquare, CheckSquare, ExternalLink, Link2,
+  Clock, MessageSquare, CheckSquare, ExternalLink, Link2, Paperclip, FileUp, X as XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
 
 interface Assignment {
   id: string;
@@ -26,6 +26,7 @@ interface Submission {
   status: string;
   text_content: string | null;
   audio_url: string | null;
+  file_url: string | null;
   submitted_at: string;
   instructor_note: string | null;
 }
@@ -36,12 +37,14 @@ const HW_META: Record<HwType, {
   color: string;
   requiresText: boolean;
   requiresAudio: boolean;
+  requiresFile?: boolean;
   hint: string;
 }> = {
-  writing:    { label: "쓰기",   icon: PenLine,   color: "text-[hsl(var(--navy))]",      requiresText: true,  requiresAudio: false, hint: "텍스트 작성 필수" },
-  reading:    { label: "읽기",   icon: BookOpen,  color: "text-[hsl(var(--gold-dark))]", requiresText: false, requiresAudio: false, hint: "녹음 선택" },
-  speaking:   { label: "말하기", icon: Mic,       color: "text-[hsl(var(--success))]",   requiresText: false, requiresAudio: true,  hint: "녹음 필수" },
-  memorizing: { label: "외우기", icon: Brain,     color: "text-purple-500",              requiresText: false, requiresAudio: false, hint: "녹음 선택" },
+  writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]",      requiresText: true,  requiresAudio: false, hint: "텍스트 작성 필수" },
+  reading:    { label: "읽기",       icon: BookOpen,   color: "text-[hsl(var(--gold-dark))]", requiresText: false, requiresAudio: false, hint: "녹음 선택" },
+  speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]",   requiresText: false, requiresAudio: true,  hint: "녹음 필수" },
+  memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500",              requiresText: false, requiresAudio: false, hint: "녹음 선택" },
+  file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500",                requiresText: false, requiresAudio: false, requiresFile: true, hint: "파일 첨부 필수" },
 };
 
 // ── URL detection helpers ──────────────────────────────────────────────────────
@@ -164,20 +167,23 @@ function SubmissionCard({
   const [descOpen, setDescOpen] = useState(true);
   const [text, setText] = useState(submission?.text_content ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [fileObj, setFileObj] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const meta = HW_META[assignment.type];
   const Icon = meta.icon;
   const recorder = useAudioRecorder();
 
   const canSubmit =
     (!meta.requiresText || text.trim().length > 0) &&
-    (!meta.requiresAudio || recorder.audioBlob !== null);
+    (!meta.requiresAudio || recorder.audioBlob !== null) &&
+    (!meta.requiresFile || fileObj !== null);
 
   const handleSubmit = async () => {
     setSubmitting(true);
     let audioStorageUrl: string | null = null;
+    let fileStorageUrl: string | null = null;
 
     try {
-      // 1. 오디오 업로드
       if (recorder.audioBlob) {
         const path = `${studentName}/${assignment.id}/${Date.now()}.webm`;
         const { error: upErr } = await supabase.storage
@@ -188,7 +194,17 @@ function SubmissionCard({
         audioStorageUrl = pub.publicUrl;
       }
 
-      // 2. 기존 제출물이 있으면 업데이트, 없으면 insert
+      if (fileObj) {
+        const ext = fileObj.name.split(".").pop() || "file";
+        const path = `${studentName}/${assignment.id}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("homework-files")
+          .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from("homework-files").getPublicUrl(path);
+        fileStorageUrl = pub.publicUrl;
+      }
+
       let resultSub: Submission | null = null;
       if (submission) {
         const { data, error } = await supabase
@@ -196,6 +212,7 @@ function SubmissionCard({
           .update({
             text_content: text.trim() || null,
             audio_url: audioStorageUrl ?? submission.audio_url,
+            file_url: fileStorageUrl ?? submission.file_url,
             status: "submitted",
             submitted_at: new Date().toISOString(),
           })
@@ -212,6 +229,7 @@ function SubmissionCard({
             student_name: studentName,
             text_content: text.trim() || null,
             audio_url: audioStorageUrl,
+            file_url: fileStorageUrl,
             status: "submitted",
           })
           .select()
@@ -394,6 +412,43 @@ function SubmissionCard({
                     다시 녹음
                   </Button>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* File upload */}
+          {meta.requiresFile && (
+            <div className="mt-3">
+              <p className="text-[10px] text-muted-foreground mb-2">파일 첨부 (필수)</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={e => { if (e.target.files?.[0]) setFileObj(e.target.files[0]); }}
+              />
+              {!fileObj ? (
+                <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}
+                  className="gap-2 h-8 text-xs border-dashed">
+                  <FileUp className="w-3.5 h-3.5" /> 파일 선택
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 border border-border">
+                  <Paperclip className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                  <span className="text-xs text-foreground flex-1 truncate">{fileObj.name}</span>
+                  <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                    {(fileObj.size / 1024).toFixed(0)}KB
+                  </span>
+                  <Button size="sm" variant="ghost" onClick={() => { setFileObj(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
+                    <XIcon className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+              {submission?.file_url && (
+                <a href={submission.file_url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 mt-2 text-xs text-blue-500 hover:underline">
+                  <Paperclip className="w-3 h-3" /> 이전 제출 파일 보기
+                </a>
               )}
             </div>
           )}

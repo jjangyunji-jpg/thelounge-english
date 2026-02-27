@@ -297,6 +297,7 @@ export type Database = {
         Row: {
           assignment_id: string | null
           audio_url: string | null
+          file_url: string | null
           id: string
           instructor_note: string | null
           reviewed_at: string | null
@@ -308,6 +309,7 @@ export type Database = {
         Insert: {
           assignment_id?: string | null
           audio_url?: string | null
+          file_url?: string | null
           id?: string
           instructor_note?: string | null
           reviewed_at?: string | null
@@ -319,6 +321,7 @@ export type Database = {
         Update: {
           assignment_id?: string | null
           audio_url?: string | null
+          file_url?: string | null
           id?: string
           instructor_note?: string | null
           reviewed_at?: string | null
