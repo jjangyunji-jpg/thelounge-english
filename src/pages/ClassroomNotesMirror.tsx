@@ -34,11 +34,33 @@ export default function ClassroomNotesMirror() {
     load();
   }, [sessionId]);
 
-  // Realtime subscription for content
+  // Realtime broadcast for live content + scroll (instant, no DB delay)
   useEffect(() => {
     if (!sessionId) return;
     const channel = supabase
-      .channel(`notes-mirror-${sessionId}`)
+      .channel(`mirror-sync-${sessionId}`)
+      .on("broadcast", { event: "content" }, (payload) => {
+        const html = payload?.payload?.html;
+        if (typeof html === "string") setNotes(html);
+      })
+      .on("broadcast", { event: "scroll" }, (payload) => {
+        const ratio = payload?.payload?.ratio;
+        if (typeof ratio === "number" && contentRef.current) {
+          const el = contentRef.current;
+          const maxScroll = el.scrollHeight - el.clientHeight;
+          el.scrollTop = ratio * maxScroll;
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [sessionId]);
+
+  // Fallback: DB realtime for topic changes or if broadcast missed
+  useEffect(() => {
+    if (!sessionId) return;
+    const channel = supabase
+      .channel(`notes-mirror-db-${sessionId}`)
       .on(
         "postgres_changes",
         {
@@ -54,24 +76,6 @@ export default function ClassroomNotesMirror() {
           if (typeof newTopic === "string") setTopic(newTopic);
         }
       )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [sessionId]);
-
-  // Realtime scroll sync via Broadcast
-  useEffect(() => {
-    if (!sessionId) return;
-    const channel = supabase
-      .channel(`scroll-sync-${sessionId}`)
-      .on("broadcast", { event: "scroll" }, (payload) => {
-        const ratio = payload?.payload?.ratio;
-        if (typeof ratio === "number" && contentRef.current) {
-          const el = contentRef.current;
-          const maxScroll = el.scrollHeight - el.clientHeight;
-          el.scrollTop = ratio * maxScroll;
-        }
-      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
