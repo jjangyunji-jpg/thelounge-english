@@ -1735,13 +1735,13 @@ export default function InstructorDashboard() {
                 </div>
 
                 {/* Unchecked homework */}
-                {uncheckedHw.length > 0 && (
-                  <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+                <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
                     <h3 className="text-sm font-semibold text-destructive mb-3 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" />
                       미확인 숙제
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">{uncheckedHw.length}</span>
                     </h3>
+                    {uncheckedHw.length > 0 ? (
                     <div className="space-y-1.5">
                       {uncheckedHw.map((a) => {
                         const sub = submissions.find(s => s.assignment_id === a.id && s.status === "submitted");
@@ -1792,8 +1792,10 @@ export default function InstructorDashboard() {
                         );
                       })}
                     </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">미확인 숙제가 없습니다 ✓</p>
+                    )}
                   </div>
-                )}
 
                 {/* Checked homework */}
                 {checkedHw.length > 0 && (
