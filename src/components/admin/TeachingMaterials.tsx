@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff, Loader2, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff, Loader2, BookOpen, FolderPlus, FolderOpen, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotesEditor from "@/components/classroom/NotesEditor";
 
@@ -18,15 +17,25 @@ interface Material {
   created_at: string;
 }
 
-const CATEGORIES = [
-  { value: "book_talk", label: "Book Talk" },
-];
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+}
 
 export default function TeachingMaterials() {
   const { toast } = useToast();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState("book_talk");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [category, setCategory] = useState("");
+
+  // Category management
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
 
   // Edit state
   const [editing, setEditing] = useState<string | null>(null);
@@ -39,7 +48,21 @@ export default function TeachingMaterials() {
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
 
+  const fetchCategories = useCallback(async () => {
+    const { data } = await supabase
+      .from("teaching_material_categories")
+      .select("*")
+      .order("sort_order", { ascending: true });
+    const cats = (data as Category[]) || [];
+    setCategories(cats);
+    // Auto-select first category if none selected
+    if (cats.length > 0 && !category) {
+      setCategory(cats[0].slug);
+    }
+  }, []);
+
   const fetchMaterials = useCallback(async () => {
+    if (!category) return;
     setLoading(true);
     const { data } = await supabase
       .from("teaching_materials")
@@ -50,8 +73,44 @@ export default function TeachingMaterials() {
     setLoading(false);
   }, [category]);
 
+  useEffect(() => { fetchCategories(); }, [fetchCategories]);
   useEffect(() => { fetchMaterials(); }, [fetchMaterials]);
 
+  // ── Category CRUD ──
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    const slug = name.toLowerCase().replace(/[^a-z0-9가-힣]+/g, "_").replace(/^_|_$/g, "") || `cat_${Date.now()}`;
+    const maxOrder = categories.length > 0 ? Math.max(...categories.map(c => c.sort_order)) + 1 : 0;
+    const { error } = await supabase.from("teaching_material_categories").insert({ name, slug, sort_order: maxOrder });
+    if (error) { toast({ title: "추가 실패", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "폴더가 추가되었습니다 ✓" });
+    setNewCategoryName("");
+    setAddingCategory(false);
+    await fetchCategories();
+    setCategory(slug);
+  };
+
+  const handleRenameCategory = async (cat: Category) => {
+    const name = editCategoryName.trim();
+    if (!name) return;
+    const { error } = await supabase.from("teaching_material_categories").update({ name }).eq("id", cat.id);
+    if (error) { toast({ title: "수정 실패", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "이름이 변경되었습니다 ✓" });
+    setEditingCategoryId(null);
+    fetchCategories();
+  };
+
+  const handleDeleteCategory = async (cat: Category) => {
+    if (!confirm(`"${cat.name}" 폴더와 포함된 모든 자료를 삭제하시겠습니까?`)) return;
+    await supabase.from("teaching_materials").delete().eq("category", cat.slug);
+    await supabase.from("teaching_material_categories").delete().eq("id", cat.id);
+    toast({ title: "폴더가 삭제되었습니다" });
+    if (category === cat.slug) setCategory("");
+    fetchCategories();
+  };
+
+  // ── Material CRUD ──
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
     setSaving(true);
@@ -96,8 +155,9 @@ export default function TeachingMaterials() {
     setEditContent(m.content);
   };
 
-  // Dummy handlers for NotesEditor props (auto-correct not needed here)
   const noopToggle = () => {};
+
+  const selectedCat = categories.find(c => c.slug === category);
 
   return (
     <div className="space-y-6">
@@ -106,106 +166,167 @@ export default function TeachingMaterials() {
           <h2 className="text-xl font-bold text-foreground">수업 자료 관리</h2>
           <p className="text-sm text-muted-foreground mt-1">강사가 수업 노트에 삽입할 수 있는 자료를 관리합니다</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-40 h-9 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map(c => (
-                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button size="sm" onClick={() => setAdding(true)} className="gap-1.5 bg-navy hover:bg-navy-light text-primary-foreground">
-            <Plus className="w-4 h-4" /> 자료 추가
-          </Button>
-        </div>
       </div>
 
-      {/* Add form */}
-      {adding && (
-        <div className="rounded-xl border border-gold/30 bg-card p-5 space-y-3">
-          <Input placeholder="자료 제목" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="text-sm" />
-          <div className="rounded-lg border border-border overflow-hidden">
-            <NotesEditor
-              content={newContent}
-              onChange={setNewContent}
-              editable={true}
-              placeholder="자료 내용을 입력하세요..."
-              autoCorrectEnabled={false}
-              onAutoCorrectToggle={noopToggle}
-              isAutoCorrecting={false}
-            />
+      {/* ── Category tabs ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {categories.map(cat => (
+          <div key={cat.id} className="group flex items-center">
+            {editingCategoryId === cat.id ? (
+              <div className="flex items-center gap-1">
+                <Input
+                  value={editCategoryName}
+                  onChange={e => setEditCategoryName(e.target.value)}
+                  className="h-8 w-32 text-sm"
+                  autoFocus
+                  onKeyDown={e => { if (e.key === "Enter") handleRenameCategory(cat); if (e.key === "Escape") setEditingCategoryId(null); }}
+                />
+                <button onClick={() => handleRenameCategory(cat)} className="p-1 rounded hover:bg-muted"><Check className="w-3.5 h-3.5 text-success" /></button>
+                <button onClick={() => setEditingCategoryId(null)} className="p-1 rounded hover:bg-muted"><X className="w-3.5 h-3.5 text-muted-foreground" /></button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setCategory(cat.slug)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                  category === cat.slug
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <FolderOpen className="w-3.5 h-3.5" />
+                {cat.name}
+                {category === cat.slug && (
+                  <span className="flex items-center gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={e => { e.stopPropagation(); setEditingCategoryId(cat.id); setEditCategoryName(cat.name); }} className="p-0.5 rounded hover:bg-primary-foreground/20" title="이름 변경">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); handleDeleteCategory(cat); }} className="p-0.5 rounded hover:bg-primary-foreground/20" title="삭제">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+              </button>
+            )}
           </div>
-          <div className="flex gap-2 justify-end">
-            <Button size="sm" variant="outline" onClick={() => { setAdding(false); setNewTitle(""); setNewContent(""); }}>취소</Button>
-            <Button size="sm" onClick={handleAdd} disabled={saving || !newTitle.trim()}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "추가"}
+        ))}
+
+        {addingCategory ? (
+          <div className="flex items-center gap-1">
+            <Input
+              value={newCategoryName}
+              onChange={e => setNewCategoryName(e.target.value)}
+              placeholder="폴더 이름"
+              className="h-8 w-32 text-sm"
+              autoFocus
+              onKeyDown={e => { if (e.key === "Enter") handleAddCategory(); if (e.key === "Escape") { setAddingCategory(false); setNewCategoryName(""); } }}
+            />
+            <button onClick={handleAddCategory} className="p-1 rounded hover:bg-muted"><Check className="w-3.5 h-3.5 text-success" /></button>
+            <button onClick={() => { setAddingCategory(false); setNewCategoryName(""); }} className="p-1 rounded hover:bg-muted"><X className="w-3.5 h-3.5 text-muted-foreground" /></button>
+          </div>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setAddingCategory(true)} className="h-8 gap-1 text-xs">
+            <FolderPlus className="w-3.5 h-3.5" /> 폴더 추가
+          </Button>
+        )}
+      </div>
+
+      {/* ── Materials for selected category ── */}
+      {!category ? (
+        <div className="py-12 text-center text-muted-foreground text-sm">폴더를 선택하세요</div>
+      ) : (
+        <>
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setAdding(true)} className="gap-1.5 bg-navy hover:bg-navy-light text-primary-foreground">
+              <Plus className="w-4 h-4" /> 자료 추가
             </Button>
           </div>
-        </div>
-      )}
 
-      {/* Materials list */}
-      {loading ? (
-        <div className="py-12 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>
-      ) : materials.length === 0 ? (
-        <div className="py-12 text-center text-muted-foreground text-sm">등록된 자료가 없습니다</div>
-      ) : (
-        <div className="space-y-2">
-          {materials.map(m => (
-            <div key={m.id} className={cn("rounded-lg border bg-card p-4", !m.is_active && "opacity-50")}>
-              {editing === m.id ? (
-                <div className="space-y-3">
-                  <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="text-sm" />
-                  <div className="rounded-lg border border-border overflow-hidden">
-                    <NotesEditor
-                      content={editContent}
-                      onChange={setEditContent}
-                      editable={true}
-                      placeholder="자료 내용을 입력하세요..."
-                      autoCorrectEnabled={false}
-                      onAutoCorrectToggle={noopToggle}
-                      isAutoCorrecting={false}
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button size="sm" variant="outline" onClick={() => setEditing(null)}>취소</Button>
-                    <Button size="sm" onClick={handleSaveEdit} disabled={saving}>
-                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "저장"}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-start gap-3">
-                  <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-gold flex-shrink-0" />
-                      <span className="font-medium text-sm text-foreground">{m.title}</span>
-                      {!m.is_active && <span className="text-xs text-muted-foreground">(비활성)</span>}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {m.content ? m.content.replace(/<[^>]*>/g, "").slice(0, 120) + "..." : "내용 없음"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => handleToggleActive(m.id, m.is_active)} className="p-1.5 rounded hover:bg-muted" title={m.is_active ? "비활성화" : "활성화"}>
-                      {m.is_active ? <Eye className="w-3.5 h-3.5 text-success" /> : <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
-                    </button>
-                    <button onClick={() => startEdit(m)} className="p-1.5 rounded hover:bg-muted" title="편집">
-                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                    </button>
-                    <button onClick={() => handleDelete(m.id)} className="p-1.5 rounded hover:bg-muted" title="삭제">
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </button>
-                  </div>
-                </div>
-              )}
+          {/* Add form */}
+          {adding && (
+            <div className="rounded-xl border border-gold/30 bg-card p-5 space-y-3">
+              <Input placeholder="자료 제목" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="text-sm" />
+              <div className="rounded-lg border border-border overflow-hidden">
+                <NotesEditor
+                  content={newContent}
+                  onChange={setNewContent}
+                  editable={true}
+                  placeholder="자료 내용을 입력하세요..."
+                  autoCorrectEnabled={false}
+                  onAutoCorrectToggle={noopToggle}
+                  isAutoCorrecting={false}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button size="sm" variant="outline" onClick={() => { setAdding(false); setNewTitle(""); setNewContent(""); }}>취소</Button>
+                <Button size="sm" onClick={handleAdd} disabled={saving || !newTitle.trim()}>
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "추가"}
+                </Button>
+              </div>
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* Materials list */}
+          {loading ? (
+            <div className="py-12 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>
+          ) : materials.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground text-sm">등록된 자료가 없습니다</div>
+          ) : (
+            <div className="space-y-2">
+              {materials.map(m => (
+                <div key={m.id} className={cn("rounded-lg border bg-card p-4", !m.is_active && "opacity-50")}>
+                  {editing === m.id ? (
+                    <div className="space-y-3">
+                      <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="text-sm" />
+                      <div className="rounded-lg border border-border overflow-hidden">
+                        <NotesEditor
+                          content={editContent}
+                          onChange={setEditContent}
+                          editable={true}
+                          placeholder="자료 내용을 입력하세요..."
+                          autoCorrectEnabled={false}
+                          onAutoCorrectToggle={noopToggle}
+                          isAutoCorrecting={false}
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline" onClick={() => setEditing(null)}>취소</Button>
+                        <Button size="sm" onClick={handleSaveEdit} disabled={saving}>
+                          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "저장"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-gold flex-shrink-0" />
+                          <span className="font-medium text-sm text-foreground">{m.title}</span>
+                          {!m.is_active && <span className="text-xs text-muted-foreground">(비활성)</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {m.content ? m.content.replace(/<[^>]*>/g, "").slice(0, 120) + "..." : "내용 없음"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => handleToggleActive(m.id, m.is_active)} className="p-1.5 rounded hover:bg-muted" title={m.is_active ? "비활성화" : "활성화"}>
+                          {m.is_active ? <Eye className="w-3.5 h-3.5 text-success" /> : <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
+                        </button>
+                        <button onClick={() => startEdit(m)} className="p-1.5 rounded hover:bg-muted" title="편집">
+                          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
+                        <button onClick={() => handleDelete(m.id)} className="p-1.5 rounded hover:bg-muted" title="삭제">
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
