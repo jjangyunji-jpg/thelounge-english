@@ -5,7 +5,7 @@ import {
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
-  Shield,
+  Shield, Paperclip,
 } from "lucide-react";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import { Button } from "@/components/ui/button";
@@ -111,12 +111,13 @@ const HOURS = Array.from({ length: 17 }, (_, i) => {
   return `${h.toString().padStart(2, "0")}:00`;
 });
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
 const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
-  writing:    { label: "쓰기",   icon: PenLine,  color: "text-[hsl(var(--navy))]" },
-  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]" },
-  speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]" },
-  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500" },
+  writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]" },
+  reading:    { label: "읽기",       icon: BookOpen,   color: "text-[hsl(var(--gold-dark))]" },
+  speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]" },
+  memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500" },
+  file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500" },
 };
 
 interface ScheduleSlot { day: string; time: string; }
@@ -2056,6 +2057,7 @@ export default function InstructorDashboard() {
           submissionId={reviewHw.submission.id}
           textContent={reviewHw.submission.text_content}
           audioUrl={reviewHw.submission.audio_url}
+          fileUrl={(reviewHw.submission as any).file_url}
           onClose={() => setReviewHw(null)}
           onReviewed={() => setSubmissions(prev => prev.map(s => s.id === reviewHw?.submission.id ? { ...s, status: "reviewed", reviewed_at: new Date().toISOString() } : s))}
         />

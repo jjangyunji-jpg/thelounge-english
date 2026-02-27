@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import {
   Mic, Square, Play, Pause, Send, RotateCcw, Loader2, X,
-  PenLine, BookOpen, Brain,
+  PenLine, BookOpen, Brain, Paperclip, FileUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,16 +9,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
 
 const HW_META: Record<HwType, {
   label: string; icon: React.ElementType; color: string;
-  requiresText: boolean; requiresAudio: boolean;
+  requiresText: boolean; requiresAudio: boolean; requiresFile?: boolean;
 }> = {
-  writing:    { label: "쓰기",   icon: PenLine,  color: "text-[hsl(var(--navy))]",      requiresText: true,  requiresAudio: false },
-  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]", requiresText: false, requiresAudio: false },
-  speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]",   requiresText: false, requiresAudio: true },
-  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",              requiresText: false, requiresAudio: false },
+  writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]",      requiresText: true,  requiresAudio: false },
+  reading:    { label: "읽기",       icon: BookOpen,   color: "text-[hsl(var(--gold-dark))]", requiresText: false, requiresAudio: false },
+  speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]",   requiresText: false, requiresAudio: true },
+  memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500",              requiresText: false, requiresAudio: false },
+  file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500",                requiresText: false, requiresAudio: false, requiresFile: true },
 };
 
 interface Assignment {
@@ -105,20 +106,25 @@ export default function HomeworkSubmitModal({
   const { toast } = useToast();
   const [text, setText] = useState(submission?.text_content ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [fileObj, setFileObj] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const meta = HW_META[assignment.type as HwType] ?? HW_META.writing;
   const Icon = meta.icon;
   const recorder = useAudioRecorder();
 
   const showTextArea = meta.requiresText || assignment.type === "memorizing";
   const showAudio = meta.requiresAudio || assignment.type === "memorizing";
+  const showFile = !!meta.requiresFile;
 
   const canSubmit =
     (!meta.requiresText || text.trim().length > 0) &&
-    (!meta.requiresAudio || recorder.audioBlob !== null);
+    (!meta.requiresAudio || recorder.audioBlob !== null) &&
+    (!meta.requiresFile || fileObj !== null);
 
   const handleSubmit = async () => {
     setSubmitting(true);
     let audioStorageUrl: string | null = null;
+    let fileStorageUrl: string | null = null;
     try {
       if (recorder.audioBlob) {
         const path = `${studentName}/${assignment.id}/${Date.now()}.webm`;
@@ -130,6 +136,17 @@ export default function HomeworkSubmitModal({
         audioStorageUrl = pub.publicUrl;
       }
 
+      if (fileObj) {
+        const ext = fileObj.name.split(".").pop() || "file";
+        const path = `${studentName}/${assignment.id}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("homework-files")
+          .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from("homework-files").getPublicUrl(path);
+        fileStorageUrl = pub.publicUrl;
+      }
+
       let resultSub: Submission | null = null;
       if (submission) {
         const { data, error } = await supabase
@@ -137,6 +154,7 @@ export default function HomeworkSubmitModal({
           .update({
             text_content: text.trim() || null,
             audio_url: audioStorageUrl ?? submission.audio_url,
+            file_url: fileStorageUrl ?? (submission as any).file_url,
             status: "submitted",
             submitted_at: new Date().toISOString(),
           })
@@ -153,6 +171,7 @@ export default function HomeworkSubmitModal({
             student_name: studentName,
             text_content: text.trim() || null,
             audio_url: audioStorageUrl,
+            file_url: fileStorageUrl,
             status: "submitted",
           })
           .select()
@@ -256,6 +275,37 @@ export default function HomeworkSubmitModal({
                   <Button size="sm" variant="ghost" onClick={recorder.reset}
                     className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground">
                     <RotateCcw className="w-3 h-3" /> 다시
+                  </Button>
+                </div>
+              )}
+            </div>
+           )}
+
+          {/* File upload */}
+          {showFile && (
+            <div>
+              <p className="text-[10px] text-muted-foreground mb-2">파일 첨부 (필수)</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={e => { if (e.target.files?.[0]) setFileObj(e.target.files[0]); }}
+              />
+              {!fileObj ? (
+                <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}
+                  className="gap-2 h-8 text-xs border-dashed">
+                  <FileUp className="w-3.5 h-3.5" /> 파일 선택
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 border border-border">
+                  <Paperclip className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                  <span className="text-xs text-foreground flex-1 truncate">{fileObj.name}</span>
+                  <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                    {(fileObj.size / 1024).toFixed(0)}KB
+                  </span>
+                  <Button size="sm" variant="ghost" onClick={() => { setFileObj(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
+                    <X className="w-3 h-3" />
                   </Button>
                 </div>
               )}

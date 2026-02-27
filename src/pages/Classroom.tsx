@@ -4,7 +4,7 @@ import {
   Video, VideoOff, Clock, FileText, CheckSquare,
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
-  PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked,
+  PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked, Paperclip,
   Loader2,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type ClassState = "pre" | "ready" | "active" | "ended";
 type Role = "instructor" | "student";
-type HwType = "writing" | "reading" | "speaking" | "memorizing";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
 
 interface HomeworkItem {
   id: string;
@@ -34,10 +34,11 @@ interface HomeworkItem {
 }
 
 const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string; hint: string }> = {
-  writing:    { label: "쓰기",   icon: PenLine,  color: "text-[hsl(var(--navy))]",      hint: "텍스트 작성 필수" },
-  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]", hint: "녹음 선택" },
-  speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]",   hint: "녹음 필수 / 텍스트 선택" },
-  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500",              hint: "녹음 선택 (대화문 등)" },
+  writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]",      hint: "텍스트 작성 필수" },
+  reading:    { label: "읽기",       icon: BookOpen,   color: "text-[hsl(var(--gold-dark))]", hint: "녹음 선택" },
+  speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]",   hint: "녹음 필수 / 텍스트 선택" },
+  memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500",              hint: "녹음 선택 (대화문 등)" },
+  file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500",                hint: "파일 첨부 필수" },
 };
 
 function getWeekLabel(date = new Date()) {

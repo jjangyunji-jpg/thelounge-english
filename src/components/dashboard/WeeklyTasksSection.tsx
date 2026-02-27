@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   CheckCircle2, Circle, BookOpen, PenLine, Mic, Brain,
-  Trophy, ExternalLink, Link2, ClipboardList,
+  Trophy, ExternalLink, Link2, ClipboardList, Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,13 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import HomeworkSubmitModal from "./HomeworkSubmitModal";
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
 
 const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
-  writing:    { label: "쓰기",   icon: PenLine,  color: "text-[hsl(var(--navy))]" },
-  reading:    { label: "읽기",   icon: BookOpen, color: "text-[hsl(var(--gold-dark))]" },
-  speaking:   { label: "말하기", icon: Mic,      color: "text-[hsl(var(--success))]" },
-  memorizing: { label: "외우기", icon: Brain,    color: "text-purple-500" },
+  writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]" },
+  reading:    { label: "읽기",       icon: BookOpen,   color: "text-[hsl(var(--gold-dark))]" },
+  speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]" },
+  memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500" },
+  file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500" },
 };
 
 const URL_REGEX = /https?:\/\/[^\s<>"']+/g;

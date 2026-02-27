@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  X, Loader2, Sparkles, Check, PenLine, Mic, Send,
+  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,11 +26,12 @@ interface AIResult {
 
 interface HomeworkReviewModalProps {
   assignmentTitle: string;
-  assignmentType: "writing" | "speaking";
+  assignmentType: "writing" | "speaking" | "file" | string;
   studentName: string;
   submissionId: string;
   textContent: string | null;
   audioUrl: string | null;
+  fileUrl?: string | null;
   onClose: () => void;
   onReviewed: () => void;
 }
@@ -91,6 +92,7 @@ export default function HomeworkReviewModal({
   submissionId,
   textContent,
   audioUrl,
+  fileUrl,
   onClose,
   onReviewed,
 }: HomeworkReviewModalProps) {
@@ -202,6 +204,16 @@ export default function HomeworkReviewModal({
               <div className="rounded-lg border border-border bg-muted/20 p-3">
                 <audio controls src={audioUrl} className="w-full h-8" />
               </div>
+            )}
+
+            {/* File */}
+            {fileUrl && (
+              <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors group">
+                <Paperclip className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <span className="text-xs font-medium text-foreground flex-1 truncate group-hover:text-blue-500 transition-colors">첨부파일 보기</span>
+                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              </a>
             )}
 
             {/* Text with inline corrections */}

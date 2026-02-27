@@ -9,7 +9,7 @@ import {
   Volume2, Loader2, Square, PenLine, Mic, Brain,
   AlertCircle, BanIcon, Bell, ChevronLeft,
   ChevronRight, Coffee, CalendarDays, TrendingUp, FileText,
-  RotateCcw, X, Activity, CreditCard, Heart,
+  RotateCcw, X, Activity, CreditCard, Heart, Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,12 +126,13 @@ interface TestRecord {
   completed_at: string | null;
 }
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
 const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
-  writing:    { label: "쓰기",   icon: PenLine,  color: "text-amber-600" },
-  reading:    { label: "읽기",   icon: BookOpen, color: "text-orange-500" },
-  speaking:   { label: "말하기", icon: Mic,      color: "text-rose-500" },
-  memorizing: { label: "외우기", icon: Brain,    color: "text-violet-500" },
+  writing:    { label: "쓰기",       icon: PenLine,    color: "text-amber-600" },
+  reading:    { label: "읽기",       icon: BookOpen,   color: "text-orange-500" },
+  speaking:   { label: "말하기",     icon: Mic,        color: "text-rose-500" },
+  memorizing: { label: "외우기",     icon: Brain,      color: "text-violet-500" },
+  file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500" },
 };
 
 function fmtDate(iso: string) {
