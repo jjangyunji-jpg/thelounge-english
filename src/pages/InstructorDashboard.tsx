@@ -434,6 +434,38 @@ function BigCalendar({
   );
 }
 
+// ── Collapsible Sessions List ─────────────────────────────────────────────────
+function CollapsibleSessions({ sessions, onReschedule }: { sessions: ClassSession[]; onReschedule: (s: ClassSession) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="space-y-1.5">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors w-full text-left"
+      >
+        <ChevronRight className={cn("w-3 h-3 transition-transform", open && "rotate-90")} />
+        수업 일정 ({sessions.length}회)
+      </button>
+      {open && sessions.map((s) => (
+        <div key={s.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/20 border border-border ml-4">
+          <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+          <span className="text-[11px] text-foreground flex-1">{fmtDateTime(s.scheduled_at)}</span>
+          {new Date(s.scheduled_at) <= new Date() ? (
+            <span className="text-[10px] text-success font-medium">완료</span>
+          ) : (
+            <button
+              onClick={() => onReschedule(s)}
+              className="text-[10px] text-navy hover:underline font-medium"
+            >
+              변경
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Add Meeting Modal ──────────────────────────────────────────────────────────
 function AddMeetingModal({
   instructorId,
@@ -1779,27 +1811,12 @@ export default function InstructorDashboard() {
                         <DonutStat value={stats.weekVocabCount} total={0} label="단어 테스트" unit="회" color="hsl(var(--success))" trackColor="hsl(var(--success) / 0.15)" isCount />
                       </div>
 
-                      {/* Period sessions */}
+                      {/* Period sessions - collapsible */}
                       {studentPeriodSessions.length > 0 && (
-                        <div className="space-y-1.5">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">수업 일정 ({studentPeriodSessions.length}회)</p>
-                          {studentPeriodSessions.map((s) => (
-                            <div key={s.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/20 border border-border">
-                              <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                              <span className="text-[11px] text-foreground flex-1">{fmtDateTime(s.scheduled_at)}</span>
-                              {new Date(s.scheduled_at) <= new Date() ? (
-                                <span className="text-[10px] text-success font-medium">완료</span>
-                              ) : (
-                                <button
-                                  onClick={() => setRescheduleSession(s)}
-                                  className="text-[10px] text-navy hover:underline font-medium"
-                                >
-                                  변경
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                        <CollapsibleSessions
+                          sessions={studentPeriodSessions}
+                          onReschedule={(s) => setRescheduleSession(s)}
+                        />
                       )}
                     </div>
                   </div>
