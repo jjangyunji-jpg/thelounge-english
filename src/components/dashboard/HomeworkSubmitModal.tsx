@@ -36,6 +36,7 @@ interface Submission {
   status: string;
   text_content: string | null;
   audio_url: string | null;
+  file_url: string | null;
   instructor_note: string | null;
   reviewed_at: string | null;
 }
