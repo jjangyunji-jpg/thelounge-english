@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, FileText, Clock, BookOpen, ChevronDown,
+  ArrowLeft, FileText, Clock, BookOpen,
   Calendar, Loader2,
 } from "lucide-react";
 
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
+import SessionSidebar from "@/components/classroom/SessionSidebar";
 
 interface ClassSession {
   id: string;
@@ -62,7 +63,6 @@ export default function ClassNote() {
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [selectorOpen, setSelectorOpen] = useState(false);
 
   useEffect(() => {
     if (!student) return;
@@ -82,15 +82,13 @@ export default function ClassNote() {
     load();
   }, [student]);
 
-  const sessionWeekLabel = (s: ClassSession) => {
-    const d = new Date(s.scheduled_at);
-    const month = d.getMonth() + 1;
-    const weekOfMonth = Math.ceil(d.getDate() / 7);
-    return `${month}월 ${weekOfMonth}주차`;
-  };
-
   const pastSessions = sessions.filter((s) => new Date(s.scheduled_at) <= new Date());
   const displaySessions = pastSessions.length > 0 ? pastSessions : sessions;
+
+  const handleSidebarSelect = (id: string) => {
+    const s = sessions.find((s) => s.id === id);
+    if (s) setSelectedSession(s);
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -120,48 +118,9 @@ export default function ClassNote() {
             </p>
           )}
         </div>
-
-        {/* Session selector */}
-        {!loadingSessions && displaySessions.length > 0 && (
-          <div className="relative">
-            <button
-              onClick={() => setSelectorOpen((v) => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sidebar-accent text-sidebar-accent-foreground text-xs font-medium hover:opacity-90 transition-opacity"
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              {selectedSession
-                ? `${formatDate(selectedSession.scheduled_at).slice(0, -5)}`
-                : "수업 선택"}
-              <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", selectorOpen && "rotate-180")} />
-            </button>
-            {selectorOpen && (
-              <div className="absolute right-0 top-full mt-1 w-60 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden max-h-72 overflow-y-auto">
-                {displaySessions.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => { setSelectedSession(s); setSelectorOpen(false); }}
-                    className={cn(
-                      "w-full px-3 py-2.5 text-left text-xs hover:bg-muted/50 transition-colors border-b border-border/50 last:border-0",
-                      selectedSession?.id === s.id && "bg-gold/10"
-                    )}
-                  >
-                    <p className="font-semibold text-foreground">
-                      <span className="text-gold font-bold">{sessionWeekLabel(s)}</span>
-                      {" "}{formatDate(s.scheduled_at)}
-                    </p>
-                    <p className="text-muted-foreground mt-0.5">
-                      {formatTime(s.scheduled_at)} · {s.topic || "수업"}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </header>
 
-      {/* ── MAIN CONTENT (Classroom student layout) ──────────────────────── */}
-      {/* Loading / Empty states */}
+      {/* ── MAIN CONTENT ──────────────────────────────────────────────────── */}
       {!student && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-2">
@@ -186,73 +145,78 @@ export default function ClassNote() {
         </div>
       )}
 
-      {/* Main two-column layout matching Classroom student view */}
+      {/* Two-column layout with sidebar */}
       {student && !loadingSessions && selectedSession && (
-        <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto">
+        <div className="flex-1 flex min-h-0">
+          {/* Session Sidebar */}
+          <SessionSidebar
+            sessions={displaySessions}
+            selectedId={selectedSession.id}
+            onSelect={handleSidebarSelect}
+            loading={loadingSessions}
+          />
 
-          {/* ── LEFT COLUMN: Notes + Homework ────────────────────────────── */}
-          <div className="flex-1 flex flex-col gap-5 min-w-0">
-            {/* 수업 노트 (읽기 전용) */}
-            <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
-                <FileText className="w-4 h-4 text-gold" />
-                <span className="font-semibold text-sm text-foreground">수업 노트</span>
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {formatDate(selectedSession.scheduled_at)} {formatTime(selectedSession.scheduled_at)}
-                </span>
+          {/* Main content area */}
+          <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto overflow-y-auto">
+            {/* ── LEFT COLUMN: Notes + Homework ────────────────────────────── */}
+            <div className="flex-1 flex flex-col gap-5 min-w-0">
+              {/* 수업 노트 (읽기 전용) */}
+              <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
+                  <FileText className="w-4 h-4 text-gold" />
+                  <span className="font-semibold text-sm text-foreground">수업 노트</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {formatDate(selectedSession.scheduled_at)} {formatTime(selectedSession.scheduled_at)}
+                  </span>
+                </div>
+
+                {/* Session meta */}
+                <div className="px-4 py-2.5 border-b border-border/50 bg-muted/10 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <BookOpen className="w-3.5 h-3.5" /> {selectedSession.level}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" /> {selectedSession.instructor_name}
+                  </span>
+                  {selectedSession.topic && (
+                    <span className="text-gold-dark font-medium">{selectedSession.topic}</span>
+                  )}
+                </div>
+
+                <div
+                  className="tiptap h-[420px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground [&_a]:text-[hsl(var(--gold-dark))] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:opacity-80"
+                  dangerouslySetInnerHTML={{ __html: (() => {
+                    const raw = selectedSession.notes || "";
+                    if (!raw) return "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>";
+                    let html = raw;
+                    if (html.includes("&lt;") || html.includes("&amp;")) {
+                      const tmp = document.createElement("textarea");
+                      tmp.innerHTML = html;
+                      html = tmp.value;
+                    }
+                    html = html.replace(
+                      /(?<![="'>])(https?:\/\/[^\s<>"']+)/g,
+                      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+                    );
+                    return html;
+                  })() }}
+                />
               </div>
 
-              {/* Session meta */}
-              <div className="px-4 py-2.5 border-b border-border/50 bg-muted/10 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <BookOpen className="w-3.5 h-3.5" /> {selectedSession.level}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" /> {selectedSession.instructor_name}
-                </span>
-                {selectedSession.topic && (
-                  <span className="text-gold-dark font-medium">{selectedSession.topic}</span>
-                )}
-              </div>
-
-              <div
-                className="tiptap h-[420px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground [&_a]:text-[hsl(var(--gold-dark))] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:opacity-80"
-                dangerouslySetInnerHTML={{ __html: (() => {
-                  const raw = selectedSession.notes || "";
-                  if (!raw) return "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>";
-                  let html = raw;
-                  if (html.includes("&lt;") || html.includes("&amp;")) {
-                    const tmp = document.createElement("textarea");
-                    tmp.innerHTML = html;
-                    html = tmp.value;
-                  }
-                  html = html.replace(
-                    /(?<![="'>])(https?:\/\/[^\s<>"']+)/g,
-                    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
-                  );
-                  return html;
-                })() }}
-              />
+              {/* 숙제 */}
+              <StudentHomeworkPanel studentName={student} sessionId={selectedSession.id} />
             </div>
 
-            {/* 숙제 */}
-            <StudentHomeworkPanel studentName={student} sessionId={selectedSession.id} />
-          </div>
-
-          {/* ── RIGHT COLUMN: Vocabulary + Test ──────────────────────────── */}
-          <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
-            <StudentVocabPanel
-              studentName={student}
-              scheduledAt={new Date(selectedSession.scheduled_at)}
-              sessionId={selectedSession.id}
-            />
+            {/* ── RIGHT COLUMN: Vocabulary + Test ──────────────────────────── */}
+            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
+              <StudentVocabPanel
+                studentName={student}
+                scheduledAt={new Date(selectedSession.scheduled_at)}
+                sessionId={selectedSession.id}
+              />
+            </div>
           </div>
         </div>
-      )}
-
-      {/* Click-outside overlay for session selector */}
-      {selectorOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setSelectorOpen(false)} />
       )}
     </div>
   );

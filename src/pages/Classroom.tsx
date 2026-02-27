@@ -7,6 +7,7 @@ import {
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked,
   Loader2, Monitor,
 } from "lucide-react";
+import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -249,6 +250,8 @@ export default function Classroom() {
   const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(false);
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
   const [isAutoCorrecting, setIsAutoCorrecting] = useState(false);
+  const [sidebarSessions, setSidebarSessions] = useState<{ id: string; scheduled_at: string; topic: string | null }[]>([]);
+  const [sidebarLoading, setSidebarLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCorrectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -342,6 +345,24 @@ export default function Classroom() {
     };
     loadData();
   }, [session.sessionId, sessionLoading]);
+
+  // Load sidebar sessions list
+  useEffect(() => {
+    if (sessionLoading || !session.studentName) return;
+    const loadSidebar = async () => {
+      setSidebarLoading(true);
+      const { data } = await supabase
+        .from("class_sessions")
+        .select("id, scheduled_at, topic")
+        .eq("student_name", session.studentName)
+        .lte("scheduled_at", new Date().toISOString())
+        .order("scheduled_at", { ascending: false })
+        .limit(30);
+      setSidebarSessions(data ?? []);
+      setSidebarLoading(false);
+    };
+    loadSidebar();
+  }, [session.studentName, sessionLoading]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -643,7 +664,19 @@ export default function Classroom() {
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
       {classState !== "pre" && (
-        <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto">
+        <div className="flex-1 flex min-h-0">
+          {/* Session Sidebar */}
+          <SessionSidebar
+            sessions={sidebarSessions}
+            selectedId={session.sessionId}
+            onSelect={(id) => {
+              const url = new URL(window.location.href);
+              url.searchParams.set("sessionId", id);
+              window.location.href = url.toString();
+            }}
+            loading={sidebarLoading}
+          />
+          <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto overflow-y-auto">
 
           {/* ── LEFT COLUMN ─────────────────────────────────────────────── */}
           {role === "student" ? (
@@ -883,6 +916,7 @@ export default function Classroom() {
             </div>
           )}
 
+        </div>
         </div>
       )}
     </div>
