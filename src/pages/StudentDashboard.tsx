@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import FeedbackSurveyModal from "@/components/classroom/FeedbackSurveyModal";
 import WeeklyTasksSection from "@/components/dashboard/WeeklyTasksSection";
+import HomeworkSubmitModal from "@/components/dashboard/HomeworkSubmitModal";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Trophy, Calendar, Video, Clock, Check,
@@ -366,6 +367,8 @@ export default function StudentDashboard() {
   const [hwOpen, setHwOpen] = useState(false);
   const [vocabListOpen, setVocabListOpen] = useState(false);
   const [vocabStudyOpen] = useState(false); // kept for potential future use
+  const [hwModalAssignment, setHwModalAssignment] = useState<Assignment | null>(null);
+  const [hwCompletingId, setHwCompletingId] = useState<string | null>(null);
 
   // Feedback survey state
   const [feedbackNeeded, setFeedbackNeeded] = useState<{
@@ -547,6 +550,35 @@ export default function StudentDashboard() {
   };
 
   const getSubmission = (aId: string) => submissions.find(s => s.assignment_id === aId);
+
+  const handleQuickComplete = async (assignment: Assignment) => {
+    setHwCompletingId(assignment.id);
+    try {
+      const existing = getSubmission(assignment.id);
+      if (existing) {
+        const { data, error } = await supabase
+          .from("homework_submissions")
+          .update({ status: "submitted", submitted_at: new Date().toISOString() })
+          .eq("id", existing.id)
+          .select()
+          .single();
+        if (error) throw error;
+        if (data) setSubmissions(prev => prev.map(s => s.id === data.id ? data : s));
+      } else {
+        const { data, error } = await supabase
+          .from("homework_submissions")
+          .insert({ assignment_id: assignment.id, student_name: student, status: "submitted" })
+          .select()
+          .single();
+        if (error) throw error;
+        if (data) setSubmissions(prev => [...prev, data]);
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setHwCompletingId(null);
+    }
+  };
 
   // ── 반복 일정에서 가상 세션 날짜 생성 ──
   const recurringDates = studentRecord
@@ -801,6 +833,7 @@ export default function StudentDashboard() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-background">
       {/* ── Holiday Popup ── */}
       {currentPopup && (
@@ -1189,6 +1222,8 @@ export default function StudentDashboard() {
                           return `${week}주차`;
                         })()
                       : null;
+                    const isQuickType = a.type === "reading" || a.type === "memorizing";
+                    const isPending = status === "pending";
                     return (
                       <div key={a.id} className="flex items-center gap-2.5 px-3 py-2.5">
                         <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0",
@@ -1196,11 +1231,8 @@ export default function StudentDashboard() {
                         )}>
                           <Icon className={cn("w-3.5 h-3.5", meta?.color)} />
                         </div>
-                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
-                          const sid = a.session_id || sessions[0]?.id;
-                          navigate(`/my/classroom?${sid ? `sessionId=${sid}&` : ''}role=student&tab=hw`);
-                        }}>
-                          <p className="text-xs font-semibold text-foreground truncate hover:text-navy transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate">
                             {weekPrefix && <span className="text-muted-foreground font-medium mr-1">[{weekPrefix}]</span>}
                             {a.title}
                           </p>
@@ -1212,8 +1244,22 @@ export default function StudentDashboard() {
                         {status === "submitted" && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold-dark font-semibold flex-shrink-0">제출됨</span>
                         )}
-                        {status === "pending" && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold flex-shrink-0">미제출</span>
+                        {isPending && isQuickType && (
+                          <button
+                            onClick={() => handleQuickComplete(a)}
+                            disabled={hwCompletingId === a.id}
+                            className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 flex-shrink-0"
+                          >
+                            {hwCompletingId === a.id ? "..." : "완료"}
+                          </button>
+                        )}
+                        {isPending && !isQuickType && (
+                          <button
+                            onClick={() => setHwModalAssignment(a)}
+                            className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 flex-shrink-0"
+                          >
+                            제출하기
+                          </button>
                         )}
                       </div>
                     );
@@ -1360,5 +1406,23 @@ export default function StudentDashboard() {
         {/* ════════════════════════════════════════════════ */}
       </div>
     </div>
+
+    {hwModalAssignment && (
+      <HomeworkSubmitModal
+        assignment={hwModalAssignment}
+        submission={getSubmission(hwModalAssignment.id) ?? null}
+        studentName={student}
+        onClose={() => setHwModalAssignment(null)}
+        onSubmitted={(sub) => {
+          setSubmissions(prev => {
+            const idx = prev.findIndex(s => s.id === sub.id);
+            if (idx >= 0) { const next = [...prev]; next[idx] = sub; return next; }
+            return [...prev, sub];
+          });
+          setHwModalAssignment(null);
+        }}
+      />
+    )}
+    </>
   );
 }
