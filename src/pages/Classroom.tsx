@@ -12,10 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import InstructorSTTPanel from "@/components/classroom/InstructorSTTPanel";
-import WordLookupPanel from "@/components/classroom/WordLookupPanel";
 import NotesEditor from "@/components/classroom/NotesEditor";
-import MaterialPickerModal from "@/components/classroom/MaterialPickerModal";
+
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
 import { supabase } from "@/integrations/supabase/client";
@@ -263,57 +261,12 @@ export default function Classroom() {
   const [objectives, setObjectives] = useState<string[]>([]);
   const [sessionTopic, setSessionTopic] = useState("");
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
-  const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(false);
-  const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
-  const [isAutoCorrecting, setIsAutoCorrecting] = useState(false);
   const [sidebarSessions, setSidebarSessions] = useState<{ id: string; scheduled_at: string; topic: string | null }[]>([]);
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const autoCorrectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastCorrectedText = useRef("");
 
-  const triggerAutoCorrect = useCallback(async (html: string) => {
-    const tmp = document.createElement("div");
-    tmp.innerHTML = html;
-    const plainText = tmp.textContent || tmp.innerText || "";
-    
-    // Extract only English words/sentences for typo checking
-    const englishParts = plainText.match(/[a-zA-Z][a-zA-Z\s',.\-!?;:]+/g);
-    if (!englishParts || englishParts.length === 0 || isAutoCorrecting) return;
-    const englishText = englishParts.join(" ").trim();
-    if (!englishText || englishText.length < 3) return;
 
-    setIsAutoCorrecting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("ai-correct", {
-        body: { text: englishText, mode: "typo" },
-      });
-      if (!error && data?.corrected && data.corrected !== englishText) {
-        let correctedHtml = html;
-        const origWords = englishText.split(/\s+/);
-        const corrWords = (data.corrected as string).split(/\s+/);
-        for (let i = 0; i < origWords.length && i < corrWords.length; i++) {
-          if (origWords[i] !== corrWords[i] && origWords[i].length > 0) {
-            // Use word-boundary aware replacement (first occurrence only)
-            correctedHtml = correctedHtml.replace(
-              new RegExp(`(?<=>|^|\\s)${origWords[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=<|$|\\s|[.,!?;:])`, ''),
-              corrWords[i]
-            );
-          }
-        }
-        if (correctedHtml !== html) {
-          setNotes(correctedHtml);
-          lastCorrectedText.current = correctedHtml;
-        } else {
-          lastCorrectedText.current = html;
-        }
-      } else {
-        lastCorrectedText.current = html;
-      }
-    } catch { /* silent */ }
-    finally { setIsAutoCorrecting(false); }
-  }, [isAutoCorrecting]);
 
   // Auto-save notes to DB for realtime mirroring (debounced 1.5s)
   const autoSaveNotes = useCallback(async (text: string) => {
@@ -773,12 +726,6 @@ export default function Classroom() {
                       <Maximize2 className="w-3 h-3" />
                       <span className="hidden sm:inline">새 탭</span>
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setMaterialPickerOpen(true)}
-                      className="h-7 text-xs gap-1.5 border-gold/50 text-gold-dark hover:bg-gold/10"
-                    >
-                      <BookOpen className="w-3 h-3" />
-                      <span className="hidden sm:inline">자료</span>
-                    </Button>
                   </div>
                 </div>
                 <NotesEditor
@@ -787,17 +734,10 @@ export default function Classroom() {
                     setNotes(newVal);
                     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
                     autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 1500);
-                    if (autoCorrectEnabled && newVal.trim() && newVal !== lastCorrectedText.current) {
-                      if (autoCorrectTimer.current) clearTimeout(autoCorrectTimer.current);
-                      autoCorrectTimer.current = setTimeout(() => triggerAutoCorrect(newVal), 1500);
-                    }
                   }}
                   editable={notesEditMode}
                   disabled={isDisabled}
                   placeholder={`수업 내용을 자유롭게 타이핑하세요...\n\nToday's topic: ${session.topic}`}
-                  autoCorrectEnabled={autoCorrectEnabled}
-                  onAutoCorrectToggle={() => setAutoCorrectEnabled(v => !v)}
-                  isAutoCorrecting={isAutoCorrecting}
                 />
                 {classState === "active" && (
                   <div className="px-4 py-2.5 border-t border-border bg-muted/20 flex items-center gap-3">
@@ -929,13 +869,8 @@ export default function Classroom() {
             </div>
           )}
 
-          {/* ── RIGHT COLUMN ────────────────────────────────────────────── */}
-          {role === "instructor" ? (
-            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4">
-              <WordLookupPanel studentLevel={session.level} />
-              <InstructorSTTPanel disabled={classState !== "active"} autoStart={classState === "active"} />
-            </div>
-          ) : (
+          {/* ── RIGHT COLUMN (student only) ────────────────────────── */}
+          {role === "student" && (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
               <StudentVocabPanel studentName={session.studentName} scheduledAt={session.scheduledAt} sessionId={session.sessionId} />
             </div>
@@ -946,15 +881,6 @@ export default function Classroom() {
       )}
     </div>
 
-    {/* Material Picker Modal */}
-    <MaterialPickerModal
-      open={materialPickerOpen}
-      onClose={() => setMaterialPickerOpen(false)}
-      onInsert={(html) => {
-        setNotes(prev => prev + html);
-        toast({ title: "자료가 노트에 삽입되었습니다 ✓" });
-      }}
-    />
     </>
   );
 }
