@@ -62,24 +62,12 @@ interface Props {
   onSubmissionUpdate: (sub: Submission) => void;
 }
 
-function getWeekRange() {
-  const now = new Date();
-  const day = now.getDay();
-  const mon = new Date(now);
-  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-  mon.setHours(0, 0, 0, 0);
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
-  sun.setHours(23, 59, 59, 999);
-  return { start: mon, end: sun };
-}
-
-function getCurrentWeekLabel() {
-  const now = new Date();
-  const jan1 = new Date(now.getFullYear(), 0, 1);
-  const days = Math.floor((now.getTime() - jan1.getTime()) / 86400000);
-  const week = Math.ceil((days + jan1.getDay() + 1) / 7);
-  return `${now.getFullYear()}-W${String(week).padStart(2, "0")}`;
+function getWeekLabelFromDate(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
 export default function WeeklyTasksSection({
@@ -91,32 +79,23 @@ export default function WeeklyTasksSection({
   const [modalAssignment, setModalAssignment] = useState<Assignment | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
 
-  const { start: weekStart, end: weekEnd } = getWeekRange();
+  // Find the most recent past session (latest completed/past session)
+  const now = new Date();
+  const pastSessions = sessions
+    .filter(s => new Date(s.scheduled_at) <= now)
+    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+  const latestSession = pastSessions[0] ?? null;
+  const latestSessionId = latestSession?.id ?? null;
 
-  // This week's session IDs
-  const weekSessionIds = new Set(
-    sessions
-      .filter(s => {
-        const d = new Date(s.scheduled_at);
-        return d >= weekStart && d <= weekEnd;
-      })
-      .map(s => s.id)
-  );
-
-  // This week's assignments
-  const weekAssignments = assignments.filter(a => a.session_id && weekSessionIds.has(a.session_id));
+  // Assignments for the latest session
+  const weekAssignments = assignments.filter(a => a.session_id && a.session_id === latestSessionId);
 
   const getSub = (aId: string) => submissions.find(s => s.assignment_id === aId);
 
-  // Vocab test this week
-  const currentWeek = getCurrentWeekLabel();
-  const weekVocabCount = vocabWords.filter(w => w.week_label === currentWeek).length;
-  const weekTestsDone = testHistory.filter(t => t.week_label === currentWeek && t.completed_at).length;
-
-  // Find session for vocab test navigation
-  const latestWeekSession = sessions
-    .filter(s => weekSessionIds.has(s.id))
-    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0];
+  // Vocab test for the latest session's week
+  const latestWeekLabel = latestSession ? getWeekLabelFromDate(new Date(latestSession.scheduled_at)) : null;
+  const weekVocabCount = latestWeekLabel ? vocabWords.filter(w => w.week_label === latestWeekLabel).length : 0;
+  const weekTestsDone = latestWeekLabel ? testHistory.filter(t => t.week_label === latestWeekLabel && t.completed_at).length : 0;
 
   const completedCount = weekAssignments.filter(a => {
     const sub = getSub(a.id);
@@ -169,7 +148,7 @@ export default function WeeklyTasksSection({
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30">
           <div className="flex items-center gap-1.5">
             <ClipboardList className="w-3.5 h-3.5 text-gold" />
-            <span className="text-xs font-semibold text-foreground">이번주 과제</span>
+            <span className="text-xs font-semibold text-foreground">최근 수업 과제</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">
               {totalDone}/{totalTasks}
             </span>
@@ -283,9 +262,9 @@ export default function WeeklyTasksSection({
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0">
                     {weekTestsDone}회 완료
                   </span>
-                ) : latestWeekSession ? (
+                ) : latestSession ? (
                   <button
-                    onClick={() => navigate(`/my/classroom?sessionId=${latestWeekSession.id}&role=student&tab=vocab`)}
+                    onClick={() => navigate(`/my/classroom?sessionId=${latestSession.id}&role=student&tab=vocab`)}
                     className="flex-shrink-0 text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10"
                   >
                     테스트하기
