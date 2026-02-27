@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, X, Loader2, UserCheck, Clock, Plus, ChevronDown } from "lucide-react";
+import { Check, X, Loader2, UserCheck, Clock, Plus, ChevronDown, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,13 @@ interface PendingUser {
   role: string;
   display_name: string | null;
   approved: boolean;
+}
+
+interface UnlinkedStudent {
+  id: string;
+  student_name: string;
+  instructor_name: string | null;
+  level: string | null;
 }
 
 type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
@@ -78,7 +85,14 @@ export default function UserApproval({ onNavigate }: Props) {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
 
-  // Student setup dialog
+  // Student linking dialog
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkUser, setLinkUser] = useState<PendingUser | null>(null);
+  const [unlinkedStudents, setUnlinkedStudents] = useState<UnlinkedStudent[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [savingLink, setSavingLink] = useState(false);
+
+  // Student setup dialog (for creating new record)
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
   const [setupUser, setSetupUser] = useState<PendingUser | null>(null);
   const [setupForm, setSetupForm] = useState<StudentSetupForm>(initialSetupForm);
@@ -103,6 +117,16 @@ export default function UserApproval({ onNavigate }: Props) {
     setPending(all.filter(u => !u.approved));
     setApproved(all.filter(u => u.approved));
     setLoading(false);
+  };
+
+  const loadUnlinkedStudents = async () => {
+    const { data } = await supabase
+      .from("instructor_students")
+      .select("id, student_name, instructor_name, level")
+      .is("user_id", null)
+      .eq("status", "active")
+      .order("student_name");
+    setUnlinkedStudents((data || []) as UnlinkedStudent[]);
   };
 
   useEffect(() => {
@@ -132,9 +156,11 @@ export default function UserApproval({ onNavigate }: Props) {
     setActing(null);
 
     if (user.role === "student") {
-      setSetupUser(user);
-      setSetupForm(initialSetupForm);
-      setSetupDialogOpen(true);
+      // Show linking dialog instead of setup dialog
+      await loadUnlinkedStudents();
+      setLinkUser(user);
+      setSelectedStudentId("");
+      setLinkDialogOpen(true);
     } else if (user.role === "instructor") {
       setInstrUser(user);
       setInstrForm(initialInstructorForm);
@@ -158,6 +184,50 @@ export default function UserApproval({ onNavigate }: Props) {
     setActing(null);
   };
 
+  // Link student account to existing instructor_students record
+  const handleLinkStudent = async () => {
+    if (!linkUser || !selectedStudentId) return;
+    setSavingLink(true);
+
+    // Update instructor_students.user_id
+    const { error } = await supabase
+      .from("instructor_students")
+      .update({ user_id: linkUser.user_id })
+      .eq("id", selectedStudentId);
+
+    if (error) {
+      toast({ title: "연결 실패", description: error.message, variant: "destructive" });
+      setSavingLink(false);
+      return;
+    }
+
+    // Also update student_profiles.student_name to match the linked record
+    const linked = unlinkedStudents.find(s => s.id === selectedStudentId);
+    if (linked) {
+      await supabase
+        .from("student_profiles")
+        .update({ student_name: linked.student_name })
+        .eq("user_id", linkUser.user_id);
+    }
+
+    toast({ title: `${linkUser.display_name} → ${linked?.student_name} 연결 완료 ✓` });
+    setLinkDialogOpen(false);
+    setLinkUser(null);
+    setSavingLink(false);
+
+    autoGenerateSessions();
+  };
+
+  // Open new student setup (fallback when no existing record)
+  const handleCreateNew = () => {
+    setLinkDialogOpen(false);
+    if (linkUser) {
+      setSetupUser(linkUser);
+      setSetupForm(initialSetupForm);
+      setSetupDialogOpen(true);
+    }
+  };
+
   const handleSaveStudentSetup = async () => {
     if (!setupUser || !setupForm.level || !setupForm.instructor) {
       toast({ title: "레벨과 담당 강사를 선택해주세요.", variant: "destructive" });
@@ -165,7 +235,6 @@ export default function UserApproval({ onNavigate }: Props) {
     }
     setSavingSetup(true);
 
-    // Find instructor_id
     const { data: instrData } = await supabase
       .from("instructors")
       .select("id")
@@ -185,6 +254,7 @@ export default function UserApproval({ onNavigate }: Props) {
         extra_lessons: setupForm.extraLessons,
         schedules: setupForm.schedules.length > 0 ? JSON.stringify(setupForm.schedules) : null,
         status: "active",
+        user_id: setupUser.user_id,
       });
 
     setSavingSetup(false);
@@ -198,9 +268,7 @@ export default function UserApproval({ onNavigate }: Props) {
     setSetupDialogOpen(false);
     setSetupUser(null);
 
-    // Auto-generate sessions for active periods
     autoGenerateSessions();
-
     onNavigate?.("students");
   };
 
@@ -208,7 +276,6 @@ export default function UserApproval({ onNavigate }: Props) {
     if (!instrUser) return;
     setSavingInstr(true);
 
-    // Find the instructor record by user_id
     const { data: instrData } = await supabase
       .from("instructors")
       .select("id")
@@ -340,7 +407,74 @@ export default function UserApproval({ onNavigate }: Props) {
         </Card>
       </Collapsible>
 
-      {/* Student Setup Dialog */}
+      {/* Student Linking Dialog */}
+      <Dialog open={linkDialogOpen} onOpenChange={(open) => {
+        if (!open) { setLinkDialogOpen(false); setLinkUser(null); }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="w-4 h-4" />
+              수강생 계정 연결
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{linkUser?.display_name}</span> 님의 계정을 기존 수강생 레코드에 연결합니다.
+          </p>
+          <div className="space-y-4 pt-2">
+            {unlinkedStudents.length > 0 ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">기존 수강생 선택</Label>
+                  <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="수강생을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unlinkedStudents.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.student_name}
+                          {s.instructor_name ? ` (담당: ${s.instructor_name})` : ""}
+                          {s.level ? ` · ${s.level}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  className="w-full gap-2 bg-navy hover:bg-navy-light text-primary-foreground"
+                  disabled={savingLink || !selectedStudentId}
+                  onClick={handleLinkStudent}
+                >
+                  {savingLink && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <Link2 className="w-4 h-4" />
+                  연결하기
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                연결 가능한 수강생 레코드가 없습니다.
+              </p>
+            )}
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+              <div className="relative flex justify-center text-xs"><span className="bg-background px-2 text-muted-foreground">또는</span></div>
+            </div>
+
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-xs"
+              onClick={handleCreateNew}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              새 수강생 레코드 생성
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Student Setup Dialog (new record) */}
       <Dialog open={setupDialogOpen} onOpenChange={(open) => {
         if (!open) {
           setSetupDialogOpen(false);
