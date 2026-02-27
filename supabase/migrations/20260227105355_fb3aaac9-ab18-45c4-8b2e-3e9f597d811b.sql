@@ -1,0 +1,1 @@
+ALTER TABLE public.instructor_students ADD COLUMN IF NOT EXISTS withdrawal_reason text;

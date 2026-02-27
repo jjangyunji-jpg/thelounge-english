@@ -355,6 +355,7 @@ export type Database = {
           status: string | null
           student_name: string
           user_id: string | null
+          withdrawal_reason: string | null
         }
         Insert: {
           created_at?: string
@@ -373,6 +374,7 @@ export type Database = {
           status?: string | null
           student_name: string
           user_id?: string | null
+          withdrawal_reason?: string | null
         }
         Update: {
           created_at?: string
@@ -391,6 +393,7 @@ export type Database = {
           status?: string | null
           student_name?: string
           user_id?: string | null
+          withdrawal_reason?: string | null
         }
         Relationships: [
           {
