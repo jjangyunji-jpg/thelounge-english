@@ -698,6 +698,14 @@ export default function StudentDashboard() {
     : "";
 
   // ── Derived stats (period-scoped) ──
+  const now = new Date();
+  const latestPastSession = sessions
+    .filter(s => new Date(s.scheduled_at) <= now)
+    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0] ?? null;
+  const latestSessionAssignments = latestPastSession
+    ? periodAssignments.filter(a => a.session_id === latestPastSession.id)
+    : [];
+  const latestSessionPendingHw = latestSessionAssignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
   const pendingHw = periodAssignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
   const submittedHw = periodAssignments.filter(a => { const sub = getSubmission(a.id); return sub && sub.status !== "pending"; });
   const latestTest = periodTestHistory[0];
@@ -1188,10 +1196,10 @@ export default function StudentDashboard() {
                     <span className="text-[10px] font-bold text-gold">{timeUntilLabel(nextClassDate.toISOString())}</span>
                   </div>
                 </div>
-                {(nextClassDate.getTime() - Date.now()) <= 48 * 3600 * 1000 && pendingHw.length > 0 && (
+                {(nextClassDate.getTime() - Date.now()) <= 48 * 3600 * 1000 && latestSessionPendingHw.length > 0 && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-destructive/8 border border-destructive/20">
                     <AlertCircle className="w-3 h-3 text-destructive flex-shrink-0" />
-                    <p className="text-[11px] text-destructive">미제출 숙제 {pendingHw.length}개 남아있어요</p>
+                    <p className="text-[11px] text-destructive">미제출 숙제 {latestSessionPendingHw.length}개 남아있어요</p>
                   </div>
                 )}
               </div>
