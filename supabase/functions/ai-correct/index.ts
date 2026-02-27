@@ -52,6 +52,21 @@ RULES:
       - synonyms: array of { word, alternatives: string[], example: string } objects
       Limit to the 5 most interesting/educational words. Respond in Korean for context.`;
       userPrompt = `Find synonyms for key words in: "${text}"`;
+    } else if (mode === "homework_review") {
+      systemPrompt = `You are an expert English language teacher reviewing a Korean student's written homework.
+Return a JSON object with:
+- corrected: the corrected version of the text
+- errors: array of { original, corrected, explanation } objects for each error found. The "original" must be the EXACT substring from the student's text. Keep explanations concise in Korean.
+- score: naturalness score 1-10
+- feedback: object with:
+  - praise: one sentence praising what the student did well (in Korean)
+  - priorities: array of exactly 3 strings, each describing the most important thing the student should fix or improve (in Korean, concise)
+
+IMPORTANT for errors:
+- The "original" field must match exactly a substring in the student's text (case-sensitive)
+- Do NOT fix the entire sentence; only mark the specific word(s) that are wrong
+- If a word is spelled correctly but used incorrectly, still mark it`;
+      userPrompt = `Review this student's English homework: "${text}"`;
     } else {
       systemPrompt = `You are an expert English language teacher analyzing a student's spoken English.
       Return a JSON object with:
