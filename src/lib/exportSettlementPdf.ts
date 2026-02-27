@@ -50,7 +50,7 @@ async function registerKoreanFont(doc: jsPDF) {
   doc.setFont("SpoqaHanSansNeo");
 }
 
-function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodStart: string, periodEnd: string, meetingRate: number = 20000) {
+function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodStart: string, periodEnd: string, meetingRate: number = 20000, flatRate?: number) {
   const start = new Date(periodStart);
   const end = new Date(periodEnd);
   const now = new Date();
@@ -61,12 +61,13 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
     const d = new Date(s.scheduled_at);
     if (d >= start && d <= end && d <= now) {
       const levelRate = LEVEL_RATES[s.level] || 19000;
+      const pay = flatRate ? flatRate : (BASE_PAY + levelRate);
       rows.push({
         date: d,
         type: "수업",
         description: `${s.student_name} (${getLevelCategory(s.level)})`,
         durationHours: 1,
-        pay: BASE_PAY + levelRate,
+        pay,
       });
     }
   });
@@ -75,7 +76,7 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
     const d = new Date(m.scheduled_at);
     if (d >= start && d <= end && d <= now) {
       const durationHours = m.duration_minutes / 60;
-      const meetingPay = Math.round(durationHours * BASE_PAY);
+      const meetingPay = Math.round(durationHours * (flatRate || BASE_PAY));
       rows.push({
         date: d,
         type: "미팅",
@@ -96,17 +97,18 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
 }
 
 export async function exportAllSettlementsPdf(
-  instructors: { info: InstructorInfo; sessions: Session[]; meetings: Meeting[]; meetingRate?: number }[],
+  instructors: { info: InstructorInfo; sessions: Session[]; meetings: Meeting[]; meetingRate?: number; position?: string; lessonRate?: number }[],
   period: PeriodInfo,
 ) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   await registerKoreanFont(doc);
 
   for (let i = 0; i < instructors.length; i++) {
-    const { info, sessions, meetings, meetingRate } = instructors[i];
+    const { info, sessions, meetings, meetingRate, position, lessonRate } = instructors[i];
     if (i > 0) doc.addPage();
 
-    const rows = buildSettlementRows(sessions, meetings, period.start_date, period.end_date, meetingRate);
+    const flatRate = position === '대표' ? (lessonRate ?? 50000) : undefined;
+    const rows = buildSettlementRows(sessions, meetings, period.start_date, period.end_date, meetingRate, flatRate);
     const totalPay = rows.length > 0 ? rows[rows.length - 1].cumulative : 0;
 
     // Header

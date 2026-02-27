@@ -30,6 +30,7 @@ interface Instructor {
   lesson_rate: number;
   meeting_rate: number;
   meet_link: string | null;
+  position: string;
   active: boolean;
 }
 
@@ -1006,6 +1007,7 @@ export default function InstructorDashboard() {
   // Settlement items for the table
   type SettlementRow = { key: string; date: Date; type: 'lesson' | 'meeting'; description: string; durationHours: number; payPerHour: number; };
   const settlementRows: SettlementRow[] = [];
+  const isOwner = instructor?.position === '대표';
   completedPeriodSessions.forEach((s) => {
     const levelRate = LEVEL_RATES[s.level] || 19000;
     const key = `lesson-${s.id}`;
@@ -1016,7 +1018,7 @@ export default function InstructorDashboard() {
       type: 'lesson',
       description: `${s.student_name} 수업 (${getLevelCategory(s.level)})`,
       durationHours,
-      payPerHour: BASE_PAY + levelRate,
+      payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate),
     });
   });
   completedPeriodMeetings.forEach((m) => {
@@ -1028,7 +1030,7 @@ export default function InstructorDashboard() {
       type: 'meeting',
       description: m.notes || '업무 미팅',
       durationHours,
-      payPerHour: BASE_PAY,
+      payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : BASE_PAY,
     });
   });
   settlementRows.sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -1159,7 +1161,7 @@ export default function InstructorDashboard() {
           </div>
           <div>
             <p className="font-bold text-sm text-foreground">The Lounge English</p>
-            <p className="text-[10px] text-muted-foreground">{instructor.name} · 강사</p>
+            <p className="text-[10px] text-muted-foreground">{instructor.name} · {instructor.position || '강사'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

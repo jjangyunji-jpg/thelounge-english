@@ -18,6 +18,7 @@ interface Instructor {
   active: boolean;
   lesson_rate: number;
   meeting_rate: number;
+  position: string;
   user_id: string | null;
   join_date: string | null;
   gender: string | null;
@@ -219,6 +220,8 @@ export default function InstructorManagement() {
             sessions: sessRes.data || [],
             meetings: meetRes.data || [],
             meetingRate: ins.meeting_rate,
+            position: ins.position,
+            lessonRate: ins.lesson_rate,
           };
         })
       );

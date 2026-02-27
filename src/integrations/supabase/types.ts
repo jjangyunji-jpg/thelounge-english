@@ -293,6 +293,7 @@ export type Database = {
           meeting_rate: number
           name: string
           phone: string | null
+          position: string
           updated_at: string
           user_id: string | null
         }
@@ -311,6 +312,7 @@ export type Database = {
           meeting_rate?: number
           name: string
           phone?: string | null
+          position?: string
           updated_at?: string
           user_id?: string | null
         }
@@ -329,6 +331,7 @@ export type Database = {
           meeting_rate?: number
           name?: string
           phone?: string | null
+          position?: string
           updated_at?: string
           user_id?: string | null
         }

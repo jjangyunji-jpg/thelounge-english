@@ -1,0 +1,1 @@
+ALTER TABLE public.instructors ADD COLUMN position text NOT NULL DEFAULT '강사';
