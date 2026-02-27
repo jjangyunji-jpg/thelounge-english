@@ -201,20 +201,9 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
 }) {
   const today = new Date();
 
-  // Determine which months to render based on the selected period
-  const monthsToRender: { year: number; month: number }[] = [];
-  if (selectedPeriod) {
-    const ps = new Date(selectedPeriod.start_date + "T00:00:00");
-    const pe = new Date(selectedPeriod.end_date + "T00:00:00");
-    let cur = new Date(ps.getFullYear(), ps.getMonth(), 1);
-    const last = new Date(pe.getFullYear(), pe.getMonth(), 1);
-    while (cur <= last) {
-      monthsToRender.push({ year: cur.getFullYear(), month: cur.getMonth() });
-      cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
-    }
-  } else {
-    monthsToRender.push({ year: today.getFullYear(), month: today.getMonth() });
-  }
+  // Primary month from the period start; extend grid rows to cover end date
+  const primaryYear = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getFullYear() : today.getFullYear();
+  const primaryMonth = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getMonth() : today.getMonth();
 
   const holidayRanges = holidays.map(h => ({
     start: new Date(h.date_start + "T00:00:00"),
@@ -234,16 +223,43 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
 
   return (
     <div className="space-y-4">
-      {monthsToRender.map(({ year, month }) => {
+      {(() => {
+        const year = primaryYear;
+        const month = primaryMonth;
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-        while (cells.length % 7 !== 0) cells.push(null);
 
-        const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+        // Build cells: start with the primary month
+        const cells: { day: number; month: number; year: number }[] = [];
+        // Leading blanks
+        const blanks = firstDay;
+
+        // Primary month days
+        for (let d = 1; d <= daysInMonth; d++) {
+          cells.push({ day: d, month, year });
+        }
+
+        // If period end extends into the next month, add those days
+        if (selectedPeriod) {
+          const pe = new Date(selectedPeriod.end_date + "T00:00:00");
+          if (pe.getMonth() !== month || pe.getFullYear() !== year) {
+            const nextMonth = month + 1;
+            const nextYear = nextMonth > 11 ? year + 1 : year;
+            const nm = nextMonth % 12;
+            // Add days from next month up to period end (or end of that week row)
+            const endDay = pe.getDate();
+            for (let d = 1; d <= endDay; d++) {
+              cells.push({ day: d, month: nm, year: nextYear });
+            }
+          }
+        }
+
+        // Total grid cells = blanks + cells, padded to full weeks
+        const totalSlots = blanks + cells.length;
+        const paddedTotal = Math.ceil(totalSlots / 7) * 7;
 
         return (
-          <div key={`${year}-${month}`} className="space-y-2">
+          <div className="space-y-2">
             <div className="text-center">
               <span className="font-bold text-foreground text-sm">{year}년 {month + 1}월</span>
             </div>
@@ -256,14 +272,18 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
               ))}
             </div>
             <div className="grid grid-cols-7 gap-px">
-              {cells.map((day, idx) => {
-                if (!day) return <div key={idx} />;
-                const date = new Date(year, month, day);
+              {Array.from({ length: paddedTotal }).map((_, idx) => {
+                if (idx < blanks || idx >= blanks + cells.length) {
+                  return <div key={idx} />;
+                }
+                const cell = cells[idx - blanks];
+                const date = new Date(cell.year, cell.month, cell.day);
+                const isNextMonth = cell.month !== month;
                 const holiday = isHoliday(date);
                 const tuesdayOff = isTuesdayOff(date);
                 const inPeriod = isInPeriod(date);
                 const session = allCalendarDates.has(date.toDateString());
-                const todayMark = isCurrentMonth && today.getDate() === day;
+                const todayMark = today.getFullYear() === cell.year && today.getMonth() === cell.month && today.getDate() === cell.day;
                 const isOff = holiday || tuesdayOff;
                 return (
                   <div key={idx} className={cn(
@@ -275,7 +295,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
                       : inPeriod ? "text-foreground hover:bg-muted/50"
                       : "text-muted-foreground/40 hover:bg-muted/30",
                   )}>
-                    {day}
+                    {isNextMonth ? `${cell.month + 1}/${cell.day}` : cell.day}
                     {session && !todayMark && !isOff && (
                       <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
                     )}
@@ -288,7 +308,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
             </div>
           </div>
         );
-      })}
+      })()}
       {/* Legend */}
       <div className="flex items-center gap-3 pt-1 text-[10px] text-muted-foreground flex-wrap">
         <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gold" />수업일</div>
