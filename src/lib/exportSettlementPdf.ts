@@ -143,8 +143,8 @@ export async function exportAllSettlementsPdf(
       ]),
       foot: [["합계", "", "", "", `${fmt(totalPay)}원`, ""]],
       styles: { fontSize: 8, cellPadding: 2, font: "SpoqaHanSansNeo" },
-      headStyles: { fillColor: [30, 58, 95], textColor: 255, fontStyle: "bold", font: "SpoqaHanSansNeo" },
-      footStyles: { fillColor: [240, 240, 240], textColor: [30, 30, 30], fontStyle: "bold", font: "SpoqaHanSansNeo" },
+      headStyles: { fillColor: [30, 58, 95], textColor: 255, font: "SpoqaHanSansNeo", fontStyle: "normal" },
+      footStyles: { fillColor: [240, 240, 240], textColor: [30, 30, 30], font: "SpoqaHanSansNeo", fontStyle: "normal" },
       columnStyles: {
         0: { cellWidth: 28 },
         1: { cellWidth: 15 },
