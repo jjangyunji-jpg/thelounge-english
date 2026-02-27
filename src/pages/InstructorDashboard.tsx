@@ -5,7 +5,7 @@ import {
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
-  Shield, Paperclip, CheckCircle,
+  Shield, Paperclip, CheckCircle, ChevronDown,
 } from "lucide-react";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
@@ -1797,13 +1797,14 @@ export default function InstructorDashboard() {
 
                 {/* Checked homework */}
                 {checkedHw.length > 0 && (
-                  <div className="rounded-xl border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.03)] p-4">
-                    <h3 className="text-sm font-semibold text-[hsl(var(--success))] mb-3 flex items-center gap-2">
+                  <details className="rounded-xl border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.03)] group">
+                    <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2 text-sm font-semibold text-[hsl(var(--success))]">
+                      <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
                       <CheckCircle className="w-4 h-4" />
                       확인된 숙제
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-medium">{checkedHw.length}</span>
-                    </h3>
-                    <div className="space-y-1.5">
+                    </summary>
+                    <div className="px-4 pb-4 space-y-1.5">
                       {checkedHw.map((a) => {
                         const sub = submissions.find(s => s.assignment_id === a.id && s.status === "reviewed");
                         const hwType = a.type as HwType;
@@ -1833,7 +1834,7 @@ export default function InstructorDashboard() {
                         );
                       })}
                     </div>
-                  </div>
+                  </details>
                 )}
               </div>
             </div>
