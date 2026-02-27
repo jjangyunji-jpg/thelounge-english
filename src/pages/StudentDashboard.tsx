@@ -711,22 +711,47 @@ export default function StudentDashboard() {
     return Math.max(1, diff);
   })();
 
-  // 이번주 수업 횟수
-  const thisWeekStats = (() => {
+  // 이번달 수업 횟수
+  const thisMonthStats = (() => {
     const now = new Date();
-    const dayOfWeek = now.getDay();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - dayOfWeek);
-    weekStart.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 7);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     
-    const totalWeekly = studentRecord?.schedules?.length || 0;
-    const completedThisWeek = allSessions.filter(s => {
+    // Total scheduled this month (from recurring schedules)
+    const totalMonthly = studentRecord?.schedules
+      ? (() => {
+          const slots = studentRecord.schedules;
+          let count = 0;
+          const cursor = new Date(monthStart);
+          while (cursor <= monthEnd) {
+            const dayNum = cursor.getDay();
+            for (const slot of slots) {
+              const slotDay = DAY_KO_TO_NUM[slot.day];
+              if (slotDay === dayNum && dayNum !== 2) count++; // exclude Tuesdays
+            }
+            cursor.setDate(cursor.getDate() + 1);
+          }
+          return count;
+        })()
+      : 0;
+    
+    const completedThisMonth = allSessions.filter(s => {
       const d = new Date(s.scheduled_at);
-      return d >= weekStart && d < weekEnd && s.ended_at;
+      return d >= monthStart && d <= monthEnd && s.ended_at;
     }).length;
-    return { completed: completedThisWeek, total: totalWeekly };
+    return { completed: completedThisMonth, total: totalMonthly };
+  })();
+
+  // 이번주 숙제: 가장 최근 세션의 숙제만
+  const latestSessionHwStats = (() => {
+    const latestSession = periodSessions.find(s => s.ended_at);
+    if (!latestSession) return { submitted: 0, total: 0, pending: 0 };
+    const sessionHw = assignments.filter(a => a.session_id === latestSession.id);
+    const submitted = sessionHw.filter(a => {
+      const sub = getSubmission(a.id);
+      return sub && sub.status !== "pending";
+    }).length;
+    return { submitted, total: sessionHw.length, pending: sessionHw.length - submitted };
   })();
 
   // 결제 버튼 활성화 여부
@@ -1115,26 +1140,26 @@ export default function StudentDashboard() {
             {[
               {
                 icon: Heart,
-                label: "더라운지영어와 함께한 시간",
+                label: "함께한 시간",
                 value: `${monthsWithUs}개월`,
                 sub: studentRecord?.start_date ? `${new Date(studentRecord.start_date + "T00:00:00").getFullYear()}.${String(new Date(studentRecord.start_date + "T00:00:00").getMonth() + 1).padStart(2, "0")} ~` : "",
               },
               {
                 icon: CalendarDays,
-                label: "이번주 수업",
-                value: `${thisWeekStats.completed}/${thisWeekStats.total}`,
-                sub: thisWeekStats.completed >= thisWeekStats.total && thisWeekStats.total > 0 ? "이번주 완료!" : "이번주 수업",
+                label: "이번달 수업",
+                value: `${thisMonthStats.completed}/${thisMonthStats.total}`,
+                sub: thisMonthStats.completed >= thisMonthStats.total && thisMonthStats.total > 0 ? "수업 완료!" : "수업 완료",
               },
               {
                 icon: BookOpen,
-                label: "숙제 제출",
-                value: `${submittedHw.length}/${periodAssignments.length}`,
-                sub: pendingHw.length === 0 ? "모두 완료!" : `${pendingHw.length}개 남음`,
-                alert: pendingHw.length > 0,
+                label: "이번주 숙제",
+                value: `${latestSessionHwStats.submitted}/${latestSessionHwStats.total}`,
+                sub: latestSessionHwStats.pending === 0 ? "모두 완료!" : `${latestSessionHwStats.pending}개 남음`,
+                alert: latestSessionHwStats.pending > 0,
               },
               {
                 icon: Trophy,
-                label: "평균 점수",
+                label: "단어 테스트 평균 점수",
                 value: avgScore !== null ? `${avgScore}%` : "-",
                 sub: `${periodTestHistory.length}회 테스트`,
               },
