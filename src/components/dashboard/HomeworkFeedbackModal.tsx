@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
@@ -127,15 +129,34 @@ export default function HomeworkFeedbackModal({
               </a>
             )}
 
-            {textContent && (
+            {textContent && aiCorrection?.errors?.length ? (
+              <Tabs defaultValue="inline" className="w-full">
+                <TabsList className="w-full h-8">
+                  <TabsTrigger value="inline" className="flex-1 text-xs h-7">교정 보기</TabsTrigger>
+                  <TabsTrigger value="original" className="flex-1 text-xs h-7">원문</TabsTrigger>
+                  <TabsTrigger value="corrected" className="flex-1 text-xs h-7">교정문</TabsTrigger>
+                </TabsList>
+                <TabsContent value="inline">
+                  <div className="rounded-lg border border-border bg-muted/10 p-4">
+                    <InlineCorrectedText original={textContent} errors={aiCorrection.errors} />
+                  </div>
+                </TabsContent>
+                <TabsContent value="original">
+                  <div className="rounded-lg border border-border bg-muted/10 p-4">
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{textContent}</p>
+                  </div>
+                </TabsContent>
+                <TabsContent value="corrected">
+                  <div className="rounded-lg border border-border bg-muted/10 p-4">
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{aiCorrection.corrected}</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            ) : textContent ? (
               <div className="rounded-lg border border-border bg-muted/10 p-4">
-                {aiCorrection?.errors?.length ? (
-                  <InlineCorrectedText original={textContent} errors={aiCorrection.errors} />
-                ) : (
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{textContent}</p>
-                )}
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{textContent}</p>
               </div>
-            )}
+            ) : null}
 
             {!textContent && !audioUrl && !fileUrl && (
               <p className="text-xs text-muted-foreground">제출 내용 없음</p>
