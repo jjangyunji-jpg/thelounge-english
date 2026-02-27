@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import AdminSidebar, { AdminTab } from "@/components/admin/AdminSidebar";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import OperationsDashboard from "@/components/admin/OperationsDashboard";
@@ -7,11 +9,35 @@ import StudentManagement from "@/components/admin/StudentManagement";
 import UserApproval from "@/components/admin/UserApproval";
 import MessageCenter from "@/components/admin/MessageCenter";
 import SystemSettings from "@/components/admin/SystemSettings";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Loader2 } from "lucide-react";
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { navigate("/login"); return; }
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin");
+      if (!data || data.length === 0) { navigate("/login"); return; }
+      setLoading(false);
+    })();
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (activeTab) {

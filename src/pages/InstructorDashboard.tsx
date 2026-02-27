@@ -5,6 +5,7 @@ import {
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -860,6 +861,7 @@ export default function InstructorDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => { init(); }, []);
 
@@ -867,6 +869,14 @@ export default function InstructorDashboard() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { navigate("/login"); return; }
     setUser({ email: user.email ?? "" });
+
+    // Check admin role
+    const { data: adminRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin");
+    if (adminRole && adminRole.length > 0) setIsAdmin(true);
 
     const { data: ins } = await supabase
       .from("instructors").select("*").eq("email", user.email).maybeSingle();
@@ -1153,6 +1163,11 @@ export default function InstructorDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button size="sm" variant="outline" onClick={() => navigate("/admin")} className="h-8 text-xs gap-1.5 text-muted-foreground">
+              <Shield className="w-3 h-3" /> 관리자
+            </Button>
+          )}
           <Button size="sm" onClick={() => setShowMeetingModal(true)}
             className="h-8 text-xs gap-1.5 bg-navy hover:bg-navy-light text-primary-foreground"
           >
