@@ -1208,7 +1208,7 @@ export default function StudentDashboard() {
                     </p>
                     <p className="text-xs text-muted-foreground">{fmtDateTime(nextClassDate.toISOString())}</p>
                     <p className="text-xs text-muted-foreground">
-                      담당: {studentRecord?.instructor_display_name || studentRecord?.instructor_name || nextSessionFromDB?.instructor_name || "-"}
+                      담당: {studentRecord?.instructor_name || nextSessionFromDB?.instructor_name || "-"}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
