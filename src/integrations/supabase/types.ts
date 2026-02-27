@@ -59,6 +59,7 @@ export type Database = {
           lesson_preparation: number
           period_id: string | null
           period_label: string
+          ratings: Json | null
           satisfaction: number
           student_name: string
           teaching_quality: number
@@ -72,6 +73,7 @@ export type Database = {
           lesson_preparation: number
           period_id?: string | null
           period_label: string
+          ratings?: Json | null
           satisfaction: number
           student_name: string
           teaching_quality: number
@@ -85,6 +87,7 @@ export type Database = {
           lesson_preparation?: number
           period_id?: string | null
           period_label?: string
+          ratings?: Json | null
           satisfaction?: number
           student_name?: string
           teaching_quality?: number
@@ -141,6 +144,36 @@ export type Database = {
           student_name?: string
           topic?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      feedback_categories: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          sort_order?: number
         }
         Relationships: []
       }

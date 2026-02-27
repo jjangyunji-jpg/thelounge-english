@@ -11,6 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 import { exportAllSettlementsPdf } from "@/lib/exportSettlementPdf";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
+interface FeedbackCategory {
+  id: string;
+  key: string;
+  label: string;
+  sort_order: number;
+}
+
 interface FeedbackRecord {
   id: string;
   student_name: string;
@@ -19,6 +26,7 @@ interface FeedbackRecord {
   teaching_quality: number;
   communication: number;
   lesson_preparation: number;
+  ratings: Record<string, number> | null;
   comment: string | null;
   created_at: string;
 }
@@ -82,10 +90,12 @@ export default function InstructorManagement() {
     phone: "",
   });
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackRecord[]>>({});
+  const [feedbackCategories, setFeedbackCategories] = useState<FeedbackCategory[]>([]);
 
   useEffect(() => {
     fetchInstructors();
     fetchAllFeedback();
+    fetchFeedbackCategories();
   }, []);
 
   const fetchInstructors = async () => {
@@ -106,17 +116,26 @@ export default function InstructorManagement() {
   const fetchAllFeedback = async () => {
     const { data } = await supabase
       .from("class_feedback")
-      .select("id,student_name,instructor_name,period_label,satisfaction,teaching_quality,communication,lesson_preparation,comment,created_at")
+      .select("id,student_name,instructor_name,period_label,satisfaction,teaching_quality,communication,lesson_preparation,ratings,comment,created_at")
       .order("created_at", { ascending: false });
     if (data) {
       const map: Record<string, FeedbackRecord[]> = {};
-      for (const fb of data as FeedbackRecord[]) {
-        const key = (fb as any).instructor_name;
+      for (const fb of data as any[]) {
+        const key = fb.instructor_name;
         if (!map[key]) map[key] = [];
-        map[key].push(fb);
+        map[key].push(fb as FeedbackRecord);
       }
       setFeedbackMap(map);
     }
+  };
+
+  const fetchFeedbackCategories = async () => {
+    const { data } = await supabase
+      .from("feedback_categories")
+      .select("id,key,label,sort_order")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    setFeedbackCategories(data || []);
   };
 
   const toggleActive = async (ins: Instructor) => {
@@ -536,21 +555,46 @@ export default function InstructorManagement() {
                         if (feedbacks.length === 0) {
                           return <p className="text-xs text-muted-foreground py-3 text-center">아직 피드백이 없습니다</p>;
                         }
-                        const avgSat = Math.round(feedbacks.reduce((a, f) => a + f.satisfaction, 0) / feedbacks.length * 10) / 10;
-                        const avgTeach = Math.round(feedbacks.reduce((a, f) => a + f.teaching_quality, 0) / feedbacks.length * 10) / 10;
-                        const avgComm = Math.round(feedbacks.reduce((a, f) => a + f.communication, 0) / feedbacks.length * 10) / 10;
-                        const avgPrep = Math.round(feedbacks.reduce((a, f) => a + f.lesson_preparation, 0) / feedbacks.length * 10) / 10;
-                        const overallAvg = Math.round((avgSat + avgTeach + avgComm + avgPrep) / 4 * 10) / 10;
+
+                        // Use dynamic categories; fall back to legacy columns
+                        const cats = feedbackCategories.length > 0
+                          ? feedbackCategories
+                          : [
+                              { key: "satisfaction", label: "만족도", sort_order: 0 },
+                              { key: "teaching_quality", label: "퀄리티", sort_order: 1 },
+                              { key: "communication", label: "소통", sort_order: 2 },
+                              { key: "lesson_preparation", label: "준비도", sort_order: 3 },
+                            ];
+
+                        const getRating = (fb: FeedbackRecord, key: string): number => {
+                          if (fb.ratings && typeof fb.ratings === "object" && key in fb.ratings) {
+                            return fb.ratings[key] || 0;
+                          }
+                          // legacy columns
+                          if (key === "satisfaction") return fb.satisfaction;
+                          if (key === "teaching_quality") return fb.teaching_quality;
+                          if (key === "communication") return fb.communication;
+                          if (key === "lesson_preparation") return fb.lesson_preparation;
+                          return 0;
+                        };
+
+                        const catAvgs = cats.map(cat => {
+                          const avg = Math.round(feedbacks.reduce((a, f) => a + getRating(f, cat.key), 0) / feedbacks.length * 10) / 10;
+                          return { label: cat.label, value: avg };
+                        });
+                        const overallAvg = Math.round(catAvgs.reduce((a, c) => a + c.value, 0) / catAvgs.length * 10) / 10;
+
                         return (
                           <div className="space-y-3 pt-3">
-                            <div className="grid grid-cols-5 gap-2">
-                              {[
-                                { label: "종합", value: overallAvg },
-                                { label: "만족도", value: avgSat },
-                                { label: "퀄리티", value: avgTeach },
-                                { label: "소통", value: avgComm },
-                                { label: "준비도", value: avgPrep },
-                              ].map(item => (
+                            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(cats.length + 1, 6)}, 1fr)` }}>
+                              <div className="text-center p-2 rounded-lg bg-muted/50">
+                                <div className="flex items-center justify-center gap-0.5">
+                                  <Star className={`w-3 h-3 ${overallAvg >= 4 ? "text-gold fill-gold" : overallAvg >= 3 ? "text-amber-400 fill-amber-400" : "text-muted-foreground"}`} />
+                                  <span className="text-sm font-bold text-foreground">{overallAvg}</span>
+                                </div>
+                                <p className="text-[9px] text-muted-foreground mt-0.5">종합</p>
+                              </div>
+                              {catAvgs.map(item => (
                                 <div key={item.label} className="text-center p-2 rounded-lg bg-muted/50">
                                   <div className="flex items-center justify-center gap-0.5">
                                     <Star className={`w-3 h-3 ${item.value >= 4 ? "text-gold fill-gold" : item.value >= 3 ? "text-amber-400 fill-amber-400" : "text-muted-foreground"}`} />
@@ -567,11 +611,10 @@ export default function InstructorManagement() {
                                     <span className="text-xs font-medium text-foreground">{fb.student_name}</span>
                                     <span className="text-[10px] text-muted-foreground">{fb.period_label}</span>
                                   </div>
-                                  <div className="flex gap-2 text-[10px] text-muted-foreground">
-                                    <span>만족 {fb.satisfaction}★</span>
-                                    <span>퀄리티 {fb.teaching_quality}★</span>
-                                    <span>소통 {fb.communication}★</span>
-                                    <span>준비 {fb.lesson_preparation}★</span>
+                                  <div className="flex gap-2 text-[10px] text-muted-foreground flex-wrap">
+                                    {cats.map(cat => (
+                                      <span key={cat.key}>{cat.label} {getRating(fb, cat.key)}★</span>
+                                    ))}
                                   </div>
                                   {fb.comment && (
                                     <p className="text-xs text-foreground/80 italic">"{fb.comment}"</p>
