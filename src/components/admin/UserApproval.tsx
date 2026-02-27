@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { autoGenerateSessions } from "@/lib/autoGenerateSessions";
 
 interface PendingUser {
   id: string;
@@ -196,6 +197,10 @@ export default function UserApproval({ onNavigate }: Props) {
     toast({ title: `${setupUser.display_name} 수강생 정보 등록 완료 ✓` });
     setSetupDialogOpen(false);
     setSetupUser(null);
+
+    // Auto-generate sessions for active periods
+    autoGenerateSessions();
+
     onNavigate?.("students");
   };
 

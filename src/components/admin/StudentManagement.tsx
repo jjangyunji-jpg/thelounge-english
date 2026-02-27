@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { autoGenerateSessions } from "@/lib/autoGenerateSessions";
 
 type StudentStatus = "active" | "graduated";
 type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
@@ -436,6 +437,9 @@ export default function StudentManagement() {
     setNewStudent({ name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [] });
     setDialogOpen(false);
     toast({ title: `${newStudent.name} 수강생 등록 완료 ✓` });
+
+    // Auto-generate sessions for active periods
+    autoGenerateSessions();
   };
 
   return (
