@@ -189,7 +189,7 @@ export default function ClassNote() {
                 </div>
 
                 <div
-                  className="tiptap h-[420px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground [&_a]:text-[hsl(var(--gold-dark))] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:opacity-80"
+                  className="tiptap h-[600px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground [&_a]:text-[hsl(var(--gold-dark))] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:opacity-80"
                   dangerouslySetInnerHTML={{ __html: (() => {
                     const raw = selectedSession.notes || "";
                     if (!raw) return "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>";
