@@ -5,7 +5,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked,
-  Loader2, Monitor,
+  Loader2, Maximize2,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
@@ -321,34 +321,7 @@ export default function Classroom() {
     await supabase.from("class_sessions").update({ notes: text.trim() }).eq("id", session.sessionId);
   }, [session.sessionId]);
 
-  // Broadcast scroll position + live content for mirror page
-  const mirrorChannelRef = useRef<any>(null);
-  useEffect(() => {
-    if (!session.sessionId) return;
-    const ch = supabase.channel(`mirror-sync-${session.sessionId}`);
-    ch.subscribe();
-    mirrorChannelRef.current = ch;
-    return () => { supabase.removeChannel(ch); };
-  }, [session.sessionId]);
-
-  const handleEditorScroll = useCallback((ratio: number) => {
-    mirrorChannelRef.current?.send({
-      type: "broadcast",
-      event: "scroll",
-      payload: { ratio },
-    });
-  }, []);
-
-  // Broadcast live content on every keystroke (no delay)
-  const broadcastContent = useCallback((html: string) => {
-    mirrorChannelRef.current?.send({
-      type: "broadcast",
-      event: "content",
-      payload: { html },
-    });
-  }, []);
-
-  const handleOpenMirror = () => {
+  const handleOpenNotesNewTab = () => {
     if (!session.sessionId) return;
     window.open(`/t/classroom/notes?sessionId=${session.sessionId}`, "_blank", "noopener");
   };
@@ -787,11 +760,11 @@ export default function Classroom() {
                     >
                       {saveFlash ? "저장됨 ✓" : "저장"}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={handleOpenMirror} disabled={!session.sessionId}
-                      className="h-7 text-xs gap-1.5 border-purple-300 text-purple-600 hover:bg-purple-50"
+                    <Button size="sm" variant="outline" onClick={handleOpenNotesNewTab} disabled={!session.sessionId}
+                      className="h-7 text-xs gap-1.5 border-muted-foreground/30 text-muted-foreground hover:bg-muted"
                     >
-                      <Monitor className="w-3 h-3" />
-                      <span className="hidden sm:inline">노트 공유</span>
+                      <Maximize2 className="w-3 h-3" />
+                      <span className="hidden sm:inline">새 탭</span>
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setMaterialPickerOpen(true)}
                       className="h-7 text-xs gap-1.5 border-gold/50 text-gold-dark hover:bg-gold/10"
@@ -805,7 +778,6 @@ export default function Classroom() {
                   content={notes}
                   onChange={(newVal) => {
                     setNotes(newVal);
-                    broadcastContent(newVal);
                     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
                     autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 1500);
                     if (autoCorrectEnabled && newVal.trim() && newVal !== lastCorrectedText.current) {
@@ -819,7 +791,6 @@ export default function Classroom() {
                   autoCorrectEnabled={autoCorrectEnabled}
                   onAutoCorrectToggle={() => setAutoCorrectEnabled(v => !v)}
                   isAutoCorrecting={isAutoCorrecting}
-                  onScrollRatio={handleEditorScroll}
                 />
                 {classState === "active" && (
                   <div className="px-4 py-2.5 border-t border-border bg-muted/20 flex items-center gap-3">
