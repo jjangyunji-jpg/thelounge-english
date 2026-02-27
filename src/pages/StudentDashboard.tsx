@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
 import FeedbackSurveyModal from "@/components/classroom/FeedbackSurveyModal";
 import WeeklyTasksSection from "@/components/dashboard/WeeklyTasksSection";
 import { useNavigate } from "react-router-dom";
@@ -378,24 +379,44 @@ export default function StudentDashboard() {
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [authNickname, setAuthNickname] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [notLinked, setNotLinked] = useState(false);
   const searchParams = new URLSearchParams(window.location.search);
   const urlStudent = searchParams.get("name");
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        const { data: profile } = await supabase
-          .from("student_profiles")
-          .select("student_name, nickname")
+        // Check if student has a linked instructor_students record
+        const { data: linkedRecord } = await supabase
+          .from("instructor_students")
+          .select("student_name")
           .eq("user_id", session.user.id)
           .maybeSingle();
-        if (profile?.student_name && profile.student_name.trim() !== "") {
-          setAuthStudent(profile.student_name);
+
+        if (linkedRecord) {
+          // Use the student_name from instructor_students (the linked record)
+          setAuthStudent(linkedRecord.student_name);
+          // Get nickname from student_profiles
+          const { data: profile } = await supabase
+            .from("student_profiles")
+            .select("nickname")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          setAuthNickname(profile?.nickname || null);
+        } else {
+          // Check if profile exists at all
+          const { data: profile } = await supabase
+            .from("student_profiles")
+            .select("student_name, nickname")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          if (!profile) {
+            navigate("/student-setup");
+            return;
+          }
+          // Profile exists but no linked instructor_students record → 준비 중
           setAuthNickname(profile.nickname || null);
-        } else if (!profile) {
-          // 로그인은 됐지만 student_profiles 없으면 setup으로
-          navigate("/student-setup");
-          return;
+          setNotLinked(true);
         }
       }
       setAuthLoading(false);
@@ -601,6 +622,41 @@ export default function StudentDashboard() {
             <Coffee className="w-5 h-5 text-gold" />
           </div>
           <p className="text-sm text-muted-foreground">불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (notLinked) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl gold-gradient flex items-center justify-center shadow-gold mx-auto">
+            <BookOpen className="w-8 h-8 text-accent-foreground" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">수업 준비 중</h1>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              {authNickname || "학생"}님의 수업을 준비하고 있습니다.<br />
+              담당 강사가 배정되면 대시보드가 활성화됩니다.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="w-4 h-4 text-gold" />
+              <span>강사 배정 및 수업 설정 대기 중</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              준비가 완료되면 자동으로 대시보드에 접속할 수 있습니다.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            className="gap-2 text-xs"
+            onClick={handleLogout}
+          >
+            로그아웃
+          </Button>
         </div>
       </div>
     );
