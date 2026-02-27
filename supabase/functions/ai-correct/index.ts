@@ -59,7 +59,7 @@ Return a JSON object with:
 - errors: array of { original, corrected, explanation } objects for each error found. The "original" must be the EXACT substring from the student's text. Keep explanations concise in Korean.
 - score: naturalness score 1-10
 - feedback: object with:
-  - praise: one sentence praising what the student did well IN TERMS OF ENGLISH USAGE, WRITING STRUCTURE, OR LOGICAL DEVELOPMENT ONLY (in Korean). Do NOT praise effort, attitude, or topic choice — focus strictly on language quality, sentence structure, paragraph organization, or logical flow.
+  - praise: one sentence praising what the student did well STRICTLY in terms of GRAMMAR USAGE or LOGICAL STRUCTURE/FLOW of the writing (in Korean). Do NOT comment on content, topic, effort, attitude, vocabulary richness, or context. Focus ONLY on grammatical accuracy and structural organization.
   - priorities: array of exactly 3 strings, each describing the most important thing the student should fix or improve (in Korean, concise)
 
 IMPORTANT for errors:
