@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import HomeworkSubmitModal from "./HomeworkSubmitModal";
+import HomeworkFeedbackModal from "./HomeworkFeedbackModal";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
 
@@ -44,6 +45,7 @@ interface Submission {
   status: string;
   text_content: string | null;
   audio_url: string | null;
+  file_url: string | null;
   instructor_note: string | null;
   reviewed_at: string | null;
 }
@@ -79,6 +81,7 @@ export default function WeeklyTasksSection({
   const navigate = useNavigate();
   const [modalAssignment, setModalAssignment] = useState<Assignment | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [feedbackAssignment, setFeedbackAssignment] = useState<{ assignment: Assignment; submission: Submission } | null>(null);
 
   // Find the most recent past session (latest completed/past session)
   const now = new Date();
@@ -215,11 +218,18 @@ export default function WeeklyTasksSection({
                       제출하기
                     </button>
                   )}
-                  {done && (
+                  {done && sub?.status === "reviewed" ? (
+                    <button
+                      onClick={() => setFeedbackAssignment({ assignment: a, submission: sub })}
+                      className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold hover:bg-[hsl(var(--success)/0.2)] transition-colors cursor-pointer"
+                    >
+                      검토됨 →
+                    </button>
+                  ) : done ? (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0">
-                      {sub?.status === "reviewed" ? "검토됨" : "완료"}
+                      완료
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Reading: show URLs inline */}
@@ -285,6 +295,20 @@ export default function WeeklyTasksSection({
           studentName={studentName}
           onClose={() => setModalAssignment(null)}
           onSubmitted={(sub) => onSubmissionUpdate(sub)}
+        />
+      )}
+
+      {/* Homework feedback modal (student view) */}
+      {feedbackAssignment && (
+        <HomeworkFeedbackModal
+          assignmentTitle={feedbackAssignment.assignment.title}
+          assignmentType={feedbackAssignment.assignment.type}
+          textContent={feedbackAssignment.submission.text_content}
+          audioUrl={feedbackAssignment.submission.audio_url}
+          fileUrl={feedbackAssignment.submission.file_url}
+          instructorNote={feedbackAssignment.submission.instructor_note}
+          reviewedAt={feedbackAssignment.submission.reviewed_at}
+          onClose={() => setFeedbackAssignment(null)}
         />
       )}
     </>
