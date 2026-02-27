@@ -321,21 +321,30 @@ export default function Classroom() {
     await supabase.from("class_sessions").update({ notes: text.trim() }).eq("id", session.sessionId);
   }, [session.sessionId]);
 
-  // Broadcast scroll position for mirror page
-  const scrollChannelRef = useRef<any>(null);
+  // Broadcast scroll position + live content for mirror page
+  const mirrorChannelRef = useRef<any>(null);
   useEffect(() => {
     if (!session.sessionId) return;
-    const ch = supabase.channel(`scroll-sync-${session.sessionId}`);
+    const ch = supabase.channel(`mirror-sync-${session.sessionId}`);
     ch.subscribe();
-    scrollChannelRef.current = ch;
+    mirrorChannelRef.current = ch;
     return () => { supabase.removeChannel(ch); };
   }, [session.sessionId]);
 
   const handleEditorScroll = useCallback((ratio: number) => {
-    scrollChannelRef.current?.send({
+    mirrorChannelRef.current?.send({
       type: "broadcast",
       event: "scroll",
       payload: { ratio },
+    });
+  }, []);
+
+  // Broadcast live content on every keystroke (no delay)
+  const broadcastContent = useCallback((html: string) => {
+    mirrorChannelRef.current?.send({
+      type: "broadcast",
+      event: "content",
+      payload: { html },
     });
   }, []);
 
@@ -796,6 +805,7 @@ export default function Classroom() {
                   content={notes}
                   onChange={(newVal) => {
                     setNotes(newVal);
+                    broadcastContent(newVal);
                     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
                     autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 1500);
                     if (autoCorrectEnabled && newVal.trim() && newVal !== lastCorrectedText.current) {
