@@ -245,7 +245,7 @@ export default function Classroom() {
   const [objectives, setObjectives] = useState<string[]>([]);
   const [sessionTopic, setSessionTopic] = useState("");
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
-  const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(true);
+  const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(false);
   const [isAutoCorrecting, setIsAutoCorrecting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCorrectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
