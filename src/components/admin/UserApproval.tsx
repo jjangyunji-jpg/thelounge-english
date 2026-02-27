@@ -85,12 +85,17 @@ export default function UserApproval({ onNavigate }: Props) {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
 
+  // Map user_id → linked student_name for approved students
+  const [linkedMap, setLinkedMap] = useState<Record<string, string>>({});
+
   // Student linking dialog
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUser, setLinkUser] = useState<PendingUser | null>(null);
   const [unlinkedStudents, setUnlinkedStudents] = useState<UnlinkedStudent[]>([]);
+  const [allStudents, setAllStudents] = useState<UnlinkedStudent[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [savingLink, setSavingLink] = useState(false);
+  const [isRelink, setIsRelink] = useState(false);
 
   // Student setup dialog (for creating new record)
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
@@ -116,6 +121,19 @@ export default function UserApproval({ onNavigate }: Props) {
     const all = (data || []) as PendingUser[];
     setPending(all.filter(u => !u.approved));
     setApproved(all.filter(u => u.approved));
+
+    // Load linked student names for approved students
+    const approvedStudents = all.filter(u => u.approved && u.role === "student");
+    if (approvedStudents.length > 0) {
+      const { data: links } = await supabase
+        .from("instructor_students")
+        .select("user_id, student_name")
+        .in("user_id", approvedStudents.map(u => u.user_id));
+      const map: Record<string, string> = {};
+      (links || []).forEach(l => { if (l.user_id) map[l.user_id] = l.student_name; });
+      setLinkedMap(map);
+    }
+
     setLoading(false);
   };
 
@@ -127,6 +145,15 @@ export default function UserApproval({ onNavigate }: Props) {
       .eq("status", "active")
       .order("student_name");
     setUnlinkedStudents((data || []) as UnlinkedStudent[]);
+  };
+
+  const loadAllStudents = async () => {
+    const { data } = await supabase
+      .from("instructor_students")
+      .select("id, student_name, instructor_name, level")
+      .eq("status", "active")
+      .order("student_name");
+    setAllStudents((data || []) as UnlinkedStudent[]);
   };
 
   useEffect(() => {
@@ -157,6 +184,7 @@ export default function UserApproval({ onNavigate }: Props) {
 
     if (user.role === "student") {
       // Show linking dialog instead of setup dialog
+      setIsRelink(false);
       await loadUnlinkedStudents();
       setLinkUser(user);
       setSelectedStudentId("");
@@ -189,6 +217,14 @@ export default function UserApproval({ onNavigate }: Props) {
     if (!linkUser || !selectedStudentId) return;
     setSavingLink(true);
 
+    // If relinking, clear previous link first
+    if (isRelink) {
+      await supabase
+        .from("instructor_students")
+        .update({ user_id: null })
+        .eq("user_id", linkUser.user_id);
+    }
+
     // Update instructor_students.user_id
     const { error } = await supabase
       .from("instructor_students")
@@ -202,7 +238,7 @@ export default function UserApproval({ onNavigate }: Props) {
     }
 
     // Also update student_profiles.student_name to match the linked record
-    const linked = unlinkedStudents.find(s => s.id === selectedStudentId);
+    const linked = (isRelink ? allStudents : unlinkedStudents).find(s => s.id === selectedStudentId);
     if (linked) {
       await supabase
         .from("student_profiles")
@@ -210,12 +246,13 @@ export default function UserApproval({ onNavigate }: Props) {
         .eq("user_id", linkUser.user_id);
     }
 
-    toast({ title: `${linkUser.display_name} → ${linked?.student_name} 연결 완료 ✓` });
+    toast({ title: `${linkUser.display_name} → ${linked?.student_name} 연결 ${isRelink ? "변경" : ""} 완료 ✓` });
     setLinkDialogOpen(false);
     setLinkUser(null);
     setSavingLink(false);
 
-    autoGenerateSessions();
+    if (!isRelink) autoGenerateSessions();
+    load();
   };
 
   // Open new student setup (fallback when no existing record)
@@ -389,17 +426,47 @@ export default function UserApproval({ onNavigate }: Props) {
                 <p className="text-sm text-muted-foreground text-center py-4">승인된 사용자가 없습니다</p>
               ) : (
                 <div className="space-y-1.5">
-                  {approved.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border">
-                      <div className="flex items-center gap-3">
-                        <p className="font-medium text-sm text-foreground">{u.display_name || "이름 없음"}</p>
-                        <Badge variant="outline" className="text-[10px]">
-                          {roleLabel(u.role)}
-                        </Badge>
+                  {approved.map(u => {
+                    const linkedName = u.role === "student" ? linkedMap[u.user_id] : null;
+                    return (
+                      <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border">
+                        <div className="flex items-center gap-3">
+                          <p className="font-medium text-sm text-foreground">{u.display_name || "이름 없음"}</p>
+                          <Badge variant="outline" className="text-[10px]">
+                            {roleLabel(u.role)}
+                          </Badge>
+                          {u.role === "student" && linkedName && (
+                            <span className="text-[10px] text-muted-foreground">
+                              → {linkedName}
+                            </span>
+                          )}
+                          {u.role === "student" && !linkedName && (
+                            <span className="text-[10px] text-destructive">미연결</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {u.role === "student" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-[10px] gap-1 border-navy/30 text-navy hover:bg-navy/10"
+                              onClick={async () => {
+                                setIsRelink(true);
+                                await Promise.all([loadUnlinkedStudents(), loadAllStudents()]);
+                                setLinkUser(u);
+                                setSelectedStudentId("");
+                                setLinkDialogOpen(true);
+                              }}
+                            >
+                              <Link2 className="w-3 h-3" />
+                              {linkedName ? "연결 수정" : "연결"}
+                            </Button>
+                          )}
+                          <Badge className="bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] text-[10px]">승인됨</Badge>
+                        </div>
                       </div>
-                      <Badge className="bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] text-[10px]">승인됨</Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -415,47 +482,51 @@ export default function UserApproval({ onNavigate }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Link2 className="w-4 h-4" />
-              수강생 계정 연결
+              {isRelink ? "수강생 계정 연결 수정" : "수강생 계정 연결"}
             </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{linkUser?.display_name}</span> 님의 계정을 기존 수강생 레코드에 연결합니다.
+            <span className="font-semibold text-foreground">{linkUser?.display_name}</span> 님의 계정을
+            {isRelink ? " 다른 수강생 레코드로 변경합니다." : " 기존 수강생 레코드에 연결합니다."}
           </p>
           <div className="space-y-4 pt-2">
-            {unlinkedStudents.length > 0 ? (
-              <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">기존 수강생 선택</Label>
-                  <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="수강생을 선택하세요" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {unlinkedStudents.map(s => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.student_name}
-                          {s.instructor_name ? ` (담당: ${s.instructor_name})` : ""}
-                          {s.level ? ` · ${s.level}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  className="w-full gap-2 bg-navy hover:bg-navy-light text-primary-foreground"
-                  disabled={savingLink || !selectedStudentId}
-                  onClick={handleLinkStudent}
-                >
-                  {savingLink && <Loader2 className="w-4 h-4 animate-spin" />}
-                  <Link2 className="w-4 h-4" />
-                  연결하기
-                </Button>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                연결 가능한 수강생 레코드가 없습니다.
-              </p>
-            )}
+            {(() => {
+              const studentList = isRelink ? allStudents : unlinkedStudents;
+              return studentList.length > 0 ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">{isRelink ? "수강생 선택 (전체)" : "기존 수강생 선택"}</Label>
+                    <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="수강생을 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {studentList.map(s => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.student_name}
+                            {s.instructor_name ? ` (담당: ${s.instructor_name})` : ""}
+                            {s.level ? ` · ${s.level}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    className="w-full gap-2 bg-navy hover:bg-navy-light text-primary-foreground"
+                    disabled={savingLink || !selectedStudentId}
+                    onClick={handleLinkStudent}
+                  >
+                    {savingLink && <Loader2 className="w-4 h-4 animate-spin" />}
+                    <Link2 className="w-4 h-4" />
+                    {isRelink ? "연결 변경" : "연결하기"}
+                  </Button>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  연결 가능한 수강생 레코드가 없습니다.
+                </p>
+              );
+            })()}
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
