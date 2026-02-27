@@ -959,8 +959,12 @@ export default function StudentDashboard() {
             <>
               <button
                 onClick={async () => {
-                  const { exportStudentGuidePdf } = await import("@/lib/exportStudentGuide");
-                  exportStudentGuidePdf();
+                  try {
+                    const { exportStudentGuidePdf } = await import("@/lib/exportStudentGuide");
+                    await exportStudentGuidePdf();
+                  } catch (e) {
+                    console.error("PDF export error:", e);
+                  }
                 }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
