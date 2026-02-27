@@ -8,7 +8,7 @@ import {
   Volume2, Loader2, Square, PenLine, Mic, Brain,
   AlertCircle, BanIcon, Bell, ChevronLeft,
   ChevronRight, Coffee, CalendarDays, TrendingUp, FileText,
-  RotateCcw, X, Activity,
+  RotateCcw, X, Activity, CreditCard, Heart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -597,10 +597,94 @@ export default function StudentDashboard() {
 
   // ── Derived stats ──
   const pendingHw = assignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
+  const submittedHw = assignments.filter(a => { const sub = getSubmission(a.id); return sub && sub.status !== "pending"; });
   const latestTest = testHistory[0];
   const avgScore = testHistory.length > 0
     ? Math.round(testHistory.reduce((acc, t) => acc + (t.total ? (t.score ?? 0) / t.total : 0), 0) / testHistory.length * 100)
     : null;
+
+  // 함께한 시간 (개월)
+  const monthsWithUs = (() => {
+    if (!studentRecord?.start_date) return 0;
+    const start = new Date(studentRecord.start_date + "T00:00:00");
+    const now = new Date();
+    const diff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+    return Math.max(1, diff);
+  })();
+
+  // 이번주 수업 횟수
+  const thisWeekStats = (() => {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - dayOfWeek);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+    
+    const totalWeekly = studentRecord?.schedules?.length || 0;
+    const completedThisWeek = allSessions.filter(s => {
+      const d = new Date(s.scheduled_at);
+      return d >= weekStart && d < weekEnd && s.ended_at;
+    }).length;
+    return { completed: completedThisWeek, total: totalWeekly };
+  })();
+
+  // 결제 버튼 활성화 여부
+  const paymentAvailable = (() => {
+    if (!schedulePeriods.length || !studentRecord?.schedules?.length) return false;
+    const now = new Date();
+    const sortedPeriods = [...schedulePeriods].sort((a, b) => a.start_date.localeCompare(b.start_date));
+    
+    for (let i = 0; i < sortedPeriods.length; i++) {
+      const period = sortedPeriods[i];
+      const periodEnd = new Date(period.end_date + "T00:00:00");
+      
+      // 해당 기간의 마지막 수업일 찾기
+      const periodSessions = allSessions
+        .filter(s => {
+          const d = new Date(s.scheduled_at);
+          return d >= new Date(period.start_date + "T00:00:00") && d <= new Date(period.end_date + "T23:59:59");
+        })
+        .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+      
+      const lastSessionDate = periodSessions.length > 0
+        ? new Date(periodSessions[0].scheduled_at)
+        : periodEnd;
+      
+      // 마지막 수업 전날
+      const activateFrom = new Date(lastSessionDate);
+      activateFrom.setDate(activateFrom.getDate() - 1);
+      activateFrom.setHours(0, 0, 0, 0);
+      
+      // 다음 기간 첫 수업 + 5일
+      const nextPeriod = sortedPeriods[i + 1];
+      let activateUntil: Date;
+      if (nextPeriod) {
+        const nextPeriodSessions = allSessions
+          .filter(s => {
+            const d = new Date(s.scheduled_at);
+            return d >= new Date(nextPeriod.start_date + "T00:00:00") && d <= new Date(nextPeriod.end_date + "T23:59:59");
+          })
+          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+        
+        const firstNextSession = nextPeriodSessions.length > 0
+          ? new Date(nextPeriodSessions[0].scheduled_at)
+          : new Date(nextPeriod.start_date + "T00:00:00");
+        
+        activateUntil = new Date(firstNextSession);
+        activateUntil.setDate(activateUntil.getDate() + 5);
+        activateUntil.setHours(23, 59, 59, 999);
+      } else {
+        // 마지막 기간이면 종료일 + 10일
+        activateUntil = new Date(periodEnd);
+        activateUntil.setDate(activateUntil.getDate() + 10);
+      }
+      
+      if (now >= activateFrom && now <= activateUntil) return true;
+    }
+    return false;
+  })();
 
   const vocabByWeek = vocabWords.reduce<Record<string, VocabWord[]>>((acc, w) => {
     if (!acc[w.week_label]) acc[w.week_label] = [];
@@ -844,42 +928,41 @@ export default function StudentDashboard() {
                   <p className="text-[10px] mt-0.5 text-muted-foreground">노트 & 피드백</p>
                 </div>
               </button>
-              {/* 스피킹 라운지 - 준비중 */}
-              <div className="relative group">
-                <button
-                  disabled
-                  className="w-full rounded-lg p-3 flex flex-col items-start gap-2 text-left bg-muted/30 border border-border opacity-50 cursor-not-allowed"
+              {/* 수업료 결제하기 */}
+              {paymentAvailable ? (
+                <a
+                  href="https://smartstore.naver.com/thelounge_english/products/11688767366"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-gold/10 border border-gold/30 hover:bg-gold/20"
                 >
                   <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
-                    <Mic className="w-4 h-4 text-muted-foreground" />
+                    <CreditCard className="w-4 h-4 text-gold" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold leading-none text-muted-foreground">스피킹 라운지</p>
-                    <p className="text-[10px] mt-0.5 text-muted-foreground">말하기 연습</p>
+                    <p className="text-xs font-bold leading-none text-foreground">수업료 결제하기</p>
+                    <p className="text-[10px] mt-0.5 text-gold font-medium">결제 가능</p>
                   </div>
-                </button>
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-md bg-foreground text-background text-[10px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-                  준비중입니다 ☕
+                </a>
+              ) : (
+                <div className="relative group">
+                  <button
+                    disabled
+                    className="w-full rounded-lg p-3 flex flex-col items-start gap-2 text-left bg-muted/30 border border-border opacity-50 cursor-not-allowed"
+                  >
+                    <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
+                      <CreditCard className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold leading-none text-muted-foreground">수업료 결제하기</p>
+                      <p className="text-[10px] mt-0.5 text-muted-foreground">결제 기간이 아닙니다</p>
+                    </div>
+                  </button>
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-md bg-foreground text-background text-[10px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+                    기간 종료 전 결제가 가능합니다
+                  </div>
                 </div>
-              </div>
-              {/* 다이어리 라운지 - 준비중 */}
-              <div className="relative group">
-                <button
-                  disabled
-                  className="w-full rounded-lg p-3 flex flex-col items-start gap-2 text-left bg-muted/30 border border-border opacity-50 cursor-not-allowed"
-                >
-                  <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
-                    <PenLine className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold leading-none text-muted-foreground">다이어리 라운지</p>
-                    <p className="text-[10px] mt-0.5 text-muted-foreground">영어 일기 쓰기</p>
-                  </div>
-                </button>
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-md bg-foreground text-background text-[10px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-                  준비중입니다 ☕
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -888,18 +971,24 @@ export default function StudentDashboard() {
         <div className="space-y-4">
 
           {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             {[
               {
-                icon: CalendarDays,
-                label: "수업일수",
-                value: totalClassDays,
-                sub: "누적 수업",
+                icon: Heart,
+                label: "더라운지영어와 함께한 시간",
+                value: `${monthsWithUs}개월`,
+                sub: studentRecord?.start_date ? `${new Date(studentRecord.start_date + "T00:00:00").getFullYear()}.${String(new Date(studentRecord.start_date + "T00:00:00").getMonth() + 1).padStart(2, "0")} ~` : "",
               },
               {
-                icon: AlertCircle,
-                label: "미제출 숙제",
-                value: pendingHw.length,
+                icon: CalendarDays,
+                label: "이번주 수업",
+                value: `${thisWeekStats.completed}/${thisWeekStats.total}`,
+                sub: thisWeekStats.completed >= thisWeekStats.total && thisWeekStats.total > 0 ? "이번주 완료!" : "이번주 수업",
+              },
+              {
+                icon: BookOpen,
+                label: "숙제 제출",
+                value: `${submittedHw.length}/${assignments.length}`,
                 sub: pendingHw.length === 0 ? "모두 완료!" : `${pendingHw.length}개 남음`,
                 alert: pendingHw.length > 0,
               },
@@ -913,13 +1002,13 @@ export default function StudentDashboard() {
               <div
                 key={stat.label}
                 className={cn(
-                  "rounded-lg border bg-card p-4 shadow-sm",
+                  "rounded-lg border bg-card p-3 shadow-sm",
                   stat.alert ? "border-destructive/30" : "border-border"
                 )}
               >
                 <stat.icon className={cn("w-4 h-4 mb-2", stat.alert ? "text-destructive" : "text-gold")} />
-                <p className={cn("text-2xl font-black leading-none", stat.alert ? "text-destructive" : "text-foreground")}>{stat.value}</p>
-                <p className="text-[11px] font-semibold text-foreground mt-1">{stat.label}</p>
+                <p className={cn("text-xl font-black leading-none", stat.alert ? "text-destructive" : "text-foreground")}>{stat.value}</p>
+                <p className="text-[10px] font-semibold text-foreground mt-1">{stat.label}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{stat.sub}</p>
               </div>
             ))}
