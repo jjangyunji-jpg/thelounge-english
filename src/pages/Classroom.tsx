@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import InstructorSTTPanel from "@/components/classroom/InstructorSTTPanel";
 import WordLookupPanel from "@/components/classroom/WordLookupPanel";
 import NotesEditor from "@/components/classroom/NotesEditor";
+import MaterialPickerModal from "@/components/classroom/MaterialPickerModal";
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
 import { supabase } from "@/integrations/supabase/client";
@@ -246,6 +247,7 @@ export default function Classroom() {
   const [sessionTopic, setSessionTopic] = useState("");
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
   const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(false);
+  const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
   const [isAutoCorrecting, setIsAutoCorrecting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoCorrectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -466,6 +468,7 @@ export default function Classroom() {
   const isDisabled = classState === "pre";
 
   return (
+    <>
     <div className="min-h-screen bg-background flex flex-col">
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
       <header className="sidebar-gradient text-sidebar-foreground px-4 py-3 flex items-center gap-4 shadow-lg">
@@ -712,6 +715,12 @@ export default function Classroom() {
                       <Monitor className="w-3 h-3" />
                       <span className="hidden sm:inline">노트 공유</span>
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => setMaterialPickerOpen(true)}
+                      className="h-7 text-xs gap-1.5 border-gold/50 text-gold-dark hover:bg-gold/10"
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      <span className="hidden sm:inline">자료</span>
+                    </Button>
                   </div>
                 </div>
                 <NotesEditor
@@ -877,5 +886,16 @@ export default function Classroom() {
         </div>
       )}
     </div>
+
+    {/* Material Picker Modal */}
+    <MaterialPickerModal
+      open={materialPickerOpen}
+      onClose={() => setMaterialPickerOpen(false)}
+      onInsert={(html) => {
+        setNotes(prev => prev + html);
+        toast({ title: "자료가 노트에 삽입되었습니다 ✓" });
+      }}
+    />
+    </>
   );
 }

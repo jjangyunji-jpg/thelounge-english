@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut } from "lucide-react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, Library } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "messages" | "settings";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "messages" | "settings";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -16,6 +16,7 @@ const navItems = [
   { id: "instructors" as AdminTab, label: "강사 관리", icon: Users },
   { id: "students" as AdminTab, label: "수강생 관리", icon: GraduationCap },
   { id: "approval" as AdminTab, label: "가입 승인", icon: UserCheck },
+  { id: "materials" as AdminTab, label: "수업 자료", icon: Library },
   { id: "messages" as AdminTab, label: "메시지 관리", icon: MessageSquare },
   { id: "settings" as AdminTab, label: "기본 설정", icon: Settings },
 ];
