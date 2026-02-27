@@ -77,9 +77,10 @@ export default function ClassNote() {
         .limit(30);
       const list = (data ?? []) as ClassSession[];
       setSessions(list);
-      // 완료된(ended_at이 있는) 세션 중 가장 최근 것을 우선 선택
-      const completed = list.find(s => s.ended_at);
-      setSelectedSession(completed || list[0] || null);
+      // 현재 시간 기준 이미 지난 수업 중 가장 최근 것을 우선 선택
+      const now = new Date();
+      const pastSession = list.find(s => new Date(s.scheduled_at) <= now);
+      setSelectedSession(pastSession || list[0] || null);
       setLoadingSessions(false);
     };
     load();
