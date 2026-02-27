@@ -66,6 +66,7 @@ interface StudentRecord {
   start_date: string | null;
   level: string | null;
   instructor_name: string | null;
+  instructor_display_name: string | null;
 }
 
 interface SchedulePeriod {
@@ -478,7 +479,7 @@ export default function StudentDashboard() {
         .eq("student_name", student).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
-      supabase.from("instructor_students").select("schedules,start_date,level,instructor_name")
+      supabase.from("instructor_students").select("schedules,start_date,level,instructor_name,instructor_id")
         .eq("student_name", student).maybeSingle(),
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
@@ -510,11 +511,32 @@ export default function StudentDashboard() {
         const raw = studentRes.data.schedules;
         schedules = typeof raw === "string" ? JSON.parse(raw) : (raw as ScheduleSlot[]) || [];
       } catch { schedules = []; }
+
+      // Fetch instructor display_name
+      let instrDisplayName: string | null = null;
+      if (studentRes.data.instructor_id) {
+        const { data: insData } = await supabase
+          .from("instructors")
+          .select("user_id")
+          .eq("id", studentRes.data.instructor_id)
+          .maybeSingle();
+        if (insData?.user_id) {
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("display_name")
+            .eq("user_id", insData.user_id)
+            .eq("role", "instructor")
+            .maybeSingle();
+          instrDisplayName = roleData?.display_name || null;
+        }
+      }
+
       setStudentRecord({
         schedules,
         start_date: studentRes.data.start_date,
         level: studentRes.data.level,
         instructor_name: studentRes.data.instructor_name,
+        instructor_display_name: instrDisplayName,
       });
     }
 
@@ -1186,7 +1208,7 @@ export default function StudentDashboard() {
                     </p>
                     <p className="text-xs text-muted-foreground">{fmtDateTime(nextClassDate.toISOString())}</p>
                     <p className="text-xs text-muted-foreground">
-                      담당: {studentRecord?.instructor_name || nextSessionFromDB?.instructor_name || "-"}
+                      담당: {studentRecord?.instructor_display_name || studentRecord?.instructor_name || nextSessionFromDB?.instructor_name || "-"}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">

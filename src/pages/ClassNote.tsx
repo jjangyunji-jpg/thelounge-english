@@ -43,6 +43,7 @@ export default function ClassNote() {
 
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [instructorDisplayName, setInstructorDisplayName] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
@@ -55,6 +56,32 @@ export default function ClassNote() {
           .maybeSingle();
         if (profile?.student_name) setAuthStudent(profile.student_name);
         if (profile?.nickname) setDisplayName(profile.nickname);
+
+        // Fetch instructor display_name via instructor_students → instructors → user_roles
+        const studentName = profile?.student_name;
+        if (studentName) {
+          const { data: isData } = await supabase
+            .from("instructor_students")
+            .select("instructor_id")
+            .eq("student_name", studentName)
+            .maybeSingle();
+          if (isData?.instructor_id) {
+            const { data: insData } = await supabase
+              .from("instructors")
+              .select("user_id")
+              .eq("id", isData.instructor_id)
+              .maybeSingle();
+            if (insData?.user_id) {
+              const { data: roleData } = await supabase
+                .from("user_roles")
+                .select("display_name")
+                .eq("user_id", insData.user_id)
+                .eq("role", "instructor")
+                .maybeSingle();
+              if (roleData?.display_name) setInstructorDisplayName(roleData.display_name);
+            }
+          }
+        }
       }
       setAuthLoading(false);
     });
@@ -119,7 +146,7 @@ export default function ClassNote() {
           </div>
           {selectedSession && (
             <p className="text-sidebar-foreground/50 text-xs mt-0.5">
-              {formatDate(selectedSession.scheduled_at)} · {selectedSession.instructor_name}
+              {formatDate(selectedSession.scheduled_at)} · {instructorDisplayName || selectedSession.instructor_name}
             </p>
           )}
         </div>
@@ -182,7 +209,7 @@ export default function ClassNote() {
                     <BookOpen className="w-3.5 h-3.5" /> {selectedSession.level}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" /> {selectedSession.instructor_name}
+                    <Clock className="w-3.5 h-3.5" /> {instructorDisplayName || selectedSession.instructor_name}
                   </span>
                   {selectedSession.topic && (
                     <span className="text-gold-dark font-medium">{selectedSession.topic}</span>
