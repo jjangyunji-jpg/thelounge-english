@@ -178,13 +178,28 @@ export default function Classroom() {
           meetLink: sessionData.meet_link || "",
           topic: sessionData.topic || "",
         });
-        // Calculate session number based on order (N회차) instead of calendar week
-        const { data: allSessions } = await supabase
+        // Calculate session number within active period only
+        const { data: activePeriods } = await supabase
+          .from("schedule_periods")
+          .select("start_date, end_date")
+          .eq("is_active", true)
+          .limit(1)
+          .maybeSingle();
+
+        let periodFilter = supabase
           .from("class_sessions")
           .select("id,scheduled_at")
           .eq("student_name", sessionData.student_name)
           .eq("instructor_name", sessionData.instructor_name)
           .order("scheduled_at", { ascending: true });
+
+        if (activePeriods) {
+          periodFilter = periodFilter
+            .gte("scheduled_at", activePeriods.start_date + "T00:00:00+09:00")
+            .lte("scheduled_at", activePeriods.end_date + "T23:59:59+09:00");
+        }
+
+        const { data: allSessions } = await periodFilter;
         if (allSessions) {
           const idx = allSessions.findIndex(s => s.id === sessionData!.id);
           setSessionNumber(`${idx + 1}회차`);
