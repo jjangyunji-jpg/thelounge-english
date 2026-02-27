@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import FeedbackSurveyModal from "@/components/classroom/FeedbackSurveyModal";
+import WeeklyTasksSection from "@/components/dashboard/WeeklyTasksSection";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen, Trophy, Calendar, Video, Clock, Check,
@@ -363,7 +364,7 @@ export default function StudentDashboard() {
   });
   const [testHistoryOpen, setTestHistoryOpen] = useState(false);
   const [classHistoryOpen, setClassHistoryOpen] = useState(false);
-  const [hwOpen, setHwOpen] = useState(true);
+  const [hwOpen, setHwOpen] = useState(false);
   const [vocabStudyOpen, setVocabStudyOpen] = useState(false);
 
   // Feedback survey state
@@ -907,6 +908,30 @@ export default function StudentDashboard() {
               <p className="text-xs text-muted-foreground text-center py-2">예정된 수업이 없습니다</p>
             )}
           </RSection>
+
+          {/* Weekly Tasks */}
+          <WeeklyTasksSection
+            assignments={assignments}
+            submissions={submissions}
+            sessions={[...sessions, ...allSessions].reduce<ClassSession[]>((acc, s) => {
+              if (!acc.find(x => x.id === s.id)) acc.push(s);
+              return acc;
+            }, [])}
+            studentName={student}
+            vocabWords={vocabWords}
+            testHistory={testHistory}
+            onSubmissionUpdate={(sub) => {
+              setSubmissions(prev => {
+                const idx = prev.findIndex(s => s.assignment_id === sub.assignment_id);
+                if (idx >= 0) {
+                  const next = [...prev];
+                  next[idx] = sub;
+                  return next;
+                }
+                return [...prev, sub];
+              });
+            }}
+          />
 
           {/* Homework */}
           <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
