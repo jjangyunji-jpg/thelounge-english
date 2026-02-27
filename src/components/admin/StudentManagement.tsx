@@ -4,6 +4,7 @@ import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2,
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -83,6 +84,7 @@ interface Student {
   reminderEnabled: boolean;
   meetLink: string;
   schedules: ScheduleSlot[];
+  withdrawalReason?: string;
 }
 
 const calcMonthlyFee = (extra: number) => BASE_FEE + extra * LESSON_PRICE;
@@ -180,6 +182,7 @@ export default function StudentManagement() {
       reminderEnabled: row.reminder_enabled ?? true,
       meetLink: row.meet_link || "",
       schedules: row.schedules ? JSON.parse(row.schedules) : [],
+      withdrawalReason: row.withdrawal_reason || "",
     }));
     setStudents(dbStudents);
   };
@@ -317,8 +320,25 @@ export default function StudentManagement() {
     cancelEditPreset();
   };
 
-  const graduate = (id: number) => {
-    setStudents((prev) => prev.map((s) => (s.id === id ? { ...s, status: "graduated" } : s)));
+  // Withdrawal dialog state
+  const [withdrawTarget, setWithdrawTarget] = useState<Student | null>(null);
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  const graduate = async () => {
+    if (!withdrawTarget) return;
+    setWithdrawing(true);
+    if (withdrawTarget.dbId) {
+      await supabase.from("instructor_students").update({
+        status: "inactive",
+        withdrawal_reason: withdrawReason.trim() || null,
+      }).eq("id", withdrawTarget.dbId);
+    }
+    setStudents((prev) => prev.map((s) => (s.id === withdrawTarget.id ? { ...s, status: "graduated", withdrawalReason: withdrawReason.trim() } : s)));
+    toast({ title: `${withdrawTarget.name} 퇴원 처리 완료` });
+    setWithdrawing(false);
+    setWithdrawTarget(null);
+    setWithdrawReason("");
   };
 
   const startInlineEdit = (s: Student) => {
@@ -1250,7 +1270,7 @@ export default function StudentManagement() {
                         size="sm"
                         variant="outline"
                         className="gap-1.5 h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/5"
-                        onClick={() => graduate(student.id)}
+                        onClick={() => { setWithdrawTarget(student); setWithdrawReason(""); }}
                       >
                         <UserX className="w-3 h-3" />
                         퇴원 처리
@@ -1263,6 +1283,11 @@ export default function StudentManagement() {
                       <p className="text-xs font-medium text-muted-foreground">
                         ℹ️ 퇴원 처리된 수강생입니다. 수업 노트, 단어장 등 기존 데이터는 그대로 보관됩니다.
                       </p>
+                      {student.withdrawalReason && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          📝 사유: {student.withdrawalReason}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1278,6 +1303,44 @@ export default function StudentManagement() {
           </div>
         )}
       </div>
+
+      {/* Withdrawal reason dialog */}
+      <Dialog open={!!withdrawTarget} onOpenChange={(open) => { if (!open) setWithdrawTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserX className="w-4 h-4 text-destructive" />
+              퇴원 처리
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{withdrawTarget?.name}</span> 님을 퇴원 처리합니다.
+          </p>
+          <div className="space-y-2">
+            <Label className="text-xs">퇴원 사유 (선택)</Label>
+            <Textarea
+              value={withdrawReason}
+              onChange={(e) => setWithdrawReason(e.target.value)}
+              placeholder="퇴원 사유를 입력하세요..."
+              className="h-20 text-sm resize-none"
+              maxLength={500}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setWithdrawTarget(null)}>취소</Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={graduate}
+              disabled={withdrawing}
+              className="gap-1.5"
+            >
+              {withdrawing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              퇴원 처리
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
