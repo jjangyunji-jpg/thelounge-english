@@ -365,7 +365,7 @@ export default function StudentDashboard() {
   const [testHistoryOpen, setTestHistoryOpen] = useState(false);
   const [classHistoryOpen, setClassHistoryOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(false);
-  const [vocabStudyOpen, setVocabStudyOpen] = useState(false);
+  const [vocabStudyOpen] = useState(false); // kept for potential future use
 
   // Feedback survey state
   const [feedbackNeeded, setFeedbackNeeded] = useState<{
@@ -997,55 +997,7 @@ export default function StudentDashboard() {
             )}
           </div>
 
-          {/* 단어 공부 */}
-          <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30">
-              <button
-                onClick={() => setVocabStudyOpen(v => !v)}
-                className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-              >
-                <BookOpen className="w-3.5 h-3.5 text-gold" />
-                <span className="text-xs font-semibold text-foreground">단어 공부</span>
-                {latestSessionWords.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{latestSessionWords.length}개</span>
-                )}
-                <span className="text-[10px] text-muted-foreground ml-1">{vocabStudyOpen ? "접기" : "펼치기"}</span>
-              </button>
-              {latestCompletedSession && latestSessionWords.length > 0 && (
-                <button
-                  onClick={() => navigate(`/my/classroom?sessionId=${latestCompletedSession.id}&role=student&tab=vocab`)}
-                  className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors"
-                >
-                  테스트하러가기 →
-                </button>
-              )}
-            </div>
-            {vocabStudyOpen && (
-              <div className="divide-y divide-border/50 max-h-72 overflow-y-auto">
-                {latestSessionWords.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">최근 수업의 단어가 없습니다</p>
-                ) : (
-                  <>
-                    {latestSessionWeek && (
-                      <div className="px-3 py-1.5 bg-muted/30">
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{fmtWeek(latestSessionWeek)}</span>
-                      </div>
-                    )}
-                    {latestSessionWords.map(w => (
-                      <div key={w.id} className="flex items-center gap-2 px-3 py-2">
-                        <TTSButton word={w} />
-                        <span className="font-semibold text-xs text-foreground flex-1">{w.english_word}</span>
-                        {w.part_of_speech && (
-                          <span className="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground hidden sm:inline">{w.part_of_speech}</span>
-                        )}
-                        <span className="text-[11px] text-muted-foreground flex-shrink-0">{w.korean_meaning}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          {/* 단어 공부 section removed */}
 
           {/* Vocab - Link to page */}
           <button
