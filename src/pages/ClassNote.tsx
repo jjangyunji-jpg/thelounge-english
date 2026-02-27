@@ -38,6 +38,7 @@ export default function ClassNote() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlStudent = searchParams.get("name") || "";
+  const sidebarOpen = searchParams.get("sidebar") === "open";
 
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -154,6 +155,7 @@ export default function ClassNote() {
             selectedId={selectedSession.id}
             onSelect={handleSidebarSelect}
             loading={loadingSessions}
+            initialOpen={sidebarOpen}
           />
 
           {/* Main content area */}

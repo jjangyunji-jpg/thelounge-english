@@ -993,29 +993,43 @@ export default function StudentDashboard() {
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
               {/* 수업 입장하기 */}
-              <button
-                onClick={() => {
-                  if (nextSessionFromDB?.meet_link) {
-                    window.open(nextSessionFromDB.meet_link, "_blank");
-                  } else if (nextSessionFromDB?.id) {
-                    navigate(`/my/classroom?sessionId=${nextSessionFromDB.id}&role=student`);
-                  } else {
-                    navigate("/my/classroom?role=student");
-                  }
-                }}
-                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-navy text-primary-foreground"
-              >
-                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-white/15">
-                  <Video className="w-4 h-4 text-gold" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold leading-none text-primary-foreground">수업 입장하기</p>
-                  <p className="text-[10px] mt-0.5 text-primary-foreground/60">{nextClassDate ? timeUntilLabel(nextClassDate.toISOString()) : "예정 없음"}</p>
-                </div>
-              </button>
+              {(() => {
+                const canEnter = nextClassDate && (nextClassDate.getTime() - Date.now()) <= 60 * 60 * 1000;
+                return (
+                  <button
+                    onClick={() => {
+                      if (!canEnter) return;
+                      if (nextSessionFromDB?.meet_link) {
+                        window.open(nextSessionFromDB.meet_link, "_blank");
+                      } else if (nextSessionFromDB?.id) {
+                        navigate(`/my/classroom?sessionId=${nextSessionFromDB.id}&role=student`);
+                      } else {
+                        navigate("/my/classroom?role=student");
+                      }
+                    }}
+                    disabled={!canEnter}
+                    className={cn(
+                      "rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all active:scale-[0.98]",
+                      canEnter
+                        ? "bg-navy text-primary-foreground hover:opacity-90"
+                        : "bg-navy/40 text-primary-foreground/50 cursor-not-allowed"
+                    )}
+                  >
+                    <div className="w-7 h-7 rounded-md flex items-center justify-center bg-white/15">
+                      <Video className="w-4 h-4 text-gold" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold leading-none">수업 입장하기</p>
+                      <p className="text-[10px] mt-0.5 opacity-60">
+                        {!nextClassDate ? "예정 없음" : canEnter ? "입장 가능" : timeUntilLabel(nextClassDate.toISOString())}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })()}
               {/* 수업 노트 */}
               <button
-                onClick={() => navigate(`/my/classnote?name=${encodeURIComponent(student)}`)}
+                onClick={() => navigate(`/my/classnote?name=${encodeURIComponent(student)}&sidebar=open`)}
                 className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
@@ -1023,7 +1037,7 @@ export default function StudentDashboard() {
                 </div>
                 <div>
                   <p className="text-xs font-bold leading-none text-foreground">수업 노트</p>
-                  <p className="text-[10px] mt-0.5 text-muted-foreground">노트 & 피드백</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">이전 노트 보기</p>
                 </div>
               </button>
               {/* 보강 신청하기 */}
@@ -1038,7 +1052,7 @@ export default function StudentDashboard() {
                 </div>
                 <div>
                   <p className="text-xs font-bold leading-none text-foreground">보강 신청하기</p>
-                  <p className="text-[10px] mt-0.5 text-muted-foreground">일정 조율</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">수업 시작 48시간 전에만 가능</p>
                 </div>
               </a>
               {/* 수업료 결제하기 */}

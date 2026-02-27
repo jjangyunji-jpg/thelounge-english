@@ -13,6 +13,7 @@ interface SessionSidebarProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   loading?: boolean;
+  initialOpen?: boolean;
 }
 
 function fmtDate(dateStr: string) {
@@ -30,8 +31,9 @@ export default function SessionSidebar({
   selectedId,
   onSelect,
   loading,
+  initialOpen = false,
 }: SessionSidebarProps) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(!initialOpen);
 
   return (
     <div
