@@ -132,10 +132,10 @@ const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: s
 };
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" });
+  return new Date(iso).toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
 }
 function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString("ko-KR", { month: "short", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleString("ko-KR", { month: "short", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
 }
 function fmtWeek(label: string | null) {
   if (!label) return "-";

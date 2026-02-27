@@ -123,19 +123,19 @@ interface ScheduleSlot { day: string; time: string; }
 interface PresetHw { id: string; type: HwType; title: string; description: string; }
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" });
 }
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
 }
 function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString("ko-KR", { month: "short", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleString("ko-KR", { month: "short", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
 }
 function msUntil(iso: string) { return new Date(iso).getTime() - Date.now(); }
 function isToday(iso: string) {
   const d = new Date(iso);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" });
+  return formatter.format(d) === formatter.format(new Date());
 }
 
 function fmtSchedules(raw: string | null): string {
@@ -365,7 +365,7 @@ function BigCalendar({
           // Combined entries for display (max 2)
           const displayItems: { label: string; type: "actual" | "virtual" | "meeting" }[] = [];
           daySessions.slice(0, 2).forEach(s => displayItems.push({
-            label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} ${s.student_name}`,
+            label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })} ${s.student_name}`,
             type: "actual",
           }));
           if (displayItems.length < 2) {
@@ -1356,7 +1356,7 @@ export default function InstructorDashboard() {
                 {selectedDate && (
                   <div className="rounded-xl border border-border bg-card p-4">
                     <h3 className="text-sm font-semibold text-foreground mb-3">
-                      {selectedDate.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })} 일정
+                      {selectedDate.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })} 일정
                       <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{selectedDaySessions.length + selectedDayVirtual.length + selectedDayMeetings.length}건</span>
                     </h3>
                     {selectedDaySessions.length === 0 && selectedDayVirtual.length === 0 && selectedDayMeetings.length === 0 ? (
@@ -1440,7 +1440,7 @@ export default function InstructorDashboard() {
                       <CalendarDays className="w-4 h-4 text-navy" />
                       <span className="text-sm font-semibold text-foreground">다음 수업 준비</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy">
-                        {new Date(nextClassDaySessions[0].scheduled_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}
+                        {new Date(nextClassDaySessions[0].scheduled_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}
                       </span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{nextClassDaySessions.length}건</span>
                       <ChevronRight className="w-3.5 h-3.5 text-muted-foreground ml-auto transition-transform [[open]>&]:rotate-90" />
@@ -1862,7 +1862,7 @@ export default function InstructorDashboard() {
                       settlementWithCumulative.map((row, idx) => (
                         <tr key={row.key} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-2.5 text-xs text-foreground">
-                            {row.date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" })}
+                            {row.date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}
                           </td>
                           <td className="px-4 py-2.5">
                             <span className={cn(
