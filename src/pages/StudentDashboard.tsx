@@ -1293,17 +1293,24 @@ export default function StudentDashboard() {
 
           {/* Vocab - 최근 3개월 단어 리스트 */}
           <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-            <button
-              onClick={() => setVocabListOpen(v => !v)}
-              className="w-full flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30 hover:bg-muted/50 transition-colors"
+            <div
+              className="w-full flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30"
             >
-              <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setVocabListOpen(v => !v)}
+                className="flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+              >
                 <BookOpen className="w-3.5 h-3.5 text-gold" />
                 <span className="text-xs font-semibold text-foreground">단어장</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{periodVocabWords.length}개</span>
-              </div>
-              <span className="text-[10px] text-muted-foreground">{periodLabel || "전체"}</span>
-            </button>
+              </button>
+              <button
+                onClick={() => navigate(`/my/vocabulary?name=${encodeURIComponent(student)}`)}
+                className="text-[10px] text-navy font-semibold hover:underline transition-colors"
+              >
+                전체 단어장 & 테스트 →
+              </button>
+            </div>
             {vocabListOpen && (
               <div className="max-h-80 overflow-y-auto">
                 {vocabWeeks.length === 0 ? (
@@ -1332,12 +1339,6 @@ export default function StudentDashboard() {
                     </div>
                   ))
                 )}
-                <button
-                  onClick={() => navigate(`/my/vocabulary?name=${encodeURIComponent(student)}`)}
-                  className="w-full text-center text-[11px] text-navy font-medium py-2.5 hover:bg-muted/30 transition-colors border-t border-border"
-                >
-                  전체 단어장 & 테스트 →
-                </button>
               </div>
             )}
           </div>
