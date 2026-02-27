@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      business_meeting_attendees: {
+        Row: {
+          created_at: string
+          id: string
+          instructor_id: string
+          meeting_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instructor_id: string
+          meeting_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instructor_id?: string
+          meeting_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_meeting_attendees_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_meeting_attendees_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "business_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_meetings: {
         Row: {
           created_at: string

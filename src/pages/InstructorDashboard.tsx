@@ -412,10 +412,14 @@ function BigCalendar({
 // ── Add Meeting Modal ──────────────────────────────────────────────────────────
 function AddMeetingModal({
   instructorId,
+  position,
+  allInstructors,
   onClose,
   onAdded,
 }: {
   instructorId: string;
+  position: string;
+  allInstructors: { id: string; name: string }[];
   onClose: () => void;
   onAdded: () => void;
 }) {
@@ -425,26 +429,47 @@ function AddMeetingModal({
   const [duration, setDuration] = useState(60);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const canInvite = position === "대표" || position === "매니저";
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
+
+  const toggleInvite = (id: string) => {
+    setInvitedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const handleSave = async () => {
     if (!date || !time) return;
     setSaving(true);
     const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
-    const { error } = await supabase.from("business_meetings").insert({
+    const { data: meeting, error } = await supabase.from("business_meetings").insert({
       instructor_id: instructorId,
       scheduled_at: scheduledAt,
       duration_minutes: duration,
       notes: notes.trim() || null,
-    });
-    if (error) {
-      toast({ title: "저장 실패", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "업무 미팅 추가됨 ✓" });
-      onAdded();
-      onClose();
+    }).select().single();
+    if (error || !meeting) {
+      toast({ title: "저장 실패", description: error?.message, variant: "destructive" });
+      setSaving(false);
+      return;
     }
+    // Insert attendees
+    if (invitedIds.size > 0) {
+      const attendees = Array.from(invitedIds).map(iid => ({
+        meeting_id: meeting.id,
+        instructor_id: iid,
+      }));
+      await supabase.from("business_meeting_attendees").insert(attendees as any);
+    }
+    toast({ title: "업무 미팅 추가됨 ✓" });
+    onAdded();
+    onClose();
     setSaving(false);
   };
+
+  const otherInstructors = allInstructors.filter(i => i.id !== instructorId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -472,6 +497,41 @@ function AddMeetingModal({
             <Label className="text-xs text-muted-foreground">메모 (선택)</Label>
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="미팅 내용..." className="h-9 text-sm" />
           </div>
+
+          {/* Invite instructors - only for 대표/매니저 */}
+          {canInvite && otherInstructors.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <Users className="w-3 h-3" /> 강사 초대 (선택)
+              </Label>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {otherInstructors.map(ins => (
+                  <button
+                    key={ins.id}
+                    type="button"
+                    onClick={() => toggleInvite(ins.id)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors text-left",
+                      invitedIds.has(ins.id)
+                        ? "bg-navy/10 text-navy border border-navy/20"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted border border-transparent"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-4 h-4 rounded border flex items-center justify-center flex-shrink-0",
+                      invitedIds.has(ins.id) ? "bg-navy border-navy" : "border-muted-foreground/30"
+                    )}>
+                      {invitedIds.has(ins.id) && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    {ins.name}
+                  </button>
+                ))}
+              </div>
+              {invitedIds.size > 0 && (
+                <p className="text-[10px] text-muted-foreground">{invitedIds.size}명 초대됨</p>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose} className="flex-1 h-9 text-sm">취소</Button>
@@ -850,6 +910,7 @@ export default function InstructorDashboard() {
   const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [meetings, setMeetings] = useState<BusinessMeeting[]>([]);
+  const [allInstructors, setAllInstructors] = useState<{ id: string; name: string }[]>([]);
   const [vocabTests, setVocabTests] = useState<VocabTest[]>([]);
   const [period, setPeriod] = useState<SchedulePeriod | null>(null);
   const [allPeriods, setAllPeriods] = useState<SchedulePeriod[]>([]);
@@ -893,7 +954,7 @@ export default function InstructorDashboard() {
 
   const loadData = useCallback(async (ins: Instructor) => {
     setLoading(true);
-    const [studRes, sessRes, hwRes, subRes, meetRes, periodRes, vocabRes, holRes] = await Promise.all([
+    const [studRes, sessRes, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
       supabase.from("instructor_students").select("*").eq("instructor_id", ins.id),
       supabase.from("class_sessions").select("*").eq("instructor_name", ins.name).order("scheduled_at", { ascending: false }),
       supabase.from("homework_assignments").select("id,title,student_name"),
@@ -902,13 +963,30 @@ export default function InstructorDashboard() {
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,student_name,started_at,completed_at,score,total"),
       supabase.from("holiday_notices").select("date_start,date_end"),
+      supabase.from("instructors").select("id,name").eq("active", true),
+      supabase.from("business_meeting_attendees").select("meeting_id,instructor_id").eq("instructor_id", ins.id) as any,
     ]);
 
     setStudents(studRes.data || []);
     setSessions(sessRes.data || []);
     setAssignments(hwRes.data || []);
     setSubmissions((subRes.data || []) as HomeworkSubmission[]);
-    setMeetings(meetRes.data || []);
+    setAllInstructors((allInsRes.data || []) as { id: string; name: string }[]);
+
+    // Merge own meetings + attended meetings (avoid duplicates)
+    const ownMeetings = meetRes.data || [];
+    const attendedMeetingIds = new Set((attendedRes.data || []).map((a: any) => a.meeting_id));
+    const ownMeetingIds = new Set(ownMeetings.map(m => m.id));
+    const missingIds = Array.from(attendedMeetingIds).filter(id => !ownMeetingIds.has(id as string));
+    let allMeetings = [...ownMeetings];
+    if (missingIds.length > 0) {
+      const { data: extraMeetings } = await supabase
+        .from("business_meetings")
+        .select("*")
+        .in("id", missingIds as string[]);
+      if (extraMeetings) allMeetings = [...allMeetings, ...extraMeetings];
+    }
+    setMeetings(allMeetings);
     setVocabTests(vocabRes.data || []);
     // Pick the period that contains today
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -1762,6 +1840,8 @@ export default function InstructorDashboard() {
       {showMeetingModal && instructor && (
         <AddMeetingModal
           instructorId={instructor.id}
+          position={instructor.position}
+          allInstructors={allInstructors}
           onClose={() => setShowMeetingModal(false)}
           onAdded={() => loadData(instructor)}
         />
