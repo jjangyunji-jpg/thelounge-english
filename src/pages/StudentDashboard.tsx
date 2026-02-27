@@ -881,7 +881,7 @@ export default function StudentDashboard() {
               <span className="text-xs font-semibold text-foreground">바로가기</span>
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
-              {/* 수업 입장하기 - full width primary */}
+              {/* 수업 입장하기 */}
               <button
                 onClick={() => {
                   if (nextSessionFromDB?.meet_link) {
@@ -892,7 +892,7 @@ export default function StudentDashboard() {
                     navigate("/my/classroom?role=student");
                   }
                 }}
-                className="col-span-2 rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-navy text-primary-foreground"
+                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-navy text-primary-foreground"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-white/15">
                   <Video className="w-4 h-4 text-gold" />
@@ -900,6 +900,19 @@ export default function StudentDashboard() {
                 <div>
                   <p className="text-xs font-bold leading-none text-primary-foreground">수업 입장하기</p>
                   <p className="text-[10px] mt-0.5 text-primary-foreground/60">{nextClassDate ? timeUntilLabel(nextClassDate.toISOString()) : "예정 없음"}</p>
+                </div>
+              </button>
+              {/* 수업 노트 */}
+              <button
+                onClick={() => navigate(`/my/classnote?name=${encodeURIComponent(student)}`)}
+                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
+              >
+                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
+                  <FileText className="w-4 h-4 text-navy" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold leading-none text-foreground">수업 노트</p>
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">노트 & 피드백</p>
                 </div>
               </button>
               {/* 보강 신청하기 */}
@@ -917,19 +930,6 @@ export default function StudentDashboard() {
                   <p className="text-[10px] mt-0.5 text-muted-foreground">일정 조율</p>
                 </div>
               </a>
-              {/* 수업 노트 */}
-              <button
-                onClick={() => navigate(`/my/classnote?name=${encodeURIComponent(student)}`)}
-                className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
-              >
-                <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
-                  <FileText className="w-4 h-4 text-navy" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold leading-none text-foreground">수업 노트</p>
-                  <p className="text-[10px] mt-0.5 text-muted-foreground">노트 & 피드백</p>
-                </div>
-              </button>
               {/* 수업료 결제하기 */}
               {paymentAvailable ? (
                 <a
