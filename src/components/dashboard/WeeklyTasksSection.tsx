@@ -48,6 +48,7 @@ interface Submission {
   file_url: string | null;
   instructor_note: string | null;
   reviewed_at: string | null;
+  ai_correction: any | null;
 }
 
 interface ClassSession {
@@ -308,6 +309,7 @@ export default function WeeklyTasksSection({
           fileUrl={feedbackAssignment.submission.file_url}
           instructorNote={feedbackAssignment.submission.instructor_note}
           reviewedAt={feedbackAssignment.submission.reviewed_at}
+          aiCorrection={feedbackAssignment.submission.ai_correction}
           onClose={() => setFeedbackAssignment(null)}
         />
       )}

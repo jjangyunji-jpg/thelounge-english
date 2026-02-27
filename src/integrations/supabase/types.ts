@@ -298,6 +298,7 @@ export type Database = {
       }
       homework_submissions: {
         Row: {
+          ai_correction: Json | null
           assignment_id: string | null
           audio_url: string | null
           file_url: string | null
@@ -310,6 +311,7 @@ export type Database = {
           text_content: string | null
         }
         Insert: {
+          ai_correction?: Json | null
           assignment_id?: string | null
           audio_url?: string | null
           file_url?: string | null
@@ -322,6 +324,7 @@ export type Database = {
           text_content?: string | null
         }
         Update: {
+          ai_correction?: Json | null
           assignment_id?: string | null
           audio_url?: string | null
           file_url?: string | null
