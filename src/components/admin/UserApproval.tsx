@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, X, Loader2, UserCheck, Clock, Plus } from "lucide-react";
+import { Check, X, Loader2, UserCheck, Clock, Plus, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Select,
   SelectContent,
@@ -298,34 +299,41 @@ export default function UserApproval({ onNavigate }: Props) {
         </CardContent>
       </Card>
 
-      {/* Approved */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-[hsl(var(--success))]" />
-            승인 완료 ({approved.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {approved.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">승인된 사용자가 없습니다</p>
-          ) : (
-            <div className="space-y-1.5">
-              {approved.map(u => (
-                <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border">
-                  <div className="flex items-center gap-3">
-                    <p className="font-medium text-sm text-foreground">{u.display_name || "이름 없음"}</p>
-                    <Badge variant="outline" className="text-[10px]">
-                      {roleLabel(u.role)}
-                    </Badge>
-                  </div>
-                  <Badge className="bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] text-[10px]">승인됨</Badge>
+      {/* Approved - Collapsible */}
+      <Collapsible defaultOpen={false}>
+        <Card>
+          <CardHeader className="pb-3">
+            <CollapsibleTrigger className="flex items-center justify-between w-full">
+              <CardTitle className="text-base flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-[hsl(var(--success))]" />
+                승인 완료 ({approved.length})
+              </CardTitle>
+              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              {approved.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">승인된 사용자가 없습니다</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {approved.map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border">
+                      <div className="flex items-center gap-3">
+                        <p className="font-medium text-sm text-foreground">{u.display_name || "이름 없음"}</p>
+                        <Badge variant="outline" className="text-[10px]">
+                          {roleLabel(u.role)}
+                        </Badge>
+                      </div>
+                      <Badge className="bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] text-[10px]">승인됨</Badge>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Student Setup Dialog */}
       <Dialog open={setupDialogOpen} onOpenChange={(open) => {
