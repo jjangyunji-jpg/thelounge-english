@@ -214,7 +214,7 @@ export default function InstructorManagement() {
       }
 
       // Fetch sessions & meetings for all active instructors
-      const activeInstructors = instructors.filter(i => i.active);
+      const activeInstructors = instructors.filter(i => i.active && i.position !== '대표');
       const allData = await Promise.all(
         activeInstructors.map(async (ins) => {
           const [sessRes, meetRes] = await Promise.all([
@@ -298,14 +298,28 @@ export default function InstructorManagement() {
         </Card>
       </div>
 
-      {/* Instructor List */}
-      <div className="space-y-3">
-        {instructors.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            등록된 강사가 없습니다. 강사 추가 버튼을 눌러 첫 번째 강사를 등록하세요.
-          </div>
-        )}
-        {instructors.map((ins) => (
+      {/* Instructor List by Position */}
+      {instructors.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground text-sm">
+          등록된 강사가 없습니다. 강사 추가 버튼을 눌러 첫 번째 강사를 등록하세요.
+        </div>
+      )}
+      {(['대표', '매니저', '강사'] as const).map((positionGroup) => {
+        const group = instructors.filter(ins => (ins.position || '강사') === positionGroup);
+        if (group.length === 0) return null;
+        return (
+          <div key={positionGroup} className="space-y-3">
+            <div className="flex items-center gap-2 pt-2">
+              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                positionGroup === '대표' ? 'bg-gold/20 text-gold-dark' :
+                positionGroup === '매니저' ? 'bg-navy/10 text-navy' :
+                'bg-muted text-muted-foreground'
+              }`}>
+                {positionGroup}
+              </span>
+              <span className="text-xs text-muted-foreground">{group.length}명</span>
+            </div>
+            {group.map((ins) => (
           <Card key={ins.id} className="shadow-card border-border overflow-hidden">
             <div
               className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
@@ -497,7 +511,9 @@ export default function InstructorManagement() {
             )}
           </Card>
         ))}
-      </div>
+          </div>
+        );
+      })}
 
       {/* Add Instructor Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
