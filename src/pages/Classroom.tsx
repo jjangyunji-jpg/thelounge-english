@@ -177,13 +177,23 @@ export default function Classroom() {
         sessionData = data;
       }
       if (sessionData) {
+        // If session has no meet_link, fall back to instructor_students meet_link
+        let meetLink = sessionData.meet_link || "";
+        if (!meetLink) {
+          const { data: isData } = await supabase
+            .from("instructor_students")
+            .select("meet_link")
+            .eq("student_name", sessionData.student_name)
+            .maybeSingle();
+          meetLink = isData?.meet_link ?? "";
+        }
         setSession({
           sessionId: sessionData.id,
           studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
           instructorName: sessionData.instructor_name,
           level: sessionData.level,
           scheduledAt: new Date(sessionData.scheduled_at),
-          meetLink: sessionData.meet_link || "",
+          meetLink,
           topic: sessionData.topic || "",
         });
         // Calculate session number within active period only
