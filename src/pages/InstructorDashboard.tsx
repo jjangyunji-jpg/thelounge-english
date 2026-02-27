@@ -1607,7 +1607,7 @@ export default function InstructorDashboard() {
                                     reviewed_at: new Date().toISOString(),
                                   }).eq("id", sub.id);
                                   toast({ title: "확인 완료 ✓" });
-                                  if (instructor) loadData(instructor);
+                                  setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: "reviewed", reviewed_at: new Date().toISOString() } : s));
                                 }}
                               >
                                 <Check className="w-3 h-3" /> 확인
@@ -1919,7 +1919,7 @@ export default function InstructorDashboard() {
           textContent={reviewHw.submission.text_content}
           audioUrl={reviewHw.submission.audio_url}
           onClose={() => setReviewHw(null)}
-          onReviewed={() => { if (instructor) loadData(instructor); }}
+          onReviewed={() => setSubmissions(prev => prev.map(s => s.id === reviewHw?.submission.id ? { ...s, status: "reviewed", reviewed_at: new Date().toISOString() } : s))}
         />
       )}
     </div>
