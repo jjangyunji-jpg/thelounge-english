@@ -1405,7 +1405,7 @@ export default function InstructorDashboard() {
           </div>
           <div>
             <p className="font-bold text-sm text-foreground">The Lounge English</p>
-            <p className="text-[10px] text-muted-foreground">{instructor.name} · {instructor.position || '강사'}</p>
+            <p className="text-[10px] text-muted-foreground">{profileNickname || instructor.name} · {instructor.position || '강사'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
