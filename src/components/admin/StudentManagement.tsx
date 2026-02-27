@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock, Mail, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock, Mail, Loader2, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,6 +107,7 @@ interface NewStudent {
 }
 
 export default function StudentManagement() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
   const [instructorNames, setInstructorNames] = useState<string[]>([]);
@@ -773,6 +775,18 @@ export default function StudentManagement() {
                     <p className="text-xs font-medium text-foreground">{student.startDate}</p>
                   </div>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[10px] gap-1 border-gold/40 text-gold-dark hover:bg-gold/8 flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/my/classnote?name=${encodeURIComponent(student.name)}`);
+                  }}
+                >
+                  <FileText className="w-3 h-3" />
+                  수업노트
+                </Button>
                 {expandedId === student.id ? (
                   <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 ) : (
