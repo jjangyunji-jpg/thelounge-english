@@ -227,17 +227,23 @@ export default function ClassNote() {
               </div>
 
               <div
-                className="tiptap h-[420px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground"
+                className="tiptap h-[420px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground [&_a]:text-[hsl(var(--gold-dark))] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:opacity-80"
                 dangerouslySetInnerHTML={{ __html: (() => {
                   const raw = selectedSession.notes || "";
                   if (!raw) return "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>";
+                  let html = raw;
                   // If notes look like escaped HTML (starts with &lt;), unescape
-                  if (raw.includes("&lt;") || raw.includes("&amp;")) {
+                  if (html.includes("&lt;") || html.includes("&amp;")) {
                     const tmp = document.createElement("textarea");
-                    tmp.innerHTML = raw;
-                    return tmp.value;
+                    tmp.innerHTML = html;
+                    html = tmp.value;
                   }
-                  return raw;
+                  // Auto-link bare URLs that are not already inside an <a> tag
+                  html = html.replace(
+                    /(?<![="'>])(https?:\/\/[^\s<>"']+)/g,
+                    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+                  );
+                  return html;
                 })() }}
               />
             </div>
