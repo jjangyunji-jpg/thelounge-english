@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, X, Loader2, UserCheck, Clock, Plus, ChevronDown, Link2 } from "lucide-react";
+import { Check, X, Loader2, UserCheck, Clock, Plus, ChevronDown, Link2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -445,13 +445,32 @@ export default function UserApproval({ onNavigate }: Props) {
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
+                          {u.role === "student" && linkedName && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-[10px] gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                              onClick={async () => {
+                                if (!confirm(`${u.display_name} 님의 연결을 해제하시겠습니까?`)) return;
+                                await supabase
+                                  .from("instructor_students")
+                                  .update({ user_id: null })
+                                  .eq("user_id", u.user_id);
+                                toast({ title: `${u.display_name} 연결 해제 완료` });
+                                load();
+                              }}
+                            >
+                              <Unlink className="w-3 h-3" />
+                              해제
+                            </Button>
+                          )}
                           {u.role === "student" && (
                             <Button
                               size="sm"
                               variant="outline"
                               className="h-6 px-2 text-[10px] gap-1 border-navy/30 text-navy hover:bg-navy/10"
                               onClick={async () => {
-                                setIsRelink(true);
+                                setIsRelink(!!linkedName);
                                 await Promise.all([loadUnlinkedStudents(), loadAllStudents()]);
                                 setLinkUser(u);
                                 setSelectedStudentId("");
