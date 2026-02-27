@@ -1184,7 +1184,7 @@ export default function StudentManagement() {
                         <div>
                           <p className="text-xs font-semibold text-foreground">숙제 미제출 리마인더</p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            수업 후 48시간 · 다음 수업 전 48시간 — 총 2회 자동 발송
+                            수업 후 48시간 · 다음 수업 전 48시간 — 총 2회 자동 발송 (수강생 + 담당 강사)
                           </p>
                         </div>
                       </div>
@@ -1200,16 +1200,28 @@ export default function StudentManagement() {
                       </button>
                     </div>
                     {student.reminderEnabled && (
-                      <div className="mt-2.5 flex gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold/10 border border-gold/20 text-xs text-gold-dark">
-                          <Bell className="w-3 h-3" />
-                          <span>1차: 수업 후 48시간</span>
+                      <div className="mt-2.5 space-y-2">
+                        <div className="flex gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold/10 border border-gold/20 text-xs text-gold-dark">
+                            <Bell className="w-3 h-3" />
+                            <span>1차: 수업 후 48시간</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold/10 border border-gold/20 text-xs text-gold-dark">
+                            <Bell className="w-3 h-3" />
+                            <span>2차: 다음 수업 전 48시간</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground self-center">※ 미제출 시에만 발송</span>
                         </div>
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold/10 border border-gold/20 text-xs text-gold-dark">
-                          <Bell className="w-3 h-3" />
-                          <span>2차: 다음 수업 전 48시간</span>
+                        <div className="flex gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-navy/10 border border-navy/20 text-xs text-navy">
+                            <Mail className="w-3 h-3" />
+                            <span>수강생: 숙제 제출 안내</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-navy/10 border border-navy/20 text-xs text-navy">
+                            <Mail className="w-3 h-3" />
+                            <span>강사: 해당 학생 미제출 알림 · 연락 요청</span>
+                          </div>
                         </div>
-                        <span className="text-xs text-muted-foreground self-center">※ 미제출 시에만 발송</span>
                       </div>
                     )}
                   </div>
