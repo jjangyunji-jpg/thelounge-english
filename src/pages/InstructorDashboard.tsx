@@ -1820,6 +1820,12 @@ export default function InstructorDashboard() {
                               <p className="text-xs font-medium text-foreground">{a.title}</p>
                               <p className="text-[10px] text-muted-foreground">{a.student_name} · {meta?.label || a.type}</p>
                             </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); sub && setReviewHw({ assignment: a, submission: sub }); }}
+                              className="text-[10px] px-2 py-1 rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors flex-shrink-0"
+                            >
+                              재검토
+                            </button>
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0">
                               검토됨
                             </span>
