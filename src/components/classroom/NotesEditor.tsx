@@ -131,7 +131,7 @@ export default function NotesEditor({
             setTimeout(() => {
               editor.chain().focus().toggleCallout({ type: "info" }).run();
               setTimeout(() => {
-                editor.chain().focus().toggleHeading({ level: 3 }).run();
+                editor.chain().focus().toggleHeading({ level: 1 }).run();
               }, 20);
             }, 10);
           }
