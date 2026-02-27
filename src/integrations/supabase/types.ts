@@ -150,6 +150,7 @@ export type Database = {
           level: string
           meet_link: string | null
           notes: string | null
+          remarks: string | null
           scheduled_at: string
           started_at: string | null
           student_name: string
@@ -164,6 +165,7 @@ export type Database = {
           level?: string
           meet_link?: string | null
           notes?: string | null
+          remarks?: string | null
           scheduled_at: string
           started_at?: string | null
           student_name: string
@@ -178,6 +180,7 @@ export type Database = {
           level?: string
           meet_link?: string | null
           notes?: string | null
+          remarks?: string | null
           scheduled_at?: string
           started_at?: string | null
           student_name?: string

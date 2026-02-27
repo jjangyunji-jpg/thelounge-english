@@ -257,6 +257,9 @@ export default function Classroom() {
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
   const [hwOpen, setHwOpen] = useState(true);
+  const [remarks, setRemarks] = useState("");
+  const [remarksSaving, setRemarksSaving] = useState(false);
+  const remarksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
@@ -277,6 +280,19 @@ export default function Classroom() {
     if (!session.sessionId || !text.trim()) return;
     await supabase.from("class_sessions").update({ notes: text.trim() }).eq("id", session.sessionId);
   }, [session.sessionId]);
+
+  const autoSaveRemarks = useCallback(async (text: string) => {
+    if (!session.sessionId) return;
+    setRemarksSaving(true);
+    await supabase.from("class_sessions").update({ remarks: text }).eq("id", session.sessionId);
+    setRemarksSaving(false);
+  }, [session.sessionId]);
+
+  const handleRemarksChange = (val: string) => {
+    setRemarks(val);
+    if (remarksTimerRef.current) clearTimeout(remarksTimerRef.current);
+    remarksTimerRef.current = setTimeout(() => autoSaveRemarks(val), 1500);
+  };
 
   const handleOpenNotesNewTab = () => {
     if (!session.sessionId) return;
@@ -299,8 +315,31 @@ export default function Classroom() {
     if (sessionLoading || !session.sessionId) return;
     const loadData = async () => {
       const { data: sessionData } = await supabase
-        .from("class_sessions").select("notes").eq("id", session.sessionId).single();
+        .from("class_sessions").select("notes, remarks").eq("id", session.sessionId).single();
       if (sessionData?.notes) setNotes(sessionData.notes);
+
+      // Load remarks: use current session's remarks, or fall back to most recent previous session's remarks
+      if (sessionData?.remarks) {
+        setRemarks(sessionData.remarks);
+      } else {
+        // Fetch previous session's remarks for carry-forward
+        const { data: prevSession } = await supabase
+          .from("class_sessions")
+          .select("remarks")
+          .eq("student_name", session.studentName)
+          .lt("scheduled_at", session.scheduledAt.toISOString())
+          .not("remarks", "is", null)
+          .order("scheduled_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (prevSession?.remarks) {
+          setRemarks(prevSession.remarks);
+          // Auto-save carried-forward remarks to current session
+          await supabase.from("class_sessions").update({ remarks: prevSession.remarks }).eq("id", session.sessionId);
+        } else {
+          setRemarks("");
+        }
+      }
 
       const { data } = await supabase
         .from("homework_assignments").select("*")
@@ -756,6 +795,27 @@ export default function Classroom() {
                   </div>
                 )}
               </div>
+
+              {/* ── REMARKS (비고) ────────────────────────────────────── */}
+              {role === "instructor" && (
+                <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+                  <div className="px-4 py-3 bg-muted/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-gold" />
+                      <span className="font-semibold text-sm text-foreground">비고</span>
+                    </div>
+                    {remarksSaving && <span className="text-[10px] text-muted-foreground">저장 중...</span>}
+                  </div>
+                  <div className="p-3">
+                    <Textarea
+                      value={remarks}
+                      onChange={e => handleRemarksChange(e.target.value)}
+                      placeholder="다음 수업까지 기억할 사항을 메모하세요... (이전 세션에서 자동으로 이어집니다)"
+                      className="resize-none text-sm min-h-[80px]"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* ── HOMEWORK (강사용 관리) ────────────────────────────── */}
               <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">

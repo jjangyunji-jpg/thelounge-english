@@ -18,6 +18,7 @@ interface ClassSession {
   level: string;
   instructor_name: string;
   notes: string | null;
+  remarks: string | null;
   started_at: string | null;
   ended_at: string | null;
 }
@@ -71,7 +72,7 @@ export default function ClassNote() {
       setLoadingSessions(true);
       const { data } = await supabase
         .from("class_sessions")
-        .select("id, scheduled_at, topic, level, instructor_name, notes, started_at, ended_at")
+        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
         .eq("student_name", student)
         .order("scheduled_at", { ascending: false })
         .limit(30);
@@ -207,6 +208,19 @@ export default function ClassNote() {
                   })() }}
                 />
               </div>
+
+              {/* 비고 (read-only) */}
+              {selectedSession.remarks && (
+                <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+                  <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
+                    <FileText className="w-4 h-4 text-gold" />
+                    <span className="font-semibold text-sm text-foreground">비고</span>
+                  </div>
+                  <div className="px-4 py-3">
+                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{selectedSession.remarks}</p>
+                  </div>
+                </div>
+              )}
 
               {/* 숙제 */}
               <StudentHomeworkPanel studentName={student} sessionId={selectedSession.id} />
