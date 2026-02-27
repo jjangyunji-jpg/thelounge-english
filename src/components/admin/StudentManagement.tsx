@@ -1259,9 +1259,9 @@ export default function StudentManagement() {
                   )}
 
                   {tab === "graduated" && (
-                    <div className="p-3 rounded-lg bg-warning/8 border border-warning/20">
-                      <p className="text-xs font-medium" style={{ color: "hsl(38 75% 42%)" }}>
-                        ⚠️ 퇴원 처리된 수강생입니다. 3일 이내에 자료가 비공개 처리될 예정이오니 필요한 데이터를 저장해 주세요.
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        ℹ️ 퇴원 처리된 수강생입니다. 수업 노트, 단어장 등 기존 데이터는 그대로 보관됩니다.
                       </p>
                     </div>
                   )}
