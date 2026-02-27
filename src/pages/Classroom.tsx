@@ -433,7 +433,7 @@ export default function Classroom() {
   const handleExtractVocab = async () => {
     if (!notes.trim()) return;
     setExtracting(true);
-    const weekLabel = getWeekLabel();
+    const weekLabel = getWeekLabel(session.scheduledAt ? new Date(session.scheduledAt) : undefined);
     const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
     const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     try {
