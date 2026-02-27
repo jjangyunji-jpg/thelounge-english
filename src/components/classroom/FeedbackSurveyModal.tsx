@@ -1,8 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Star, Loader2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+interface FeedbackCategory {
+  id: string;
+  key: string;
+  label: string;
+  description: string;
+  sort_order: number;
+}
 
 interface Props {
   studentName: string;
@@ -11,15 +19,6 @@ interface Props {
   periodLabel: string;
   onComplete: () => void;
 }
-
-const CATEGORIES = [
-  { key: "satisfaction", label: "수업 만족도", desc: "전반적인 수업에 대한 만족도를 평가해주세요" },
-  { key: "teaching_quality", label: "수업 퀄리티", desc: "수업 내용과 진행 방식의 질을 평가해주세요" },
-  { key: "communication", label: "의사소통", desc: "강사와의 소통이 원활했는지 평가해주세요" },
-  { key: "lesson_preparation", label: "수업 준비도", desc: "강사의 수업 준비 정도를 평가해주세요" },
-] as const;
-
-type RatingKey = typeof CATEGORIES[number]["key"];
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -49,18 +48,32 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 export default function FeedbackSurveyModal({ studentName, instructorName, periodId, periodLabel, onComplete }: Props) {
   const { toast } = useToast();
-  const [ratings, setRatings] = useState<Record<RatingKey, number>>({
-    satisfaction: 0,
-    teaching_quality: 0,
-    communication: 0,
-    lesson_preparation: 0,
-  });
+  const [categories, setCategories] = useState<FeedbackCategory[]>([]);
+  const [loadingCats, setLoadingCats] = useState(true);
+  const [ratings, setRatings] = useState<Record<string, number>>({});
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
-  const [step, setStep] = useState(0); // 0-3 rating steps, 4 = comment
+  const [step, setStep] = useState(0);
 
-  const allRated = Object.values(ratings).every(v => v > 0);
-  const currentCategory = CATEGORIES[step];
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("feedback_categories")
+        .select("id,key,label,description,sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      const cats = data || [];
+      setCategories(cats);
+      const initial: Record<string, number> = {};
+      cats.forEach(c => { initial[c.key] = 0; });
+      setRatings(initial);
+      setLoadingCats(false);
+    })();
+  }, []);
+
+  const totalSteps = categories.length + 1; // categories + comment step
+  const allRated = categories.every(c => (ratings[c.key] || 0) > 0);
+  const currentCategory = step < categories.length ? categories[step] : null;
 
   const handleSubmit = async () => {
     if (!allRated) {
@@ -68,17 +81,22 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("class_feedback").insert({
+
+    // Build legacy columns + JSONB ratings
+    const insertData: Record<string, unknown> = {
       student_name: studentName,
       instructor_name: instructorName,
       period_id: periodId,
       period_label: periodLabel,
-      satisfaction: ratings.satisfaction,
-      teaching_quality: ratings.teaching_quality,
-      communication: ratings.communication,
-      lesson_preparation: ratings.lesson_preparation,
+      satisfaction: ratings["satisfaction"] || 0,
+      teaching_quality: ratings["teaching_quality"] || 0,
+      communication: ratings["communication"] || 0,
+      lesson_preparation: ratings["lesson_preparation"] || 0,
+      ratings: ratings,
       comment: comment.trim() || null,
-    });
+    };
+
+    const { error } = await supabase.from("class_feedback").insert(insertData as any);
 
     if (error) {
       toast({ title: "제출 실패", description: error.message, variant: "destructive" });
@@ -88,6 +106,16 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
     }
     setSaving(false);
   };
+
+  if (loadingCats) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border p-8 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -105,7 +133,7 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
         {/* Progress */}
         <div className="px-5 pt-4">
           <div className="flex gap-1">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(totalSteps)].map((_, i) => (
               <div
                 key={i}
                 className={`h-1 flex-1 rounded-full transition-colors ${
@@ -114,23 +142,22 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
               />
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">{step + 1} / 5</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{step + 1} / {totalSteps}</p>
         </div>
 
         {/* Content */}
         <div className="p-5 min-h-[180px] flex flex-col items-center justify-center">
-          {step < 4 ? (
+          {currentCategory ? (
             <div className="text-center space-y-4">
               <div>
                 <p className="font-semibold text-foreground text-base">{currentCategory.label}</p>
-                <p className="text-xs text-muted-foreground mt-1">{currentCategory.desc}</p>
+                <p className="text-xs text-muted-foreground mt-1">{currentCategory.description}</p>
               </div>
               <StarRating
-                value={ratings[currentCategory.key]}
+                value={ratings[currentCategory.key] || 0}
                 onChange={(v) => {
                   setRatings(prev => ({ ...prev, [currentCategory.key]: v }));
-                  // Auto advance after selection
-                  setTimeout(() => setStep(s => Math.min(s + 1, 4)), 300);
+                  setTimeout(() => setStep(s => Math.min(s + 1, totalSteps - 1)), 300);
                 }}
               />
               <div className="flex gap-1 justify-center text-[10px] text-muted-foreground">
@@ -153,12 +180,12 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
               />
               {/* Rating summary */}
               <div className="grid grid-cols-2 gap-2">
-                {CATEGORIES.map(cat => (
+                {categories.map(cat => (
                   <div key={cat.key} className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-muted/50">
                     <span className="text-[10px] text-muted-foreground">{cat.label}</span>
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map(n => (
-                        <Star key={n} className={`w-2.5 h-2.5 ${n <= ratings[cat.key] ? "text-gold fill-gold" : "text-muted-foreground/20"}`} />
+                        <Star key={n} className={`w-2.5 h-2.5 ${n <= (ratings[cat.key] || 0) ? "text-gold fill-gold" : "text-muted-foreground/20"}`} />
                       ))}
                     </div>
                   </div>
@@ -175,10 +202,10 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
               이전
             </Button>
           )}
-          {step < 4 ? (
+          {step < totalSteps - 1 ? (
             <Button
               onClick={() => setStep(s => s + 1)}
-              disabled={step < 4 && ratings[CATEGORIES[step]?.key] === 0}
+              disabled={currentCategory ? (ratings[currentCategory.key] || 0) === 0 : false}
               className="flex-1 bg-navy hover:bg-navy-light text-primary-foreground"
             >
               다음

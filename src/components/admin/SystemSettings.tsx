@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Calendar, Plus, Trash2, Save, Info, BanIcon, Bell, AlertTriangle, Loader2, Sparkles } from "lucide-react";
+import FeedbackCategoryManager from "./FeedbackCategoryManager";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -513,6 +514,8 @@ export default function SystemSettings() {
           </Button>
         </CardContent>
       </Card>
+      {/* Feedback Category Manager */}
+      <FeedbackCategoryManager />
     </div>
   );
 }
