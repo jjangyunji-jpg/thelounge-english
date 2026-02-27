@@ -5,9 +5,10 @@ import {
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
-  Shield, Paperclip,
+  Shield, Paperclip, CheckCircle,
 } from "lucide-react";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
+import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,6 +69,7 @@ interface HomeworkAssignment {
   title: string;
   type: string;
   student_name: string;
+  session_id: string | null;
 }
 
 interface HomeworkSubmission {
@@ -78,6 +80,10 @@ interface HomeworkSubmission {
   submitted_at: string;
   text_content: string | null;
   audio_url: string | null;
+  file_url: string | null;
+  instructor_note: string | null;
+  reviewed_at: string | null;
+  ai_correction: any | null;
 }
 
 interface BusinessMeeting {
@@ -1052,6 +1058,7 @@ export default function InstructorDashboard() {
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reviewHw, setReviewHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
+  const [viewCheckedHw, setViewCheckedHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
 
   useEffect(() => { init(); }, []);
 
@@ -1085,8 +1092,8 @@ export default function InstructorDashboard() {
     const [studRes, sessRes, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
       supabase.from("instructor_students").select("*").eq("instructor_id", ins.id),
       supabase.from("class_sessions").select("*").eq("instructor_name", ins.name).order("scheduled_at", { ascending: false }),
-      supabase.from("homework_assignments").select("id,title,type,student_name"),
-      supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url"),
+      supabase.from("homework_assignments").select("id,title,type,student_name,session_id"),
+      supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,student_name,started_at,completed_at,score,total"),
@@ -1178,6 +1185,22 @@ export default function InstructorDashboard() {
   const uncheckedHw = myAssignments.filter((a) => {
     const sub = submissions.find((s) => s.assignment_id === a.id);
     return sub && sub.status === "submitted";
+  });
+
+  // Reviewed homework: show until next session for that student starts
+  const checkedHw = myAssignments.filter((a) => {
+    const sub = submissions.find((s) => s.assignment_id === a.id);
+    if (!sub || sub.status !== "reviewed") return false;
+    // Find the session this assignment belongs to
+    const assignmentSession = a.session_id ? sessions.find(s => s.id === a.session_id) : null;
+    if (!assignmentSession) return false;
+    // Find the next session for this student after the assignment's session
+    const nextSession = sessions
+      .filter(s => s.student_name === a.student_name && new Date(s.scheduled_at) > new Date(assignmentSession.scheduled_at))
+      .sort((x, y) => new Date(x.scheduled_at).getTime() - new Date(y.scheduled_at).getTime())[0];
+    // Hide if next session has already started
+    if (nextSession && new Date(nextSession.scheduled_at) <= new Date()) return false;
+    return true;
   });
 
   // Period stats
@@ -1771,6 +1794,41 @@ export default function InstructorDashboard() {
                     </div>
                   </div>
                 )}
+
+                {/* Checked homework */}
+                {checkedHw.length > 0 && (
+                  <div className="rounded-xl border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.03)] p-4">
+                    <h3 className="text-sm font-semibold text-[hsl(var(--success))] mb-3 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      확인된 숙제
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-medium">{checkedHw.length}</span>
+                    </h3>
+                    <div className="space-y-1.5">
+                      {checkedHw.map((a) => {
+                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "reviewed");
+                        const hwType = a.type as HwType;
+                        const meta = HW_TYPE_META[hwType];
+                        const Icon = meta?.icon || FileText;
+                        return (
+                          <div
+                            key={a.id}
+                            onClick={() => sub && setViewCheckedHw({ assignment: a, submission: sub })}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border cursor-pointer hover:bg-muted/40 transition-colors"
+                          >
+                            <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground">{a.title}</p>
+                              <p className="text-[10px] text-muted-foreground">{a.student_name} · {meta?.label || a.type}</p>
+                            </div>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0">
+                              검토됨
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -2057,11 +2115,27 @@ export default function InstructorDashboard() {
           submissionId={reviewHw.submission.id}
           textContent={reviewHw.submission.text_content}
           audioUrl={reviewHw.submission.audio_url}
-          fileUrl={(reviewHw.submission as any).file_url}
+          fileUrl={reviewHw.submission.file_url}
           onClose={() => setReviewHw(null)}
           onReviewed={() => setSubmissions(prev => prev.map(s => s.id === reviewHw?.submission.id ? { ...s, status: "reviewed", reviewed_at: new Date().toISOString() } : s))}
         />
       )}
+      {viewCheckedHw && (() => {
+        const sub = viewCheckedHw.submission;
+        return (
+          <HomeworkFeedbackModal
+            assignmentTitle={viewCheckedHw.assignment.title}
+            assignmentType={viewCheckedHw.assignment.type}
+            textContent={sub.text_content}
+            audioUrl={sub.audio_url}
+            fileUrl={sub.file_url}
+            instructorNote={sub.instructor_note}
+            reviewedAt={sub.reviewed_at}
+            aiCorrection={sub.ai_correction}
+            onClose={() => setViewCheckedHw(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

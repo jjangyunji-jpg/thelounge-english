@@ -229,27 +229,7 @@ export default function HomeworkReviewModal({
             )}
           </div>
 
-          {/* Error details */}
-          {aiResult && aiResult.errors.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">교정 상세</p>
-              <div className="space-y-1.5">
-                {aiResult.errors.map((err, i) => (
-                  <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-muted/20 border border-border">
-                    <span className="text-[10px] font-bold text-muted-foreground mt-0.5">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs line-through text-destructive/70">{err.original}</span>
-                        <span className="text-xs text-muted-foreground">→</span>
-                        <span className="text-xs font-semibold text-[hsl(var(--navy))]">{err.corrected}</span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{err.explanation}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
 
           {/* Instructor Feedback */}
           <div className="space-y-2">
