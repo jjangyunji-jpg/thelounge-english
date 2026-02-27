@@ -1196,10 +1196,16 @@ export default function StudentDashboard() {
                     <span className="text-[10px] font-bold text-gold">{timeUntilLabel(nextClassDate.toISOString())}</span>
                   </div>
                 </div>
-                {(nextClassDate.getTime() - Date.now()) <= 48 * 3600 * 1000 && latestSessionPendingHw.length > 0 && (
+                {latestSessionAssignments.length > 0 && latestSessionPendingHw.length > 0 && (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-destructive/8 border border-destructive/20">
                     <AlertCircle className="w-3 h-3 text-destructive flex-shrink-0" />
                     <p className="text-[11px] text-destructive">미제출 숙제 {latestSessionPendingHw.length}개 남아있어요</p>
+                  </div>
+                )}
+                {latestSessionAssignments.length > 0 && latestSessionPendingHw.length === 0 && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)]">
+                    <Check className="w-3 h-3 text-[hsl(var(--success))] flex-shrink-0" />
+                    <p className="text-[11px] text-[hsl(var(--success))]">모든 숙제를 완료했어요 🎉</p>
                   </div>
                 )}
               </div>
