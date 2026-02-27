@@ -261,6 +261,7 @@ function BigCalendar({
   holidays,
   selectedDate,
   onSelectDate,
+  period,
 }: {
   sessions: ClassSession[];
   meetings: BusinessMeeting[];
@@ -268,11 +269,12 @@ function BigCalendar({
   holidays: { date_start: string; date_end: string }[];
   selectedDate: Date | null;
   onSelectDate: (d: Date) => void;
+  period: SchedulePeriod | null;
 }) {
-  const [viewDate, setViewDate] = useState(new Date());
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
+  // Use period start month as primary, fallback to current month
+  const baseDate = period ? new Date(period.start_date + "T00:00:00") : new Date();
+  const year = baseDate.getFullYear();
+  const month = baseDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -294,25 +296,43 @@ function BigCalendar({
   const holidaySet = buildHolidaySet(holidays);
   const virtualByDate = buildVirtualSchedules(students, year, month, holidaySet);
 
-  const cells: (number | null)[] = [
+  // Build cells: primary month days + extended next-month days if period spans
+  const baseCells: { day: number; month: number; year: number }[] = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    baseCells.push({ day: d, month, year });
+  }
+
+  // Extend into next month if period end date is in a later month
+  if (period) {
+    const pe = new Date(period.end_date + "T00:00:00");
+    if (pe.getMonth() !== month || pe.getFullYear() !== year) {
+      const nextMonth = month === 11 ? 0 : month + 1;
+      const nextYear = month === 11 ? year + 1 : year;
+      const endDay = pe.getDate();
+      for (let d = 1; d <= endDay; d++) {
+        baseCells.push({ day: d, month: nextMonth, year: nextYear });
+      }
+    }
+  }
+
+  // Pad end to complete the last week row
+  const totalWithPrefix = firstDay + baseCells.length;
+  const padEnd = (7 - (totalWithPrefix % 7)) % 7;
+
+  const cells: ({ day: number; month: number; year: number } | null)[] = [
     ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+    ...baseCells,
+    ...Array(padEnd).fill(null),
   ];
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center">
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <span className="text-base font-bold text-foreground min-w-[120px] text-center">{year}년 {month + 1}월</span>
-          <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
-        <button onClick={() => setViewDate(new Date())} className="text-xs text-navy hover:underline font-medium">오늘</button>
+        <span className="text-base font-bold text-foreground">{year}년 {month + 1}월</span>
+        {period && (
+          <span className="text-xs text-muted-foreground">{period.start_date} ~ {period.end_date}</span>
+        )}
       </div>
 
       {/* Weekday headers */}
@@ -324,9 +344,10 @@ function BigCalendar({
 
       {/* Days */}
       <div className="grid grid-cols-7 gap-1">
-        {cells.map((day, idx) => {
-          if (day === null) return <div key={idx} className="aspect-square" />;
-          const date = new Date(year, month, day);
+        {cells.map((cell, idx) => {
+          if (cell === null) return <div key={idx} className="aspect-square" />;
+          const date = new Date(cell.year, cell.month, cell.day);
+          const isNextMonth = cell.month !== month;
           const dateStr = date.toDateString();
           const daySessions = sessionsByDate.get(dateStr) || [];
           const dayMeetings = meetingsByDate.get(dateStr) || [];
@@ -388,9 +409,10 @@ function BigCalendar({
             >
               <span className={cn(
                 "text-[11px] font-medium mb-0.5",
-                todayFlag ? "text-navy font-bold" : dayOfWeek === 0 ? "text-destructive/70" : dayOfWeek === 6 ? "text-blue-400" : "text-foreground",
+                isNextMonth && "text-muted-foreground",
+                !isNextMonth && (todayFlag ? "text-navy font-bold" : dayOfWeek === 0 ? "text-destructive/70" : dayOfWeek === 6 ? "text-blue-400" : "text-foreground"),
               )}>
-                {day}
+                {isNextMonth ? `${cell.month + 1}/${cell.day}` : cell.day}
               </span>
               <div className="w-full space-y-0.5 overflow-hidden">
                 {displayItems.map((item, i) => (
@@ -1425,6 +1447,7 @@ export default function InstructorDashboard() {
                     holidays={holidays}
                     selectedDate={selectedDate}
                     onSelectDate={setSelectedDate}
+                    period={period}
                   />
                 </div>
 
