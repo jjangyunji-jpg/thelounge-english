@@ -1105,6 +1105,16 @@ export default function StudentDashboard() {
                     const status = sub?.status || "pending";
                     const meta = HW_META[a.type as HwType];
                     const Icon = meta?.icon ?? Brain;
+                    // Derive week label from linked session
+                    const linkedSession = a.session_id ? allSessions.find(s => s.id === a.session_id) : null;
+                    const weekPrefix = linkedSession?.scheduled_at
+                      ? (() => {
+                          const d = new Date(linkedSession.scheduled_at);
+                          const jan1 = new Date(d.getFullYear(), 0, 1);
+                          const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+                          return `${week}주차`;
+                        })()
+                      : null;
                     return (
                       <div key={a.id} className="flex items-center gap-2.5 px-3 py-2.5">
                         <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0",
@@ -1116,7 +1126,10 @@ export default function StudentDashboard() {
                           const sid = a.session_id || sessions[0]?.id;
                           navigate(`/my/classroom?${sid ? `sessionId=${sid}&` : ''}role=student&tab=hw`);
                         }}>
-                          <p className="text-xs font-semibold text-foreground truncate hover:text-navy transition-colors">{a.title}</p>
+                          <p className="text-xs font-semibold text-foreground truncate hover:text-navy transition-colors">
+                            {weekPrefix && <span className="text-muted-foreground font-medium mr-1">[{weekPrefix}]</span>}
+                            {a.title}
+                          </p>
                           {a.due_at && <p className="text-[10px] text-muted-foreground">마감: {fmtDate(a.due_at)}</p>}
                         </div>
                         {status === "reviewed" && (
