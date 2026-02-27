@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   Video, VideoOff, Clock, FileText, CheckSquare,
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
-  Plus, ArrowLeft, Wifi, WifiOff,
+  Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked,
   Loader2, Maximize2,
 } from "lucide-react";
@@ -617,7 +617,14 @@ export default function Classroom() {
         )}
 
         {classState === "ended" && (
-          <span className="text-xs text-sidebar-foreground/60">수업 종료 · {formatDuration(elapsed)}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-sidebar-foreground/60">수업 종료 · {formatDuration(elapsed)}</span>
+            <Button size="sm" onClick={() => { setClassState("ready"); setElapsed(0); }}
+              className="h-7 text-[11px] bg-gold/20 text-gold-dark hover:bg-gold/30 gap-1"
+            >
+              <RotateCcw className="w-3 h-3" />수업 재시작
+            </Button>
+          </div>
         )}
       </header>
 
