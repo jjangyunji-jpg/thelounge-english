@@ -1104,9 +1104,18 @@ export default function InstructorDashboard() {
 
   const loadData = useCallback(async (ins: Instructor) => {
     setLoading(true);
-    const [studRes, sessRes, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
-      supabase.from("instructor_students").select("*").eq("instructor_id", ins.id),
-      supabase.from("class_sessions").select("*").eq("instructor_name", ins.name).order("scheduled_at", { ascending: false }),
+
+    // First fetch students to collect all instructor_name variants
+    const studRes = await supabase.from("instructor_students").select("*").eq("instructor_id", ins.id);
+    const loadedStudents = studRes.data || [];
+
+    // Collect unique instructor names (ins.name + any instructor_name from students)
+    const nameSet = new Set<string>([ins.name]);
+    loadedStudents.forEach(s => { if (s.instructor_name) nameSet.add(s.instructor_name); });
+    const instructorNames = Array.from(nameSet);
+
+    const [sessRes, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
+      supabase.from("class_sessions").select("*").in("instructor_name", instructorNames).order("scheduled_at", { ascending: false }),
       supabase.from("homework_assignments").select("id,title,type,student_name,session_id"),
       supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
@@ -1117,7 +1126,7 @@ export default function InstructorDashboard() {
       supabase.from("business_meeting_attendees").select("meeting_id,instructor_id").eq("instructor_id", ins.id) as any,
     ]);
 
-    setStudents(studRes.data || []);
+    setStudents(loadedStudents);
     setSessions(sessRes.data || []);
     setAssignments(hwRes.data || []);
     setSubmissions((subRes.data || []) as HomeworkSubmission[]);
