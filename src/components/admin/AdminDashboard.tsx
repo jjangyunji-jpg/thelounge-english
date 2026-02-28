@@ -48,7 +48,7 @@ export default function AdminDashboard() {
       insRes, studRes, periodRes, holidayRes, sessRes, feedbackRes,
     ] = await Promise.all([
       supabase.from("instructors").select("id,name,position,active,lesson_rate,meeting_rate").eq("active", true),
-      supabase.from("instructor_students").select("id,instructor_id,student_name,schedules,created_at,status"),
+      supabase.from("instructor_students").select("id,instructor_id,student_name,schedules,created_at,status,instructor_name"),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("holiday_notices").select("title,date_start,date_end").gte("date_end", todayStr).order("date_start", { ascending: true }),
       supabase.from("class_sessions").select("id,instructor_name,level,scheduled_at,student_name"),
@@ -83,12 +83,16 @@ export default function AdminDashboard() {
       // Schedule slot detection from students' schedules
       const scheduleSlot = detectScheduleSlot(insStudents.map(s => s.schedules).filter(Boolean) as string[]);
 
+      // Collect all instructor name variants (ins.name + instructor_name from students)
+      const nameSet = new Set<string>([ins.name]);
+      insStudents.forEach(s => { if (s.instructor_name) nameSet.add(s.instructor_name); });
+
       // Estimated pay for current period
       let estimatedPay = 0;
       if (currentPeriod) {
         const periodSessions = allSessions.filter(s => {
           const d = s.scheduled_at.slice(0, 10);
-          return s.instructor_name === ins.name && d >= currentPeriod.start_date && d <= todayStr;
+          return nameSet.has(s.instructor_name) && d >= currentPeriod.start_date && d <= todayStr;
         });
         if (ins.position === "대표") {
           estimatedPay = periodSessions.length * ins.lesson_rate;
@@ -101,7 +105,7 @@ export default function AdminDashboard() {
       }
 
       // Feedback average
-      const insFeedback = allFeedback.filter(f => f.instructor_name === ins.name);
+      const insFeedback = allFeedback.filter(f => nameSet.has(f.instructor_name));
       let feedbackAvg: number | null = null;
       if (insFeedback.length > 0) {
         const avg = insFeedback.reduce((sum, fb) => {
