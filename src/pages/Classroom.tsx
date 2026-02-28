@@ -59,7 +59,8 @@ function formatTime(date = new Date()) {
 
 interface SessionData {
   sessionId: string;
-  studentName: string;
+  studentName: string;      // display name (may be nickname)
+  dbStudentName: string;    // actual DB student_name (never nickname)
   instructorName: string;
   level: string;
   scheduledAt: Date;
@@ -70,6 +71,7 @@ interface SessionData {
 const DEFAULT_SESSION: SessionData = {
   sessionId: "",
   studentName: "",
+  dbStudentName: "",
   instructorName: "Reina",
   level: "B1",
   scheduledAt: new Date(),
@@ -161,6 +163,7 @@ export default function Classroom() {
           setSession(prev => ({
             ...prev,
             studentName: urlStudentName,
+            dbStudentName: urlStudentName,
             level: isData?.level ?? prev.level,
             instructorName: instrName || prev.instructorName,
             meetLink: isData?.meet_link ?? "",
@@ -190,6 +193,7 @@ export default function Classroom() {
         setSession({
           sessionId: sessionData.id,
           studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
+          dbStudentName: sessionData.student_name,
           instructorName: sessionData.instructor_name,
           level: sessionData.level,
           scheduledAt: new Date(sessionData.scheduled_at),
@@ -236,6 +240,7 @@ export default function Classroom() {
           setSession(prev => ({
             ...prev,
             studentName: nicknameValue || studentName,
+            dbStudentName: studentName,
             level: isData?.level ?? prev.level,
             instructorName: isData?.instructor_name ?? prev.instructorName,
             meetLink: isData?.meet_link ?? "",
@@ -326,7 +331,7 @@ export default function Classroom() {
         const { data: prevSession } = await supabase
           .from("class_sessions")
           .select("remarks")
-          .eq("student_name", session.studentName)
+          .eq("student_name", session.dbStudentName)
           .lt("scheduled_at", session.scheduledAt.toISOString())
           .not("remarks", "is", null)
           .order("scheduled_at", { ascending: false })
@@ -343,7 +348,7 @@ export default function Classroom() {
 
       const { data } = await supabase
         .from("homework_assignments").select("*")
-        .eq("student_name", session.studentName)
+        .eq("student_name", session.dbStudentName)
         .or(`session_id.eq.${session.sessionId},is_preset.eq.true`)
         .order("created_at", { ascending: true });
 
@@ -360,13 +365,13 @@ export default function Classroom() {
 
   // Load sidebar sessions list
   useEffect(() => {
-    if (sessionLoading || !session.studentName) return;
+    if (sessionLoading || !session.dbStudentName) return;
     const loadSidebar = async () => {
       setSidebarLoading(true);
       const { data } = await supabase
         .from("class_sessions")
         .select("id, scheduled_at, topic")
-        .eq("student_name", session.studentName)
+        .eq("student_name", session.dbStudentName)
         .lte("scheduled_at", new Date().toISOString())
         .order("scheduled_at", { ascending: false })
         .limit(30);
@@ -374,7 +379,7 @@ export default function Classroom() {
       setSidebarLoading(false);
     };
     loadSidebar();
-  }, [session.studentName, sessionLoading]);
+  }, [session.dbStudentName, sessionLoading]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -446,7 +451,7 @@ export default function Classroom() {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/extract-vocab`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({ notes, studentName: session.studentName, weekLabel, sessionId: session.sessionId }),
+        body: JSON.stringify({ notes, studentName: session.dbStudentName, weekLabel, sessionId: session.sessionId }),
       });
       const data = await res.json();
       if (!res.ok) { toast({ title: "추출 실패", description: data.error ?? "오류", variant: "destructive" }); return; }
@@ -464,7 +469,7 @@ export default function Classroom() {
     if (!newHwTitle.trim()) return;
     setSavingHw(true);
     const { data, error } = await supabase.from("homework_assignments").insert({
-      student_name: session.studentName, title: newHwTitle.trim(),
+      student_name: session.dbStudentName, title: newHwTitle.trim(),
       description: newHwDesc.trim() || null, type: newHwType, is_preset: false,
       session_id: session.sessionId || null,
     }).select().single();
@@ -726,7 +731,7 @@ export default function Classroom() {
                 />
               </div>
               {/* 숙제 */}
-              <StudentHomeworkPanel studentName={session.studentName} sessionId={session.sessionId} />
+              <StudentHomeworkPanel studentName={session.dbStudentName} sessionId={session.sessionId} />
             </div>
           ) : (
             <div className="flex-1 flex flex-col gap-5 min-w-0">
@@ -937,7 +942,7 @@ export default function Classroom() {
           {/* ── RIGHT COLUMN (student only) ────────────────────────── */}
           {role === "student" && (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
-              <StudentVocabPanel studentName={session.studentName} scheduledAt={session.scheduledAt} sessionId={session.sessionId} />
+              <StudentVocabPanel studentName={session.dbStudentName} scheduledAt={session.scheduledAt} sessionId={session.sessionId} />
             </div>
           )}
 
