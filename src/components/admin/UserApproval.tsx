@@ -421,13 +421,40 @@ export default function UserApproval({ onNavigate }: Props) {
             </CollapsibleTrigger>
           </CardHeader>
           <CollapsibleContent>
-            <CardContent>
+            <CardContent className="space-y-5">
               {approved.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">승인된 사용자가 없습니다</p>
               ) : (
-                <div className="space-y-1.5">
-                  {approved.map(u => {
-                    const linkedName = u.role === "student" ? linkedMap[u.user_id] : null;
+                <>
+                  {/* 강사 섹션 */}
+                  {(() => {
+                    const approvedInstructors = approved.filter(u => u.role === "instructor");
+                    return approvedInstructors.length > 0 ? (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">강사 ({approvedInstructors.length})</p>
+                        <div className="space-y-1.5">
+                          {approvedInstructors.map(u => (
+                            <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border">
+                              <div className="flex items-center gap-3">
+                                <p className="font-medium text-sm text-foreground">{u.display_name || "이름 없음"}</p>
+                                <Badge variant="outline" className="text-[10px]">{roleLabel(u.role)}</Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  {/* 학생 섹션 */}
+                  {(() => {
+                    const approvedStudents = approved.filter(u => u.role === "student");
+                    return approvedStudents.length > 0 ? (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">학생 ({approvedStudents.length})</p>
+                        <div className="space-y-1.5">
+                          {approvedStudents.map(u => {
+                    const linkedName = linkedMap[u.user_id] || null;
                     return (
                       <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border">
                         <div className="flex items-center gap-3">
@@ -435,17 +462,17 @@ export default function UserApproval({ onNavigate }: Props) {
                           <Badge variant="outline" className="text-[10px]">
                             {roleLabel(u.role)}
                           </Badge>
-                          {u.role === "student" && linkedName && (
+                          {linkedName && (
                             <span className="text-[10px] text-muted-foreground">
                               → {linkedName}
                             </span>
                           )}
-                          {u.role === "student" && !linkedName && (
+                          {!linkedName && (
                             <span className="text-[10px] text-destructive">미연결</span>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {u.role === "student" && linkedName && (
+                          {linkedName && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -485,8 +512,12 @@ export default function UserApproval({ onNavigate }: Props) {
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                          })}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                </>
               )}
             </CardContent>
           </CollapsibleContent>
