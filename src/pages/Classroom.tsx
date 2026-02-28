@@ -468,17 +468,25 @@ export default function Classroom() {
   const handleAddHw = async () => {
     if (!newHwTitle.trim()) return;
     setSavingHw(true);
-    const { data, error } = await supabase.from("homework_assignments").insert({
-      student_name: session.dbStudentName, title: newHwTitle.trim(),
-      description: newHwDesc.trim() || null, type: newHwType, is_preset: false,
-      session_id: session.sessionId || null,
-    }).select().single();
-    if (!error && data) {
-      setHwList((prev) => [...prev, { id: data.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: false, saved: true }]);
-      toast({ title: "숙제가 추가됐습니다 ✓" });
+    try {
+      const { data, error } = await supabase.from("homework_assignments").insert({
+        student_name: session.dbStudentName, title: newHwTitle.trim(),
+        description: newHwDesc.trim() || null, type: newHwType, is_preset: false,
+        session_id: session.sessionId || null,
+      }).select().single();
+      if (error) throw error;
+      if (data) {
+        setHwList((prev) => [...prev, { id: data.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: false, saved: true }]);
+        toast({ title: "숙제가 추가됐습니다 ✓" });
+        setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing");
+        setAddingHw(false);
+      }
+    } catch (e: unknown) {
+      console.error("homework save error:", e);
+      toast({ title: "숙제 저장 실패", description: e instanceof Error ? e.message : "오류가 발생했습니다. 다시 시도해주세요.", variant: "destructive" });
+    } finally {
+      setSavingHw(false);
     }
-    setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing");
-    setAddingHw(false); setSavingHw(false);
   };
 
   const removeHw = async (id: string) => {
