@@ -67,6 +67,8 @@ interface StudentRecord {
   level: string | null;
   instructor_name: string | null;
   instructor_display_name: string | null;
+  pause_start: string | null;
+  pause_end: string | null;
 }
 
 interface SchedulePeriod {
@@ -484,7 +486,7 @@ export default function StudentDashboard() {
         .eq("student_name", student).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
-      supabase.from("instructor_students").select("schedules,start_date,level,instructor_name,instructor_id")
+      supabase.from("instructor_students").select("schedules,start_date,level,instructor_name,instructor_id,pause_start,pause_end")
         .eq("student_name", student).maybeSingle(),
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
@@ -542,6 +544,8 @@ export default function StudentDashboard() {
         level: studentRes.data.level,
         instructor_name: studentRes.data.instructor_name,
         instructor_display_name: instrDisplayName,
+        pause_start: studentRes.data.pause_start || null,
+        pause_end: studentRes.data.pause_end || null,
       });
     }
 
@@ -681,12 +685,19 @@ export default function StudentDashboard() {
   const periodStart = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00") : null;
   const periodEnd = selectedPeriod ? new Date(selectedPeriod.end_date + "T23:59:59") : null;
 
+  // Helper: check if a date falls within pause period
+  const isInPausePeriod = (dateStr: string) => {
+    if (!studentRecord?.pause_start || !studentRecord?.pause_end) return false;
+    const d = dateStr.slice(0, 10);
+    return d >= studentRecord.pause_start && d <= studentRecord.pause_end;
+  };
+
   const periodSessions = selectedPeriod
     ? allSessions.filter(s => {
         const d = new Date(s.scheduled_at);
-        return d >= periodStart! && d <= periodEnd!;
+        return d >= periodStart! && d <= periodEnd! && !isInPausePeriod(s.scheduled_at);
       })
-    : allSessions;
+    : allSessions.filter(s => !isInPausePeriod(s.scheduled_at));
 
   const periodSessionIds = new Set(periodSessions.map(s => s.id));
 
@@ -742,12 +753,19 @@ export default function StudentDashboard() {
     ? Math.round(periodTestHistory.reduce((acc, t) => acc + (t.total ? (t.score ?? 0) / t.total : 0), 0) / periodTestHistory.length * 100)
     : null;
 
-  // 함께한 시간 (개월)
+  // 함께한 시간 (개월) - 휴강 기간 제외
   const monthsWithUs = (() => {
     if (!studentRecord?.start_date) return 0;
     const start = new Date(studentRecord.start_date + "T00:00:00");
     const now = new Date();
-    const diff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+    let diff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+    // 휴강 기간이 있으면 해당 개월 수 차감
+    if (studentRecord.pause_start && studentRecord.pause_end) {
+      const ps = new Date(studentRecord.pause_start + "T00:00:00");
+      const pe = new Date(studentRecord.pause_end + "T00:00:00");
+      const pauseMonths = (pe.getFullYear() - ps.getFullYear()) * 12 + (pe.getMonth() - ps.getMonth());
+      diff = Math.max(0, diff - Math.max(0, pauseMonths));
+    }
     return Math.max(1, diff);
   })();
 

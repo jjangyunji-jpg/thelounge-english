@@ -358,6 +358,8 @@ export type Database = {
           lesson_goal_count: number | null
           level: string | null
           meet_link: string | null
+          pause_end: string | null
+          pause_start: string | null
           phone: string | null
           reminder_enabled: boolean | null
           schedules: string | null
@@ -378,6 +380,8 @@ export type Database = {
           lesson_goal_count?: number | null
           level?: string | null
           meet_link?: string | null
+          pause_end?: string | null
+          pause_start?: string | null
           phone?: string | null
           reminder_enabled?: boolean | null
           schedules?: string | null
@@ -398,6 +402,8 @@ export type Database = {
           lesson_goal_count?: number | null
           level?: string | null
           meet_link?: string | null
+          pause_end?: string | null
+          pause_start?: string | null
           phone?: string | null
           reminder_enabled?: boolean | null
           schedules?: string | null

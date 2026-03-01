@@ -52,6 +52,8 @@ interface StudentFull {
   start_date: string | null;
   instructor_id: string;
   instructor_name: string | null;
+  pause_start: string | null;
+  pause_end: string | null;
 }
 
 interface ClassSession {
@@ -1281,10 +1283,18 @@ export default function InstructorDashboard() {
   const start = period ? new Date(period.start_date) : null;
   const end = period ? new Date(period.end_date) : null;
   const now = new Date();
+  // Helper: check if session is within student's pause period
+  const isSessionPaused = (session: { student_name: string; scheduled_at: string }) => {
+    const st = students.find(s => s.student_name === session.student_name);
+    if (!st?.pause_start || !st?.pause_end) return false;
+    const d = session.scheduled_at.slice(0, 10);
+    return d >= st.pause_start && d <= st.pause_end;
+  };
+
   const periodSessions = sessions.filter((s) => {
     if (!start || !end) return false;
     const d = new Date(s.scheduled_at);
-    return d >= start && d <= end;
+    return d >= start && d <= end && !isSessionPaused(s);
   });
   const completedPeriodSessions = periodSessions.filter((s) => new Date(s.scheduled_at) <= now);
   const periodMeetings = meetings.filter((m) => {
@@ -1966,7 +1976,7 @@ export default function InstructorDashboard() {
                     if (s.student_name !== st.student_name) return false;
                     if (!pStart || !pEnd) return false;
                     const d = new Date(s.scheduled_at);
-                    return d >= pStart && d <= pEnd;
+                    return d >= pStart && d <= pEnd && !isSessionPaused(s);
                   })
                   .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 

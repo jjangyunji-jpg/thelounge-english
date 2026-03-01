@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock, Mail, Loader2, FileText, Paperclip, Monitor } from "lucide-react";
+import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock, Mail, Loader2, FileText, Paperclip, Monitor, Pause, Play } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
 import { formatStudentName } from "@/lib/formatStudentName";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +93,8 @@ interface Student {
   meetLink: string;
   schedules: ScheduleSlot[];
   withdrawalReason?: string;
+  pauseStart?: string | null;
+  pauseEnd?: string | null;
 }
 
 const calcMonthlyFee = (extra: number) => BASE_FEE + extra * LESSON_PRICE;
@@ -110,6 +117,61 @@ interface NewStudent {
   startDate: string;
   extraLessons: number;
   schedules: ScheduleSlot[];
+}
+
+// Pause form sub-component
+function PauseForm({ onSave }: { onSave: (start: string, end: string) => Promise<void> }) {
+  const [pauseStartDate, setPauseStartDate] = useState<Date>();
+  const [pauseEndDate, setPauseEndDate] = useState<Date>();
+  const [saving, setSaving] = useState(false);
+  return (
+    <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">시작일</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("h-8 w-full text-xs justify-start", !pauseStartDate && "text-muted-foreground")}>
+                <CalendarIcon className="w-3 h-3 mr-1.5" />
+                {pauseStartDate ? format(pauseStartDate, "yyyy-MM-dd") : "선택"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={pauseStartDate} onSelect={setPauseStartDate} className={cn("p-3 pointer-events-auto")} />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">종료일</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("h-8 w-full text-xs justify-start", !pauseEndDate && "text-muted-foreground")}>
+                <CalendarIcon className="w-3 h-3 mr-1.5" />
+                {pauseEndDate ? format(pauseEndDate, "yyyy-MM-dd") : "선택"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={pauseEndDate} onSelect={setPauseEndDate} className={cn("p-3 pointer-events-auto")} />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+      <Button
+        size="sm"
+        disabled={!pauseStartDate || !pauseEndDate || saving}
+        className="h-7 text-xs w-full bg-warning/90 hover:bg-warning text-warning-foreground"
+        onClick={async () => {
+          if (!pauseStartDate || !pauseEndDate) return;
+          setSaving(true);
+          await onSave(format(pauseStartDate, "yyyy-MM-dd"), format(pauseEndDate, "yyyy-MM-dd"));
+          setSaving(false);
+        }}
+      >
+        {saving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Pause className="w-3 h-3 mr-1" />}
+        휴강 설정
+      </Button>
+    </div>
+  );
 }
 
 export default function StudentManagement() {
@@ -188,6 +250,8 @@ export default function StudentManagement() {
       meetLink: row.meet_link || "",
       schedules: row.schedules ? JSON.parse(row.schedules) : [],
       withdrawalReason: row.withdrawal_reason || "",
+      pauseStart: row.pause_start || null,
+      pauseEnd: row.pause_end || null,
     }));
     setStudents(dbStudents);
   };
@@ -813,6 +877,19 @@ export default function StudentManagement() {
                         +{student.extraLessons}회
                       </span>
                     )}
+                    {student.pauseStart && student.pauseEnd && (() => {
+                      const now = new Date().toISOString().slice(0, 10);
+                      const isActive = now >= student.pauseStart! && now <= student.pauseEnd!;
+                      return isActive ? (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-warning/15 text-warning font-medium flex items-center gap-0.5">
+                          <Pause className="w-3 h-3" /> 휴강중
+                        </span>
+                      ) : now < student.pauseStart! ? (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                          휴강 예정
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">담당 강사 : {student.instructor || "미지정"}</p>
                 </div>
@@ -913,6 +990,50 @@ export default function StudentManagement() {
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground">링크가 설정되지 않았습니다</p>
+                    )}
+                  </div>
+
+                  {/* Pause (휴강) Section */}
+                  <div className="p-3 rounded-lg bg-card border border-border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Pause className="w-3.5 h-3.5 text-warning" />
+                        휴강 관리
+                      </h4>
+                    </div>
+                    {student.pauseStart && student.pauseEnd ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 p-2 rounded-md bg-warning/10 border border-warning/30 text-xs">
+                          <Pause className="w-3.5 h-3.5 text-warning flex-shrink-0" />
+                          <span className="text-warning font-medium">
+                            {student.pauseStart} ~ {student.pauseEnd}
+                          </span>
+                        </div>
+                        <Button
+                          size="sm" variant="outline"
+                          className="h-7 text-xs gap-1 text-[hsl(var(--success))] border-[hsl(var(--success)/0.3)] hover:bg-[hsl(var(--success)/0.05)]"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (student.dbId) {
+                              await supabase.from("instructor_students").update({ pause_start: null, pause_end: null }).eq("id", student.dbId);
+                            }
+                            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, pauseStart: null, pauseEnd: null } : s));
+                            toast({ title: "휴강 해제 완료 ✓" });
+                          }}
+                        >
+                          <Play className="w-3 h-3" /> 휴강 해제
+                        </Button>
+                      </div>
+                    ) : (
+                      <PauseForm
+                        onSave={async (start, end) => {
+                          if (student.dbId) {
+                            await supabase.from("instructor_students").update({ pause_start: start, pause_end: end }).eq("id", student.dbId);
+                          }
+                          setStudents(prev => prev.map(s => s.id === student.id ? { ...s, pauseStart: start, pauseEnd: end } : s));
+                          toast({ title: `${student.name} 휴강 설정 완료 ✓`, description: `${start} ~ ${end}` });
+                        }}
+                      />
                     )}
                   </div>
 
