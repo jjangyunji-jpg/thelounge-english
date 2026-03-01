@@ -280,8 +280,12 @@ function BigCalendar({
 }) {
   // Use period start month as primary, fallback to current month
   const baseDate = period ? new Date(period.start_date + "T00:00:00") : new Date();
-  const year = baseDate.getFullYear();
-  const month = baseDate.getMonth();
+  const defaultYear = baseDate.getFullYear();
+  const defaultMonth = baseDate.getMonth();
+
+  const [calOffset, setCalOffset] = useState(0);
+  const year = new Date(defaultYear, defaultMonth + calOffset).getFullYear();
+  const month = new Date(defaultYear, defaultMonth + calOffset).getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -303,23 +307,10 @@ function BigCalendar({
   const holidaySet = buildHolidaySet(holidays);
   const virtualByDate = buildVirtualSchedules(students, year, month, holidaySet);
 
-  // Build cells: primary month days + extended next-month days if period spans
+  // Build cells for current month only
   const baseCells: { day: number; month: number; year: number }[] = [];
   for (let d = 1; d <= daysInMonth; d++) {
     baseCells.push({ day: d, month, year });
-  }
-
-  // Extend into next month if period end date is in a later month
-  if (period) {
-    const pe = new Date(period.end_date + "T00:00:00");
-    if (pe.getMonth() !== month || pe.getFullYear() !== year) {
-      const nextMonth = month === 11 ? 0 : month + 1;
-      const nextYear = month === 11 ? year + 1 : year;
-      const endDay = pe.getDate();
-      for (let d = 1; d <= endDay; d++) {
-        baseCells.push({ day: d, month: nextMonth, year: nextYear });
-      }
-    }
   }
 
   // Pad end to complete the last week row
@@ -336,7 +327,15 @@ function BigCalendar({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-base font-bold text-foreground">{year}년 {month + 1}월</span>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setCalOffset(o => o - 1)} className="p-1 rounded-md hover:bg-muted transition-colors">
+            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <span className="text-base font-bold text-foreground min-w-[100px] text-center">{year}년 {month + 1}월</span>
+          <button onClick={() => setCalOffset(o => o + 1)} className="p-1 rounded-md hover:bg-muted transition-colors">
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
         {period && (
           <span className="text-xs text-muted-foreground">{period.start_date} ~ {period.end_date}</span>
         )}
