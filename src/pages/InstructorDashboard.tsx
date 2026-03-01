@@ -2430,49 +2430,71 @@ function BulkGoalModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const thisLabel = (() => { const d = new Date(); return `${d.getFullYear()}년 ${d.getMonth() + 1}월`; })();
-  const prevLabel = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return `${d.getFullYear()}년 ${d.getMonth() + 1}월`; })();
-
-  // Sessions per student: { studentName: { prev: Session[], curr: Session[] } }
-  type SessionGoal = { id: string; scheduled_at: string; topic: string };
-  const [studentSessions, setStudentSessions] = useState<Record<string, { prev: SessionGoal[]; curr: SessionGoal[] }>>({});
+  type SG = { id: string; scheduled_at: string; topic: string };
+  const [studentSessions, setStudentSessions] = useState<Record<string, { prev: SG[]; curr: SG[] }>>({});
   const [topics, setTopics] = useState<Record<string, string>>({}); // sessionId -> topic
   const [origTopics, setOrigTopics] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currPeriodLabel, setCurrPeriodLabel] = useState("");
+  const [prevPeriodLabel, setPrevPeriodLabel] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
     (async () => {
-      const now = new Date();
-      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      // Fetch schedule periods to determine current and previous period
+      const { data: periods } = await supabase
+        .from("schedule_periods")
+        .select("id, label, start_date, end_date, is_active")
+        .order("start_date", { ascending: false });
+
+      if (!periods || periods.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      // Find current (latest active or latest) and previous period
+      const activePeriods = periods.filter(p => p.is_active);
+      const currPeriod = activePeriods.length > 0 ? activePeriods[0] : periods[0];
+      const currIdx = periods.findIndex(p => p.id === currPeriod.id);
+      const prevPeriod = currIdx < periods.length - 1 ? periods[currIdx + 1] : null;
+
+      setCurrPeriodLabel(currPeriod.label);
+      setPrevPeriodLabel(prevPeriod?.label || "");
+
+      const currStart = currPeriod.start_date + "T00:00:00+09:00";
+      const currEnd = currPeriod.end_date + "T23:59:59+09:00";
+      const prevStart = prevPeriod ? prevPeriod.start_date + "T00:00:00+09:00" : currStart;
+      const prevEnd = prevPeriod ? prevPeriod.end_date + "T23:59:59+09:00" : currStart;
 
       const studentNames = students.map(s => s.student_name);
       const { data: allSessions } = await supabase
         .from("class_sessions")
         .select("id, student_name, scheduled_at, topic")
         .in("student_name", studentNames)
-        .gte("scheduled_at", prevMonthStart.toISOString())
-        .lte("scheduled_at", thisMonthEnd.toISOString())
+        .gte("scheduled_at", prevStart)
+        .lte("scheduled_at", currEnd)
         .order("scheduled_at", { ascending: true });
 
-      const sessMap: Record<string, { prev: SessionGoal[]; curr: SessionGoal[] }> = {};
+      const sessMap: Record<string, { prev: SG[]; curr: SG[] }> = {};
       const initTopics: Record<string, string> = {};
       
       students.forEach(s => {
         sessMap[s.student_name] = { prev: [], curr: [] };
       });
 
+      const currStartDate = new Date(currStart);
+      const currEndDate = new Date(currEnd);
+      const prevStartDate = prevPeriod ? new Date(prevStart) : null;
+      const prevEndDate = prevPeriod ? new Date(prevEnd) : null;
+
       (allSessions || []).forEach(sess => {
         const d = new Date(sess.scheduled_at);
-        const entry: SessionGoal = { id: sess.id, scheduled_at: sess.scheduled_at, topic: sess.topic || "" };
+        const entry: SG = { id: sess.id, scheduled_at: sess.scheduled_at, topic: sess.topic || "" };
         if (sessMap[sess.student_name]) {
-          if (d >= prevMonthStart && d <= prevMonthEnd) {
+          if (prevStartDate && prevEndDate && d >= prevStartDate && d <= prevEndDate) {
             sessMap[sess.student_name].prev.push(entry);
-          } else if (d >= thisMonthStart && d <= thisMonthEnd) {
+          } else if (d >= currStartDate && d <= currEndDate) {
             sessMap[sess.student_name].curr.push(entry);
             initTopics[sess.id] = sess.topic || "";
           }
@@ -2513,8 +2535,8 @@ function BulkGoalModal({
         </div>
         {/* Column headers */}
         <div className="px-5 pt-3 pb-1 grid grid-cols-2 gap-4">
-          <p className="text-[10px] font-semibold text-muted-foreground text-center">{prevLabel} (지난달)</p>
-          <p className="text-[10px] font-semibold text-navy text-center">{thisLabel} (이번달)</p>
+          <p className="text-[10px] font-semibold text-muted-foreground text-center">{prevPeriodLabel || "이전"} (지난 기간)</p>
+          <p className="text-[10px] font-semibold text-navy text-center">{currPeriodLabel || "현재"} (이번 기간)</p>
         </div>
         <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
           {loading ? (
