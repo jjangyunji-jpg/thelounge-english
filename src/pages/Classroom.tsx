@@ -353,7 +353,13 @@ export default function Classroom() {
     const loadData = async () => {
       const { data: sessionData } = await supabase
         .from("class_sessions").select("notes, remarks").eq("id", session.sessionId).single();
-      if (sessionData?.notes) setNotes(sessionData.notes);
+      if (sessionData?.notes) {
+        setNotes(sessionData.notes);
+      } else {
+        // Default template for empty notes
+        const template = `<p></p><div data-callout data-callout-type="info" class="callout callout-info"><h1>Homework Feedback</h1></div><p></p><p></p><div data-callout data-callout-type="info" class="callout callout-info"><h1>Small Talk</h1></div><p></p><p></p>`;
+        setNotes(template);
+      }
 
       // Load remarks: use current session's remarks, or fall back to most recent previous session's remarks
       if (sessionData?.remarks) {
