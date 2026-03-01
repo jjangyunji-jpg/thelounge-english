@@ -238,48 +238,40 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
     holidayRanges.some(r => d >= r.start && d <= r.end);
   const isTuesdayOff = (d: Date) => d.getDay() === 2;
 
-  // Build cells spanning from period start month through period end month
+  // Build cells: from period start's week Sunday to period end's week Saturday
+  const periodStart = selectedPeriod
+    ? new Date(selectedPeriod.start_date + "T00:00:00")
+    : new Date(today.getFullYear(), today.getMonth(), 1);
+  const periodEnd = selectedPeriod
+    ? new Date(selectedPeriod.end_date + "T00:00:00")
+    : new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+  // Week's Sunday for period start
+  const gridStart = new Date(periodStart);
+  gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+  // Week's Saturday for period end
+  const gridEnd = new Date(periodEnd);
+  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
+
   const cells: { day: number; month: number; year: number }[] = [];
-  const startYear = primaryYear;
-  const startMonth = primaryMonth;
-  let endYear = startYear;
-  let endMonth = startMonth;
-  if (selectedPeriod) {
-    const pe = new Date(selectedPeriod.end_date + "T00:00:00");
-    endYear = pe.getFullYear();
-    endMonth = pe.getMonth();
+  for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
+    cells.push({ day: d.getDate(), month: d.getMonth(), year: d.getFullYear() });
   }
 
-  // Add days from start month through end month
-  let curYear = startYear;
-  let curMonth = startMonth;
-  while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
-    const dim = new Date(curYear, curMonth + 1, 0).getDate();
-    for (let d = 1; d <= dim; d++) {
-      cells.push({ day: d, month: curMonth, year: curYear });
-    }
-    curMonth++;
-    if (curMonth > 11) { curMonth = 0; curYear++; }
-  }
-
-  const firstDay = new Date(startYear, startMonth, 1).getDay();
-  const blanks = firstDay;
-  const totalSlots = blanks + cells.length;
-  const paddedTotal = Math.ceil(totalSlots / 7) * 7;
-
-  // Period label
-  const periodLabel = selectedPeriod
-    ? `${startYear}년 ${startMonth + 1}월`
-    : `${today.getFullYear()}년 ${today.getMonth() + 1}월`;
+  // Header label
+  const pStartMonth = periodStart.getMonth();
+  const pEndMonth = periodEnd.getMonth();
+  const pStartYear = periodStart.getFullYear();
+  const pEndYear = periodEnd.getFullYear();
+  const periodLabel = pStartMonth === pEndMonth && pStartYear === pEndYear
+    ? `${pStartYear}년 ${pStartMonth + 1}월`
+    : `${pStartYear}년 ${pStartMonth + 1}월 ~ ${pEndYear}년 ${pEndMonth + 1}월`;
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <div className="text-center">
           <span className="font-bold text-foreground text-sm">{periodLabel}</span>
-          {selectedPeriod && endMonth !== startMonth && (
-            <span className="font-bold text-foreground text-sm"> ~ {endYear}년 {endMonth + 1}월</span>
-          )}
         </div>
         <div className="grid grid-cols-7 text-center">
           {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
@@ -290,13 +282,9 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
           ))}
         </div>
         <div className="grid grid-cols-7 gap-px">
-          {Array.from({ length: paddedTotal }).map((_, idx) => {
-            if (idx < blanks || idx >= blanks + cells.length) {
-              return <div key={idx} />;
-            }
-            const cell = cells[idx - blanks];
+          {cells.map((cell, idx) => {
             const date = new Date(cell.year, cell.month, cell.day);
-            const isNextMonth = cell.month !== startMonth;
+            const isOutsidePeriodMonth = cell.month !== pStartMonth || cell.year !== pStartYear;
             const holiday = isHoliday(date);
             const tuesdayOff = isTuesdayOff(date);
             const inPeriod = isInPeriod(date);
@@ -313,7 +301,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
                   : inPeriod ? "text-foreground hover:bg-muted/50"
                   : "text-muted-foreground/40 hover:bg-muted/30",
               )}>
-                {isNextMonth ? `${cell.month + 1}/${cell.day}` : cell.day}
+                {isOutsidePeriodMonth ? `${cell.month + 1}/${cell.day}` : cell.day}
                 {session && !todayMark && !isOff && (
                   <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
                 )}
