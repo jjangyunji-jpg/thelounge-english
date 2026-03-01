@@ -430,11 +430,15 @@ function BigCalendar({
           );
 
           // Combined entries for display (max 2)
-          const displayItems: { label: string; type: "actual" | "virtual" | "meeting" }[] = [];
-          daySessions.slice(0, 2).forEach(s => displayItems.push({
-            label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })} ${s.student_name}`,
-            type: "actual",
-          }));
+          const now = new Date();
+          const displayItems: { label: string; type: "actual" | "completed" | "virtual" | "meeting" }[] = [];
+          daySessions.slice(0, 2).forEach(s => {
+            const isCompleted = !!s.ended_at || new Date(s.scheduled_at) <= now;
+            displayItems.push({
+              label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })} ${s.student_name}`,
+              type: isCompleted ? "completed" : "actual",
+            });
+          });
           if (displayItems.length < 2) {
             unmatched.slice(0, 2 - displayItems.length).forEach(v => displayItems.push({
               label: `${v.time} ${v.student_name}`,
@@ -464,7 +468,9 @@ function BigCalendar({
                 {displayItems.map((item, i) => (
                   <div key={i} className={cn(
                     "w-full truncate text-[9px] leading-tight px-1 py-0.5 rounded font-medium",
-                    item.type === "actual" ? "bg-navy/10 text-navy" : "bg-navy/5 text-navy/60 border border-dashed border-navy/20",
+                    item.type === "completed" ? "bg-navy/15 text-navy" :
+                    item.type === "actual" ? "bg-navy/10 text-navy border border-navy/20" :
+                    "bg-navy/5 text-navy/60 border border-dashed border-navy/20",
                   )}>
                     {item.label}
                   </div>
@@ -489,10 +495,13 @@ function BigCalendar({
       {/* Legend */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <div className="w-2 h-2 rounded-full bg-navy" /> 수업 (완료/진행)
+          <div className="w-2 h-2 rounded-full bg-navy" /> 완료 수업
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <div className="w-2 h-2 rounded-full bg-navy/30 border border-dashed border-navy/50" /> 예정 수업
+          <div className="w-2 h-2 rounded-full bg-navy/40 border border-navy/50" /> 예정 수업
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <div className="w-2 h-2 rounded-full bg-navy/20 border border-dashed border-navy/40" /> 가상 일정
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <div className="w-2 h-2 rounded-full bg-gold" /> 업무미팅
