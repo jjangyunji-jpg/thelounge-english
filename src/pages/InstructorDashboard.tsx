@@ -73,6 +73,7 @@ interface ClassSession {
   meet_link: string | null;
   started_at: string | null;
   ended_at: string | null;
+  notes: string | null;
 }
 
 interface HomeworkAssignment {
@@ -1670,7 +1671,18 @@ export default function InstructorDashboard() {
                               </button>
                               <button
                                 onClick={async () => {
-                                  if (!confirm(`${s.student_name} 수업을 삭제하시겠습니까?`)) return;
+                                  const hasNotes = s.notes && s.notes.replace(/<[^>]*>/g, "").trim().length > 0;
+                                  const hasStarted = !!s.started_at || !!s.ended_at;
+                                  const hasTopic = !!s.topic;
+                                  const warnings: string[] = [];
+                                  if (hasNotes) warnings.push("📝 수업 노트가 작성되어 있습니다");
+                                  if (hasTopic) warnings.push(`📋 주제: ${s.topic}`);
+                                  if (hasStarted) warnings.push("⏱ 수업이 진행된 기록이 있습니다");
+                                  const msg = warnings.length > 0
+                                    ? `⚠️ ${s.student_name} 수업을 삭제하시겠습니까?\n\n${warnings.join("\n")}\n\n삭제하면 복구할 수 없습니다!`
+                                    : `${s.student_name} 수업을 삭제하시겠습니까?`;
+                                  if (!confirm(msg)) return;
+                                  if (warnings.length > 0 && !confirm("정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
                                   const { error } = await supabase.from("class_sessions").delete().eq("id", s.id);
                                   if (error) { toast({ title: "삭제 실패", description: error.message, variant: "destructive" }); return; }
                                   setSessions(prev => prev.filter(x => x.id !== s.id));

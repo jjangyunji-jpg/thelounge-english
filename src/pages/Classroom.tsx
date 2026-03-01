@@ -114,9 +114,26 @@ export default function Classroom() {
   const [editGoalValue, setEditGoalValue] = useState("");
   const [savingGoal, setSavingGoal] = useState(false);
 
+  // Ref to hold current notes for flush before session switch
+  const notesRef = useRef("");
+  const sessionIdRef = useRef("");
+
   // Load session from DB if sessionId provided
   useEffect(() => {
     const loadSession = async () => {
+      // Flush current notes before switching sessions
+      if (autoSaveTimer.current) {
+        clearTimeout(autoSaveTimer.current);
+        autoSaveTimer.current = null;
+      }
+      const prevSessionId = sessionIdRef.current;
+      const prevNotes = notesRef.current;
+      if (prevSessionId && prevNotes.trim()) {
+        const stripped = prevNotes.replace(/<[^>]*>/g, "").trim();
+        if (stripped && stripped !== "Homework Feedback /Small Talk /") {
+          await supabase.from("class_sessions").update({ notes: prevNotes.trim() }).eq("id", prevSessionId);
+        }
+      }
       setSessionLoading(true);
       setNotes("");
       setHwList([]);
@@ -280,6 +297,9 @@ export default function Classroom() {
   const [elapsed, setElapsed] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [notes, setNotes] = useState("");
+  // Keep refs in sync for flush-before-switch
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+  useEffect(() => { sessionIdRef.current = session.sessionId; }, [session.sessionId]);
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
   const [hwOpen, setHwOpen] = useState(true);
@@ -812,7 +832,20 @@ export default function Classroom() {
           <SessionSidebar
             sessions={sidebarSessions}
             selectedId={session.sessionId}
-            onSelect={(id) => {
+            onSelect={async (id) => {
+              // Flush current notes before switching
+              if (autoSaveTimer.current) {
+                clearTimeout(autoSaveTimer.current);
+                autoSaveTimer.current = null;
+              }
+              const prevSid = sessionIdRef.current;
+              const prevN = notesRef.current;
+              if (prevSid && prevN.trim()) {
+                const stripped = prevN.replace(/<[^>]*>/g, "").trim();
+                if (stripped && stripped !== "Homework Feedback /Small Talk /") {
+                  await supabase.from("class_sessions").update({ notes: prevN.trim() }).eq("id", prevSid);
+                }
+              }
               setSearchParams((prev) => {
                 const next = new URLSearchParams(prev);
                 next.set("sessionId", id);
