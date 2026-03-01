@@ -483,6 +483,18 @@ export default function StudentManagement() {
     setDialogOpen(false);
     toast({ title: `${newStudent.name} 수강생 등록 완료 ✓` });
 
+    // Create default preset homework (vocab test)
+    supabase.from("homework_assignments").select("id").eq("student_name", newStudent.name).eq("is_preset", true).eq("title", "단어 테스트 1회 이상 참여하기").then(({ data: existing }) => {
+      if (!existing || existing.length === 0) {
+        supabase.from("homework_assignments").insert({
+          student_name: newStudent.name,
+          title: "단어 테스트 1회 이상 참여하기",
+          type: "memorizing",
+          is_preset: true,
+        }).then(() => {});
+      }
+    });
+
     // Auto-generate sessions for active periods
     autoGenerateSessions();
   };
