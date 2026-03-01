@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Video, VideoOff, Clock, FileText, CheckSquare,
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
@@ -98,6 +98,7 @@ function formatCountdown(ms: number) {
 
 export default function Classroom() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlSessionId = searchParams.get("sessionId");
   const urlStudentName = searchParams.get("student");
@@ -530,10 +531,10 @@ export default function Classroom() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
       <header className="sidebar-gradient text-sidebar-foreground px-4 py-3 flex items-center gap-4 shadow-lg">
-        <a href={urlRole === "student" ? "/my/dashboard" : "/t/dashboard"} className="flex items-center gap-1.5 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors text-sm">
+        <button onClick={() => navigate(urlRole === "student" ? "/my/dashboard" : "/t/dashboard")} className="flex items-center gap-1.5 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors text-sm">
           <ArrowLeft className="w-4 h-4" />
           <span className="hidden sm:inline">{urlRole === "student" ? "돌아가기" : "대시보드"}</span>
-        </a>
+        </button>
         <div className="w-px h-5 bg-sidebar-border" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
