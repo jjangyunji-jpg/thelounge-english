@@ -74,7 +74,6 @@ interface Student {
   dbId?: string; // UUID from DB
   name: string;
   englishName: string;
-  phone: string;
   level: Level;
   startDate: string;
   instructor: string;
@@ -105,7 +104,7 @@ const levelColors: Record<Level, string> = {
 interface NewStudent {
   name: string;
   englishName: string;
-  phone: string;
+  
   level: Level | "";
   instructor: string;
   startDate: string;
@@ -174,7 +173,7 @@ export default function StudentManagement() {
       dbId: row.id,
       name: row.student_name,
       englishName: row.english_name || "",
-      phone: row.phone || "",
+      
       level: (row.level as Level) || "B1",
       startDate: row.start_date || "",
       instructor: row.instructor_name || "",
@@ -224,7 +223,7 @@ export default function StudentManagement() {
 
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
-    name: "", englishName: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [],
+    name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [],
   });
 
   const filtered = students.filter(
@@ -441,7 +440,7 @@ export default function StudentManagement() {
         student_name: newStudent.name,
         english_name: newStudent.englishName.trim() || null,
         instructor_id: instrData?.id ?? null,
-        phone: newStudent.phone || null,
+        
         level: newStudent.level,
         start_date: newStudent.startDate || null,
         instructor_name: newStudent.instructor,
@@ -464,7 +463,7 @@ export default function StudentManagement() {
       dbId: data.id,
       name: newStudent.name,
       englishName: newStudent.englishName,
-      phone: newStudent.phone,
+      
       level: newStudent.level as Level,
       startDate: newStudent.startDate,
       instructor: newStudent.instructor,
@@ -480,7 +479,7 @@ export default function StudentManagement() {
       schedules: newStudent.schedules,
     };
     setStudents((prev) => [s, ...prev]);
-    setNewStudent({ name: "", englishName: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [] });
+    setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [] });
     setDialogOpen(false);
     toast({ title: `${newStudent.name} 수강생 등록 완료 ✓` });
 
@@ -578,15 +577,6 @@ export default function StudentManagement() {
                       onChange={(e) => setNewStudent((p) => ({ ...p, englishName: e.target.value }))}
                     />
                   </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">연락처</Label>
-                  <Input
-                    placeholder="010-0000-0000"
-                    className="h-9"
-                    value={newStudent.phone}
-                    onChange={(e) => setNewStudent((p) => ({ ...p, phone: e.target.value }))}
-                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -812,7 +802,7 @@ export default function StudentManagement() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">담당 강사 : {student.instructor || "미지정"}{student.phone ? ` · ${student.phone}` : ""}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">담당 강사 : {student.instructor || "미지정"}</p>
                 </div>
                 <div className="hidden md:flex items-center gap-5 text-sm">
                   <div className="text-center">
