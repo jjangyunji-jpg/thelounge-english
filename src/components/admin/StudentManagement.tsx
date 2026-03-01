@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock, Mail, Loader2, FileText, Paperclip, Monitor } from "lucide-react";
+import { formatStudentName } from "@/lib/formatStudentName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,7 @@ interface Student {
   id: number;
   dbId?: string; // UUID from DB
   name: string;
+  englishName: string;
   phone: string;
   level: Level;
   startDate: string;
@@ -102,6 +104,7 @@ const levelColors: Record<Level, string> = {
 // New student form state
 interface NewStudent {
   name: string;
+  englishName: string;
   phone: string;
   level: Level | "";
   instructor: string;
@@ -170,6 +173,7 @@ export default function StudentManagement() {
       id: row.id_num ?? (row.student_name + row.created_at).hashCode?.() ?? Math.random(),
       dbId: row.id,
       name: row.student_name,
+      englishName: row.english_name || "",
       phone: row.phone || "",
       level: (row.level as Level) || "B1",
       startDate: row.start_date || "",
@@ -220,7 +224,7 @@ export default function StudentManagement() {
 
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
-    name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [],
+    name: "", englishName: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [],
   });
 
   const filtered = students.filter(
@@ -419,6 +423,7 @@ export default function StudentManagement() {
       .from("instructor_students")
       .insert({
         student_name: newStudent.name,
+        english_name: newStudent.englishName.trim() || null,
         instructor_id: instrData?.id ?? null,
         phone: newStudent.phone || null,
         level: newStudent.level,
@@ -442,6 +447,7 @@ export default function StudentManagement() {
       id: Date.now(),
       dbId: data.id,
       name: newStudent.name,
+      englishName: newStudent.englishName,
       phone: newStudent.phone,
       level: newStudent.level as Level,
       startDate: newStudent.startDate,
@@ -458,7 +464,7 @@ export default function StudentManagement() {
       schedules: newStudent.schedules,
     };
     setStudents((prev) => [s, ...prev]);
-    setNewStudent({ name: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [] });
+    setNewStudent({ name: "", englishName: "", phone: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [] });
     setDialogOpen(false);
     toast({ title: `${newStudent.name} 수강생 등록 완료 ✓` });
 
@@ -541,21 +547,30 @@ export default function StudentManagement() {
                   <div className="space-y-1.5">
                     <Label className="text-xs">이름</Label>
                     <Input
-                      placeholder="홍길동"
+                      placeholder="조은순"
                       className="h-9"
                       value={newStudent.name}
                       onChange={(e) => setNewStudent((p) => ({ ...p, name: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">연락처</Label>
+                    <Label className="text-xs">영어이름</Label>
                     <Input
-                      placeholder="010-0000-0000"
+                      placeholder="Joy"
                       className="h-9"
-                      value={newStudent.phone}
-                      onChange={(e) => setNewStudent((p) => ({ ...p, phone: e.target.value }))}
+                      value={newStudent.englishName}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, englishName: e.target.value }))}
                     />
                   </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">연락처</Label>
+                  <Input
+                    placeholder="010-0000-0000"
+                    className="h-9"
+                    value={newStudent.phone}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, phone: e.target.value }))}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -771,7 +786,7 @@ export default function StudentManagement() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-foreground text-sm">{student.name}</p>
+                    <p className="font-semibold text-foreground text-sm">{formatStudentName(student.name, student.englishName)}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${levelColors[student.level]}`}>
                       {student.level}
                     </span>

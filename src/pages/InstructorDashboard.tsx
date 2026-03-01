@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { formatStudentName } from "@/lib/formatStudentName";
 import {
   BookOpen, Users, AlertCircle, Video, Plus, LogOut,
   Calendar, Clock, ChevronRight, Check, X, Loader2,
@@ -39,6 +40,7 @@ interface Instructor {
 interface StudentFull {
   id: string;
   student_name: string;
+  english_name: string | null;
   level: string | null;
   schedules: string | null;
   meet_link: string | null;
@@ -1208,6 +1210,8 @@ export default function InstructorDashboard() {
   }
 
   // ── Derived stats ──
+  const englishNameMap = new Map(students.map(s => [s.student_name, s.english_name]));
+  const fmtName = (name: string) => formatStudentName(name, englishNameMap.get(name));
   const myStudentNames = new Set(students.map((s) => s.student_name));
   const todaySessions = sessions.filter((s) => isToday(s.scheduled_at));
   const upcomingSessions = sessions.filter((s) => msUntil(s.scheduled_at) > 0)
@@ -1307,7 +1311,7 @@ export default function InstructorDashboard() {
       key,
       date: new Date(s.scheduled_at),
       type: 'lesson',
-      description: `${s.student_name} 수업 (${getLevelCategory(s.level)})`,
+      description: `${fmtName(s.student_name)} 수업 (${getLevelCategory(s.level)})`,
       durationHours,
       payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate),
     });
@@ -1558,7 +1562,7 @@ export default function InstructorDashboard() {
                               <p className="text-xs font-bold text-navy">{fmtTime(s.scheduled_at)}</p>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground">{s.student_name}</p>
+                              <p className="text-sm font-medium text-foreground">{fmtName(s.student_name)}</p>
                               <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
                             </div>
                             <div className="flex items-center gap-1.5">
@@ -1597,7 +1601,7 @@ export default function InstructorDashboard() {
                               <p className="text-xs font-bold text-navy/60">{v.time}</p>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground/70">{v.student_name}</p>
+                              <p className="text-sm font-medium text-foreground/70">{fmtName(v.student_name)}</p>
                               <p className="text-[11px] text-muted-foreground">{v.level || "—"} · 예정</p>
                             </div>
                             <a href={`/t/classroom?student=${encodeURIComponent(v.student_name)}`}>
@@ -1671,7 +1675,7 @@ export default function InstructorDashboard() {
                         >
                           <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground">{s.student_name}</p>
+                            <p className="text-sm font-medium text-foreground">{fmtName(s.student_name)}</p>
                             <p className="text-[11px] text-muted-foreground">{s.level} · 수업노트 준비</p>
                           </div>
                           <ArrowRight className="w-4 h-4 text-navy/40 group-hover:text-navy transition-colors" />
@@ -1707,7 +1711,7 @@ export default function InstructorDashboard() {
                               <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
                                 <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-foreground">{s.student_name}</p>
+                                  <p className="text-sm font-medium text-foreground">{fmtName(s.student_name)}</p>
                                   <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
                                 </div>
                                 <div className="flex items-center gap-1.5">
@@ -1775,7 +1779,7 @@ export default function InstructorDashboard() {
                                   <span className="text-navy font-bold text-[9px]">{st.student_name.charAt(0)}</span>
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="text-xs font-semibold text-foreground leading-tight">{st.student_name}</p>
+                                  <p className="text-xs font-semibold text-foreground leading-tight">{fmtName(st.student_name)}</p>
                                   <p className="text-[10px] text-muted-foreground leading-tight">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
                                 </div>
                               </div>
@@ -1831,7 +1835,7 @@ export default function InstructorDashboard() {
                             <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-foreground">{a.title}</p>
-                              <p className="text-[10px] text-muted-foreground">{a.student_name} · {meta?.label || a.type}</p>
+                               <p className="text-[10px] text-muted-foreground">{fmtName(a.student_name)} · {meta?.label || a.type}</p>
                             </div>
                             {isQuickCheck && sub ? (
                               <Button
@@ -1886,7 +1890,7 @@ export default function InstructorDashboard() {
                             <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-foreground">{a.title}</p>
-                              <p className="text-[10px] text-muted-foreground">{a.student_name} · {meta?.label || a.type}</p>
+                              <p className="text-[10px] text-muted-foreground">{fmtName(a.student_name)} · {meta?.label || a.type}</p>
                             </div>
                             <button
                               onClick={(e) => { e.stopPropagation(); sub && setReviewHw({ assignment: a, submission: sub }); }}
@@ -1979,7 +1983,7 @@ export default function InstructorDashboard() {
                           <span className="text-navy font-bold text-sm">{st.student_name.charAt(0)}</span>
                         </div>
                         <div>
-                          <p className="font-semibold text-sm text-foreground">{st.student_name}</p>
+                          <p className="font-semibold text-sm text-foreground">{formatStudentName(st.student_name, st.english_name)}</p>
                           <p className="text-[10px] text-muted-foreground">{st.level} · {fmtSchedules(st.schedules) || "일정 미정"}</p>
                         </div>
                       </div>

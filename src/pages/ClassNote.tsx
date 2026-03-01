@@ -4,6 +4,7 @@ import {
   ArrowLeft, FileText, Clock, BookOpen,
   Calendar, Loader2,
 } from "lucide-react";
+import { formatStudentName } from "@/lib/formatStudentName";
 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,7 @@ export default function ClassNote() {
 
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [englishName, setEnglishName] = useState<string | null>(null);
   const [instructorDisplayName, setInstructorDisplayName] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -60,11 +62,13 @@ export default function ClassNote() {
         // Fetch instructor display_name via instructor_students → instructors → user_roles
         const studentName = profile?.student_name;
         if (studentName) {
+          // Fetch english_name from instructor_students
           const { data: isData } = await supabase
             .from("instructor_students")
-            .select("instructor_id")
+            .select("instructor_id, english_name")
             .eq("student_name", studentName)
             .maybeSingle();
+          if (isData?.english_name) setEnglishName(isData.english_name);
           if (isData?.instructor_id) {
             const { data: insData } = await supabase
               .from("instructors")
@@ -155,7 +159,7 @@ export default function ClassNote() {
             <span className="font-bold text-sidebar-accent-foreground text-sm">수업 노트</span>
             {student && (
               <span className="text-xs px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground font-medium">
-                {displayName || student}
+                {formatStudentName(displayName || student, englishName)}
               </span>
             )}
           </div>

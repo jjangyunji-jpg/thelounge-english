@@ -349,6 +349,7 @@ export type Database = {
       instructor_students: {
         Row: {
           created_at: string
+          english_name: string | null
           extra_lessons: number | null
           id: string
           instructor_id: string
@@ -368,6 +369,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          english_name?: string | null
           extra_lessons?: number | null
           id?: string
           instructor_id: string
@@ -387,6 +389,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          english_name?: string | null
           extra_lessons?: number | null
           id?: string
           instructor_id?: string
