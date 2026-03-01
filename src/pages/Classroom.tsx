@@ -6,7 +6,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked, Paperclip,
-  Loader2, Monitor,
+  Loader2, Monitor, Download, History,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import NotesEditor from "@/components/classroom/NotesEditor";
 import MaterialPickerModal from "@/components/classroom/MaterialPickerModal";
+import NoteVersionsModal from "@/components/classroom/NoteVersionsModal";
+import { exportNotesPdf } from "@/lib/exportNotesPdf";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
@@ -319,6 +321,38 @@ export default function Classroom() {
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notesEditorRef = useRef<any>(null);
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
+
+  const [versionModalOpen, setVersionModalOpen] = useState(false);
+
+  // Export all notes as PDF
+  const handleExportPdf = async () => {
+    if (!session.dbStudentName) return;
+    const { data } = await supabase
+      .from("class_sessions")
+      .select("scheduled_at, topic, notes, remarks")
+      .eq("student_name", session.dbStudentName)
+      .order("scheduled_at", { ascending: true });
+    if (!data || data.length === 0) {
+      toast({ title: "내보낼 노트가 없습니다", variant: "destructive" });
+      return;
+    }
+    const withNotes = data.filter(s => s.notes && s.notes.trim());
+    if (withNotes.length === 0) {
+      toast({ title: "노트가 있는 수업이 없습니다", variant: "destructive" });
+      return;
+    }
+    await exportNotesPdf(withNotes, session.dbStudentName);
+    toast({ title: `${withNotes.length}개 수업 노트를 PDF로 내보냈습니다` });
+  };
+
+  // Restore note version
+  const handleRestoreVersion = async (restoredNotes: string, restoredTopic: string) => {
+    if (!session.sessionId) return;
+    setNotes(restoredNotes);
+    setSessionTopic(restoredTopic);
+    await supabase.from("class_sessions").update({ notes: restoredNotes, topic: restoredTopic }).eq("id", session.sessionId);
+    toast({ title: "이전 버전이 복원되었습니다" });
+  };
 
   // Save notes on page unload (browser close, back navigation, etc.)
   useEffect(() => {
@@ -925,7 +959,19 @@ export default function Classroom() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Button size="sm" variant="outline" onClick={() => setVersionModalOpen(true)}
+                      disabled={!session.sessionId}
+                      className="h-7 text-xs gap-1.5 transition-all border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                    >
+                      <History className="w-3 h-3" />버전
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleExportPdf}
+                      disabled={!session.dbStudentName}
+                      className="h-7 text-xs gap-1.5 transition-all border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                    >
+                      <Download className="w-3 h-3" />PDF
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setMaterialPickerOpen(true)}
                       disabled={isDisabled}
                       className="h-7 text-xs gap-1.5 transition-all border-gold/30 text-gold-dark hover:bg-gold/10"
@@ -1136,6 +1182,12 @@ export default function Classroom() {
           setNotes(editor.getHTML());
         }
       }}
+    />
+    <NoteVersionsModal
+      open={versionModalOpen}
+      onOpenChange={setVersionModalOpen}
+      sessionId={session.sessionId}
+      onRestore={handleRestoreVersion}
     />
     </>
   );

@@ -141,6 +141,38 @@ export type Database = {
           },
         ]
       }
+      class_session_note_versions: {
+        Row: {
+          id: string
+          notes: string | null
+          saved_at: string
+          session_id: string
+          topic: string | null
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          saved_at?: string
+          session_id: string
+          topic?: string | null
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          saved_at?: string
+          session_id?: string
+          topic?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_session_note_versions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_sessions: {
         Row: {
           created_at: string
