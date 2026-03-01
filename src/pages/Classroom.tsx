@@ -320,6 +320,30 @@ export default function Classroom() {
   const notesEditorRef = useRef<any>(null);
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
 
+  // Save notes on page unload (browser close, back navigation, etc.)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const sid = sessionIdRef.current;
+      const n = notesRef.current;
+      if (!sid || !n.trim()) return;
+      const stripped = n.replace(/<[^>]*>/g, "").trim();
+      if (!stripped || stripped === "Homework Feedback /Small Talk /") return;
+      // Use sendBeacon for reliable save on page unload
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/class_sessions?id=eq.${sid}`;
+      const body = JSON.stringify({ notes: n.trim() });
+      const headers = {
+        "Content-Type": "application/json",
+        "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        "Prefer": "return=minimal",
+      };
+      // sendBeacon doesn't support custom headers, use fetch with keepalive
+      fetch(url, { method: "PATCH", headers, body, keepalive: true }).catch(() => {});
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
 
 
   // Auto-save notes to DB for realtime mirroring (debounced 1.5s)
