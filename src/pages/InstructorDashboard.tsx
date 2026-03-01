@@ -1508,7 +1508,7 @@ export default function InstructorDashboard() {
             {/* Stats row */}
             <div className="grid grid-cols-4 gap-3 mb-6">
               {[
-                { label: "담당 학생", value: `${students.filter(s => s.status === "active").length}명`, icon: Users, color: "text-navy", bg: "bg-navy/10" },
+                { label: "담당 학생", value: `${students.filter(s => s.status === "active" && (!s.start_date || !period || s.start_date <= period.end_date)).length}명`, icon: Users, color: "text-navy", bg: "bg-navy/10" },
                 { label: "이번 기간 수업", value: `${lessonHours}회`, icon: BookOpen, color: "text-gold-dark", bg: "bg-gold/10" },
                 { label: "미확인 숙제", value: `${uncheckedHw.length}건`, icon: ClipboardCheck, color: uncheckedHw.length > 0 ? "text-destructive" : "text-success", bg: uncheckedHw.length > 0 ? "bg-destructive/10" : "bg-success/10" },
                 { label: "정산 예정", value: `₩${totalAmount.toLocaleString()}`, icon: Banknote, color: "text-success", bg: "bg-success/10" },
@@ -1919,7 +1919,7 @@ export default function InstructorDashboard() {
               <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                 <Users className="w-4 h-4 text-navy" />
                 담당 학생 관리
-                <span className="text-xs px-2 py-0.5 rounded-full bg-navy/10 text-navy font-medium">{students.length}명</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-navy/10 text-navy font-medium">{students.filter(s => { const sp = allPeriods[studentTabPeriodIdx] || period; return !s.start_date || !sp || s.start_date <= sp.end_date; }).length}명</span>
               </h2>
               {allPeriods.length > 0 && (
                 <div className="flex items-center gap-2">
@@ -1948,7 +1948,11 @@ export default function InstructorDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {students.map((st) => {
+              {students.filter((st) => {
+                const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
+                if (!st.start_date || !selectedPeriod) return true;
+                return st.start_date <= selectedPeriod.end_date;
+              }).map((st) => {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 const stats = getStudentStats(st.student_name, st.schedules, selectedPeriod);
                 const goals = fmtGoals(st.lesson_goal);
