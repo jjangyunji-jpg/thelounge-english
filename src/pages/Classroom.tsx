@@ -430,10 +430,7 @@ export default function Classroom() {
   const handleStartClass = () => {
     setClassState("active");
     if (session.meetLink) {
-      const w = window.open(session.meetLink, "_blank", "noopener,noreferrer");
-      if (!w) {
-        toast({ title: "팝업이 차단됐습니다", description: "브라우저 팝업 차단을 해제하거나 Meet 재접속 버튼을 이용해주세요.", variant: "destructive" });
-      }
+      window.open(session.meetLink, "_blank", "noopener,noreferrer");
     }
     setMeetConnected(true);
   };
