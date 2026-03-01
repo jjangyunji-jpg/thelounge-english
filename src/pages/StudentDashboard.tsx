@@ -220,8 +220,12 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
   const today = new Date();
 
   // Primary month from the period start; extend grid rows to cover end date
-  const primaryYear = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getFullYear() : today.getFullYear();
-  const primaryMonth = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getMonth() : today.getMonth();
+  const defaultYear = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getFullYear() : today.getFullYear();
+  const defaultMonth = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getMonth() : today.getMonth();
+
+  const [calOffset, setCalOffset] = useState(0);
+  const primaryYear = new Date(defaultYear, defaultMonth + calOffset).getFullYear();
+  const primaryMonth = new Date(defaultYear, defaultMonth + calOffset).getMonth();
 
   const holidayRanges = holidays.map(h => ({
     start: new Date(h.date_start + "T00:00:00"),
@@ -239,48 +243,31 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
     holidayRanges.some(r => d >= r.start && d <= r.end);
   const isTuesdayOff = (d: Date) => d.getDay() === 2;
 
+  const year = primaryYear;
+  const month = primaryMonth;
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells: { day: number; month: number; year: number }[] = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ day: d, month, year });
+  }
+  const blanks = firstDay;
+  const totalSlots = blanks + cells.length;
+  const paddedTotal = Math.ceil(totalSlots / 7) * 7;
+
   return (
     <div className="space-y-4">
-      {(() => {
-        const year = primaryYear;
-        const month = primaryMonth;
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        // Build cells: start with the primary month
-        const cells: { day: number; month: number; year: number }[] = [];
-        // Leading blanks
-        const blanks = firstDay;
-
-        // Primary month days
-        for (let d = 1; d <= daysInMonth; d++) {
-          cells.push({ day: d, month, year });
-        }
-
-        // If period end extends into the next month, add those days
-        if (selectedPeriod) {
-          const pe = new Date(selectedPeriod.end_date + "T00:00:00");
-          if (pe.getMonth() !== month || pe.getFullYear() !== year) {
-            const nextMonth = month + 1;
-            const nextYear = nextMonth > 11 ? year + 1 : year;
-            const nm = nextMonth % 12;
-            // Add days from next month up to period end (or end of that week row)
-            const endDay = pe.getDate();
-            for (let d = 1; d <= endDay; d++) {
-              cells.push({ day: d, month: nm, year: nextYear });
-            }
-          }
-        }
-
-        // Total grid cells = blanks + cells, padded to full weeks
-        const totalSlots = blanks + cells.length;
-        const paddedTotal = Math.ceil(totalSlots / 7) * 7;
-
-        return (
-          <div className="space-y-2">
-            <div className="text-center">
-              <span className="font-bold text-foreground text-sm">{year}년 {month + 1}월</span>
-            </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-center gap-3">
+          <button onClick={() => setCalOffset(o => o - 1)} className="p-1 rounded-md hover:bg-muted transition-colors">
+            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <span className="font-bold text-foreground text-sm min-w-[90px] text-center">{year}년 {month + 1}월</span>
+          <button onClick={() => setCalOffset(o => o + 1)} className="p-1 rounded-md hover:bg-muted transition-colors">
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
             <div className="grid grid-cols-7 text-center">
               {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
                 <div key={d} className={cn(
@@ -324,9 +311,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
                 );
               })}
             </div>
-          </div>
-        );
-      })()}
+      </div>
       {/* Legend */}
       <div className="flex items-center gap-3 pt-1 text-[10px] text-muted-foreground flex-wrap">
         <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gold" />수업일</div>
