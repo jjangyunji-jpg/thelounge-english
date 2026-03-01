@@ -68,8 +68,8 @@ const getLevelCategory = (level: string): string => {
 
 interface NewInstructorForm {
   name: string;
-  email: string;
-  phone: string;
+  englishName: string;
+  joinDate: string;
 }
 
 export default function InstructorManagement() {
@@ -88,8 +88,8 @@ export default function InstructorManagement() {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [form, setForm] = useState<NewInstructorForm>({
     name: "",
-    email: "",
-    phone: "",
+    englishName: "",
+    joinDate: "",
   });
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackRecord[]>>({});
   const [feedbackCategories, setFeedbackCategories] = useState<FeedbackCategory[]>([]);
@@ -216,25 +216,26 @@ export default function InstructorManagement() {
   };
 
   const handleCreate = async () => {
-    if (!form.name || !form.email) {
-      toast({ title: "이름과 이메일은 필수입니다.", variant: "destructive" });
+    if (!form.name || !form.englishName) {
+      toast({ title: "이름과 영어이름은 필수입니다.", variant: "destructive" });
       return;
     }
     setCreating(true);
 
     const { error } = await supabase.from("instructors").insert({
       name: form.name,
-      email: form.email,
-      phone: form.phone || null,
+      email: "", // will be updated when account is linked
+      join_date: form.joinDate || null,
       active: true,
+      bio_notes: form.englishName ? `영어이름: ${form.englishName}` : null,
     });
 
     if (error) {
       toast({ title: "강사 추가 실패", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "강사 추가 완료", description: `${form.name} 강사가 추가되었습니다. 강사가 회원가입 후 계정을 연결해주세요.` });
+      toast({ title: "강사 추가 완료", description: `${form.name} (${form.englishName}) 강사가 추가되었습니다.` });
       setShowAddModal(false);
-      setForm({ name: "", email: "", phone: "" });
+      setForm({ name: "", englishName: "", joinDate: "" });
       fetchInstructors();
     }
     setCreating(false);
@@ -719,26 +720,25 @@ export default function InstructorManagement() {
                 <Input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="홍길동"
+                  placeholder="장리원"
                   className="h-9"
                 />
               </div>
               <div className="col-span-2 space-y-1.5">
-                <Label className="text-xs text-muted-foreground">이메일 *</Label>
+                <Label className="text-xs text-muted-foreground">영어이름 *</Label>
                 <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="instructor@example.com"
+                  value={form.englishName}
+                  onChange={(e) => setForm((f) => ({ ...f, englishName: e.target.value }))}
+                  placeholder="Reina"
                   className="h-9"
                 />
               </div>
               <div className="col-span-2 space-y-1.5">
-                <Label className="text-xs text-muted-foreground">전화번호</Label>
+                <Label className="text-xs text-muted-foreground">입사일</Label>
                 <Input
-                  value={form.phone}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                  placeholder="010-0000-0000"
+                  type="date"
+                  value={form.joinDate}
+                  onChange={(e) => setForm((f) => ({ ...f, joinDate: e.target.value }))}
                   className="h-9"
                 />
               </div>

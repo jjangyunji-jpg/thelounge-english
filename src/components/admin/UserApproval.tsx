@@ -331,16 +331,41 @@ export default function UserApproval({ onNavigate }: Props) {
         .eq("user_id", instrLinkUser.user_id);
     }
 
-    // Update instructors.user_id
+    // Get the instructor record to extract bio_notes (may contain english name)
+    const { data: instrRecord } = await supabase
+      .from("instructors")
+      .select("bio_notes")
+      .eq("id", selectedInstructorId)
+      .maybeSingle();
+
+    // Extract english name from bio_notes if present
+    const bioNotes = instrRecord?.bio_notes || "";
+    const engNameMatch = bioNotes.match(/^영어이름: (.+)$/);
+    const englishName = engNameMatch ? engNameMatch[1] : null;
+
+    // Update instructors.user_id and email from auth
     const { error } = await supabase
       .from("instructors")
-      .update({ user_id: instrLinkUser.user_id })
+      .update({
+        user_id: instrLinkUser.user_id,
+        // Clean up bio_notes if it was only the english name
+        ...(engNameMatch ? { bio_notes: null } : {}),
+      })
       .eq("id", selectedInstructorId);
 
     if (error) {
       toast({ title: "연결 실패", description: error.message, variant: "destructive" });
       setSavingInstrLink(false);
       return;
+    }
+
+    // Set user_roles.display_name to english name if available
+    if (englishName) {
+      await supabase
+        .from("user_roles")
+        .update({ display_name: englishName })
+        .eq("user_id", instrLinkUser.user_id)
+        .eq("role", "instructor");
     }
 
     const linked = (isInstrRelink ? allInstructors : unlinkedInstructors).find(i => i.id === selectedInstructorId);
