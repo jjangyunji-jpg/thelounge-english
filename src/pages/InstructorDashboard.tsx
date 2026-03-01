@@ -468,8 +468,8 @@ function BigCalendar({
                 {displayItems.map((item, i) => (
                   <div key={i} className={cn(
                     "w-full truncate text-[9px] leading-tight px-1 py-0.5 rounded font-medium",
-                    item.type === "completed" ? "bg-navy/15 text-navy" :
-                    item.type === "actual" ? "bg-navy/10 text-navy border border-navy/20" :
+                    item.type === "completed" ? "bg-navy text-primary-foreground border border-navy shadow-sm" :
+                    item.type === "actual" ? "bg-navy/10 text-navy border border-navy/25" :
                     "bg-navy/5 text-navy/60 border border-dashed border-navy/20",
                   )}>
                     {item.label}
