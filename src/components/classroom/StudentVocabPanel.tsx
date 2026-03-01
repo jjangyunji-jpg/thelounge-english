@@ -35,6 +35,7 @@ interface TestRecord {
   score: number | null;
   total: number | null;
   completed_at: string | null;
+  word_ids: string[] | null;
 }
 
 interface TestResultDetail {
@@ -260,13 +261,16 @@ export default function StudentVocabPanel({
     setLoadingTests(true);
     const { data } = await supabase
       .from("vocabulary_tests")
-      .select("id, week_label, type, score, total, completed_at")
+      .select("id, week_label, type, score, total, completed_at, word_ids")
       .eq("student_name", studentName)
       .not("completed_at", "is", null)
       .order("completed_at", { ascending: false });
     const all = (data ?? []) as TestRecord[];
-    setTestHistory(all);
-    setCompletedTests(all.filter((t) => t.week_label === sessionWeekLabel).length);
+    // Filter tests to only those whose word_ids overlap with current session's words
+    const sessionWordIds = new Set(words.map((w) => w.id));
+    const relevant = all.filter((t) => t.word_ids?.some((id) => sessionWordIds.has(id)));
+    setTestHistory(relevant);
+    setCompletedTests(relevant.length);
     setLoadingTests(false);
   };
 
@@ -277,16 +281,29 @@ export default function StudentVocabPanel({
     setLessonNumber(`${month}월 ${weekOfMonth}주차`);
   };
 
-  useEffect(() => { load(); loadTestCount(); loadLessonNumber(); }, [studentName, sessionId]);
+  useEffect(() => { load(); loadLessonNumber(); }, [studentName, sessionId]);
+  useEffect(() => { if (!loading) loadTestCount(); }, [words]);
+
+  const [detailWords, setDetailWords] = useState<VocabWord[]>([]);
 
   const openTestDetail = async (test: TestRecord) => {
     setSelectedTest(test);
     setLoadingDetails(true);
-    const { data } = await supabase
-      .from("vocabulary_test_results")
-      .select("id, word_id, student_answer, is_correct")
-      .eq("test_id", test.id);
-    setTestDetails((data ?? []) as TestResultDetail[]);
+    // Fetch test results and the actual words used in this test
+    const [resultsRes, wordsRes] = await Promise.all([
+      supabase
+        .from("vocabulary_test_results")
+        .select("id, word_id, student_answer, is_correct")
+        .eq("test_id", test.id),
+      test.word_ids && test.word_ids.length > 0
+        ? supabase
+            .from("vocabulary_words")
+            .select("id, english_word, korean_meaning, part_of_speech, example_sentence, audio_url, week_label")
+            .in("id", test.word_ids)
+        : Promise.resolve({ data: [] }),
+    ]);
+    setTestDetails((resultsRes.data ?? []) as TestResultDetail[]);
+    setDetailWords((wordsRes.data ?? []) as VocabWord[]);
     setLoadingDetails(false);
   };
 
@@ -451,7 +468,7 @@ export default function StudentVocabPanel({
         <TestDetailView
           testRecord={selectedTest}
           results={testDetails}
-          allWords={words}
+          allWords={detailWords}
           onClose={() => setSelectedTest(null)}
         />
       )}
