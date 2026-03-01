@@ -354,8 +354,8 @@ export type Database = {
           id: string
           instructor_id: string
           instructor_name: string | null
+          learning_objective: string | null
           lesson_goal: string | null
-          lesson_goal_count: number | null
           level: string | null
           meet_link: string | null
           pause_end: string | null
@@ -376,8 +376,8 @@ export type Database = {
           id?: string
           instructor_id: string
           instructor_name?: string | null
+          learning_objective?: string | null
           lesson_goal?: string | null
-          lesson_goal_count?: number | null
           level?: string | null
           meet_link?: string | null
           pause_end?: string | null
@@ -398,8 +398,8 @@ export type Database = {
           id?: string
           instructor_id?: string
           instructor_name?: string | null
+          learning_objective?: string | null
           lesson_goal?: string | null
-          lesson_goal_count?: number | null
           level?: string | null
           meet_link?: string | null
           pause_end?: string | null

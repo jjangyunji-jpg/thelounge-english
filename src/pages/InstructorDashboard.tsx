@@ -54,7 +54,6 @@ interface StudentFull {
   phone: string | null;
   status: string | null;
   lesson_goal: string | null;
-  lesson_goal_count: number | null;
   extra_lessons: number | null;
   start_date: string | null;
   instructor_id: string;
@@ -2441,10 +2440,9 @@ function BulkGoalModal({
     });
     for (const s of updates) {
       const newGoal = (goals[s.id] || "").trim();
-      const goalChanged = newGoal !== (s.lesson_goal || "");
+      
       await supabase.from("instructor_students").update({
         lesson_goal: newGoal || null,
-        lesson_goal_count: goalChanged ? 0 : (s.lesson_goal_count || 0),
       }).eq("id", s.id);
     }
     toast({ title: `${updates.length}명의 수업 목표가 저장되었습니다 ✓` });
@@ -2483,7 +2481,7 @@ function BulkGoalModal({
                 {currentGoal && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground">이전 목표</span>
-                    <span>{currentGoal} ({s.lesson_goal_count || 0}회차)</span>
+                    <span>{currentGoal}</span>
                   </div>
                 )}
                 <input
@@ -2496,9 +2494,6 @@ function BulkGoalModal({
                     changed ? "border-gold" : "border-input"
                   )}
                 />
-                {changed && newGoal.trim() && (
-                  <p className="text-[10px] text-warning">⚠️ 목표 변경 시 회차가 0에서 다시 시작됩니다</p>
-                )}
               </div>
             );
           })}
