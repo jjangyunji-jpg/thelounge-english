@@ -212,10 +212,12 @@ function TTSButton({ word }: { word: VocabWord }) {
 }
 
 // ── Mini Calendar ──────────────────────────────────────────────────────────────
-function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
+function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, onPeriodChange }: {
   allCalendarDates: Set<string>;
   holidays: HolidayNotice[];
   selectedPeriod: SchedulePeriod | null;
+  allPeriods: SchedulePeriod[];
+  onPeriodChange: (id: string) => void;
 }) {
   const today = new Date();
 
@@ -267,11 +269,27 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
     ? `${pStartYear}년 ${pStartMonth + 1}월`
     : `${pStartYear}년 ${pStartMonth + 1}월 ~ ${pEndYear}년 ${pEndMonth + 1}월`;
 
+  const periodIdx = allPeriods.findIndex(p => p.id === selectedPeriod?.id);
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <div className="text-center">
-          <span className="font-bold text-foreground text-sm">{periodLabel}</span>
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={() => periodIdx > 0 && onPeriodChange(allPeriods[periodIdx - 1].id)}
+            disabled={periodIdx <= 0}
+            className="p-1 rounded-md hover:bg-muted transition-colors disabled:opacity-30"
+          >
+            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <span className="font-bold text-foreground text-sm min-w-[90px] text-center">{periodLabel}</span>
+          <button
+            onClick={() => periodIdx < allPeriods.length - 1 && onPeriodChange(allPeriods[periodIdx + 1].id)}
+            disabled={periodIdx >= allPeriods.length - 1}
+            className="p-1 rounded-md hover:bg-muted transition-colors disabled:opacity-30"
+          >
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
         </div>
         <div className="grid grid-cols-7 text-center">
           {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
@@ -1012,7 +1030,7 @@ export default function StudentDashboard() {
               <span className="text-xs font-semibold text-foreground">수업 캘린더</span>
             </div>
             <div className="p-3">
-              <MiniCalendar allCalendarDates={allCalendarDates} holidays={holidays} selectedPeriod={selectedPeriod} />
+              <MiniCalendar allCalendarDates={allCalendarDates} holidays={holidays} selectedPeriod={selectedPeriod} allPeriods={schedulePeriods} onPeriodChange={setSelectedPeriodId} />
             </div>
             {/* Upcoming next session inside calendar */}
             {nextClassDate && (

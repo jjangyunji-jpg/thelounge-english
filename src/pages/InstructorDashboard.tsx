@@ -269,6 +269,8 @@ function BigCalendar({
   selectedDate,
   onSelectDate,
   period,
+  allPeriods,
+  onPeriodChange,
 }: {
   sessions: ClassSession[];
   meetings: BusinessMeeting[];
@@ -277,6 +279,8 @@ function BigCalendar({
   selectedDate: Date | null;
   onSelectDate: (d: Date) => void;
   period: SchedulePeriod | null;
+  allPeriods: SchedulePeriod[];
+  onPeriodChange: (p: SchedulePeriod) => void;
 }) {
   // Period-based calendar: show only the weeks the period spans
   const baseStart = period ? new Date(period.start_date + "T00:00:00") : new Date();
@@ -333,11 +337,29 @@ function BigCalendar({
     ? `${primaryYear}년 ${primaryMonth + 1}월`
     : `${primaryYear}년 ${primaryMonth + 1}월 ~ ${pEndYear}년 ${pEndMonth + 1}월`;
 
+  const periodIdx = allPeriods.findIndex(p => p.id === period?.id);
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-base font-bold text-foreground">{headerLabel}</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => periodIdx > 0 && onPeriodChange(allPeriods[periodIdx - 1])}
+            disabled={periodIdx <= 0}
+            className="p-1 rounded-md hover:bg-muted transition-colors disabled:opacity-30"
+          >
+            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <span className="text-base font-bold text-foreground min-w-[100px] text-center">{headerLabel}</span>
+          <button
+            onClick={() => periodIdx < allPeriods.length - 1 && onPeriodChange(allPeriods[periodIdx + 1])}
+            disabled={periodIdx >= allPeriods.length - 1}
+            className="p-1 rounded-md hover:bg-muted transition-colors disabled:opacity-30"
+          >
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
         {period && (
           <span className="text-xs text-muted-foreground">{period.start_date} ~ {period.end_date}</span>
         )}
@@ -1498,6 +1520,8 @@ export default function InstructorDashboard() {
                     selectedDate={selectedDate}
                     onSelectDate={setSelectedDate}
                     period={period}
+                    allPeriods={allPeriods}
+                    onPeriodChange={setPeriod}
                   />
                 </div>
 
