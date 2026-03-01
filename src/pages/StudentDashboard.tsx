@@ -265,9 +265,9 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
   const pEndMonth = periodEnd.getMonth();
   const pStartYear = periodStart.getFullYear();
   const pEndYear = periodEnd.getFullYear();
-  const periodLabel = pStartMonth === pEndMonth && pStartYear === pEndYear
+  const periodLabel = selectedPeriod?.label || (pStartMonth === pEndMonth && pStartYear === pEndYear
     ? `${pStartYear}년 ${pStartMonth + 1}월`
-    : `${pStartYear}년 ${pStartMonth + 1}월 ~ ${pEndYear}년 ${pEndMonth + 1}월`;
+    : `${pStartYear}년 ${pStartMonth + 1}월 ~ ${pEndYear}년 ${pEndMonth + 1}월`);
 
   const periodIdx = allPeriods.findIndex(p => p.id === selectedPeriod?.id);
 

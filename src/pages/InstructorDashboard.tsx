@@ -333,9 +333,9 @@ function BigCalendar({
   // Header
   const pEndMonth = baseEnd.getMonth();
   const pEndYear = baseEnd.getFullYear();
-  const headerLabel = primaryMonth === pEndMonth && primaryYear === pEndYear
+  const headerLabel = period?.label || (primaryMonth === pEndMonth && primaryYear === pEndYear
     ? `${primaryYear}년 ${primaryMonth + 1}월`
-    : `${primaryYear}년 ${primaryMonth + 1}월 ~ ${pEndYear}년 ${pEndMonth + 1}월`;
+    : `${primaryYear}년 ${primaryMonth + 1}월 ~ ${pEndYear}년 ${pEndMonth + 1}월`);
 
   const periodIdx = allPeriods.findIndex(p => p.id === period?.id);
 
