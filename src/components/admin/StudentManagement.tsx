@@ -74,6 +74,13 @@ interface ScheduleSlot {
   time: string;
 }
 
+interface PauseRecord {
+  id: string;
+  pause_start: string;
+  pause_end: string | null;
+  reason: string | null;
+}
+
 interface Student {
   id: number;
   dbId?: string; // UUID from DB
@@ -93,8 +100,7 @@ interface Student {
   meetLink: string;
   schedules: ScheduleSlot[];
   withdrawalReason?: string;
-  pauseStart?: string | null;
-  pauseEnd?: string | null;
+  pauses: PauseRecord[];
 }
 
 const calcMonthlyFee = (extra: number) => BASE_FEE + extra * LESSON_PRICE;
@@ -164,11 +170,13 @@ function PauseForm({ onSave }: { onSave: (start: string, end: string) => Promise
           if (!pauseStartDate || !pauseEndDate) return;
           setSaving(true);
           await onSave(format(pauseStartDate, "yyyy-MM-dd"), format(pauseEndDate, "yyyy-MM-dd"));
+          setPauseStartDate(undefined);
+          setPauseEndDate(undefined);
           setSaving(false);
         }}
       >
         {saving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Pause className="w-3 h-3 mr-1" />}
-        휴강 설정
+        휴강 추가
       </Button>
     </div>
   );
@@ -250,10 +258,30 @@ export default function StudentManagement() {
       meetLink: row.meet_link || "",
       schedules: row.schedules ? JSON.parse(row.schedules) : [],
       withdrawalReason: row.withdrawal_reason || "",
-      pauseStart: row.pause_start || null,
-      pauseEnd: row.pause_end || null,
+      pauses: [],
     }));
     setStudents(dbStudents);
+
+    // Load pauses for all students
+    if (data && data.length > 0) {
+      const studentIds = data.map((r: any) => r.id);
+      const { data: pauseData } = await supabase
+        .from("student_pauses")
+        .select("*")
+        .in("student_id", studentIds)
+        .order("pause_start", { ascending: true });
+      if (pauseData) {
+        const pauseMap: Record<string, PauseRecord[]> = {};
+        pauseData.forEach((p: any) => {
+          if (!pauseMap[p.student_id]) pauseMap[p.student_id] = [];
+          pauseMap[p.student_id].push({ id: p.id, pause_start: p.pause_start, pause_end: p.pause_end, reason: p.reason });
+        });
+        setStudents(prev => prev.map(s => ({
+          ...s,
+          pauses: s.dbId ? (pauseMap[s.dbId] || []) : [],
+        })));
+      }
+    }
   };
 
   // preset homework per student (DB 연동): studentId -> presets
@@ -523,6 +551,7 @@ export default function StudentManagement() {
     }
 
     const s: Student = {
+      pauses: [],
       id: Date.now(),
       dbId: data.id,
       name: newStudent.name,
@@ -877,14 +906,15 @@ export default function StudentManagement() {
                         +{student.extraLessons}회
                       </span>
                     )}
-                    {student.pauseStart && student.pauseEnd && (() => {
+                    {student.pauses.length > 0 && (() => {
                       const now = new Date().toISOString().slice(0, 10);
-                      const isActive = now >= student.pauseStart! && now <= student.pauseEnd!;
-                      return isActive ? (
+                      const activePause = student.pauses.find(p => now >= p.pause_start && (!p.pause_end || now <= p.pause_end));
+                      const futurePause = student.pauses.find(p => now < p.pause_start);
+                      return activePause ? (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-warning/15 text-warning font-medium flex items-center gap-0.5">
                           <Pause className="w-3 h-3" /> 휴강중
                         </span>
-                      ) : now < student.pauseStart! ? (
+                      ) : futurePause ? (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
                           휴강 예정
                         </span>
@@ -1001,40 +1031,61 @@ export default function StudentManagement() {
                         휴강 관리
                       </h4>
                     </div>
-                    {student.pauseStart && student.pauseEnd ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 p-2 rounded-md bg-warning/10 border border-warning/30 text-xs">
-                          <Pause className="w-3.5 h-3.5 text-warning flex-shrink-0" />
-                          <span className="text-warning font-medium">
-                            {student.pauseStart} ~ {student.pauseEnd}
-                          </span>
-                        </div>
-                        <Button
-                          size="sm" variant="outline"
-                          className="h-7 text-xs gap-1 text-[hsl(var(--success))] border-[hsl(var(--success)/0.3)] hover:bg-[hsl(var(--success)/0.05)]"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (student.dbId) {
-                              await supabase.from("instructor_students").update({ pause_start: null, pause_end: null }).eq("id", student.dbId);
-                            }
-                            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, pauseStart: null, pauseEnd: null } : s));
-                            toast({ title: "휴강 해제 완료 ✓" });
-                          }}
-                        >
-                          <Play className="w-3 h-3" /> 휴강 해제
-                        </Button>
+                    {/* Existing pauses list */}
+                    {student.pauses.length > 0 && (
+                      <div className="space-y-1.5">
+                        {student.pauses.map((p) => {
+                          const now = new Date().toISOString().slice(0, 10);
+                          const isActive = now >= p.pause_start && (!p.pause_end || now <= p.pause_end);
+                          return (
+                            <div key={p.id} className={cn(
+                              "flex items-center justify-between gap-2 p-2 rounded-md border text-xs",
+                              isActive ? "bg-warning/10 border-warning/30" : "bg-muted/30 border-border"
+                            )}>
+                              <div className="flex items-center gap-2">
+                                <Pause className={cn("w-3 h-3 flex-shrink-0", isActive ? "text-warning" : "text-muted-foreground")} />
+                                <span className={cn("font-medium", isActive ? "text-warning" : "text-muted-foreground")}>
+                                  {p.pause_start} ~ {p.pause_end || "미정"}
+                                </span>
+                                {isActive && <Badge variant="outline" className="text-[9px] h-4 bg-warning/10 text-warning border-warning/30">진행중</Badge>}
+                              </div>
+                              <button
+                                className="text-muted-foreground hover:text-destructive transition-colors"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await supabase.from("student_pauses").delete().eq("id", p.id);
+                                  setStudents(prev => prev.map(s => s.id === student.id
+                                    ? { ...s, pauses: s.pauses.filter(pp => pp.id !== p.id) }
+                                    : s
+                                  ));
+                                  toast({ title: "휴강 기록 삭제 완료 ✓" });
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ) : (
-                      <PauseForm
-                        onSave={async (start, end) => {
-                          if (student.dbId) {
-                            await supabase.from("instructor_students").update({ pause_start: start, pause_end: end }).eq("id", student.dbId);
-                          }
-                          setStudents(prev => prev.map(s => s.id === student.id ? { ...s, pauseStart: start, pauseEnd: end } : s));
-                          toast({ title: `${student.name} 휴강 설정 완료 ✓`, description: `${start} ~ ${end}` });
-                        }}
-                      />
                     )}
+                    {/* Add new pause */}
+                    <PauseForm
+                      onSave={async (start, end) => {
+                        if (!student.dbId) return;
+                        const { data: newPause } = await supabase.from("student_pauses").insert({
+                          student_id: student.dbId,
+                          pause_start: start,
+                          pause_end: end,
+                        }).select().single();
+                        if (newPause) {
+                          setStudents(prev => prev.map(s => s.id === student.id
+                            ? { ...s, pauses: [...s.pauses, { id: newPause.id, pause_start: start, pause_end: end, reason: null }] }
+                            : s
+                          ));
+                        }
+                        toast({ title: `${student.name} 휴강 추가 완료 ✓`, description: `${start} ~ ${end}` });
+                      }}
+                    />
                   </div>
 
                   {/* Inline edit: level + extra lessons */}

@@ -37,6 +37,13 @@ interface Instructor {
   active: boolean;
 }
 
+interface PauseRecord {
+  id: string;
+  pause_start: string;
+  pause_end: string | null;
+  student_id: string;
+}
+
 interface StudentFull {
   id: string;
   student_name: string;
@@ -52,8 +59,7 @@ interface StudentFull {
   start_date: string | null;
   instructor_id: string;
   instructor_name: string | null;
-  pause_start: string | null;
-  pause_end: string | null;
+  pauses: PauseRecord[];
 }
 
 interface ClassSession {
@@ -1136,6 +1142,21 @@ export default function InstructorDashboard() {
     loadedStudents.forEach(s => { if (s.instructor_name) nameSet.add(s.instructor_name); });
     const instructorNames = Array.from(nameSet);
 
+    // Load pauses for students
+    const studentIds = loadedStudents.map((s: any) => s.id);
+    const pauseRes = studentIds.length > 0
+      ? await supabase.from("student_pauses").select("id,student_id,pause_start,pause_end").in("student_id", studentIds).order("pause_start")
+      : { data: [] };
+    const pauseMap: Record<string, PauseRecord[]> = {};
+    (pauseRes.data || []).forEach((p: any) => {
+      if (!pauseMap[p.student_id]) pauseMap[p.student_id] = [];
+      pauseMap[p.student_id].push(p);
+    });
+    const studentsWithPauses: StudentFull[] = loadedStudents.map((s: any) => ({
+      ...s,
+      pauses: pauseMap[s.id] || [],
+    }));
+
     const [sessRes, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
       supabase.from("class_sessions").select("*").in("instructor_name", instructorNames).order("scheduled_at", { ascending: false }),
       supabase.from("homework_assignments").select("id,title,type,student_name,session_id"),
@@ -1148,7 +1169,7 @@ export default function InstructorDashboard() {
       supabase.from("business_meeting_attendees").select("meeting_id,instructor_id").eq("instructor_id", ins.id) as any,
     ]);
 
-    setStudents(loadedStudents);
+    setStudents(studentsWithPauses);
     setSessions(sessRes.data || []);
     setAssignments(hwRes.data || []);
     setSubmissions((subRes.data || []) as HomeworkSubmission[]);
@@ -1283,12 +1304,12 @@ export default function InstructorDashboard() {
   const start = period ? new Date(period.start_date) : null;
   const end = period ? new Date(period.end_date) : null;
   const now = new Date();
-  // Helper: check if session is within student's pause period
+  // Helper: check if session is within any of student's pause periods
   const isSessionPaused = (session: { student_name: string; scheduled_at: string }) => {
     const st = students.find(s => s.student_name === session.student_name);
-    if (!st?.pause_start || !st?.pause_end) return false;
+    if (!st?.pauses || st.pauses.length === 0) return false;
     const d = session.scheduled_at.slice(0, 10);
-    return d >= st.pause_start && d <= st.pause_end;
+    return st.pauses.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end));
   };
 
   const periodSessions = sessions.filter((s) => {
