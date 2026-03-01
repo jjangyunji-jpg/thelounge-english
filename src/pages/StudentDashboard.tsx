@@ -499,8 +499,9 @@ export default function StudentDashboard() {
       supabase.from("holiday_notices").select("id,title,date_start,date_end,reason,notify_students").order("date_start", { ascending: true }),
     ]);
 
-    setSessions(sessRes.data || []);
-    setAllSessions(allSessRes.data || []);
+    let visibleRecentSessions = sessRes.data || [];
+    let visibleAllSessions = allSessRes.data || [];
+
     setAssignments(hwRes.data || []);
     setSubmissions(subRes.data || []);
     setVocabWords(vocRes.data || []);
@@ -562,15 +563,27 @@ export default function StudentDashboard() {
         instructor_display_name: instrDisplayName,
         pauses,
       });
+
+      const isSessionVisible = (scheduledAt: string) => {
+        const d = scheduledAt.slice(0, 10);
+        if (studentRes.data.start_date && d < studentRes.data.start_date) return false;
+        if (pauses.some((p) => d >= p.pause_start && (!p.pause_end || d <= p.pause_end))) return false;
+        return true;
+      };
+
+      visibleRecentSessions = visibleRecentSessions.filter((s) => isSessionVisible(s.scheduled_at));
+      visibleAllSessions = visibleAllSessions.filter((s) => isSessionVisible(s.scheduled_at));
     }
 
+    setSessions(visibleRecentSessions);
+    setAllSessions(visibleAllSessions);
     setLoading(false);
 
     // ── 피드백 설문조사 체크 ──
     // 현재 기간의 마지막 세션(4주차)이 종료되었는지 확인
     const periods = periodsRes.data || [];
     const todayDate = new Date();
-    const allStudentSessions = allSessRes.data || [];
+    const allStudentSessions = visibleAllSessions;
     const studentRec = studentRes.data;
     const instrName = studentRec?.instructor_name;
 
@@ -652,12 +665,19 @@ export default function StudentDashboard() {
     allSessions.map(s => new Date(s.scheduled_at).toDateString())
   );
 
+  const toLocalDateKey = (d: Date) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   // 반복 일정 중 아직 class_session에 없는 것들 (가상 upcoming)
   const virtualUpcoming = recurringDates.filter(
     d => d.getTime() > Date.now() && !existingSessionDates.has(d.toDateString()) &&
       !(studentRecord?.pauses?.some(p => {
-        const iso = d.toISOString().slice(0, 10);
-        return iso >= p.pause_start && (!p.pause_end || iso <= p.pause_end);
+        const dateKey = toLocalDateKey(d);
+        return dateKey >= p.pause_start && (!p.pause_end || dateKey <= p.pause_end);
       }))
   );
 
@@ -702,17 +722,31 @@ export default function StudentDashboard() {
 
   // 캘린더용: 실제 세션 + 반복일정 모두 표시 (휴강일 및 휴강 기간 제외)
   const allCalendarDates = new Set([
-    ...allSessions.map(s => new Date(s.scheduled_at).toDateString()).filter(d => !holidayDateStrings.has(d) && !isDateInPause(new Date(d).toISOString())),
-    ...recurringDates.filter(d => {
-      const iso = d.toISOString().slice(0, 10);
-      return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(iso);
-    }).map(d => d.toDateString()),
+    ...allSessions
+      .filter((s) => {
+        const d = new Date(s.scheduled_at);
+        const dateKey = s.scheduled_at.slice(0, 10);
+        return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey);
+      })
+      .map((s) => new Date(s.scheduled_at).toDateString()),
+    ...recurringDates
+      .filter((d) => {
+        const dateKey = toLocalDateKey(d);
+        return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey);
+      })
+      .map((d) => d.toDateString()),
   ]);
 
   // ── Period-based filtering ──
   const selectedPeriod = schedulePeriods.find(p => p.id === selectedPeriodId) || null;
   const periodStart = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00") : null;
   const periodEnd = selectedPeriod ? new Date(selectedPeriod.end_date + "T23:59:59") : null;
+
+  const isBeforeStartDate = (dateStr: string) => {
+    if (!studentRecord?.start_date) return false;
+    const d = dateStr.slice(0, 10);
+    return d < studentRecord.start_date;
+  };
 
   // Helper: check if a date falls within any pause period
   const isInPausePeriod = (dateStr: string) => {
@@ -724,9 +758,9 @@ export default function StudentDashboard() {
   const periodSessions = selectedPeriod
     ? allSessions.filter(s => {
         const d = new Date(s.scheduled_at);
-        return d >= periodStart! && d <= periodEnd! && !isInPausePeriod(s.scheduled_at);
+        return d >= periodStart! && d <= periodEnd! && !isInPausePeriod(s.scheduled_at) && !isBeforeStartDate(s.scheduled_at);
       })
-    : allSessions.filter(s => !isInPausePeriod(s.scheduled_at));
+    : allSessions.filter(s => !isInPausePeriod(s.scheduled_at) && !isBeforeStartDate(s.scheduled_at));
 
   const periodSessionIds = new Set(periodSessions.map(s => s.id));
 

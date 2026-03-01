@@ -34,7 +34,7 @@ serve(async (req) => {
     // 2. Get active students with schedules
     const { data: students } = await sb
       .from("instructor_students")
-      .select("student_name, schedules, level, instructor_name, meet_link")
+      .select("id, student_name, schedules, level, instructor_name, meet_link, start_date")
       .eq("status", "active");
     if (!students || students.length === 0) {
       return new Response(
@@ -42,6 +42,27 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // 2.1 Get pause periods for active students
+    const studentIds = students.map((s: any) => s.id).filter(Boolean);
+    const pausesByStudent = new Map<string, { pause_start: string; pause_end: string | null }[]>();
+    if (studentIds.length > 0) {
+      const { data: pauses } = await sb
+        .from("student_pauses")
+        .select("student_id, pause_start, pause_end")
+        .in("student_id", studentIds)
+        .order("pause_start", { ascending: true });
+
+      for (const p of pauses || []) {
+        if (!pausesByStudent.has(p.student_id)) pausesByStudent.set(p.student_id, []);
+        pausesByStudent.get(p.student_id)!.push({ pause_start: p.pause_start, pause_end: p.pause_end });
+      }
+    }
+
+    const isStudentPausedOn = (studentId: string, dateStr: string) => {
+      const pauses = pausesByStudent.get(studentId) || [];
+      return pauses.some((p) => dateStr >= p.pause_start && (!p.pause_end || dateStr <= p.pause_end));
+    };
 
     // 3. Get holidays
     const { data: holidays } = await sb
@@ -118,6 +139,12 @@ serve(async (req) => {
 
         // Skip holidays
         if (holidayDates.has(dateStr)) continue;
+
+        // Skip dates before student's start date
+        if (student.start_date && dateStr < student.start_date) continue;
+
+        // Skip dates during any pause period
+        if (student.id && isStudentPausedOn(student.id, dateStr)) continue;
 
         // Check if this day matches any schedule
         for (const sched of schedules) {

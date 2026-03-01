@@ -1173,8 +1173,18 @@ export default function InstructorDashboard() {
       supabase.from("business_meeting_attendees").select("meeting_id,instructor_id").eq("instructor_id", ins.id) as any,
     ]);
 
+    const shouldHideSession = (session: { student_name: string; scheduled_at: string }) => {
+      const st = studentsWithPauses.find((s) => s.student_name === session.student_name);
+      if (!st) return false;
+      const dateStr = session.scheduled_at.slice(0, 10);
+      if (st.start_date && dateStr < st.start_date) return true;
+      return st.pauses?.some((p) => dateStr >= p.pause_start && (!p.pause_end || dateStr <= p.pause_end)) ?? false;
+    };
+
+    const filteredSessions = (sessRes.data || []).filter((s) => !shouldHideSession(s));
+
     setStudents(studentsWithPauses);
-    setSessions(sessRes.data || []);
+    setSessions(filteredSessions);
     setAssignments(hwRes.data || []);
     setSubmissions((subRes.data || []) as HomeworkSubmission[]);
     setAllInstructors((allInsRes.data || []) as { id: string; name: string }[]);
@@ -1308,18 +1318,19 @@ export default function InstructorDashboard() {
   const start = period ? new Date(period.start_date) : null;
   const end = period ? new Date(period.end_date) : null;
   const now = new Date();
-  // Helper: check if session is within any of student's pause periods
-  const isSessionPaused = (session: { student_name: string; scheduled_at: string }) => {
+  // Helper: check if session should be hidden by student's start date or pause periods
+  const isSessionHidden = (session: { student_name: string; scheduled_at: string }) => {
     const st = students.find(s => s.student_name === session.student_name);
-    if (!st?.pauses || st.pauses.length === 0) return false;
+    if (!st) return false;
     const d = session.scheduled_at.slice(0, 10);
-    return st.pauses.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end));
+    if (st.start_date && d < st.start_date) return true;
+    return st.pauses?.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end)) ?? false;
   };
 
   const periodSessions = sessions.filter((s) => {
     if (!start || !end) return false;
     const d = new Date(s.scheduled_at);
-    return d >= start && d <= end && !isSessionPaused(s);
+    return d >= start && d <= end && !isSessionHidden(s);
   });
   const completedPeriodSessions = periodSessions.filter((s) => new Date(s.scheduled_at) <= now);
   const periodMeetings = meetings.filter((m) => {
@@ -1400,8 +1411,9 @@ export default function InstructorDashboard() {
     students.forEach((st) => {
       if (st.status !== "active" || !st.schedules) return;
       if (actualStudents.has(st.student_name)) return;
+      if (st.start_date && selDateStr < st.start_date) return;
+      if (st.pauses?.some((p) => selDateStr >= p.pause_start && (!p.pause_end || selDateStr <= p.pause_end))) return;
       let slots: ScheduleSlot[] = [];
-      try { slots = JSON.parse(st.schedules); } catch { return; }
       if (!Array.isArray(slots)) return;
       slots.forEach((slot) => {
         if (slot.day === dayName) {
@@ -2001,7 +2013,7 @@ export default function InstructorDashboard() {
                     if (s.student_name !== st.student_name) return false;
                     if (!pStart || !pEnd) return false;
                     const d = new Date(s.scheduled_at);
-                    return d >= pStart && d <= pEnd && !isSessionPaused(s);
+                    return d >= pStart && d <= pEnd && !isSessionHidden(s);
                   })
                   .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
