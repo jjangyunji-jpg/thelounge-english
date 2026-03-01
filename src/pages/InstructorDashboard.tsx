@@ -1868,7 +1868,7 @@ export default function InstructorDashboard() {
                     <ClipboardCheck className="w-4 h-4 text-navy" />
                     과제 제출 현황
                   </h3>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 max-h-[360px] overflow-y-auto">
                     {(() => {
                       const nowTs = new Date();
                       // Build per-student: latest past session, its assignments, submission status, next session date
