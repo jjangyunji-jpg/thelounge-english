@@ -762,14 +762,7 @@ export default function Classroom() {
           <span className="text-sm text-muted-foreground">
             수업이 종료되었습니다. 총 수업 시간: <span className="font-bold text-foreground">{formatDuration(elapsed)}</span>
           </span>
-          {role === "instructor" && (
-            <Button size="sm" onClick={handleExtractVocab} disabled={extracting || extracted || !notes.trim()}
-              className="gap-2 bg-navy hover:bg-navy-light text-primary-foreground text-xs h-8"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {extracting ? "AI 단어 추출 중..." : extracted ? "단어 추출 완료 ✓" : "수업 노트에서 단어 추출"}
-            </Button>
-          )}
+        
         </div>
       )}
 
