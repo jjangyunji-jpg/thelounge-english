@@ -54,6 +54,7 @@ interface StudentFull {
   phone: string | null;
   status: string | null;
   lesson_goal: string | null;
+  learning_objective: string | null;
   extra_lessons: number | null;
   start_date: string | null;
   instructor_id: string;
@@ -1847,7 +1848,7 @@ export default function InstructorDashboard() {
                               {goals.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-1 ml-8">
                                   {goals.map((g, i) => (
-                                    <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{g}</span>
+                                    <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{i + 1}주: {g}</span>
                                   ))}
                                 </div>
                               )}
@@ -2070,13 +2071,21 @@ export default function InstructorDashboard() {
                     </div>
 
                     <div className="p-4 space-y-3">
-                      {/* Goals */}
+                      {/* Learning Objective (long-term) */}
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-semibold text-muted-foreground">등록 계기 / 최종 목표</p>
+                        <p className="text-xs text-foreground">
+                          {st.learning_objective || <span className="text-muted-foreground italic">미설정</span>}
+                        </p>
+                      </div>
+
+                      {/* Weekly Goals (lesson_goal) */}
                       {goals.length > 0 && (
                         <div className="space-y-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground">학습 목표</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground">이번달 수업 목표</p>
                           <div className="flex flex-wrap gap-1">
                             {goals.map((g, i) => (
-                              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">{g}</span>
+                              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">{i + 1}주: {g}</span>
                             ))}
                           </div>
                         </div>
