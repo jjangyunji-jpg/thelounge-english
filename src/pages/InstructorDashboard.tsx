@@ -714,7 +714,7 @@ function StudentEditModal({
   const { toast } = useToast();
   const [level, setLevel] = useState(student.level || "B1");
   const [meetLink, setMeetLink] = useState(student.meet_link || "");
-  const [phone, setPhone] = useState(student.phone || "");
+  
   const [status, setStatus] = useState(student.status || "active");
   const [saving, setSaving] = useState(false);
 
@@ -783,7 +783,7 @@ function StudentEditModal({
     const { error } = await supabase.from("instructor_students").update({
       level, schedules: slots.length > 0 ? JSON.stringify(slots) : null,
       meet_link: meetLink.trim() || null,
-      phone: phone.trim() || null, status,
+      phone: null, status,
       lesson_goal: goals.length > 0 ? JSON.stringify(goals) : null,
     }).eq("id", student.id);
     if (error) {
@@ -873,10 +873,6 @@ function StudentEditModal({
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Google Meet 링크</Label>
             <Input value={meetLink} onChange={(e) => setMeetLink(e.target.value)} placeholder="https://meet.google.com/..." className="h-9 text-sm" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">연락처</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" className="h-9 text-sm" />
           </div>
           {/* Learning Goals */}
           <div className="space-y-2 pt-1 border-t border-border">
