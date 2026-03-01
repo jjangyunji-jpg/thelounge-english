@@ -1116,6 +1116,7 @@ export default function InstructorDashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [reviewHw, setReviewHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
   const [viewCheckedHw, setViewCheckedHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
+  const [expandedHwStudent, setExpandedHwStudent] = useState<string | null>(null);
 
   useEffect(() => { init(); }, []);
 
@@ -1849,45 +1850,150 @@ export default function InstructorDashboard() {
                   );
                 })()}
 
-                {/* Student progress - today's students only */}
+                {/* Homework submission status per student */}
                 <div className="rounded-xl border border-border bg-card p-4">
                   <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 text-navy" />
-                    오늘의 학생 현황
+                    <ClipboardCheck className="w-4 h-4 text-navy" />
+                    과제 제출 현황
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {(() => {
-                      const todayStudentNames = new Set(todaySessions.map(s => s.student_name));
-                      const todayStudents = students.filter(s => s.status === "active" && todayStudentNames.has(s.student_name));
-                      if (todayStudents.length === 0) {
-                        return <p className="text-xs text-muted-foreground py-2">오늘 수업이 없습니다</p>;
+                      const nowTs = new Date();
+                      // Build per-student: latest past session, its assignments, submission status, next session date
+                      const activeStudents = students.filter(s => s.status === "active");
+                      const studentHwData = activeStudents.map(st => {
+                        const sSessions = sessions.filter(s => s.student_name === st.student_name);
+                        const pastSessions = sSessions.filter(s => new Date(s.scheduled_at) <= nowTs).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+                        const latestPast = pastSessions[0] || null;
+                        const futureSessions = sSessions.filter(s => new Date(s.scheduled_at) > nowTs).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+                        const nextSession = futureSessions[0] || null;
+                        // Assignments from latest past session
+                        const sessionAssignments = latestPast ? assignments.filter(a => a.student_name === st.student_name && a.session_id === latestPast.id) : [];
+                        const totalHw = sessionAssignments.length;
+                        const submittedCount = sessionAssignments.filter(a => {
+                          const sub = submissions.find(s => s.assignment_id === a.id);
+                          return sub && (sub.status === "submitted" || sub.status === "reviewed");
+                        }).length;
+                        const reviewedCount = sessionAssignments.filter(a => {
+                          const sub = submissions.find(s => s.assignment_id === a.id);
+                          return sub && sub.status === "reviewed";
+                        }).length;
+                        return { student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount };
+                      }).filter(d => d.totalHw > 0 || d.latestPast).sort((a, b) => {
+                        // Sort by next session date (closest first), students without next session go to end
+                        const aTime = a.nextSession ? new Date(a.nextSession.scheduled_at).getTime() : Infinity;
+                        const bTime = b.nextSession ? new Date(b.nextSession.scheduled_at).getTime() : Infinity;
+                        return aTime - bTime;
+                      });
+
+                      if (studentHwData.length === 0) {
+                        return <p className="text-xs text-muted-foreground py-2">과제 데이터가 없습니다</p>;
                       }
-                      return todayStudents.map((st) => {
-                        const stats = getStudentStats(st.student_name, st.schedules);
-                        const todaySession = sessions.find(s => isToday(s.scheduled_at) && s.student_name === st.student_name);
+
+                      return studentHwData.map(({ student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount }) => {
+                        const allDone = totalHw > 0 && submittedCount === totalHw;
+                        const noneSubmitted = submittedCount === 0 && totalHw > 0;
+                        const isExpanded = expandedHwStudent === st.id;
                         return (
-                          <div key={st.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <div className="w-6 h-6 rounded-full bg-navy/10 flex items-center justify-center flex-shrink-0">
-                                  <span className="text-navy font-bold text-[9px]">{st.student_name.charAt(0)}</span>
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-semibold text-foreground leading-tight">{fmtName(st.student_name)}</p>
-                                  <p className="text-[10px] text-muted-foreground leading-tight">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
-                                </div>
-                              </div>
-                              {todaySession?.topic && (
-                                <div className="flex flex-wrap gap-1 mt-1 ml-8">
-                                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{todaySession.topic}</span>
-                                </div>
+                          <div key={st.id}>
+                            <button
+                              onClick={() => setExpandedHwStudent(isExpanded ? null : st.id)}
+                              className={cn(
+                                "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-colors text-left",
+                                isExpanded ? "border-navy/30 bg-navy/5" : "border-border hover:bg-muted/40",
                               )}
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <DonutStat value={stats.completedMonthSessions} total={stats.monthTotal} label="수업" unit="회" color="hsl(var(--navy))" trackColor="hsl(var(--navy) / 0.15)" />
-                              <DonutStat value={stats.weekSubmittedHw} total={stats.totalHw} label="숙제" unit="건" color="hsl(var(--gold-dark))" trackColor="hsl(var(--gold) / 0.2)" />
-                              <DonutStat value={stats.weekVocabCount} total={0} label="단어" unit="회" color="hsl(var(--success))" trackColor="hsl(var(--success) / 0.15)" isCount />
-                            </div>
+                            >
+                              <div className="w-6 h-6 rounded-full bg-navy/10 flex items-center justify-center flex-shrink-0">
+                                <span className="text-navy font-bold text-[9px]">{st.student_name.charAt(0)}</span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-foreground leading-tight truncate">{fmtName(st.student_name)}</p>
+                                <p className="text-[10px] text-muted-foreground leading-tight">
+                                  {nextSession ? `다음 수업 ${fmt(nextSession.scheduled_at)} ${fmtTime(nextSession.scheduled_at)}` : fmtSchedules(st.schedules) || "미정"}
+                                </p>
+                              </div>
+                              {totalHw > 0 ? (
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <div className={cn(
+                                    "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                                    allDone ? "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]" :
+                                    noneSubmitted ? "bg-destructive/10 text-destructive" :
+                                    "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]"
+                                  )}>
+                                    {submittedCount}/{totalHw}
+                                  </div>
+                                  <ChevronDown className={cn("w-3 h-3 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground flex-shrink-0">과제 없음</span>
+                              )}
+                            </button>
+                            {isExpanded && (
+                              <div className="ml-8 mt-1.5 space-y-1 mb-1">
+                                {sessionAssignments.length > 0 ? sessionAssignments.map(a => {
+                                  const sub = submissions.find(s => s.assignment_id === a.id);
+                                  const hwType = a.type as HwType;
+                                  const meta = HW_TYPE_META[hwType];
+                                  const Icon = meta?.icon || FileText;
+                                  const isSubmitted = sub && (sub.status === "submitted" || sub.status === "reviewed");
+                                  const isReviewed = sub && sub.status === "reviewed";
+                                  const isQuickCheck = hwType === "reading" || hwType === "memorizing" || hwType === "watching";
+                                  return (
+                                    <div
+                                      key={a.id}
+                                      onClick={() => {
+                                        if (!isQuickCheck && sub && sub.status === "submitted") {
+                                          setReviewHw({ assignment: a, submission: sub });
+                                        } else if (sub && sub.status === "reviewed") {
+                                          setViewCheckedHw({ assignment: a, submission: sub });
+                                        }
+                                      }}
+                                      className={cn(
+                                        "flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left",
+                                        isSubmitted ? "border-border bg-card" : "border-dashed border-muted-foreground/20 bg-muted/10",
+                                        ((!isQuickCheck && sub?.status === "submitted") || sub?.status === "reviewed") && "cursor-pointer hover:bg-muted/40 transition-colors",
+                                      )}
+                                    >
+                                      <Icon className={cn("w-3 h-3 flex-shrink-0", meta?.color || "text-muted-foreground")} />
+                                      <span className="text-[11px] flex-1 truncate">{a.title}</span>
+                                      {isReviewed ? (
+                                        <CheckCircle className="w-3 h-3 text-[hsl(var(--success))] flex-shrink-0" />
+                                      ) : isSubmitted ? (
+                                        isQuickCheck ? (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-5 text-[9px] gap-0.5 border-[hsl(var(--success)/0.4)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.1)] px-1.5"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              await supabase.from("homework_submissions").update({
+                                                status: "reviewed",
+                                                reviewed_at: new Date().toISOString(),
+                                              }).eq("id", sub.id);
+                                              toast({ title: "확인 완료 ✓" });
+                                              setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: "reviewed", reviewed_at: new Date().toISOString() } : s));
+                                            }}
+                                          >
+                                            <Check className="w-2.5 h-2.5" /> 확인
+                                          </Button>
+                                        ) : (
+                                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--gold)/0.12)] text-[hsl(var(--gold-dark))] font-medium flex-shrink-0">제출됨</span>
+                                        )
+                                      ) : (
+                                        <span className="text-[9px] text-muted-foreground/60 flex-shrink-0">미제출</span>
+                                      )}
+                                    </div>
+                                  );
+                                }) : (
+                                  <p className="text-[10px] text-muted-foreground py-1">직전 수업에 할당된 과제가 없습니다</p>
+                                )}
+                                {latestPast && (
+                                  <a href={`/t/classroom?sessionId=${latestPast.id}`} className="inline-flex items-center gap-1 text-[10px] text-navy hover:underline mt-1">
+                                    <FileText className="w-3 h-3" /> 수업노트 보기
+                                  </a>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       });
