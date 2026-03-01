@@ -306,7 +306,8 @@ export default function StudentManagement() {
    const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
    const [editLevel, setEditLevel] = useState<Level | "">("");
    const [editExtra, setEditExtra] = useState(0);
-   const [editGoal, setEditGoal] = useState("");
+   const [editObjectives, setEditObjectives] = useState<string[]>([]);
+   const [editNewObjective, setEditNewObjective] = useState("");
    const [editInstructor, setEditInstructor] = useState("");
    const [editStartDate, setEditStartDate] = useState<Date | undefined>(undefined);
 
@@ -445,7 +446,12 @@ export default function StudentManagement() {
     setEditingStudentId(s.id);
     setEditLevel(s.level);
     setEditExtra(s.extraLessons);
-    setEditGoal(s.learningObjective);
+    // Parse learning_objective as JSON array
+    try {
+      const parsed = JSON.parse(s.learningObjective || "[]");
+      setEditObjectives(Array.isArray(parsed) ? parsed.filter((x: string) => x && x.trim()) : s.learningObjective.trim() ? [s.learningObjective.trim()] : []);
+    } catch { setEditObjectives(s.learningObjective.trim() ? [s.learningObjective.trim()] : []); }
+    setEditNewObjective("");
     setEditInstructor(s.instructor);
     setEditEnglishName(s.englishName);
     setEditStartDate(s.startDate ? new Date(s.startDate + "T00:00:00") : undefined);
@@ -458,7 +464,7 @@ export default function StudentManagement() {
         level: editLevel,
         extra_lessons: editExtra,
         instructor_name: editInstructor,
-        learning_objective: editGoal.trim(),
+        learning_objective: editObjectives.length > 0 ? JSON.stringify(editObjectives) : null,
         english_name: editEnglishName.trim() || null,
         start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
       }).eq("id", student.dbId);
@@ -471,7 +477,7 @@ export default function StudentManagement() {
           level: editLevel as Level,
           extraLessons: editExtra,
           instructor: editInstructor,
-          learningObjective: editGoal.trim(),
+          learningObjective: editObjectives.length > 0 ? JSON.stringify(editObjectives) : "",
           englishName: editEnglishName.trim(),
           startDate: editStartDate ? format(editStartDate, "yyyy-MM-dd") : "",
         };
@@ -1169,16 +1175,47 @@ export default function StudentManagement() {
                             </PopoverContent>
                           </Popover>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
                             <Target className="w-3 h-3" /> 등록 계기 / 최종 목표
                           </Label>
-                          <Input
-                            value={editGoal}
-                            onChange={(e) => setEditGoal(e.target.value)}
-                            placeholder="예: 해외여행 시 자유로운 대화"
-                            className="h-8 text-sm"
-                          />
+                          {editObjectives.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {editObjectives.map((obj, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-muted text-foreground">
+                                  {obj}
+                                  <button type="button" onClick={() => setEditObjectives(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex gap-1">
+                            <Input
+                              value={editNewObjective}
+                              onChange={(e) => setEditNewObjective(e.target.value)}
+                              placeholder="예: 해외여행 시 자유로운 대화"
+                              className="h-7 text-xs"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && editNewObjective.trim()) {
+                                  e.preventDefault();
+                                  setEditObjectives(prev => [...prev, editNewObjective.trim()]);
+                                  setEditNewObjective("");
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs px-2"
+                              disabled={!editNewObjective.trim()}
+                              onClick={() => { setEditObjectives(prev => [...prev, editNewObjective.trim()]); setEditNewObjective(""); }}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                         {/* Fee preview */}
                         <div className="p-2 rounded bg-muted/40 text-xs flex items-center justify-between">
@@ -1232,9 +1269,15 @@ export default function StudentManagement() {
                           </div>
                           <div>
                             <p className="text-muted-foreground flex items-center gap-1"><Target className="w-3 h-3" />등록 계기 / 최종 목표</p>
-                            <p className="font-semibold text-foreground mt-0.5 truncate">
-                              {student.learningObjective || <span className="text-muted-foreground font-normal">미설정</span>}
-                            </p>
+                            {(() => {
+                              let objs: string[] = [];
+                              try { const p = JSON.parse(student.learningObjective || "[]"); objs = Array.isArray(p) ? p : student.learningObjective ? [student.learningObjective] : []; } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
+                              return objs.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                  {objs.map((o, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground font-medium">{o}</span>)}
+                                </div>
+                              ) : <p className="text-muted-foreground font-normal mt-0.5">미설정</p>;
+                            })()}
                           </div>
                         </div>
                         {student.schedules.length > 0 && (
@@ -1415,9 +1458,11 @@ export default function StudentManagement() {
                       <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                         <BookOpen className="w-3.5 h-3.5 text-gold" />
                         최근 수업 이력
-                        {student.learningObjective && (
-                          <span className="text-xs font-normal text-muted-foreground">— 최종 목표: {student.learningObjective}</span>
-                        )}
+                        {(() => {
+                          let objs: string[] = [];
+                          try { const p = JSON.parse(student.learningObjective || "[]"); objs = Array.isArray(p) ? p : student.learningObjective ? [student.learningObjective] : []; } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
+                          return objs.length > 0 ? <span className="text-xs font-normal text-muted-foreground">— 최종 목표: {objs.join(", ")}</span> : null;
+                        })()}
                       </h4>
                       <button
                         onClick={() => setShowHistory(showHistory === student.id ? null : student.id)}
