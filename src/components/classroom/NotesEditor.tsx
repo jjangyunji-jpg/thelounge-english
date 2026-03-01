@@ -117,6 +117,7 @@ export default function NotesEditor({
     editorProps: {
       attributes: {
         class: "outline-none min-h-[500px] px-4 py-4 text-sm leading-relaxed",
+        spellcheck: "false",
       },
       handleKeyDown: (view, event) => {
         if (slashMenuOpen && event.key === "Escape") {
