@@ -303,11 +303,12 @@ export default function StudentManagement() {
   const [savingEditPreset, setSavingEditPreset] = useState(false);
 
   // Inline editing state
-  const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
-  const [editLevel, setEditLevel] = useState<Level | "">("");
-  const [editExtra, setEditExtra] = useState(0);
-  const [editGoal, setEditGoal] = useState("");
-  const [editInstructor, setEditInstructor] = useState("");
+   const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
+   const [editLevel, setEditLevel] = useState<Level | "">("");
+   const [editExtra, setEditExtra] = useState(0);
+   const [editGoal, setEditGoal] = useState("");
+   const [editInstructor, setEditInstructor] = useState("");
+   const [editStartDate, setEditStartDate] = useState<Date | undefined>(undefined);
 
   // Meet link editing
   const [editingMeetId, setEditingMeetId] = useState<number | null>(null);
@@ -447,6 +448,7 @@ export default function StudentManagement() {
     setEditGoal(s.lessonGoal);
     setEditInstructor(s.instructor);
     setEditEnglishName(s.englishName);
+    setEditStartDate(s.startDate ? new Date(s.startDate + "T00:00:00") : undefined);
   };
 
   const saveInlineEdit = async (id: number) => {
@@ -460,6 +462,7 @@ export default function StudentManagement() {
         lesson_goal: editGoal.trim(),
         lesson_goal_count: goalChanged ? 0 : student.lessonGoalCount,
         english_name: editEnglishName.trim() || null,
+        start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
       }).eq("id", student.dbId);
     }
     setStudents((prev) =>
@@ -474,6 +477,7 @@ export default function StudentManagement() {
           lessonGoal: editGoal.trim(),
           lessonGoalCount: goalChanged ? 0 : s.lessonGoalCount,
           englishName: editEnglishName.trim(),
+          startDate: editStartDate ? format(editStartDate, "yyyy-MM-dd") : "",
         };
       })
     );
@@ -1155,6 +1159,22 @@ export default function StudentManagement() {
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <CalendarIcon className="w-3 h-3" /> 수업 시작일
+                          </Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("h-8 w-full text-sm justify-start", !editStartDate && "text-muted-foreground")}>
+                                <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
+                                {editStartDate ? format(editStartDate, "yyyy-MM-dd") : "선택"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={editStartDate} onSelect={setEditStartDate} className={cn("p-3 pointer-events-auto")} />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
                             <Target className="w-3 h-3" /> 수업 목표
                           </Label>
                           <Input
@@ -1212,6 +1232,10 @@ export default function StudentManagement() {
                           <div>
                             <p className="text-muted-foreground">이번달 수강료</p>
                             <p className="font-bold text-gold-dark mt-0.5">₩{monthlyFee.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">시작일</p>
+                            <p className="font-semibold text-foreground mt-0.5">{student.startDate || <span className="text-muted-foreground font-normal">미설정</span>}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground flex items-center gap-1"><Target className="w-3 h-3" />수업 목표</p>
