@@ -165,29 +165,14 @@ function fmtSchedules(raw: string | null): string {
   } catch { return raw; }
 }
 
-function getMonthKey(date = new Date()): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
 
-function getPrevMonthKey(date = new Date()): string {
-  const d = new Date(date.getFullYear(), date.getMonth() - 1, 1);
-  return getMonthKey(d);
-}
-
-function parseMonthlyGoals(raw: string | null): Record<string, string[]> {
-  if (!raw) return {};
+function parseLearningObjective(raw: string | null): string[] {
+  if (!raw || !raw.trim()) return [];
   try {
     const parsed = JSON.parse(raw);
-    if (typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
-    // Legacy: plain array → store as current month
-    if (Array.isArray(parsed)) return { [getMonthKey()]: parsed };
-    return {};
-  } catch { return raw ? { [getMonthKey()]: [raw] } : {}; }
-}
-
-function fmtGoals(raw: string | null): string[] {
-  const monthly = parseMonthlyGoals(raw);
-  return monthly[getMonthKey()] || [];
+    if (Array.isArray(parsed)) return parsed.filter((s: string) => s && s.trim());
+    return [raw.trim()];
+  } catch { return raw.trim() ? [raw.trim()] : []; }
 }
 
 // ── Donut Chart Component ─────────────────────────────────────────────────────
@@ -747,12 +732,14 @@ function StudentEditModal({
   const [status, setStatus] = useState(student.status || "active");
   const [saving, setSaving] = useState(false);
 
-  // Lesson goals - monthly structure
-  const thisMonth = getMonthKey();
-  const [monthlyGoals, setMonthlyGoals] = useState<Record<string, string[]>>(() => parseMonthlyGoals(student.lesson_goal));
-  const [goals, setGoals] = useState<string[]>(() => {
-    const mg = parseMonthlyGoals(student.lesson_goal);
-    return mg[thisMonth] || [];
+  // Learning objective (long-term goals)
+  const [objectives, setObjectives] = useState<string[]>(() => {
+    if (!student.learning_objective) return [];
+    try {
+      const parsed = JSON.parse(student.learning_objective);
+      if (Array.isArray(parsed)) return parsed.filter((s: string) => s && s.trim());
+      return student.learning_objective.trim() ? [student.learning_objective.trim()] : [];
+    } catch { return student.learning_objective.trim() ? [student.learning_objective.trim()] : []; }
   });
   const [newGoal, setNewGoal] = useState("");
   const [addingGoal, setAddingGoal] = useState(false);
@@ -809,12 +796,11 @@ function StudentEditModal({
 
   const handleSave = async () => {
     setSaving(true);
-    const updatedMonthly = { ...monthlyGoals, [thisMonth]: goals };
     const { error } = await supabase.from("instructor_students").update({
       level, schedules: slots.length > 0 ? JSON.stringify(slots) : null,
       meet_link: meetLink.trim() || null,
       phone: null, status,
-      lesson_goal: Object.values(updatedMonthly).some(arr => arr.length > 0) ? JSON.stringify(updatedMonthly) : null,
+      learning_objective: objectives.length > 0 ? JSON.stringify(objectives) : null,
     }).eq("id", student.id);
     if (error) {
       toast({ title: "저장 실패", description: error.message, variant: "destructive" });
@@ -908,14 +894,14 @@ function StudentEditModal({
           <div className="space-y-2 pt-1 border-t border-border">
             <div className="flex items-center justify-between">
               <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <GraduationCap className="w-3.5 h-3.5" /> 학습 목표
+                <GraduationCap className="w-3.5 h-3.5" /> 등록 계기 / 최종 목표
               </Label>
             </div>
             <div className="space-y-1.5">
-              {goals.map((g, i) => (
+              {objectives.map((g, i) => (
                 <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-muted/20 group">
                   <span className="text-xs font-medium text-foreground flex-1">{g}</span>
-                  <button onClick={() => setGoals((p) => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => setObjectives((p) => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -923,12 +909,12 @@ function StudentEditModal({
             </div>
             {addingGoal ? (
               <div className="flex gap-1.5">
-                <Input value={newGoal} onChange={(e) => setNewGoal(e.target.value)} placeholder="예: 시제 마스터하기" className="h-8 text-xs flex-1" autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter" && newGoal.trim()) { setGoals((p) => [...p, newGoal.trim()]); setNewGoal(""); setAddingGoal(false); } }}
+                <Input value={newGoal} onChange={(e) => setNewGoal(e.target.value)} placeholder="예: 외국인과의 스몰톡하기" className="h-8 text-xs flex-1" autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter" && newGoal.trim()) { setObjectives((p) => [...p, newGoal.trim()]); setNewGoal(""); setAddingGoal(false); } }}
                 />
                 <Button size="sm" className="h-8 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
                   disabled={!newGoal.trim()}
-                  onClick={() => { setGoals((p) => [...p, newGoal.trim()]); setNewGoal(""); setAddingGoal(false); }}
+                  onClick={() => { setObjectives((p) => [...p, newGoal.trim()]); setNewGoal(""); setAddingGoal(false); }}
                 >추가</Button>
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setAddingGoal(false); setNewGoal(""); }}>취소</Button>
               </div>
@@ -1832,7 +1818,7 @@ export default function InstructorDashboard() {
                       }
                       return todayStudents.map((st) => {
                         const stats = getStudentStats(st.student_name, st.schedules);
-                        const goals = fmtGoals(st.lesson_goal);
+                        const todaySession = sessions.find(s => isToday(s.scheduled_at) && s.student_name === st.student_name);
                         return (
                           <div key={st.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
                             <div className="flex-1 min-w-0">
@@ -1845,11 +1831,9 @@ export default function InstructorDashboard() {
                                   <p className="text-[10px] text-muted-foreground leading-tight">{st.level} · {fmtSchedules(st.schedules) || "미정"}</p>
                                 </div>
                               </div>
-                              {goals.length > 0 && (
+                              {todaySession?.topic && (
                                 <div className="flex flex-wrap gap-1 mt-1 ml-8">
-                                  {goals.map((g, i) => (
-                                    <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{i + 1}주: {g}</span>
-                                  ))}
+                                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-navy/8 text-navy">{todaySession.topic}</span>
                                 </div>
                               )}
                             </div>
@@ -2029,7 +2013,7 @@ export default function InstructorDashboard() {
               }).map((st) => {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 const stats = getStudentStats(st.student_name, st.schedules, selectedPeriod);
-                const goals = fmtGoals(st.lesson_goal);
+                // goals variable removed - lesson goals are now per-session topics
                 const statusLabel = st.status === "active" ? "수강 중" : st.status === "paused" ? "휴강" : "수료";
                 const statusColor = st.status === "active" ? "bg-success/10 text-success" : st.status === "paused" ? "bg-gold/10 text-gold-dark" : "bg-muted text-muted-foreground";
 
@@ -2074,22 +2058,19 @@ export default function InstructorDashboard() {
                       {/* Learning Objective (long-term) */}
                       <div className="space-y-1">
                         <p className="text-[10px] font-semibold text-muted-foreground">등록 계기 / 최종 목표</p>
-                        <p className="text-xs text-foreground">
-                          {st.learning_objective || <span className="text-muted-foreground italic">미설정</span>}
-                        </p>
+                        {(() => {
+                          const objectives = parseLearningObjective(st.learning_objective);
+                          return objectives.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {objectives.map((obj, i) => (
+                                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">{obj}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">미설정</p>
+                          );
+                        })()}
                       </div>
-
-                      {/* Weekly Goals (lesson_goal) */}
-                      {goals.length > 0 && (
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground">이번달 수업 목표</p>
-                          <div className="flex flex-wrap gap-1">
-                            {goals.map((g, i) => (
-                              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">{i + 1}주: {g}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
 
                       {/* Donut charts */}
                       <div className="grid grid-cols-3 gap-2">
@@ -2449,59 +2430,73 @@ function BulkGoalModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const thisMonth = getMonthKey();
-  const prevMonth = getPrevMonthKey();
   const thisLabel = (() => { const d = new Date(); return `${d.getFullYear()}년 ${d.getMonth() + 1}월`; })();
   const prevLabel = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return `${d.getFullYear()}년 ${d.getMonth() + 1}월`; })();
 
-  // goals[studentId] = [g1, g2, g3, g4]
-  const [goals, setGoals] = useState<Record<string, string[]>>({});
+  // Sessions per student: { studentName: { prev: Session[], curr: Session[] } }
+  type SessionGoal = { id: string; scheduled_at: string; topic: string };
+  const [studentSessions, setStudentSessions] = useState<Record<string, { prev: SessionGoal[]; curr: SessionGoal[] }>>({});
+  const [topics, setTopics] = useState<Record<string, string>>({}); // sessionId -> topic
+  const [origTopics, setOrigTopics] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    const init: Record<string, string[]> = {};
-    students.forEach(s => {
-      const monthly = parseMonthlyGoals(s.lesson_goal);
-      const existing = monthly[thisMonth] || ["", "", "", ""];
-      init[s.id] = [existing[0] || "", existing[1] || "", existing[2] || "", existing[3] || ""];
-    });
-    setGoals(init);
+    (async () => {
+      const now = new Date();
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+      const studentNames = students.map(s => s.student_name);
+      const { data: allSessions } = await supabase
+        .from("class_sessions")
+        .select("id, student_name, scheduled_at, topic")
+        .in("student_name", studentNames)
+        .gte("scheduled_at", prevMonthStart.toISOString())
+        .lte("scheduled_at", thisMonthEnd.toISOString())
+        .order("scheduled_at", { ascending: true });
+
+      const sessMap: Record<string, { prev: SessionGoal[]; curr: SessionGoal[] }> = {};
+      const initTopics: Record<string, string> = {};
+      
+      students.forEach(s => {
+        sessMap[s.student_name] = { prev: [], curr: [] };
+      });
+
+      (allSessions || []).forEach(sess => {
+        const d = new Date(sess.scheduled_at);
+        const entry: SessionGoal = { id: sess.id, scheduled_at: sess.scheduled_at, topic: sess.topic || "" };
+        if (sessMap[sess.student_name]) {
+          if (d >= prevMonthStart && d <= prevMonthEnd) {
+            sessMap[sess.student_name].prev.push(entry);
+          } else if (d >= thisMonthStart && d <= thisMonthEnd) {
+            sessMap[sess.student_name].curr.push(entry);
+            initTopics[sess.id] = sess.topic || "";
+          }
+        }
+      });
+
+      setStudentSessions(sessMap);
+      setTopics(initTopics);
+      setOrigTopics({ ...initTopics });
+      setLoading(false);
+    })();
   }, [students]);
 
-  const getOriginalGoals = (s: StudentFull): string[] => {
-    const monthly = parseMonthlyGoals(s.lesson_goal);
-    return monthly[thisMonth] || ["", "", "", ""];
-  };
-
-  const getPrevGoals = (s: StudentFull): string[] => {
-    const monthly = parseMonthlyGoals(s.lesson_goal);
-    return monthly[prevMonth] || [];
-  };
-
-  const isChanged = (s: StudentFull): boolean => {
-    const orig = getOriginalGoals(s);
-    const curr = goals[s.id] || ["", "", "", ""];
-    return curr.some((g, i) => (g || "").trim() !== (orig[i] || "").trim());
-  };
+  const changedIds = Object.keys(topics).filter(id => (topics[id] || "").trim() !== (origTopics[id] || "").trim());
 
   const handleSave = async () => {
     setSaving(true);
-    const updates = students.filter(s => isChanged(s));
-    for (const s of updates) {
-      const monthly = parseMonthlyGoals(s.lesson_goal);
-      const newGoals = (goals[s.id] || ["", "", "", ""]).map(g => g.trim());
-      monthly[thisMonth] = newGoals;
-      await supabase.from("instructor_students").update({
-        lesson_goal: JSON.stringify(monthly),
-      }).eq("id", s.id);
+    for (const id of changedIds) {
+      await supabase.from("class_sessions").update({ topic: topics[id].trim() }).eq("id", id);
     }
-    toast({ title: `${updates.length}명의 수업 목표가 저장되었습니다 ✓` });
+    toast({ title: `${changedIds.length}개 세션의 수업 목표가 저장되었습니다 ✓` });
     setSaving(false);
     onSaved();
   };
-
-  const changedCount = students.filter(s => isChanged(s)).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2510,7 +2505,7 @@ function BulkGoalModal({
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 className="font-bold text-foreground flex items-center gap-2">
             <Target className="w-4 h-4 text-gold-dark" />
-            월간 수업 목표 일괄 설정
+            수업 목표 일괄 설정
           </h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="w-4 h-4" />
@@ -2522,12 +2517,16 @@ function BulkGoalModal({
           <p className="text-[10px] font-semibold text-navy text-center">{thisLabel} (이번달)</p>
         </div>
         <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
-          {students.map(s => {
-            const prev = getPrevGoals(s);
-            const curr = goals[s.id] || ["", "", "", ""];
-            const changed = isChanged(s);
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : students.map(s => {
+            const data = studentSessions[s.student_name] || { prev: [], curr: [] };
+            const hasChange = data.curr.some(sess => (topics[sess.id] || "").trim() !== (origTopics[sess.id] || "").trim());
+            
             return (
-              <div key={s.id} className={cn("p-3 rounded-lg border space-y-2", changed ? "border-gold bg-gold/5" : "border-border bg-muted/20")}>
+              <div key={s.id} className={cn("p-3 rounded-lg border space-y-2", hasChange ? "border-gold bg-gold/5" : "border-border bg-muted/20")}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-foreground">
                     {formatStudentName(s.student_name, s.english_name)}
@@ -2539,33 +2538,35 @@ function BulkGoalModal({
                 <div className="grid grid-cols-2 gap-3">
                   {/* Previous month - read only */}
                   <div className="space-y-1.5">
-                    {[0, 1, 2, 3].map(i => (
-                      <div key={i} className="flex items-center gap-1.5">
+                    {data.prev.length > 0 ? data.prev.map((sess, i) => (
+                      <div key={sess.id} className="flex items-center gap-1.5">
                         <span className="text-[10px] text-muted-foreground w-4 flex-shrink-0">{i + 1}</span>
                         <div className="flex-1 h-7 px-2 text-xs rounded border border-border bg-muted/40 text-muted-foreground flex items-center truncate">
-                          {prev[i] || <span className="text-muted-foreground/40">—</span>}
+                          {sess.topic || <span className="text-muted-foreground/40">—</span>}
                         </div>
                       </div>
-                    ))}
+                    )) : (
+                      <div className="h-7 flex items-center text-xs text-muted-foreground/40 italic px-2">세션 없음</div>
+                    )}
                   </div>
                   {/* This month - editable */}
                   <div className="space-y-1.5">
-                    {[0, 1, 2, 3].map(i => (
-                      <div key={i} className="flex items-center gap-1.5">
+                    {data.curr.length > 0 ? data.curr.map((sess, i) => (
+                      <div key={sess.id} className="flex items-center gap-1.5">
                         <span className="text-[10px] text-navy font-medium w-4 flex-shrink-0">{i + 1}</span>
                         <input
                           type="text"
-                          value={curr[i]}
+                          value={topics[sess.id] || ""}
                           onChange={(e) => {
-                            const updated = [...curr];
-                            updated[i] = e.target.value;
-                            setGoals(prev => ({ ...prev, [s.id]: updated }));
+                            setTopics(prev => ({ ...prev, [sess.id]: e.target.value }));
                           }}
-                          placeholder={prev[i] || `${i + 1}주차 목표`}
+                          placeholder={data.prev[i]?.topic || `${i + 1}회차 목표`}
                           className="flex-1 h-7 px-2 text-xs rounded border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                       </div>
-                    ))}
+                    )) : (
+                      <div className="h-7 flex items-center text-xs text-muted-foreground/40 italic px-2">세션 없음</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2574,7 +2575,7 @@ function BulkGoalModal({
         </div>
         <div className="px-5 py-3 border-t border-border flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            {changedCount}명 변경됨
+            {changedIds.length}개 변경됨
           </p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">취소</Button>
@@ -2582,7 +2583,7 @@ function BulkGoalModal({
               size="sm"
               className="h-8 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
               onClick={handleSave}
-              disabled={saving || changedCount === 0}
+              disabled={saving || changedIds.length === 0}
             >
               {saving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
               저장
