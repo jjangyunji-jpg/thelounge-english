@@ -5,7 +5,7 @@ import {
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
-  Shield, Paperclip, CheckCircle, ChevronDown, User, Lock,
+  Shield, Paperclip, CheckCircle, ChevronDown, User, Lock, Monitor,
 } from "lucide-react";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
@@ -117,13 +117,14 @@ const HOURS = Array.from({ length: 17 }, (_, i) => {
   return `${h.toString().padStart(2, "0")}:00`;
 });
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
   writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]" },
   reading:    { label: "읽기",       icon: BookOpen,   color: "text-[hsl(var(--gold-dark))]" },
   speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]" },
   memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500" },
   file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500" },
+  watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500" },
 };
 
 interface ScheduleSlot { day: string; time: string; }

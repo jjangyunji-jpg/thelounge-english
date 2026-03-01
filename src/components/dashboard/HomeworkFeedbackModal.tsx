@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain } from "lucide-react";
+import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
   writing:    { label: "쓰기",       icon: PenLine,    color: "text-amber-600" },
   reading:    { label: "읽기",       icon: BookOpen,   color: "text-orange-500" },
   speaking:   { label: "말하기",     icon: Mic,        color: "text-rose-500" },
   memorizing: { label: "외우기",     icon: Brain,      color: "text-violet-500" },
   file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500" },
+  watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500" },
 };
 
 interface CorrectionItem {
