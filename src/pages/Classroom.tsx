@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { formatStudentName } from "@/lib/formatStudentName";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Video, VideoOff, Clock, FileText, CheckSquare,
@@ -62,6 +63,7 @@ interface SessionData {
   sessionId: string;
   studentName: string;      // display name (may be nickname)
   dbStudentName: string;    // actual DB student_name (never nickname)
+  englishName: string;      // english name from instructor_students
   instructorName: string;
   level: string;
   scheduledAt: Date;
@@ -73,6 +75,7 @@ const DEFAULT_SESSION: SessionData = {
   sessionId: "",
   studentName: "",
   dbStudentName: "",
+  englishName: "",
   instructorName: "Reina",
   level: "B1",
   scheduledAt: new Date(),
@@ -184,18 +187,28 @@ export default function Classroom() {
       if (sessionData) {
         // If session has no meet_link, fall back to instructor_students meet_link
         let meetLink = sessionData.meet_link || "";
+        let englishName = "";
         if (!meetLink) {
           const { data: isData } = await supabase
             .from("instructor_students")
-            .select("meet_link")
+            .select("meet_link, english_name")
             .eq("student_name", sessionData.student_name)
             .maybeSingle();
           meetLink = isData?.meet_link ?? "";
+          englishName = isData?.english_name ?? "";
+        } else {
+          const { data: isData } = await supabase
+            .from("instructor_students")
+            .select("english_name")
+            .eq("student_name", sessionData.student_name)
+            .maybeSingle();
+          englishName = isData?.english_name ?? "";
         }
         setSession({
           sessionId: sessionData.id,
           studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
           dbStudentName: sessionData.student_name,
+          englishName,
           instructorName: sessionData.instructor_name,
           level: sessionData.level,
           scheduledAt: new Date(sessionData.scheduled_at),
@@ -538,7 +551,7 @@ export default function Classroom() {
         <div className="w-px h-5 bg-sidebar-border" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-sidebar-accent-foreground text-sm">{session.studentName}</span>
+            <span className="font-bold text-sidebar-accent-foreground text-sm">{formatStudentName(session.studentName, session.englishName)}</span>
             <span className="text-xs px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground font-medium">{session.level}</span>
             {sessionNumber && (
               <span className="text-xs px-1.5 py-0.5 rounded bg-gold/20 text-gold font-bold">{sessionNumber}</span>
