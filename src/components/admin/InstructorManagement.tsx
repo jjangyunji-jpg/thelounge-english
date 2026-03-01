@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Eye, EyeOff, Star, MessageSquare, Filter, ExternalLink, UserX } from "lucide-react";
+import { Download, Plus, ChevronDown, ChevronUp, Edit2, ToggleLeft, ToggleRight, Loader2, X, Star, MessageSquare, Filter, ExternalLink, UserX } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +69,6 @@ const getLevelCategory = (level: string): string => {
 interface NewInstructorForm {
   name: string;
   email: string;
-  password: string;
   phone: string;
 }
 
@@ -85,13 +84,11 @@ export default function InstructorManagement() {
   const [editFields, setEditFields] = useState({ phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "", meet_link: "", position: "강사", lesson_rate: "30000" });
   const [savingId, setSavingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [creating, setCreating] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [form, setForm] = useState<NewInstructorForm>({
     name: "",
     email: "",
-    password: "",
     phone: "",
   });
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackRecord[]>>({});
@@ -219,39 +216,25 @@ export default function InstructorManagement() {
   };
 
   const handleCreate = async () => {
-    if (!form.name || !form.email || !form.password) {
-      toast({ title: "이름, 이메일, 비밀번호는 필수입니다.", variant: "destructive" });
+    if (!form.name || !form.email) {
+      toast({ title: "이름과 이메일은 필수입니다.", variant: "destructive" });
       return;
     }
     setCreating(true);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
+    const { error } = await supabase.from("instructors").insert({
+      name: form.name,
+      email: form.email,
+      phone: form.phone || null,
+      active: true,
+    });
 
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-instructor`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          password: form.password,
-          phone: form.phone,
-        }),
-      }
-    );
-
-    const result = await res.json();
-    if (!res.ok || result.error) {
-      toast({ title: "강사 생성 실패", description: result.error, variant: "destructive" });
+    if (error) {
+      toast({ title: "강사 추가 실패", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "강사 계정 생성 완료", description: `${form.name} 강사가 추가되었습니다.` });
+      toast({ title: "강사 추가 완료", description: `${form.name} 강사가 추가되었습니다. 강사가 회원가입 후 계정을 연결해주세요.` });
       setShowAddModal(false);
-      setForm({ name: "", email: "", password: "", phone: "" });
+      setForm({ name: "", email: "", phone: "" });
       fetchInstructors();
     }
     setCreating(false);
@@ -727,7 +710,7 @@ export default function InstructorManagement() {
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold">강사 계정 추가</DialogTitle>
+            <DialogTitle className="text-base font-bold">강사 추가</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="grid grid-cols-2 gap-3">
@@ -741,7 +724,7 @@ export default function InstructorManagement() {
                 />
               </div>
               <div className="col-span-2 space-y-1.5">
-                <Label className="text-xs text-muted-foreground">이메일 (로그인 ID) *</Label>
+                <Label className="text-xs text-muted-foreground">이메일 *</Label>
                 <Input
                   type="email"
                   value={form.email}
@@ -749,25 +732,6 @@ export default function InstructorManagement() {
                   placeholder="instructor@example.com"
                   className="h-9"
                 />
-              </div>
-              <div className="col-span-2 space-y-1.5">
-                <Label className="text-xs text-muted-foreground">초기 비밀번호 *</Label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={form.password}
-                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                    placeholder="최소 6자"
-                    className="h-9 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
               </div>
               <div className="col-span-2 space-y-1.5">
                 <Label className="text-xs text-muted-foreground">전화번호</Label>
@@ -782,7 +746,7 @@ export default function InstructorManagement() {
 
             <div className="p-3 rounded-lg bg-muted/50 border border-border">
               <p className="text-xs text-muted-foreground">
-                강사 계정이 생성되면 해당 이메일과 비밀번호로 <strong>강사 포털</strong>에 로그인할 수 있습니다.
+                강사 정보를 먼저 등록한 후, 강사가 <strong>회원가입</strong>하면 가입 승인 탭에서 계정을 연결할 수 있습니다.
               </p>
             </div>
 
@@ -793,7 +757,7 @@ export default function InstructorManagement() {
                 disabled={creating}
               >
                 {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-                계정 생성
+                강사 추가
               </Button>
               <Button
                 variant="outline"
