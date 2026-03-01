@@ -219,12 +219,14 @@ export default function Classroom() {
           meetLink,
           topic: sessionData.topic || "",
         });
-        // Calculate session number within active period only
-        const { data: activePeriods } = await supabase
+        // Calculate session number within the period that contains this session's date
+        const sessionDateStr = sessionData.scheduled_at.slice(0, 10);
+        const { data: matchingPeriod } = await supabase
           .from("schedule_periods")
           .select("start_date, end_date")
           .eq("is_active", true)
-          .limit(1)
+          .lte("start_date", sessionDateStr)
+          .gte("end_date", sessionDateStr)
           .maybeSingle();
 
         let periodFilter = supabase
@@ -234,10 +236,10 @@ export default function Classroom() {
           .eq("instructor_name", sessionData.instructor_name)
           .order("scheduled_at", { ascending: true });
 
-        if (activePeriods) {
+        if (matchingPeriod) {
           periodFilter = periodFilter
-            .gte("scheduled_at", activePeriods.start_date + "T00:00:00+09:00")
-            .lte("scheduled_at", activePeriods.end_date + "T23:59:59+09:00");
+            .gte("scheduled_at", matchingPeriod.start_date + "T00:00:00+09:00")
+            .lte("scheduled_at", matchingPeriod.end_date + "T23:59:59+09:00");
         }
 
         const { data: allSessions } = await periodFilter;
