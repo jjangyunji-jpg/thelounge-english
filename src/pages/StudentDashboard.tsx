@@ -709,7 +709,9 @@ export default function StudentDashboard() {
     : testHistory;
 
   // Period navigation helpers
-  const sortedPeriods = [...schedulePeriods].sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const sortedPeriods = [...schedulePeriods]
+    .filter(p => !studentRecord?.start_date || p.end_date >= studentRecord.start_date)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
   const currentPeriodIdx = sortedPeriods.findIndex(p => p.id === selectedPeriodId);
   const canGoPrev = currentPeriodIdx > 0;
   const canGoNext = currentPeriodIdx < sortedPeriods.length - 1;
@@ -1030,7 +1032,7 @@ export default function StudentDashboard() {
               <span className="text-xs font-semibold text-foreground">수업 캘린더</span>
             </div>
             <div className="p-3">
-              <MiniCalendar allCalendarDates={allCalendarDates} holidays={holidays} selectedPeriod={selectedPeriod} allPeriods={schedulePeriods} onPeriodChange={setSelectedPeriodId} />
+              <MiniCalendar allCalendarDates={allCalendarDates} holidays={holidays} selectedPeriod={selectedPeriod} allPeriods={sortedPeriods} onPeriodChange={setSelectedPeriodId} />
             </div>
             {/* Upcoming next session inside calendar */}
             {nextClassDate && (
