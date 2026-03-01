@@ -146,7 +146,7 @@ export default function WeeklyTasksSection({
     }
   };
 
-  if (totalTasks === 0) return null;
+  // Always render the section, even if no tasks
 
   return (
     <>
