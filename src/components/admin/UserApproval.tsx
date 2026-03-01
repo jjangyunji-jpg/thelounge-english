@@ -38,6 +38,13 @@ interface UnlinkedStudent {
   level: string | null;
 }
 
+interface UnlinkedInstructor {
+  id: string;
+  name: string;
+  email: string;
+  position: string;
+}
+
 type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 const LEVELS: Level[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 const DAYS_OF_WEEK = ["월", "화", "수", "목", "금", "토", "일"];
@@ -88,6 +95,9 @@ export default function UserApproval({ onNavigate }: Props) {
   // Map user_id → linked student_name for approved students
   const [linkedMap, setLinkedMap] = useState<Record<string, string>>({});
 
+  // Map user_id → linked instructor name for approved instructors
+  const [linkedInstrMap, setLinkedInstrMap] = useState<Record<string, string>>({});
+
   // Student linking dialog
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUser, setLinkUser] = useState<PendingUser | null>(null);
@@ -97,6 +107,15 @@ export default function UserApproval({ onNavigate }: Props) {
   const [savingLink, setSavingLink] = useState(false);
   const [isRelink, setIsRelink] = useState(false);
 
+  // Instructor linking dialog
+  const [instrLinkDialogOpen, setInstrLinkDialogOpen] = useState(false);
+  const [instrLinkUser, setInstrLinkUser] = useState<PendingUser | null>(null);
+  const [unlinkedInstructors, setUnlinkedInstructors] = useState<UnlinkedInstructor[]>([]);
+  const [allInstructors, setAllInstructors] = useState<UnlinkedInstructor[]>([]);
+  const [selectedInstructorId, setSelectedInstructorId] = useState<string>("");
+  const [savingInstrLink, setSavingInstrLink] = useState(false);
+  const [isInstrRelink, setIsInstrRelink] = useState(false);
+
   // Student setup dialog (for creating new record)
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
   const [setupUser, setSetupUser] = useState<PendingUser | null>(null);
@@ -104,7 +123,7 @@ export default function UserApproval({ onNavigate }: Props) {
   const [instructorNames, setInstructorNames] = useState<string[]>([]);
   const [savingSetup, setSavingSetup] = useState(false);
 
-  // Instructor setup dialog
+  // Instructor setup dialog (for additional info after linking)
   const [instrDialogOpen, setInstrDialogOpen] = useState(false);
   const [instrUser, setInstrUser] = useState<PendingUser | null>(null);
   const [instrForm, setInstrForm] = useState<InstructorSetupForm>(initialInstructorForm);
@@ -134,7 +153,38 @@ export default function UserApproval({ onNavigate }: Props) {
       setLinkedMap(map);
     }
 
+    // Load linked instructor names for approved instructors
+    const approvedInstructors = all.filter(u => u.approved && u.role === "instructor");
+    if (approvedInstructors.length > 0) {
+      const { data: instrLinks } = await supabase
+        .from("instructors")
+        .select("user_id, name")
+        .in("user_id", approvedInstructors.map(u => u.user_id));
+      const instrMap: Record<string, string> = {};
+      (instrLinks || []).forEach(l => { if (l.user_id) instrMap[l.user_id] = l.name; });
+      setLinkedInstrMap(instrMap);
+    }
+
     setLoading(false);
+  };
+
+  const loadUnlinkedInstructors = async () => {
+    const { data } = await supabase
+      .from("instructors")
+      .select("id, name, email, position")
+      .is("user_id", null)
+      .eq("active", true)
+      .order("name");
+    setUnlinkedInstructors((data || []) as UnlinkedInstructor[]);
+  };
+
+  const loadAllInstructors = async () => {
+    const { data } = await supabase
+      .from("instructors")
+      .select("id, name, email, position")
+      .eq("active", true)
+      .order("name");
+    setAllInstructors((data || []) as UnlinkedInstructor[]);
   };
 
   const loadUnlinkedStudents = async () => {
@@ -190,9 +240,12 @@ export default function UserApproval({ onNavigate }: Props) {
       setSelectedStudentId("");
       setLinkDialogOpen(true);
     } else if (user.role === "instructor") {
-      setInstrUser(user);
-      setInstrForm(initialInstructorForm);
-      setInstrDialogOpen(true);
+      // Show instructor linking dialog
+      setIsInstrRelink(false);
+      await loadUnlinkedInstructors();
+      setInstrLinkUser(user);
+      setSelectedInstructorId("");
+      setInstrLinkDialogOpen(true);
     }
 
     load();
@@ -263,6 +316,47 @@ export default function UserApproval({ onNavigate }: Props) {
       setSetupForm(initialSetupForm);
       setSetupDialogOpen(true);
     }
+  };
+
+  // Link instructor account to existing instructors record
+  const handleLinkInstructor = async () => {
+    if (!instrLinkUser || !selectedInstructorId) return;
+    setSavingInstrLink(true);
+
+    // If relinking, clear previous link first
+    if (isInstrRelink) {
+      await supabase
+        .from("instructors")
+        .update({ user_id: null })
+        .eq("user_id", instrLinkUser.user_id);
+    }
+
+    // Update instructors.user_id
+    const { error } = await supabase
+      .from("instructors")
+      .update({ user_id: instrLinkUser.user_id })
+      .eq("id", selectedInstructorId);
+
+    if (error) {
+      toast({ title: "연결 실패", description: error.message, variant: "destructive" });
+      setSavingInstrLink(false);
+      return;
+    }
+
+    const linked = (isInstrRelink ? allInstructors : unlinkedInstructors).find(i => i.id === selectedInstructorId);
+    toast({ title: `${instrLinkUser.display_name} → ${linked?.name} 연결 ${isInstrRelink ? "변경" : ""} 완료 ✓` });
+    setInstrLinkDialogOpen(false);
+    setInstrLinkUser(null);
+    setSavingInstrLink(false);
+
+    // Optionally show additional info dialog
+    if (!isInstrRelink && linked) {
+      setInstrUser(instrLinkUser);
+      setInstrForm(initialInstructorForm);
+      setInstrDialogOpen(true);
+    }
+
+    load();
   };
 
   const handleSaveStudentSetup = async () => {
@@ -433,14 +527,62 @@ export default function UserApproval({ onNavigate }: Props) {
                       <div>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">강사 ({approvedInstructors.length})</p>
                         <div className="space-y-1.5">
-                          {approvedInstructors.map(u => (
-                            <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border">
-                              <div className="flex items-center gap-3">
-                                <p className="font-medium text-sm text-foreground">{u.display_name || "이름 없음"}</p>
-                                <Badge variant="outline" className="text-[10px]">{roleLabel(u.role)}</Badge>
+                          {approvedInstructors.map(u => {
+                            const linkedName = linkedInstrMap[u.user_id] || null;
+                            return (
+                              <div key={u.id} className="flex items-center justify-between p-2.5 rounded-lg border border-border">
+                                <div className="flex items-center gap-3">
+                                  <p className="font-medium text-sm text-foreground">{u.display_name || "이름 없음"}</p>
+                                  <Badge variant="outline" className="text-[10px]">{roleLabel(u.role)}</Badge>
+                                  {linkedName && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      → {linkedName}
+                                    </span>
+                                  )}
+                                  {!linkedName && (
+                                    <span className="text-[10px] text-destructive">미연결</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  {linkedName && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 px-2 text-[10px] gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                      onClick={async () => {
+                                        if (!confirm(`${u.display_name} 님의 강사 연결을 해제하시겠습니까?`)) return;
+                                        await supabase
+                                          .from("instructors")
+                                          .update({ user_id: null })
+                                          .eq("user_id", u.user_id);
+                                        toast({ title: `${u.display_name} 연결 해제 완료` });
+                                        load();
+                                      }}
+                                    >
+                                      <Unlink className="w-3 h-3" />
+                                      해제
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 px-2 text-[10px] gap-1 border-navy/30 text-navy hover:bg-navy/10"
+                                    onClick={async () => {
+                                      setIsInstrRelink(!!linkedName);
+                                      await Promise.all([loadUnlinkedInstructors(), loadAllInstructors()]);
+                                      setInstrLinkUser(u);
+                                      setSelectedInstructorId("");
+                                      setInstrLinkDialogOpen(true);
+                                    }}
+                                  >
+                                    <Link2 className="w-3 h-3" />
+                                    {linkedName ? "연결 수정" : "연결"}
+                                  </Button>
+                                  <Badge className="bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] text-[10px]">승인됨</Badge>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ) : null;
@@ -595,7 +737,62 @@ export default function UserApproval({ onNavigate }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Student Setup Dialog (new record) */}
+      {/* Instructor Linking Dialog */}
+      <Dialog open={instrLinkDialogOpen} onOpenChange={(open) => {
+        if (!open) { setInstrLinkDialogOpen(false); setInstrLinkUser(null); }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="w-4 h-4" />
+              {isInstrRelink ? "강사 계정 연결 수정" : "강사 계정 연결"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{instrLinkUser?.display_name}</span> 님의 계정을
+            {isInstrRelink ? " 다른 강사 레코드로 변경합니다." : " 기존 강사 레코드에 연결합니다."}
+          </p>
+          <div className="space-y-4 pt-2">
+            {(() => {
+              const instrList = isInstrRelink ? allInstructors : unlinkedInstructors;
+              return instrList.length > 0 ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">{isInstrRelink ? "강사 선택 (전체)" : "기존 강사 선택"}</Label>
+                    <Select value={selectedInstructorId} onValueChange={setSelectedInstructorId}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="강사를 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {instrList.map(i => (
+                          <SelectItem key={i.id} value={i.id}>
+                            {i.name} ({i.email}) · {i.position}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    className="w-full gap-2 bg-navy hover:bg-navy-light text-primary-foreground"
+                    disabled={savingInstrLink || !selectedInstructorId}
+                    onClick={handleLinkInstructor}
+                  >
+                    {savingInstrLink && <Loader2 className="w-4 h-4 animate-spin" />}
+                    <Link2 className="w-4 h-4" />
+                    {isInstrRelink ? "연결 변경" : "연결하기"}
+                  </Button>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  연결 가능한 강사 레코드가 없습니다. 강사 관리에서 먼저 강사를 추가해주세요.
+                </p>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={setupDialogOpen} onOpenChange={(open) => {
         if (!open) {
           setSetupDialogOpen(false);
