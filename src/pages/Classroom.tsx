@@ -51,6 +51,24 @@ function getWeekLabel(date = new Date()) {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+function getMonthKey(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getWeekOfMonth(date = new Date()): number {
+  return Math.min(Math.ceil(date.getDate() / 7), 4) - 1; // 0-3 index
+}
+
+function parseMonthlyGoals(raw: string | null): Record<string, string[]> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    if (Array.isArray(parsed)) return { [getMonthKey()]: parsed };
+    return {};
+  } catch { return raw ? { [getMonthKey()]: [raw] } : {}; }
+}
+
 function formatDate(date = new Date()) {
   return date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
 }
@@ -109,7 +127,8 @@ export default function Classroom() {
   const [session, setSession] = useState<SessionData>(DEFAULT_SESSION);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionNumber, setSessionNumber] = useState<string | null>(null);
-  const [lessonGoal, setLessonGoal] = useState("");
+  const [lessonGoalRaw, setLessonGoalRaw] = useState<string | null>(null);
+  const [lessonGoal, setLessonGoal] = useState(""); // current week's goal
   const [editingGoal, setEditingGoal] = useState(false);
   const [editGoalValue, setEditGoalValue] = useState("");
   const [savingGoal, setSavingGoal] = useState(false);
@@ -201,7 +220,11 @@ export default function Classroom() {
             .maybeSingle();
           meetLink = isData?.meet_link ?? "";
           englishName = isData?.english_name ?? "";
-          setLessonGoal(isData?.lesson_goal ?? "");
+          const rawGoal = isData?.lesson_goal ?? null;
+          setLessonGoalRaw(rawGoal);
+          const monthly = parseMonthlyGoals(rawGoal);
+          const weekGoals = monthly[getMonthKey()] || [];
+          setLessonGoal(weekGoals[getWeekOfMonth()] || "");
           setStudentDbId(isData?.id ?? null);
         } else {
           const { data: isData } = await supabase
@@ -210,7 +233,11 @@ export default function Classroom() {
             .eq("student_name", sessionData.student_name)
             .maybeSingle();
           englishName = isData?.english_name ?? "";
-          setLessonGoal(isData?.lesson_goal ?? "");
+          const rawGoal = isData?.lesson_goal ?? null;
+          setLessonGoalRaw(rawGoal);
+          const monthly = parseMonthlyGoals(rawGoal);
+          const weekGoals = monthly[getMonthKey()] || [];
+          setLessonGoal(weekGoals[getWeekOfMonth()] || "");
           setStudentDbId(isData?.id ?? null);
         }
         setSession({
@@ -575,7 +602,7 @@ export default function Classroom() {
                 title="수업 목표 수정"
               >
                 <Sparkles className="w-3 h-3 text-gold/70" />
-                {lessonGoal}
+                {getWeekOfMonth() + 1}주차: {lessonGoal}
               </button>
             )}
             {role === "instructor" && !lessonGoal && !editingGoal && (
@@ -597,9 +624,17 @@ export default function Classroom() {
                       (async () => {
                         if (!studentDbId) return;
                         setSavingGoal(true);
+                        const monthly = parseMonthlyGoals(lessonGoalRaw);
+                        const mk = getMonthKey();
+                        const wk = getWeekOfMonth();
+                        const weekGoals = monthly[mk] || ["", "", "", ""];
+                        weekGoals[wk] = editGoalValue.trim();
+                        monthly[mk] = weekGoals;
+                        const newRaw = JSON.stringify(monthly);
                         await supabase.from("instructor_students").update({
-                          lesson_goal: editGoalValue.trim() || null,
+                          lesson_goal: newRaw,
                         }).eq("id", studentDbId);
+                        setLessonGoalRaw(newRaw);
                         setLessonGoal(editGoalValue.trim());
                         setEditingGoal(false);
                         setSavingGoal(false);
@@ -617,10 +652,17 @@ export default function Classroom() {
                   onClick={async () => {
                     if (!studentDbId) return;
                     setSavingGoal(true);
-                    
+                    const monthly = parseMonthlyGoals(lessonGoalRaw);
+                    const mk = getMonthKey();
+                    const wk = getWeekOfMonth();
+                    const weekGoals = monthly[mk] || ["", "", "", ""];
+                    weekGoals[wk] = editGoalValue.trim();
+                    monthly[mk] = weekGoals;
+                    const newRaw = JSON.stringify(monthly);
                     await supabase.from("instructor_students").update({
-                      lesson_goal: editGoalValue.trim() || null,
+                      lesson_goal: newRaw,
                     }).eq("id", studentDbId);
+                    setLessonGoalRaw(newRaw);
                     setLessonGoal(editGoalValue.trim());
                     setEditingGoal(false);
                     setSavingGoal(false);

@@ -164,12 +164,29 @@ function fmtSchedules(raw: string | null): string {
   } catch { return raw; }
 }
 
-function fmtGoals(raw: string | null): string[] {
-  if (!raw) return [];
+function getMonthKey(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getPrevMonthKey(date = new Date()): string {
+  const d = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+  return getMonthKey(d);
+}
+
+function parseMonthlyGoals(raw: string | null): Record<string, string[]> {
+  if (!raw) return {};
   try {
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [raw];
-  } catch { return raw ? [raw] : []; }
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    // Legacy: plain array → store as current month
+    if (Array.isArray(parsed)) return { [getMonthKey()]: parsed };
+    return {};
+  } catch { return raw ? { [getMonthKey()]: [raw] } : {}; }
+}
+
+function fmtGoals(raw: string | null): string[] {
+  const monthly = parseMonthlyGoals(raw);
+  return monthly[getMonthKey()] || [];
 }
 
 // ── Donut Chart Component ─────────────────────────────────────────────────────
@@ -729,12 +746,12 @@ function StudentEditModal({
   const [status, setStatus] = useState(student.status || "active");
   const [saving, setSaving] = useState(false);
 
-  // Lesson goals as list
+  // Lesson goals - monthly structure
+  const thisMonth = getMonthKey();
+  const [monthlyGoals, setMonthlyGoals] = useState<Record<string, string[]>>(() => parseMonthlyGoals(student.lesson_goal));
   const [goals, setGoals] = useState<string[]>(() => {
-    try {
-      const parsed = student.lesson_goal ? JSON.parse(student.lesson_goal) : [];
-      return Array.isArray(parsed) ? parsed : student.lesson_goal ? [student.lesson_goal] : [];
-    } catch { return student.lesson_goal ? [student.lesson_goal] : []; }
+    const mg = parseMonthlyGoals(student.lesson_goal);
+    return mg[thisMonth] || [];
   });
   const [newGoal, setNewGoal] = useState("");
   const [addingGoal, setAddingGoal] = useState(false);
@@ -791,11 +808,12 @@ function StudentEditModal({
 
   const handleSave = async () => {
     setSaving(true);
+    const updatedMonthly = { ...monthlyGoals, [thisMonth]: goals };
     const { error } = await supabase.from("instructor_students").update({
       level, schedules: slots.length > 0 ? JSON.stringify(slots) : null,
       meet_link: meetLink.trim() || null,
       phone: null, status,
-      lesson_goal: goals.length > 0 ? JSON.stringify(goals) : null,
+      lesson_goal: Object.values(updatedMonthly).some(arr => arr.length > 0) ? JSON.stringify(updatedMonthly) : null,
     }).eq("id", student.id);
     if (error) {
       toast({ title: "저장 실패", description: error.message, variant: "destructive" });
@@ -2422,27 +2440,51 @@ function BulkGoalModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [goals, setGoals] = useState<Record<string, string>>({});
+  const thisMonth = getMonthKey();
+  const prevMonth = getPrevMonthKey();
+  const thisLabel = (() => { const d = new Date(); return `${d.getFullYear()}년 ${d.getMonth() + 1}월`; })();
+  const prevLabel = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return `${d.getFullYear()}년 ${d.getMonth() + 1}월`; })();
+
+  // goals[studentId] = [g1, g2, g3, g4]
+  const [goals, setGoals] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    const init: Record<string, string> = {};
-    students.forEach(s => { init[s.id] = s.lesson_goal || ""; });
+    const init: Record<string, string[]> = {};
+    students.forEach(s => {
+      const monthly = parseMonthlyGoals(s.lesson_goal);
+      const existing = monthly[thisMonth] || ["", "", "", ""];
+      init[s.id] = [existing[0] || "", existing[1] || "", existing[2] || "", existing[3] || ""];
+    });
     setGoals(init);
   }, [students]);
 
+  const getOriginalGoals = (s: StudentFull): string[] => {
+    const monthly = parseMonthlyGoals(s.lesson_goal);
+    return monthly[thisMonth] || ["", "", "", ""];
+  };
+
+  const getPrevGoals = (s: StudentFull): string[] => {
+    const monthly = parseMonthlyGoals(s.lesson_goal);
+    return monthly[prevMonth] || [];
+  };
+
+  const isChanged = (s: StudentFull): boolean => {
+    const orig = getOriginalGoals(s);
+    const curr = goals[s.id] || ["", "", "", ""];
+    return curr.some((g, i) => (g || "").trim() !== (orig[i] || "").trim());
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    const updates = students.filter(s => {
-      const newGoal = (goals[s.id] || "").trim();
-      return newGoal !== (s.lesson_goal || "");
-    });
+    const updates = students.filter(s => isChanged(s));
     for (const s of updates) {
-      const newGoal = (goals[s.id] || "").trim();
-      
+      const monthly = parseMonthlyGoals(s.lesson_goal);
+      const newGoals = (goals[s.id] || ["", "", "", ""]).map(g => g.trim());
+      monthly[thisMonth] = newGoals;
       await supabase.from("instructor_students").update({
-        lesson_goal: newGoal || null,
+        lesson_goal: JSON.stringify(monthly),
       }).eq("id", s.id);
     }
     toast({ title: `${updates.length}명의 수업 목표가 저장되었습니다 ✓` });
@@ -2450,10 +2492,12 @@ function BulkGoalModal({
     onSaved();
   };
 
+  const changedCount = students.filter(s => isChanged(s)).length;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 bg-card rounded-2xl shadow-xl border border-border w-full max-w-lg max-h-[80vh] flex flex-col">
+      <div className="relative z-10 bg-card rounded-2xl shadow-xl border border-border w-full max-w-2xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 className="font-bold text-foreground flex items-center gap-2">
             <Target className="w-4 h-4 text-gold-dark" />
@@ -2463,13 +2507,18 @@ function BulkGoalModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+        {/* Column headers */}
+        <div className="px-5 pt-3 pb-1 grid grid-cols-2 gap-4">
+          <p className="text-[10px] font-semibold text-muted-foreground text-center">{prevLabel} (지난달)</p>
+          <p className="text-[10px] font-semibold text-navy text-center">{thisLabel} (이번달)</p>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
           {students.map(s => {
-            const currentGoal = s.lesson_goal || "";
-            const newGoal = goals[s.id] || "";
-            const changed = newGoal.trim() !== currentGoal;
+            const prev = getPrevGoals(s);
+            const curr = goals[s.id] || ["", "", "", ""];
+            const changed = isChanged(s);
             return (
-              <div key={s.id} className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
+              <div key={s.id} className={cn("p-3 rounded-lg border space-y-2", changed ? "border-gold bg-gold/5" : "border-border bg-muted/20")}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-foreground">
                     {formatStudentName(s.student_name, s.english_name)}
@@ -2478,29 +2527,45 @@ function BulkGoalModal({
                     {s.level}
                   </span>
                 </div>
-                {currentGoal && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground">이전 목표</span>
-                    <span>{currentGoal}</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Previous month - read only */}
+                  <div className="space-y-1.5">
+                    {[0, 1, 2, 3].map(i => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground w-4 flex-shrink-0">{i + 1}</span>
+                        <div className="flex-1 h-7 px-2 text-xs rounded border border-border bg-muted/40 text-muted-foreground flex items-center truncate">
+                          {prev[i] || <span className="text-muted-foreground/40">—</span>}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-                <input
-                  type="text"
-                  value={newGoal}
-                  onChange={(e) => setGoals(prev => ({ ...prev, [s.id]: e.target.value }))}
-                  placeholder={currentGoal || "새 수업 목표 입력"}
-                  className={cn(
-                    "w-full h-8 px-3 text-sm rounded-md border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring",
-                    changed ? "border-gold" : "border-input"
-                  )}
-                />
+                  {/* This month - editable */}
+                  <div className="space-y-1.5">
+                    {[0, 1, 2, 3].map(i => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-navy font-medium w-4 flex-shrink-0">{i + 1}</span>
+                        <input
+                          type="text"
+                          value={curr[i]}
+                          onChange={(e) => {
+                            const updated = [...curr];
+                            updated[i] = e.target.value;
+                            setGoals(prev => ({ ...prev, [s.id]: updated }));
+                          }}
+                          placeholder={prev[i] || `${i + 1}주차 목표`}
+                          className="flex-1 h-7 px-2 text-xs rounded border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
         <div className="px-5 py-3 border-t border-border flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            {students.filter(s => (goals[s.id] || "").trim() !== (s.lesson_goal || "")).length}명 변경됨
+            {changedCount}명 변경됨
           </p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">취소</Button>
@@ -2508,7 +2573,7 @@ function BulkGoalModal({
               size="sm"
               className="h-8 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
               onClick={handleSave}
-              disabled={saving || students.filter(s => (goals[s.id] || "").trim() !== (s.lesson_goal || "")).length === 0}
+              disabled={saving || changedCount === 0}
             >
               {saving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
               저장
