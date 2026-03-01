@@ -110,7 +110,6 @@ export default function Classroom() {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionNumber, setSessionNumber] = useState<string | null>(null);
   const [lessonGoal, setLessonGoal] = useState("");
-  const [lessonGoalCount, setLessonGoalCount] = useState(0);
   const [editingGoal, setEditingGoal] = useState(false);
   const [editGoalValue, setEditGoalValue] = useState("");
   const [savingGoal, setSavingGoal] = useState(false);
@@ -197,23 +196,21 @@ export default function Classroom() {
         if (!meetLink) {
           const { data: isData } = await supabase
             .from("instructor_students")
-            .select("meet_link, english_name, lesson_goal, lesson_goal_count, id")
+            .select("meet_link, english_name, lesson_goal, id")
             .eq("student_name", sessionData.student_name)
             .maybeSingle();
           meetLink = isData?.meet_link ?? "";
           englishName = isData?.english_name ?? "";
           setLessonGoal(isData?.lesson_goal ?? "");
-          setLessonGoalCount(isData?.lesson_goal_count ?? 0);
           setStudentDbId(isData?.id ?? null);
         } else {
           const { data: isData } = await supabase
             .from("instructor_students")
-            .select("english_name, lesson_goal, lesson_goal_count, id")
+            .select("english_name, lesson_goal, id")
             .eq("student_name", sessionData.student_name)
             .maybeSingle();
           englishName = isData?.english_name ?? "";
           setLessonGoal(isData?.lesson_goal ?? "");
-          setLessonGoalCount(isData?.lesson_goal_count ?? 0);
           setStudentDbId(isData?.id ?? null);
         }
         setSession({
@@ -578,7 +575,7 @@ export default function Classroom() {
                 title="수업 목표 수정"
               >
                 <Sparkles className="w-3 h-3 text-gold/70" />
-                {lessonGoal} ({lessonGoalCount}회차)
+                {lessonGoal}
               </button>
             )}
             {role === "instructor" && !lessonGoal && !editingGoal && (
@@ -600,13 +597,10 @@ export default function Classroom() {
                       (async () => {
                         if (!studentDbId) return;
                         setSavingGoal(true);
-                        const goalChanged = editGoalValue.trim() !== lessonGoal;
                         await supabase.from("instructor_students").update({
                           lesson_goal: editGoalValue.trim() || null,
-                          lesson_goal_count: goalChanged ? 0 : lessonGoalCount,
                         }).eq("id", studentDbId);
                         setLessonGoal(editGoalValue.trim());
-                        if (goalChanged) setLessonGoalCount(0);
                         setEditingGoal(false);
                         setSavingGoal(false);
                         toast({ title: "수업 목표 저장 완료 ✓" });
@@ -623,13 +617,11 @@ export default function Classroom() {
                   onClick={async () => {
                     if (!studentDbId) return;
                     setSavingGoal(true);
-                    const goalChanged = editGoalValue.trim() !== lessonGoal;
+                    
                     await supabase.from("instructor_students").update({
                       lesson_goal: editGoalValue.trim() || null,
-                      lesson_goal_count: goalChanged ? 0 : lessonGoalCount,
                     }).eq("id", studentDbId);
                     setLessonGoal(editGoalValue.trim());
-                    if (goalChanged) setLessonGoalCount(0);
                     setEditingGoal(false);
                     setSavingGoal(false);
                     toast({ title: "수업 목표 저장 완료 ✓" });

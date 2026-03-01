@@ -94,7 +94,7 @@ interface Student {
   extraLessons: number;
   presetHomework: PresetHomework[];
   lessonGoal: string;
-  lessonGoalCount: number;
+  learningObjective: string;
   lessonHistory: LessonHistory[];
   reminderEnabled: boolean;
   meetLink: string;
@@ -252,7 +252,7 @@ export default function StudentManagement() {
       extraLessons: row.extra_lessons || 0,
       presetHomework: [],
       lessonGoal: row.lesson_goal || "",
-      lessonGoalCount: row.lesson_goal_count || 0,
+      learningObjective: row.learning_objective || "",
       lessonHistory: [],
       reminderEnabled: row.reminder_enabled ?? true,
       meetLink: row.meet_link || "",
@@ -445,7 +445,7 @@ export default function StudentManagement() {
     setEditingStudentId(s.id);
     setEditLevel(s.level);
     setEditExtra(s.extraLessons);
-    setEditGoal(s.lessonGoal);
+    setEditGoal(s.learningObjective);
     setEditInstructor(s.instructor);
     setEditEnglishName(s.englishName);
     setEditStartDate(s.startDate ? new Date(s.startDate + "T00:00:00") : undefined);
@@ -454,13 +454,11 @@ export default function StudentManagement() {
   const saveInlineEdit = async (id: number) => {
     const student = students.find(s => s.id === id);
     if (student?.dbId) {
-      const goalChanged = editGoal.trim() !== student.lessonGoal;
       await supabase.from("instructor_students").update({
         level: editLevel,
         extra_lessons: editExtra,
         instructor_name: editInstructor,
-        lesson_goal: editGoal.trim(),
-        lesson_goal_count: goalChanged ? 0 : student.lessonGoalCount,
+        learning_objective: editGoal.trim(),
         english_name: editEnglishName.trim() || null,
         start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
       }).eq("id", student.dbId);
@@ -468,14 +466,12 @@ export default function StudentManagement() {
     setStudents((prev) =>
       prev.map((s) => {
         if (s.id !== id) return s;
-        const goalChanged = editGoal.trim() !== s.lessonGoal;
         return {
           ...s,
           level: editLevel as Level,
           extraLessons: editExtra,
           instructor: editInstructor,
-          lessonGoal: editGoal.trim(),
-          lessonGoalCount: goalChanged ? 0 : s.lessonGoalCount,
+          learningObjective: editGoal.trim(),
           englishName: editEnglishName.trim(),
           startDate: editStartDate ? format(editStartDate, "yyyy-MM-dd") : "",
         };
@@ -569,7 +565,7 @@ export default function StudentManagement() {
       extraLessons: newStudent.extraLessons,
       presetHomework: [],
       lessonGoal: "",
-      lessonGoalCount: 0,
+      learningObjective: "",
       lessonHistory: [],
       reminderEnabled: true,
       meetLink: "",
@@ -1175,17 +1171,14 @@ export default function StudentManagement() {
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Target className="w-3 h-3" /> 수업 목표
+                            <Target className="w-3 h-3" /> 등록 계기 / 최종 목표
                           </Label>
                           <Input
                             value={editGoal}
                             onChange={(e) => setEditGoal(e.target.value)}
-                            placeholder="예: 시제 연습하기"
+                            placeholder="예: 해외여행 시 자유로운 대화"
                             className="h-8 text-sm"
                           />
-                          {editGoal.trim() !== student.lessonGoal && editGoal.trim() && (
-                            <p className="text-xs text-warning">⚠️ 목표 변경 시 수업 이력 카운트가 0에서 다시 시작됩니다</p>
-                          )}
                         </div>
                         {/* Fee preview */}
                         <div className="p-2 rounded bg-muted/40 text-xs flex items-center justify-between">
@@ -1238,9 +1231,9 @@ export default function StudentManagement() {
                             <p className="font-semibold text-foreground mt-0.5">{student.startDate || <span className="text-muted-foreground font-normal">미설정</span>}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground flex items-center gap-1"><Target className="w-3 h-3" />수업 목표</p>
+                            <p className="text-muted-foreground flex items-center gap-1"><Target className="w-3 h-3" />등록 계기 / 최종 목표</p>
                             <p className="font-semibold text-foreground mt-0.5 truncate">
-                              {student.lessonGoal ? `${student.lessonGoal} (${student.lessonGoalCount}회차)` : <span className="text-muted-foreground font-normal">미설정</span>}
+                              {student.learningObjective || <span className="text-muted-foreground font-normal">미설정</span>}
                             </p>
                           </div>
                         </div>
@@ -1422,8 +1415,8 @@ export default function StudentManagement() {
                       <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                         <BookOpen className="w-3.5 h-3.5 text-gold" />
                         최근 수업 이력
-                        {student.lessonGoal && (
-                          <span className="text-xs font-normal text-muted-foreground">— 현재 목표: {student.lessonGoal}</span>
+                        {student.learningObjective && (
+                          <span className="text-xs font-normal text-muted-foreground">— 최종 목표: {student.learningObjective}</span>
                         )}
                       </h4>
                       <button
