@@ -6,7 +6,7 @@ import {
   TrendingUp, Banknote, Coffee, FileText, ChevronLeft,
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
-  Shield, Paperclip, CheckCircle, ChevronDown, User, Lock, Monitor,
+  Shield, Paperclip, CheckCircle, ChevronDown, User, Lock, Monitor, Target,
 } from "lucide-react";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
@@ -1094,6 +1094,7 @@ export default function InstructorDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
+  const [showBulkGoalModal, setShowBulkGoalModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reviewHw, setReviewHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
   const [viewCheckedHw, setViewCheckedHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
@@ -1966,6 +1967,15 @@ export default function InstructorDashboard() {
                 <Users className="w-4 h-4 text-navy" />
                 담당 학생 관리
                 <span className="text-xs px-2 py-0.5 rounded-full bg-navy/10 text-navy font-medium">{students.filter(s => { const sp = allPeriods[studentTabPeriodIdx] || period; return !s.start_date || !sp || s.start_date <= sp.end_date; }).length}명</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 ml-2 border-gold/40 text-gold-dark hover:bg-gold/8"
+                  onClick={() => setShowBulkGoalModal(true)}
+                >
+                  <Target className="w-3 h-3" />
+                  목표 일괄 설정
+                </Button>
               </h2>
               {allPeriods.length > 0 && (
                 <div className="flex items-center gap-2">
@@ -2392,6 +2402,125 @@ export default function InstructorDashboard() {
           />
         );
       })()}
+      {showBulkGoalModal && (
+        <BulkGoalModal
+          students={students.filter(s => s.status === "active")}
+          onClose={() => setShowBulkGoalModal(false)}
+          onSaved={() => { setShowBulkGoalModal(false); if (instructor) loadData(instructor); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Bulk Goal Setting Modal ─────────────────────────────────────────── */
+function BulkGoalModal({
+  students,
+  onClose,
+  onSaved,
+}: {
+  students: StudentFull[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [goals, setGoals] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const init: Record<string, string> = {};
+    students.forEach(s => { init[s.id] = s.lesson_goal || ""; });
+    setGoals(init);
+  }, [students]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const updates = students.filter(s => {
+      const newGoal = (goals[s.id] || "").trim();
+      return newGoal !== (s.lesson_goal || "");
+    });
+    for (const s of updates) {
+      const newGoal = (goals[s.id] || "").trim();
+      const goalChanged = newGoal !== (s.lesson_goal || "");
+      await supabase.from("instructor_students").update({
+        lesson_goal: newGoal || null,
+        lesson_goal_count: goalChanged ? 0 : (s.lesson_goal_count || 0),
+      }).eq("id", s.id);
+    }
+    toast({ title: `${updates.length}명의 수업 목표가 저장되었습니다 ✓` });
+    setSaving(false);
+    onSaved();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 bg-card rounded-2xl shadow-xl border border-border w-full max-w-lg max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h3 className="font-bold text-foreground flex items-center gap-2">
+            <Target className="w-4 h-4 text-gold-dark" />
+            월간 수업 목표 일괄 설정
+          </h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+          {students.map(s => {
+            const currentGoal = s.lesson_goal || "";
+            const newGoal = goals[s.id] || "";
+            const changed = newGoal.trim() !== currentGoal;
+            return (
+              <div key={s.id} className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-foreground">
+                    {formatStudentName(s.student_name, s.english_name)}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    {s.level}
+                  </span>
+                </div>
+                {currentGoal && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground">이전 목표</span>
+                    <span>{currentGoal} ({s.lesson_goal_count || 0}회차)</span>
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={newGoal}
+                  onChange={(e) => setGoals(prev => ({ ...prev, [s.id]: e.target.value }))}
+                  placeholder={currentGoal || "새 수업 목표 입력"}
+                  className={cn(
+                    "w-full h-8 px-3 text-sm rounded-md border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring",
+                    changed ? "border-gold" : "border-input"
+                  )}
+                />
+                {changed && newGoal.trim() && (
+                  <p className="text-[10px] text-warning">⚠️ 목표 변경 시 회차가 0에서 다시 시작됩니다</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="px-5 py-3 border-t border-border flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {students.filter(s => (goals[s.id] || "").trim() !== (s.lesson_goal || "")).length}명 변경됨
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">취소</Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
+              onClick={handleSave}
+              disabled={saving || students.filter(s => (goals[s.id] || "").trim() !== (s.lesson_goal || "")).length === 0}
+            >
+              {saving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
+              저장
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

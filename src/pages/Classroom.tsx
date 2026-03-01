@@ -109,6 +109,12 @@ export default function Classroom() {
   const [session, setSession] = useState<SessionData>(DEFAULT_SESSION);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionNumber, setSessionNumber] = useState<string | null>(null);
+  const [lessonGoal, setLessonGoal] = useState("");
+  const [lessonGoalCount, setLessonGoalCount] = useState(0);
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [editGoalValue, setEditGoalValue] = useState("");
+  const [savingGoal, setSavingGoal] = useState(false);
+  const [studentDbId, setStudentDbId] = useState<string | null>(null);
 
   // Load session from DB if sessionId provided
   useEffect(() => {
@@ -191,18 +197,24 @@ export default function Classroom() {
         if (!meetLink) {
           const { data: isData } = await supabase
             .from("instructor_students")
-            .select("meet_link, english_name")
+            .select("meet_link, english_name, lesson_goal, lesson_goal_count, id")
             .eq("student_name", sessionData.student_name)
             .maybeSingle();
           meetLink = isData?.meet_link ?? "";
           englishName = isData?.english_name ?? "";
+          setLessonGoal(isData?.lesson_goal ?? "");
+          setLessonGoalCount(isData?.lesson_goal_count ?? 0);
+          setStudentDbId(isData?.id ?? null);
         } else {
           const { data: isData } = await supabase
             .from("instructor_students")
-            .select("english_name")
+            .select("english_name, lesson_goal, lesson_goal_count, id")
             .eq("student_name", sessionData.student_name)
             .maybeSingle();
           englishName = isData?.english_name ?? "";
+          setLessonGoal(isData?.lesson_goal ?? "");
+          setLessonGoalCount(isData?.lesson_goal_count ?? 0);
+          setStudentDbId(isData?.id ?? null);
         }
         setSession({
           sessionId: sessionData.id,
@@ -558,6 +570,80 @@ export default function Classroom() {
             )}
             <span className="text-sidebar-foreground/60 text-xs hidden sm:inline">with {session.instructorName}</span>
             {sessionTopic && <span className="text-gold text-xs hidden md:inline">· {sessionTopic}</span>}
+            {/* Inline lesson goal */}
+            {role === "instructor" && lessonGoal && !editingGoal && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setEditGoalValue(lessonGoal); setEditingGoal(true); }}
+                className="text-xs px-2 py-0.5 rounded-full bg-sidebar-accent/50 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors hidden md:inline-flex items-center gap-1"
+                title="수업 목표 수정"
+              >
+                <Sparkles className="w-3 h-3 text-gold/70" />
+                {lessonGoal} ({lessonGoalCount}회차)
+              </button>
+            )}
+            {role === "instructor" && !lessonGoal && !editingGoal && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setEditGoalValue(""); setEditingGoal(true); }}
+                className="text-xs px-2 py-0.5 rounded-full bg-sidebar-accent/30 text-sidebar-foreground/40 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground/70 transition-colors hidden md:inline-flex items-center gap-1"
+                title="수업 목표 추가"
+              >
+                <Plus className="w-3 h-3" /> 수업 목표
+              </button>
+            )}
+            {editingGoal && (
+              <span className="hidden md:inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <Input
+                  value={editGoalValue}
+                  onChange={(e) => setEditGoalValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      (async () => {
+                        if (!studentDbId) return;
+                        setSavingGoal(true);
+                        const goalChanged = editGoalValue.trim() !== lessonGoal;
+                        await supabase.from("instructor_students").update({
+                          lesson_goal: editGoalValue.trim() || null,
+                          lesson_goal_count: goalChanged ? 0 : lessonGoalCount,
+                        }).eq("id", studentDbId);
+                        setLessonGoal(editGoalValue.trim());
+                        if (goalChanged) setLessonGoalCount(0);
+                        setEditingGoal(false);
+                        setSavingGoal(false);
+                        toast({ title: "수업 목표 저장 완료 ✓" });
+                      })();
+                    }
+                    if (e.key === "Escape") setEditingGoal(false);
+                  }}
+                  placeholder="수업 목표 입력"
+                  className="h-6 text-xs w-40 bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground"
+                  autoFocus
+                  disabled={savingGoal}
+                />
+                <button
+                  onClick={async () => {
+                    if (!studentDbId) return;
+                    setSavingGoal(true);
+                    const goalChanged = editGoalValue.trim() !== lessonGoal;
+                    await supabase.from("instructor_students").update({
+                      lesson_goal: editGoalValue.trim() || null,
+                      lesson_goal_count: goalChanged ? 0 : lessonGoalCount,
+                    }).eq("id", studentDbId);
+                    setLessonGoal(editGoalValue.trim());
+                    if (goalChanged) setLessonGoalCount(0);
+                    setEditingGoal(false);
+                    setSavingGoal(false);
+                    toast({ title: "수업 목표 저장 완료 ✓" });
+                  }}
+                  className="text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                  disabled={savingGoal}
+                >
+                  {savingGoal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                </button>
+                <button onClick={() => setEditingGoal(false)} className="text-sidebar-foreground/50 hover:text-sidebar-foreground">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {objectives.map((obj, i) => (
