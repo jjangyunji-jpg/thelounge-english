@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   CheckCircle2, Circle, BookOpen, PenLine, Mic, Brain,
-  Trophy, ExternalLink, Link2, ClipboardList, Paperclip,
+  Trophy, ExternalLink, Link2, ClipboardList, Paperclip, Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import HomeworkSubmitModal from "./HomeworkSubmitModal";
 import HomeworkFeedbackModal from "./HomeworkFeedbackModal";
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
 const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
   writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]" },
@@ -18,6 +18,7 @@ const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: s
   speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]" },
   memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500" },
   file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500" },
+  watching:   { label: "시청하기",   icon: Monitor, color: "text-rose-500" },
 };
 
 const URL_REGEX = /https?:\/\/[^\s<>"']+/g;
@@ -172,7 +173,7 @@ export default function WeeklyTasksSection({
             const done = sub && (sub.status === "submitted" || sub.status === "reviewed");
             const meta = HW_META[a.type as HwType] ?? HW_META.writing;
             const Icon = meta.icon;
-            const isReading = a.type === "reading";
+            const isReading = a.type === "reading" || a.type === "watching";
             const urls = extractUrls(a.description);
 
             return (

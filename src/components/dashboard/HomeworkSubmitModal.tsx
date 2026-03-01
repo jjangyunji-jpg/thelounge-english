@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import {
   Mic, Square, Play, Pause, Send, RotateCcw, Loader2, X,
-  PenLine, BookOpen, Brain, Paperclip, FileUp,
+  PenLine, BookOpen, Brain, Paperclip, FileUp, Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
 const HW_META: Record<HwType, {
   label: string; icon: React.ElementType; color: string;
@@ -20,6 +20,7 @@ const HW_META: Record<HwType, {
   speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]",   requiresText: false, requiresAudio: true },
   memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500",              requiresText: false, requiresAudio: false },
   file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500",                requiresText: false, requiresAudio: false, requiresFile: true },
+  watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500",                requiresText: false, requiresAudio: false },
 };
 
 interface Assignment {

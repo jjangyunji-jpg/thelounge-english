@@ -9,7 +9,7 @@ import {
   Volume2, Loader2, Square, PenLine, Mic, Brain,
   AlertCircle, BanIcon, Bell, ChevronLeft,
   ChevronRight, Coffee, CalendarDays, TrendingUp, FileText,
-  RotateCcw, X, Activity, CreditCard, Heart, Paperclip,
+  RotateCcw, X, Activity, CreditCard, Heart, Paperclip, Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,13 +129,14 @@ interface TestRecord {
   completed_at: string | null;
 }
 
-type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
   writing:    { label: "쓰기",       icon: PenLine,    color: "text-amber-600" },
   reading:    { label: "읽기",       icon: BookOpen,   color: "text-orange-500" },
   speaking:   { label: "말하기",     icon: Mic,        color: "text-rose-500" },
   memorizing: { label: "외우기",     icon: Brain,      color: "text-violet-500" },
   file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500" },
+  watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500" },
 };
 
 function fmtDate(iso: string) {
@@ -1301,7 +1302,7 @@ export default function StudentDashboard() {
                           return `${week}주차`;
                         })()
                       : null;
-                    const isQuickType = a.type === "reading" || a.type === "memorizing";
+                    const isQuickType = a.type === "reading" || a.type === "memorizing" || a.type === "watching";
                     const isPending = status === "pending";
                     return (
                       <div key={a.id} className="flex items-center gap-2.5 px-3 py-2.5">

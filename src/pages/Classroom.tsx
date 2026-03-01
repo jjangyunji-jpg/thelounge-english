@@ -5,7 +5,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked, Paperclip,
-  Loader2,
+  Loader2, Monitor,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type ClassState = "pre" | "ready" | "active" | "ended";
 type Role = "instructor" | "student";
-type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file";
+type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
 interface HomeworkItem {
   id: string;
@@ -39,6 +39,7 @@ const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; col
   speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]",   hint: "녹음 필수 / 텍스트 선택" },
   memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500",              hint: "녹음 선택 (대화문 등)" },
   file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500",                hint: "파일 첨부 필수" },
+  watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500",                hint: "시청 후 체크" },
 };
 
 function getWeekLabel(date = new Date()) {
