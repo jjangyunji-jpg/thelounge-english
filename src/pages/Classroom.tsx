@@ -274,7 +274,7 @@ export default function Classroom() {
   const [objectives, setObjectives] = useState<string[]>([]);
   const [sessionTopic, setSessionTopic] = useState("");
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
-  const [sidebarSessions, setSidebarSessions] = useState<{ id: string; scheduled_at: string; topic: string | null }[]>([]);
+  const [sidebarSessions, setSidebarSessions] = useState<{ id: string; scheduled_at: string; topic: string | null; notes?: string | null }[]>([]);
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -383,7 +383,7 @@ export default function Classroom() {
       setSidebarLoading(true);
       const { data } = await supabase
         .from("class_sessions")
-        .select("id, scheduled_at, topic")
+        .select("id, scheduled_at, topic, notes")
         .eq("student_name", session.dbStudentName)
         .lte("scheduled_at", new Date().toISOString())
         .order("scheduled_at", { ascending: false })
