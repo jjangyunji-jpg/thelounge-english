@@ -280,12 +280,18 @@ function BigCalendar({
 }) {
   // Use period start month as primary, fallback to current month
   const baseDate = period ? new Date(period.start_date + "T00:00:00") : new Date();
-  const defaultYear = baseDate.getFullYear();
-  const defaultMonth = baseDate.getMonth();
+  const year = baseDate.getFullYear();
+  const month = baseDate.getMonth();
 
-  const [calOffset, setCalOffset] = useState(0);
-  const year = new Date(defaultYear, defaultMonth + calOffset).getFullYear();
-  const month = new Date(defaultYear, defaultMonth + calOffset).getMonth();
+  // Determine end month from period
+  let endYear = year;
+  let endMonth = month;
+  if (period) {
+    const pe = new Date(period.end_date + "T00:00:00");
+    endYear = pe.getFullYear();
+    endMonth = pe.getMonth();
+  }
+
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -307,10 +313,31 @@ function BigCalendar({
   const holidaySet = buildHolidaySet(holidays);
   const virtualByDate = buildVirtualSchedules(students, year, month, holidaySet);
 
-  // Build cells for current month only
+  // Build cells spanning from period start month through period end month
   const baseCells: { day: number; month: number; year: number }[] = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    baseCells.push({ day: d, month, year });
+  let curYear = year;
+  let curMonth = month;
+  while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+    const dim = new Date(curYear, curMonth + 1, 0).getDate();
+    for (let d = 1; d <= dim; d++) {
+      baseCells.push({ day: d, month: curMonth, year: curYear });
+    }
+    curMonth++;
+    if (curMonth > 11) { curMonth = 0; curYear++; }
+  }
+
+  // Also build virtual schedules for extended months
+  if (endMonth !== month || endYear !== year) {
+    let em = month + 1;
+    let ey = year;
+    while (ey < endYear || (ey === endYear && em <= endMonth)) {
+      const extraVirtual = buildVirtualSchedules(students, ey, em, holidaySet);
+      extraVirtual.forEach((v, k) => {
+        if (!virtualByDate.has(k)) virtualByDate.set(k, v);
+      });
+      em++;
+      if (em > 11) { em = 0; ey++; }
+    }
   }
 
   // Pad end to complete the last week row
@@ -327,15 +354,10 @@ function BigCalendar({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setCalOffset(o => o - 1)} className="p-1 rounded-md hover:bg-muted transition-colors">
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <span className="text-base font-bold text-foreground min-w-[100px] text-center">{year}년 {month + 1}월</span>
-          <button onClick={() => setCalOffset(o => o + 1)} className="p-1 rounded-md hover:bg-muted transition-colors">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+        <span className="text-base font-bold text-foreground">
+          {year}년 {month + 1}월
+          {(endMonth !== month || endYear !== year) && ` ~ ${endYear}년 ${endMonth + 1}월`}
+        </span>
         {period && (
           <span className="text-xs text-muted-foreground">{period.start_date} ~ {period.end_date}</span>
         )}

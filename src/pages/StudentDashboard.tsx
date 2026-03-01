@@ -219,13 +219,8 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
 }) {
   const today = new Date();
 
-  // Primary month from the period start; extend grid rows to cover end date
-  const defaultYear = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getFullYear() : today.getFullYear();
-  const defaultMonth = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getMonth() : today.getMonth();
-
-  const [calOffset, setCalOffset] = useState(0);
-  const primaryYear = new Date(defaultYear, defaultMonth + calOffset).getFullYear();
-  const primaryMonth = new Date(defaultYear, defaultMonth + calOffset).getMonth();
+  const primaryYear = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getFullYear() : today.getFullYear();
+  const primaryMonth = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getMonth() : today.getMonth();
 
   const holidayRanges = holidays.map(h => ({
     start: new Date(h.date_start + "T00:00:00"),
@@ -243,74 +238,92 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod }: {
     holidayRanges.some(r => d >= r.start && d <= r.end);
   const isTuesdayOff = (d: Date) => d.getDay() === 2;
 
-  const year = primaryYear;
-  const month = primaryMonth;
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
+  // Build cells spanning from period start month through period end month
   const cells: { day: number; month: number; year: number }[] = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ day: d, month, year });
+  const startYear = primaryYear;
+  const startMonth = primaryMonth;
+  let endYear = startYear;
+  let endMonth = startMonth;
+  if (selectedPeriod) {
+    const pe = new Date(selectedPeriod.end_date + "T00:00:00");
+    endYear = pe.getFullYear();
+    endMonth = pe.getMonth();
   }
+
+  // Add days from start month through end month
+  let curYear = startYear;
+  let curMonth = startMonth;
+  while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+    const dim = new Date(curYear, curMonth + 1, 0).getDate();
+    for (let d = 1; d <= dim; d++) {
+      cells.push({ day: d, month: curMonth, year: curYear });
+    }
+    curMonth++;
+    if (curMonth > 11) { curMonth = 0; curYear++; }
+  }
+
+  const firstDay = new Date(startYear, startMonth, 1).getDay();
   const blanks = firstDay;
   const totalSlots = blanks + cells.length;
   const paddedTotal = Math.ceil(totalSlots / 7) * 7;
 
+  // Period label
+  const periodLabel = selectedPeriod
+    ? `${startYear}년 ${startMonth + 1}월`
+    : `${today.getFullYear()}년 ${today.getMonth() + 1}월`;
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <div className="flex items-center justify-center gap-3">
-          <button onClick={() => setCalOffset(o => o - 1)} className="p-1 rounded-md hover:bg-muted transition-colors">
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <span className="font-bold text-foreground text-sm min-w-[90px] text-center">{year}년 {month + 1}월</span>
-          <button onClick={() => setCalOffset(o => o + 1)} className="p-1 rounded-md hover:bg-muted transition-colors">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
+        <div className="text-center">
+          <span className="font-bold text-foreground text-sm">{periodLabel}</span>
+          {selectedPeriod && endMonth !== startMonth && (
+            <span className="font-bold text-foreground text-sm"> ~ {endYear}년 {endMonth + 1}월</span>
+          )}
         </div>
-            <div className="grid grid-cols-7 text-center">
-              {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
-                <div key={d} className={cn(
-                  "text-[10px] font-semibold pb-1",
-                  i === 0 ? "text-destructive/70" : i === 2 ? "text-muted-foreground/40" : "text-muted-foreground"
-                )}>{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-px">
-              {Array.from({ length: paddedTotal }).map((_, idx) => {
-                if (idx < blanks || idx >= blanks + cells.length) {
-                  return <div key={idx} />;
-                }
-                const cell = cells[idx - blanks];
-                const date = new Date(cell.year, cell.month, cell.day);
-                const isNextMonth = cell.month !== month;
-                const holiday = isHoliday(date);
-                const tuesdayOff = isTuesdayOff(date);
-                const inPeriod = isInPeriod(date);
-                const session = allCalendarDates.has(date.toDateString());
-                const todayMark = today.getFullYear() === cell.year && today.getMonth() === cell.month && today.getDate() === cell.day;
-                const isOff = holiday || tuesdayOff;
-                return (
-                  <div key={idx} className={cn(
-                    "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all",
-                    todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
-                      : session && !isOff ? "bg-gold/15 text-gold-dark font-semibold"
-                      : holiday ? "text-muted-foreground/30"
-                      : tuesdayOff ? "text-muted-foreground/30"
-                      : inPeriod ? "text-foreground hover:bg-muted/50"
-                      : "text-muted-foreground/40 hover:bg-muted/30",
-                  )}>
-                    {isNextMonth ? `${cell.month + 1}/${cell.day}` : cell.day}
-                    {session && !todayMark && !isOff && (
-                      <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
-                    )}
-                    {holiday && !todayMark && (
-                      <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-muted-foreground/30" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+        <div className="grid grid-cols-7 text-center">
+          {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
+            <div key={d} className={cn(
+              "text-[10px] font-semibold pb-1",
+              i === 0 ? "text-destructive/70" : i === 2 ? "text-muted-foreground/40" : "text-muted-foreground"
+            )}>{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-px">
+          {Array.from({ length: paddedTotal }).map((_, idx) => {
+            if (idx < blanks || idx >= blanks + cells.length) {
+              return <div key={idx} />;
+            }
+            const cell = cells[idx - blanks];
+            const date = new Date(cell.year, cell.month, cell.day);
+            const isNextMonth = cell.month !== startMonth;
+            const holiday = isHoliday(date);
+            const tuesdayOff = isTuesdayOff(date);
+            const inPeriod = isInPeriod(date);
+            const session = allCalendarDates.has(date.toDateString());
+            const todayMark = today.getFullYear() === cell.year && today.getMonth() === cell.month && today.getDate() === cell.day;
+            const isOff = holiday || tuesdayOff;
+            return (
+              <div key={idx} className={cn(
+                "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all",
+                todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
+                  : session && !isOff ? "bg-gold/15 text-gold-dark font-semibold"
+                  : holiday ? "text-muted-foreground/30"
+                  : tuesdayOff ? "text-muted-foreground/30"
+                  : inPeriod ? "text-foreground hover:bg-muted/50"
+                  : "text-muted-foreground/40 hover:bg-muted/30",
+              )}>
+                {isNextMonth ? `${cell.month + 1}/${cell.day}` : cell.day}
+                {session && !todayMark && !isOff && (
+                  <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
+                )}
+                {holiday && !todayMark && (
+                  <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-muted-foreground/30" />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
       {/* Legend */}
       <div className="flex items-center gap-3 pt-1 text-[10px] text-muted-foreground flex-wrap">
