@@ -359,7 +359,7 @@ export default function Classroom() {
         setNotes(notesRaw);
       } else {
         // Default template for empty notes
-        const template = `<p></p><div data-callout data-callout-type="info" class="callout callout-info"><h1>Homework Feedback</h1></div><p></p><p></p><div data-callout data-callout-type="info" class="callout callout-info"><h1>Small Talk</h1></div><p></p><p></p>`;
+        const template = `<p></p><div data-callout data-callout-type="info" class="callout callout-info"><h1>Homework Feedback /</h1></div><p></p><p></p><div data-callout data-callout-type="info" class="callout callout-info"><h1>Small Talk /</h1></div><p></p><p></p>`;
         setNotes(template);
       }
 
