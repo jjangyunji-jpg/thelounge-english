@@ -353,8 +353,10 @@ export default function Classroom() {
     const loadData = async () => {
       const { data: sessionData } = await supabase
         .from("class_sessions").select("notes, remarks").eq("id", session.sessionId).single();
-      if (sessionData?.notes) {
-        setNotes(sessionData.notes);
+      const notesRaw = sessionData?.notes || "";
+      const isEmptyNotes = !notesRaw || notesRaw.replace(/<p><\/p>/g, "").replace(/<br\s*\/?>/g, "").trim() === "";
+      if (!isEmptyNotes) {
+        setNotes(notesRaw);
       } else {
         // Default template for empty notes
         const template = `<p></p><div data-callout data-callout-type="info" class="callout callout-info"><h1>Homework Feedback</h1></div><p></p><p></p><div data-callout data-callout-type="info" class="callout callout-info"><h1>Small Talk</h1></div><p></p><p></p>`;
