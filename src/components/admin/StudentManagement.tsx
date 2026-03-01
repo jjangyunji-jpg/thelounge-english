@@ -347,15 +347,30 @@ export default function StudentManagement() {
     setWithdrawReason("");
   };
 
+  const [editEnglishName, setEditEnglishName] = useState("");
+
   const startInlineEdit = (s: Student) => {
     setEditingStudentId(s.id);
     setEditLevel(s.level);
     setEditExtra(s.extraLessons);
     setEditGoal(s.lessonGoal);
     setEditInstructor(s.instructor);
+    setEditEnglishName(s.englishName);
   };
 
-  const saveInlineEdit = (id: number) => {
+  const saveInlineEdit = async (id: number) => {
+    const student = students.find(s => s.id === id);
+    if (student?.dbId) {
+      const goalChanged = editGoal.trim() !== student.lessonGoal;
+      await supabase.from("instructor_students").update({
+        level: editLevel,
+        extra_lessons: editExtra,
+        instructor_name: editInstructor,
+        lesson_goal: editGoal.trim(),
+        lesson_goal_count: goalChanged ? 0 : student.lessonGoalCount,
+        english_name: editEnglishName.trim() || null,
+      }).eq("id", student.dbId);
+    }
     setStudents((prev) =>
       prev.map((s) => {
         if (s.id !== id) return s;
@@ -367,6 +382,7 @@ export default function StudentManagement() {
           instructor: editInstructor,
           lessonGoal: editGoal.trim(),
           lessonGoalCount: goalChanged ? 0 : s.lessonGoalCount,
+          englishName: editEnglishName.trim(),
         };
       })
     );
@@ -916,6 +932,15 @@ export default function StudentManagement() {
 
                     {isEditing ? (
                       <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">영어이름</Label>
+                          <Input
+                            value={editEnglishName}
+                            onChange={(e) => setEditEnglishName(e.target.value)}
+                            placeholder="Joy"
+                            className="h-8 text-sm"
+                          />
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">레벨</Label>
