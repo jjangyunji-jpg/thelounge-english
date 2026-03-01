@@ -892,17 +892,6 @@ export default function Classroom() {
                   placeholder={`수업 내용을 자유롭게 타이핑하세요...\n\nToday's topic: ${session.topic}`}
                   editorRef={notesEditorRef}
                 />
-                {classState === "active" && (
-                  <div className="px-4 py-2.5 border-t border-border bg-muted/20 flex items-center gap-3">
-                    <Button size="sm" onClick={handleExtractVocab} disabled={extracting || !notes.trim()}
-                      className="gap-2 bg-navy hover:bg-navy-light text-primary-foreground text-xs h-7"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      {extracting ? "추출 중..." : "단어 미리 추출"}
-                    </Button>
-                    <span className="text-xs text-muted-foreground">노트에서 단어를 AI로 바로 추출할 수 있습니다</span>
-                  </div>
-                )}
               </div>
 
               {/* ── REMARKS (비고) ────────────────────────────────────── */}
