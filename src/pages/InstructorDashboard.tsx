@@ -278,22 +278,18 @@ function BigCalendar({
   onSelectDate: (d: Date) => void;
   period: SchedulePeriod | null;
 }) {
-  // Use period start month as primary, fallback to current month
-  const baseDate = period ? new Date(period.start_date + "T00:00:00") : new Date();
-  const year = baseDate.getFullYear();
-  const month = baseDate.getMonth();
+  // Period-based calendar: show only the weeks the period spans
+  const baseStart = period ? new Date(period.start_date + "T00:00:00") : new Date();
+  const baseEnd = period ? new Date(period.end_date + "T00:00:00") : new Date(baseStart.getFullYear(), baseStart.getMonth() + 1, 0);
 
-  // Determine end month from period
-  let endYear = year;
-  let endMonth = month;
-  if (period) {
-    const pe = new Date(period.end_date + "T00:00:00");
-    endYear = pe.getFullYear();
-    endMonth = pe.getMonth();
-  }
+  // Grid: Sunday of start week → Saturday of end week
+  const gridStart = new Date(baseStart);
+  gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+  const gridEnd = new Date(baseEnd);
+  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const primaryMonth = baseStart.getMonth();
+  const primaryYear = baseStart.getFullYear();
 
   // Group sessions by date
   const sessionsByDate = new Map<string, ClassSession[]>();
@@ -309,55 +305,39 @@ function BigCalendar({
     meetingsByDate.get(key)!.push(m);
   });
 
-  // Virtual (recurring) schedules
+  // Virtual (recurring) schedules - build for all months in range
   const holidaySet = buildHolidaySet(holidays);
-  const virtualByDate = buildVirtualSchedules(students, year, month, holidaySet);
-
-  // Build cells spanning from period start month through period end month
-  const baseCells: { day: number; month: number; year: number }[] = [];
-  let curYear = year;
-  let curMonth = month;
-  while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
-    const dim = new Date(curYear, curMonth + 1, 0).getDate();
-    for (let d = 1; d <= dim; d++) {
-      baseCells.push({ day: d, month: curMonth, year: curYear });
-    }
-    curMonth++;
-    if (curMonth > 11) { curMonth = 0; curYear++; }
-  }
-
-  // Also build virtual schedules for extended months
-  if (endMonth !== month || endYear !== year) {
-    let em = month + 1;
-    let ey = year;
-    while (ey < endYear || (ey === endYear && em <= endMonth)) {
-      const extraVirtual = buildVirtualSchedules(students, ey, em, holidaySet);
-      extraVirtual.forEach((v, k) => {
-        if (!virtualByDate.has(k)) virtualByDate.set(k, v);
-      });
-      em++;
-      if (em > 11) { em = 0; ey++; }
+  const virtualByDate = new Map<string, { student_name: string; time: string }[]>();
+  {
+    const seenMonths = new Set<string>();
+    for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      if (!seenMonths.has(key)) {
+        seenMonths.add(key);
+        const mv = buildVirtualSchedules(students, d.getFullYear(), d.getMonth(), holidaySet);
+        mv.forEach((v, k) => { if (!virtualByDate.has(k)) virtualByDate.set(k, v); });
+      }
     }
   }
 
-  // Pad end to complete the last week row
-  const totalWithPrefix = firstDay + baseCells.length;
-  const padEnd = (7 - (totalWithPrefix % 7)) % 7;
+  // Build cells
+  const cells: ({ day: number; month: number; year: number } | null)[] = [];
+  for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
+    cells.push({ day: d.getDate(), month: d.getMonth(), year: d.getFullYear() });
+  }
 
-  const cells: ({ day: number; month: number; year: number } | null)[] = [
-    ...Array(firstDay).fill(null),
-    ...baseCells,
-    ...Array(padEnd).fill(null),
-  ];
+  // Header
+  const pEndMonth = baseEnd.getMonth();
+  const pEndYear = baseEnd.getFullYear();
+  const headerLabel = primaryMonth === pEndMonth && primaryYear === pEndYear
+    ? `${primaryYear}년 ${primaryMonth + 1}월`
+    : `${primaryYear}년 ${primaryMonth + 1}월 ~ ${pEndYear}년 ${pEndMonth + 1}월`;
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-base font-bold text-foreground">
-          {year}년 {month + 1}월
-          {(endMonth !== month || endYear !== year) && ` ~ ${endYear}년 ${endMonth + 1}월`}
-        </span>
+        <span className="text-base font-bold text-foreground">{headerLabel}</span>
         {period && (
           <span className="text-xs text-muted-foreground">{period.start_date} ~ {period.end_date}</span>
         )}
@@ -375,7 +355,7 @@ function BigCalendar({
         {cells.map((cell, idx) => {
           if (cell === null) return <div key={idx} className="aspect-square" />;
           const date = new Date(cell.year, cell.month, cell.day);
-          const isNextMonth = cell.month !== month;
+          const isNextMonth = cell.month !== primaryMonth || cell.year !== primaryYear;
           const dateStr = date.toDateString();
           const daySessions = sessionsByDate.get(dateStr) || [];
           const dayMeetings = meetingsByDate.get(dateStr) || [];
