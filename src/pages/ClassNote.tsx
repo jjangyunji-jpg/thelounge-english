@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, FileText, Clock, BookOpen,
-  Calendar, Loader2,
+  Calendar, Loader2, Download,
 } from "lucide-react";
+import { exportNotesPdf } from "@/lib/exportNotesPdf";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { formatStudentName } from "@/lib/formatStudentName";
 
 import { cn } from "@/lib/utils";
@@ -42,6 +45,7 @@ export default function ClassNote() {
   const urlStudent = searchParams.get("name") || "";
   const sidebarOpen = searchParams.get("sidebar") === "open";
 
+  const { toast } = useToast();
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [englishName, setEnglishName] = useState<string | null>(null);
@@ -161,6 +165,24 @@ export default function ClassNote() {
               <span className="text-xs px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground font-medium">
                 {formatStudentName(displayName || student, englishName)}
               </span>
+            )}
+            {student && sessions.length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-[10px] gap-1 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                onClick={async () => {
+                  const withNotes = sessions.filter(s => s.notes && s.notes.trim());
+                  if (withNotes.length === 0) {
+                    toast({ title: "노트가 있는 수업이 없습니다", variant: "destructive" });
+                    return;
+                  }
+                  await exportNotesPdf(withNotes, student);
+                  toast({ title: `${withNotes.length}개 수업 노트를 PDF로 내보냈습니다` });
+                }}
+              >
+                <Download className="w-3 h-3" />PDF
+              </Button>
             )}
           </div>
           {selectedSession && (
