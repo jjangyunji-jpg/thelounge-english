@@ -88,9 +88,10 @@ serve(async (req) => {
     }
 
     // 4. Get existing sessions in this period to avoid duplicates
+    // Also fetch notes/topic/started_at to protect sessions with data
     const { data: existingSessions } = await sb
       .from("class_sessions")
-      .select("student_name, scheduled_at")
+      .select("student_name, scheduled_at, notes, topic, started_at")
       .gte("scheduled_at", period.start_date + "T00:00:00+09:00")
       .lte("scheduled_at", period.end_date + "T23:59:59+09:00");
 
