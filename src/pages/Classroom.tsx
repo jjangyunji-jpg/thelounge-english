@@ -264,6 +264,7 @@ export default function Classroom() {
   const [hwOpen, setHwOpen] = useState(true);
   const [remarks, setRemarks] = useState("");
   const [remarksSaving, setRemarksSaving] = useState(false);
+  const [remarksSaved, setRemarksSaved] = useState(false);
   const remarksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState(false);
@@ -289,12 +290,22 @@ export default function Classroom() {
   const autoSaveRemarks = useCallback(async (text: string) => {
     if (!session.sessionId) return;
     setRemarksSaving(true);
-    await supabase.from("class_sessions").update({ remarks: text }).eq("id", session.sessionId);
+    const { error } = await supabase.from("class_sessions").update({ remarks: text }).eq("id", session.sessionId);
     setRemarksSaving(false);
+    if (!error) {
+      setRemarksSaved(true);
+      setTimeout(() => setRemarksSaved(false), 2000);
+    }
   }, [session.sessionId]);
+
+  const handleRemarksSave = () => {
+    if (remarksTimerRef.current) clearTimeout(remarksTimerRef.current);
+    autoSaveRemarks(remarks);
+  };
 
   const handleRemarksChange = (val: string) => {
     setRemarks(val);
+    setRemarksSaved(false);
     if (remarksTimerRef.current) clearTimeout(remarksTimerRef.current);
     remarksTimerRef.current = setTimeout(() => autoSaveRemarks(val), 1500);
   };
@@ -817,7 +828,17 @@ export default function Classroom() {
                       <FileText className="w-4 h-4 text-gold" />
                       <span className="font-semibold text-sm text-foreground">비고</span>
                     </div>
-                    {remarksSaving && <span className="text-[10px] text-muted-foreground">저장 중...</span>}
+                    <div className="flex items-center gap-2">
+                      {remarksSaving && <span className="text-[10px] text-muted-foreground">저장 중...</span>}
+                      {remarksSaved && !remarksSaving && <span className="text-[10px] text-[hsl(var(--success))] flex items-center gap-0.5"><Check className="w-3 h-3" />저장됨</span>}
+                      <button
+                        onClick={handleRemarksSave}
+                        disabled={remarksSaving || !session.sessionId}
+                        className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 disabled:opacity-40"
+                      >
+                        저장
+                      </button>
+                    </div>
                   </div>
                   <div className="p-3">
                     <Textarea
