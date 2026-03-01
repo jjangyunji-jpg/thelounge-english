@@ -114,8 +114,7 @@ serve(async (req) => {
         const dd = String(d.getDate()).padStart(2, "0");
         const dateStr = `${yyyy}-${mm}-${dd}`;
 
-        // Skip Tuesdays (정기 휴일)
-        if (dayOfWeek === 2) continue;
+        // Note: Tuesday skip removed — if a student is explicitly scheduled on Tuesday, sessions are generated
 
         // Skip holidays
         if (holidayDates.has(dateStr)) continue;

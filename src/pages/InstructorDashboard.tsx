@@ -246,8 +246,6 @@ function buildVirtualSchedules(students: StudentFull[], year: number, month: num
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(year, month, d);
         if (date.getDay() !== targetDay) continue;
-        // Skip Tuesdays (정기 휴일)
-        if (date.getDay() === 2) continue;
         // Skip holidays
         const dateStr2 = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         if (holidaySet.has(dateStr2)) continue;
@@ -1178,7 +1176,7 @@ export default function InstructorDashboard() {
     const currentIdx = periods.findIndex(p => p.start_date <= todayStr && p.end_date >= todayStr);
     const currentPeriod = currentIdx >= 0 ? periods[currentIdx] : periods[0] || null;
     setPeriod(currentPeriod);
-    if (studentTabPeriodIdx < 0) setStudentTabPeriodIdx(currentIdx >= 0 ? currentIdx : 0);
+    if (studentTabPeriodIdx < 0) setStudentTabPeriodIdx(periods.length > 0 ? periods.length - 1 : 0);
     setHolidays(holRes.data || []);
     setLoading(false);
   }, []);
