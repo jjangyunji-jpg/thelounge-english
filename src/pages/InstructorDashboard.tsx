@@ -256,9 +256,13 @@ function buildVirtualSchedules(students: StudentFull[], year: number, month: num
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(year, month, d);
         if (date.getDay() !== targetDay) continue;
-        // Skip holidays
         const dateStr2 = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        // Skip holidays
         if (holidaySet.has(dateStr2)) continue;
+        // Skip dates before student's start_date
+        if (st.start_date && dateStr2 < st.start_date) continue;
+        // Skip dates during any pause period
+        if (st.pauses && st.pauses.some(p => dateStr2 >= p.pause_start && (!p.pause_end || dateStr2 <= p.pause_end))) continue;
 
         const key = date.toDateString();
         if (!map.has(key)) map.set(key, []);
