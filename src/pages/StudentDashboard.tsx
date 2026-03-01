@@ -654,7 +654,11 @@ export default function StudentDashboard() {
 
   // 반복 일정 중 아직 class_session에 없는 것들 (가상 upcoming)
   const virtualUpcoming = recurringDates.filter(
-    d => d.getTime() > Date.now() && !existingSessionDates.has(d.toDateString())
+    d => d.getTime() > Date.now() && !existingSessionDates.has(d.toDateString()) &&
+      !(studentRecord?.pauses?.some(p => {
+        const iso = d.toISOString().slice(0, 10);
+        return iso >= p.pause_start && (!p.pause_end || iso <= p.pause_end);
+      }))
   );
 
   // 다음 수업: 실제 세션 또는 반복 일정 중 가장 빠른 것
@@ -689,10 +693,20 @@ export default function StudentDashboard() {
     }
   });
 
-  // 캘린더용: 실제 세션 + 반복일정 모두 표시 (휴강일 제외)
+  // 휴강 기간에 해당하는 날짜인지 체크하는 헬퍼
+  const isDateInPause = (dateStr: string) => {
+    if (!studentRecord?.pauses || studentRecord.pauses.length === 0) return false;
+    const d = dateStr.slice(0, 10);
+    return studentRecord.pauses.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end));
+  };
+
+  // 캘린더용: 실제 세션 + 반복일정 모두 표시 (휴강일 및 휴강 기간 제외)
   const allCalendarDates = new Set([
-    ...allSessions.map(s => new Date(s.scheduled_at).toDateString()).filter(d => !holidayDateStrings.has(d)),
-    ...recurringDates.map(d => d.toDateString()).filter(d => !holidayDateStrings.has(d)),
+    ...allSessions.map(s => new Date(s.scheduled_at).toDateString()).filter(d => !holidayDateStrings.has(d) && !isDateInPause(new Date(d).toISOString())),
+    ...recurringDates.filter(d => {
+      const iso = d.toISOString().slice(0, 10);
+      return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(iso);
+    }).map(d => d.toDateString()),
   ]);
 
   // ── Period-based filtering ──
