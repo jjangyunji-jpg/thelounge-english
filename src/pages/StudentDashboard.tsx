@@ -589,20 +589,24 @@ export default function StudentDashboard() {
 
     for (const period of periods) {
       const periodEnd = new Date(period.end_date + "T23:59:59");
-      // 기간 종료일이 지났거나, 종료일 7일 전부터 체크
-      const checkStart = new Date(periodEnd);
-      checkStart.setDate(checkStart.getDate() - 7);
 
-      if (todayDate >= checkStart && instrName) {
-        // 이 기간의 세션 중 ended_at이 있는 세션이 있는지 확인
+      if (instrName) {
+        // 이 기간의 세션 필터링
         const periodSessions = allStudentSessions.filter(s => {
           const sDate = new Date(s.scheduled_at);
           const pStart = new Date(period.start_date + "T00:00:00");
           return sDate >= pStart && sDate <= periodEnd;
         });
-        const hasCompletedSessions = periodSessions.some(s => s.ended_at);
+        if (periodSessions.length === 0) continue;
 
-        if (hasCompletedSessions || todayDate > periodEnd) {
+        // 마지막 수업의 scheduled_at이 현재 시각보다 과거인지 확인
+        const lastSession = periodSessions[periodSessions.length - 1]; // ascending order
+        const lastSessionTime = new Date(lastSession.scheduled_at);
+        // 수업 시간 + 1시간 후부터 피드백 팝업 표시
+        const feedbackAvailableAfter = new Date(lastSessionTime.getTime() + 60 * 60 * 1000);
+        const lastSessionPassed = todayDate >= feedbackAvailableAfter;
+
+        if (lastSessionPassed || todayDate > periodEnd) {
           // 이미 피드백을 제출했는지 확인
           const { data: existingFeedback } = await supabase
             .from("class_feedback")
