@@ -61,14 +61,19 @@ interface HolidayNotice {
   notify_students: boolean;
 }
 
+interface PauseRecord {
+  id: string;
+  pause_start: string;
+  pause_end: string | null;
+}
+
 interface StudentRecord {
   schedules: ScheduleSlot[];
   start_date: string | null;
   level: string | null;
   instructor_name: string | null;
   instructor_display_name: string | null;
-  pause_start: string | null;
-  pause_end: string | null;
+  pauses: PauseRecord[];
 }
 
 interface SchedulePeriod {
@@ -486,7 +491,7 @@ export default function StudentDashboard() {
         .eq("student_name", student).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
-      supabase.from("instructor_students").select("schedules,start_date,level,instructor_name,instructor_id,pause_start,pause_end")
+      supabase.from("instructor_students").select("id,schedules,start_date,level,instructor_name,instructor_id")
         .eq("student_name", student).maybeSingle(),
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
@@ -538,14 +543,24 @@ export default function StudentDashboard() {
         }
       }
 
+      // Load pauses from student_pauses table
+      let pauses: PauseRecord[] = [];
+      if (studentRes.data?.id) {
+        const { data: pauseData } = await supabase
+          .from("student_pauses")
+          .select("id,pause_start,pause_end")
+          .eq("student_id", studentRes.data.id)
+          .order("pause_start", { ascending: true });
+        pauses = pauseData || [];
+      }
+
       setStudentRecord({
         schedules,
         start_date: studentRes.data.start_date,
         level: studentRes.data.level,
         instructor_name: studentRes.data.instructor_name,
         instructor_display_name: instrDisplayName,
-        pause_start: studentRes.data.pause_start || null,
-        pause_end: studentRes.data.pause_end || null,
+        pauses,
       });
     }
 
@@ -685,11 +700,11 @@ export default function StudentDashboard() {
   const periodStart = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00") : null;
   const periodEnd = selectedPeriod ? new Date(selectedPeriod.end_date + "T23:59:59") : null;
 
-  // Helper: check if a date falls within pause period
+  // Helper: check if a date falls within any pause period
   const isInPausePeriod = (dateStr: string) => {
-    if (!studentRecord?.pause_start || !studentRecord?.pause_end) return false;
+    if (!studentRecord?.pauses || studentRecord.pauses.length === 0) return false;
     const d = dateStr.slice(0, 10);
-    return d >= studentRecord.pause_start && d <= studentRecord.pause_end;
+    return studentRecord.pauses.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end));
   };
 
   const periodSessions = selectedPeriod
@@ -759,12 +774,15 @@ export default function StudentDashboard() {
     const start = new Date(studentRecord.start_date + "T00:00:00");
     const now = new Date();
     let diff = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-    // 휴강 기간이 있으면 해당 개월 수 차감
-    if (studentRecord.pause_start && studentRecord.pause_end) {
-      const ps = new Date(studentRecord.pause_start + "T00:00:00");
-      const pe = new Date(studentRecord.pause_end + "T00:00:00");
-      const pauseMonths = (pe.getFullYear() - ps.getFullYear()) * 12 + (pe.getMonth() - ps.getMonth());
-      diff = Math.max(0, diff - Math.max(0, pauseMonths));
+    // 모든 휴강 기간의 개월 수 합산 차감
+    if (studentRecord?.pauses) {
+      for (const p of studentRecord.pauses) {
+        if (!p.pause_end) continue;
+        const ps = new Date(p.pause_start + "T00:00:00");
+        const pe = new Date(p.pause_end + "T00:00:00");
+        const pauseMonths = (pe.getFullYear() - ps.getFullYear()) * 12 + (pe.getMonth() - ps.getMonth());
+        diff = Math.max(0, diff - Math.max(0, pauseMonths));
+      }
     }
     return Math.max(1, diff);
   })();
