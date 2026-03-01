@@ -1229,9 +1229,25 @@ export default function InstructorDashboard() {
   })();
 
   const myAssignments = assignments.filter((a) => myStudentNames.has(a.student_name));
+
+  // Find most recent past session per student
+  const nowDate = new Date();
+  const latestSessionByStudent = new Map<string, string>();
+  sessions
+    .filter(s => new Date(s.scheduled_at) <= nowDate && myStudentNames.has(s.student_name))
+    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
+    .forEach(s => {
+      if (!latestSessionByStudent.has(s.student_name)) {
+        latestSessionByStudent.set(s.student_name, s.id);
+      }
+    });
+
   const uncheckedHw = myAssignments.filter((a) => {
     const sub = submissions.find((s) => s.assignment_id === a.id);
-    return sub && sub.status === "submitted";
+    if (!sub || sub.status !== "submitted") return false;
+    // Only show if assignment belongs to the student's most recent past session
+    const latestSid = latestSessionByStudent.get(a.student_name);
+    return a.session_id && a.session_id === latestSid;
   });
 
   // Reviewed homework: show until next session for that student starts
