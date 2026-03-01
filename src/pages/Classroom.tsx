@@ -398,13 +398,28 @@ export default function Classroom() {
     if (sessionLoading || !session.dbStudentName) return;
     const loadSidebar = async () => {
       setSidebarLoading(true);
-      const { data } = await supabase
+
+      // Fetch student's start_date to filter out sessions before registration
+      const { data: isData } = await supabase
+        .from("instructor_students")
+        .select("start_date")
+        .eq("student_name", session.dbStudentName)
+        .maybeSingle();
+      const startDate = isData?.start_date;
+
+      let query = supabase
         .from("class_sessions")
         .select("id, scheduled_at, topic, notes")
         .eq("student_name", session.dbStudentName)
         .lte("scheduled_at", new Date().toISOString())
         .order("scheduled_at", { ascending: false })
         .limit(30);
+
+      if (startDate) {
+        query = query.gte("scheduled_at", startDate + "T00:00:00+09:00");
+      }
+
+      const { data } = await query;
       setSidebarSessions(data ?? []);
       setSidebarLoading(false);
     };
