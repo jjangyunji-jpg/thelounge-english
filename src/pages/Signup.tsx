@@ -16,7 +16,9 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [role, setRole] = useState<Role>("student");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -25,6 +27,10 @@ export default function Signup() {
     e.preventDefault();
     if (password.length < 8) {
       toast({ title: "비밀번호는 8자 이상이어야 합니다.", variant: "destructive" });
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast({ title: "비밀번호가 일치하지 않습니다.", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -135,7 +141,7 @@ export default function Signup() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">비밀번호</Label>
+                <Label className="text-xs text-muted-foreground">비밀번호 설정</Label>
                 <div className="relative">
                   <Input
                     type={showPw ? "text" : "password"}
@@ -151,6 +157,26 @@ export default function Signup() {
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">비밀번호 확인</Label>
+                <div className="relative">
+                  <Input
+                    type={showConfirmPw ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="비밀번호 다시 입력"
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
