@@ -466,9 +466,11 @@ export default function StudentManagement() {
   const saveInlineEdit = async (id: number) => {
     const student = students.find(s => s.id === id);
     if (student?.dbId) {
+      const isInstructorChanged = !!editInstructor && editInstructor !== student.instructor;
+
       // Look up instructor_id when instructor name changes
       let newInstructorId: string | null = null;
-      if (editInstructor && editInstructor !== student.instructor) {
+      if (isInstructorChanged) {
         const { data: instrData } = await supabase
           .from("instructors")
           .select("id")
@@ -492,6 +494,16 @@ export default function StudentManagement() {
       }
 
       await supabase.from("instructor_students").update(updatePayload).eq("id", student.dbId);
+
+      // Keep future, not-yet-started sessions in sync with reassigned instructor
+      if (isInstructorChanged) {
+        await supabase
+          .from("class_sessions")
+          .update({ instructor_name: editInstructor })
+          .eq("student_name", student.name)
+          .is("started_at", null)
+          .gte("scheduled_at", new Date().toISOString());
+      }
     }
     setStudents((prev) =>
       prev.map((s) => {
