@@ -923,9 +923,36 @@ export default function StudentManagement() {
         />
       </div>
 
-      {/* Student list */}
-      <div className="space-y-2">
-        {filtered.map((student) => {
+      {/* Student list grouped by instructor */}
+      <div className="space-y-5">
+        {(() => {
+          // Group by instructor, sort instructor names ㄱ→ㅎ
+          const grouped: Record<string, Student[]> = {};
+          filtered.forEach((s) => {
+            const key = s.instructor || "미지정";
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(s);
+          });
+          // Sort each group's students by name ㄱ→ㅎ
+          Object.values(grouped).forEach((arr) =>
+            arr.sort((a, b) => a.name.localeCompare(b.name, "ko"))
+          );
+          const sortedKeys = Object.keys(grouped).sort((a, b) =>
+            a === "미지정" ? 1 : b === "미지정" ? -1 : a.localeCompare(b, "ko")
+          );
+          return sortedKeys.map((instrName) => (
+            <div key={instrName}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  👩‍🏫 {instrName}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  ({grouped[instrName].length}명)
+                </span>
+                <div className="flex-1 border-t border-border" />
+              </div>
+              <div className="space-y-2">
+          {grouped[instrName].map((student) => {
           const monthlyFee = calcMonthlyFee(student.extraLessons);
           const isEditing = editingStudentId === student.id;
 
@@ -1664,6 +1691,10 @@ export default function StudentManagement() {
             </Card>
           );
         })}
+              </div>
+            </div>
+          ));
+        })()}
 
         {filtered.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">
