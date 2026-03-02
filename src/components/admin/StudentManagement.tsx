@@ -69,9 +69,18 @@ const HOURS = Array.from({ length: 17 }, (_, i) => {
   return `${h.toString().padStart(2, "0")}:00`;
 });
 
+type Frequency = "weekly" | "biweekly" | "monthly2";
+
+const FREQ_LABELS: Record<Frequency, string> = {
+  weekly: "매주",
+  biweekly: "격주",
+  monthly2: "월2회",
+};
+
 interface ScheduleSlot {
   day: string;
   time: string;
+  frequency?: Frequency;
 }
 
 interface PauseRecord {
@@ -313,6 +322,7 @@ export default function StudentManagement() {
    const [editSchedules, setEditSchedules] = useState<ScheduleSlot[]>([]);
    const [editSchedDay, setEditSchedDay] = useState("월");
    const [editSchedTime, setEditSchedTime] = useState("09:00");
+   const [editSchedFreq, setEditSchedFreq] = useState<Frequency>("weekly");
 
   // Meet link editing
   const [editingMeetId, setEditingMeetId] = useState<number | null>(null);
@@ -495,14 +505,39 @@ export default function StudentManagement() {
 
       await supabase.from("instructor_students").update(updatePayload).eq("id", student.dbId);
 
+      // Detect schedule change
+      const oldSchedStr = JSON.stringify(student.schedules);
+      const newSchedStr = JSON.stringify(editSchedules);
+      const isScheduleChanged = oldSchedStr !== newSchedStr;
+
       // Keep future, not-yet-started sessions in sync with reassigned instructor
-      if (isInstructorChanged) {
+      if (isInstructorChanged && !isScheduleChanged) {
         await supabase
           .from("class_sessions")
           .update({ instructor_name: editInstructor })
           .eq("student_name", student.name)
           .is("started_at", null)
           .gte("scheduled_at", new Date().toISOString());
+      }
+
+      // If schedule changed: delete unstarted future sessions and regenerate
+      if (isScheduleChanged) {
+        // Delete unstarted future sessions for this student
+        await supabase
+          .from("class_sessions")
+          .delete()
+          .eq("student_name", student.name)
+          .is("started_at", null)
+          .is("notes", null)
+          .is("topic", null)
+          .gte("scheduled_at", new Date().toISOString());
+
+        // Regenerate sessions for all active periods
+        const result = await autoGenerateSessions();
+        toast({
+          title: "수업 일정이 재생성되었습니다 ✓",
+          description: `${result.totalCreated}개 세션 생성`,
+        });
       }
     }
     setStudents((prev) =>
@@ -823,12 +858,30 @@ export default function StudentManagement() {
                               }))
                             }
                           >
-                            <SelectTrigger className="h-8 flex-1 text-xs">
+                            <SelectTrigger className="h-8 w-[72px] text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               {HOURS.map((h) => (
                                 <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={slot.frequency || "weekly"}
+                            onValueChange={(v) =>
+                              setNewStudent((p) => ({
+                                ...p,
+                                schedules: p.schedules.map((s, i) => i === idx ? { ...s, frequency: v as Frequency } : s),
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="h-8 w-[72px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(Object.keys(FREQ_LABELS) as Frequency[]).map((f) => (
+                                <SelectItem key={f} value={f}>{FREQ_LABELS[f]}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -1248,7 +1301,7 @@ export default function StudentManagement() {
                             <div className="flex flex-wrap gap-1">
                               {editSchedules.map((slot, i) => (
                                 <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">
-                                  {slot.day}요일 {slot.time}
+                                  {slot.day}요일 {slot.time} {slot.frequency && slot.frequency !== "weekly" ? `(${FREQ_LABELS[slot.frequency]})` : ""}
                                   <button type="button" onClick={() => setEditSchedules(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
                                     <X className="w-3 h-3" />
                                   </button>
@@ -1268,12 +1321,22 @@ export default function StudentManagement() {
                               </SelectContent>
                             </Select>
                             <Select value={editSchedTime} onValueChange={setEditSchedTime}>
-                              <SelectTrigger className="h-7 text-xs w-24">
+                              <SelectTrigger className="h-7 text-xs w-[72px]">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
                                 {HOURS.map((h) => (
                                   <SelectItem key={h} value={h}>{h}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select value={editSchedFreq} onValueChange={(v) => setEditSchedFreq(v as Frequency)}>
+                              <SelectTrigger className="h-7 text-xs w-[72px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(Object.keys(FREQ_LABELS) as Frequency[]).map((f) => (
+                                  <SelectItem key={f} value={f}>{FREQ_LABELS[f]}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -1285,7 +1348,7 @@ export default function StudentManagement() {
                               onClick={() => {
                                 const exists = editSchedules.some(s => s.day === editSchedDay && s.time === editSchedTime);
                                 if (!exists) {
-                                  setEditSchedules(prev => [...prev, { day: editSchedDay, time: editSchedTime }]);
+                                  setEditSchedules(prev => [...prev, { day: editSchedDay, time: editSchedTime, frequency: editSchedFreq }]);
                                 }
                               }}
                             >
@@ -1406,7 +1469,7 @@ export default function StudentManagement() {
                             <div className="flex flex-wrap gap-1.5">
                               {student.schedules.map((slot, i) => (
                                 <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">
-                                  {slot.day}요일 {slot.time}
+                                  {slot.day}요일 {slot.time} {slot.frequency && slot.frequency !== "weekly" ? `(${FREQ_LABELS[slot.frequency]})` : ""}
                                 </span>
                               ))}
                             </div>
