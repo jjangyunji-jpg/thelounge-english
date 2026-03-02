@@ -446,6 +446,11 @@ export default function StudentManagement() {
   const [withdrawReason, setWithdrawReason] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
 
+  // Schedule change effective-date dialog state
+  const [schedChangeTarget, setSchedChangeTarget] = useState<{ studentId: number; studentName: string; dbId: string; newSchedules: ScheduleSlot[]; instructorName: string } | null>(null);
+  const [schedEffectiveDate, setSchedEffectiveDate] = useState<Date | undefined>(undefined);
+  const [schedChangeSaving, setSchedChangeSaving] = useState(false);
+
   const graduate = async () => {
     if (!withdrawTarget) return;
     setWithdrawing(true);
@@ -529,24 +534,16 @@ export default function StudentManagement() {
           .gte("scheduled_at", new Date().toISOString());
       }
 
-      // If schedule changed: delete unstarted future sessions and regenerate
+      // If schedule changed: show effective date dialog
       if (isScheduleChanged) {
-        // Delete unstarted future sessions for this student
-        await supabase
-          .from("class_sessions")
-          .delete()
-          .eq("student_name", student.name)
-          .is("started_at", null)
-          .is("notes", null)
-          .is("topic", null)
-          .gte("scheduled_at", new Date().toISOString());
-
-        // Regenerate sessions for all active periods
-        const result = await autoGenerateSessions();
-        toast({
-          title: "수업 일정이 재생성되었습니다 ✓",
-          description: `${result.totalCreated}개 세션 생성`,
+        setSchedChangeTarget({
+          studentId: id,
+          studentName: student.name,
+          dbId: student.dbId,
+          newSchedules: [...editSchedules],
+          instructorName: editInstructor,
         });
+        setSchedEffectiveDate(new Date());
       }
     }
     setStudents((prev) =>
@@ -571,6 +568,31 @@ export default function StudentManagement() {
     setStudents((prev) =>
       prev.map((s) => s.id === studentId ? { ...s, reminderEnabled: !s.reminderEnabled } : s)
     );
+  };
+
+  const confirmScheduleChange = async () => {
+    if (!schedChangeTarget || !schedEffectiveDate) return;
+    setSchedChangeSaving(true);
+    const cutoff = format(schedEffectiveDate, "yyyy-MM-dd") + "T00:00:00+09:00";
+
+    // Delete unstarted future sessions from the effective date
+    await supabase
+      .from("class_sessions")
+      .delete()
+      .eq("student_name", schedChangeTarget.studentName)
+      .is("started_at", null)
+      .is("notes", null)
+      .is("topic", null)
+      .gte("scheduled_at", cutoff);
+
+    // Regenerate sessions for all active periods
+    const result = await autoGenerateSessions();
+    toast({
+      title: "수업 일정이 재생성되었습니다 ✓",
+      description: `${format(schedEffectiveDate, "yyyy-MM-dd")}부터 적용 · ${result.totalCreated}개 세션 생성`,
+    });
+    setSchedChangeSaving(false);
+    setSchedChangeTarget(null);
   };
 
   const saveMeetLink = async (studentId: number) => {
@@ -1819,6 +1841,51 @@ export default function StudentManagement() {
             >
               {withdrawing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               퇴원 처리
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule change effective date dialog */}
+      <Dialog open={!!schedChangeTarget} onOpenChange={(open) => { if (!open && !schedChangeSaving) setSchedChangeTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-[hsl(var(--navy))]" />
+              일정 변경 적용일
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{schedChangeTarget?.studentName}</span> 님의 수업 일정이 변경되었습니다.
+            변경된 일정을 언제부터 적용할까요?
+          </p>
+          <div className="space-y-2">
+            <Label className="text-xs">적용 시작일</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("h-9 w-full text-sm justify-start", !schedEffectiveDate && "text-muted-foreground")}>
+                  <CalendarIcon className="w-3.5 h-3.5 mr-2" />
+                  {schedEffectiveDate ? format(schedEffectiveDate, "yyyy-MM-dd") : "날짜 선택"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={schedEffectiveDate} onSelect={setSchedEffectiveDate} />
+              </PopoverContent>
+            </Popover>
+            <p className="text-[11px] text-muted-foreground">
+              선택한 날짜 이후의 미시작 세션이 삭제되고 새 일정으로 재생성됩니다.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setSchedChangeTarget(null)} disabled={schedChangeSaving}>취소</Button>
+            <Button
+              size="sm"
+              onClick={confirmScheduleChange}
+              disabled={schedChangeSaving || !schedEffectiveDate}
+              className="gap-1.5 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground"
+            >
+              {schedChangeSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              적용하기
             </Button>
           </div>
         </DialogContent>
