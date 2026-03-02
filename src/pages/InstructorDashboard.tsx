@@ -1186,6 +1186,7 @@ export default function InstructorDashboard() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profilePwSaving, setProfilePwSaving] = useState(false);
   const [durationOverrides, setDurationOverrides] = useState<Record<string, number>>({});
+  const [settlementPeriodIdx, setSettlementPeriodIdx] = useState(-1);
   const [studentTabPeriodIdx, setStudentTabPeriodIdx] = useState(-1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
@@ -1327,6 +1328,7 @@ export default function InstructorDashboard() {
     const currentPeriod = currentIdx >= 0 ? periods[currentIdx] : periods[0] || null;
     setPeriod(currentPeriod);
     if (studentTabPeriodIdx < 0) setStudentTabPeriodIdx(periods.length > 0 ? periods.length - 1 : 0);
+    if (settlementPeriodIdx < 0) setSettlementPeriodIdx(periods.length > 0 ? periods.length - 1 : 0);
     setHolidays(holRes.data || []);
     setLoading(false);
   }, []);
@@ -1487,11 +1489,29 @@ export default function InstructorDashboard() {
   const completedPeriodMeetings = periodMeetings.filter((m) => new Date(m.scheduled_at) <= now);
   const lessonHours = periodSessions.length;
 
+  // Settlement: use settlementPeriodIdx for independent period navigation
+  const settlementPeriod = allPeriods[settlementPeriodIdx] || period;
+  const sStart = settlementPeriod ? new Date(settlementPeriod.start_date) : null;
+  const sEnd = settlementPeriod ? new Date(settlementPeriod.end_date) : null;
+
+  const settlementSessions = sessions.filter((s) => {
+    if (!sStart || !sEnd) return false;
+    const d = new Date(s.scheduled_at);
+    return d >= sStart && d <= sEnd && !isSessionHidden(s);
+  });
+  const completedSettlementSessions = settlementSessions.filter((s) => new Date(s.scheduled_at) <= now);
+  const settlementMeetings = meetings.filter((m) => {
+    if (!sStart || !sEnd) return false;
+    const d = new Date(m.scheduled_at);
+    return d >= sStart && d <= sEnd;
+  });
+  const completedSettlementMeetings = settlementMeetings.filter((m) => new Date(m.scheduled_at) <= now);
+
   // Settlement items for the table
   type SettlementRow = { key: string; date: Date; type: 'lesson' | 'meeting'; description: string; durationHours: number; payPerHour: number; };
   const settlementRows: SettlementRow[] = [];
   const isOwner = instructor?.position === '대표';
-  completedPeriodSessions.forEach((s) => {
+  completedSettlementSessions.forEach((s) => {
     const levelRate = LEVEL_RATES[s.level] || 19000;
     const key = `lesson-${s.id}`;
     const durationHours = durationOverrides[key] ?? 1;
@@ -1504,7 +1524,7 @@ export default function InstructorDashboard() {
       payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate),
     });
   });
-  completedPeriodMeetings.forEach((m) => {
+  completedSettlementMeetings.forEach((m) => {
     const key = `meeting-${m.id}`;
     const durationHours = durationOverrides[key] ?? (m.duration_minutes / 60);
     settlementRows.push({
@@ -2401,23 +2421,42 @@ export default function InstructorDashboard() {
               <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                 <Banknote className="w-4 h-4 text-success" />
                 정산 관리
-                {period && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">
-                    {period.label} ({period.start_date} ~ {period.end_date})
-                  </span>
-                )}
               </h2>
+              {allPeriods.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSettlementPeriodIdx(Math.max(0, settlementPeriodIdx - 1))}
+                    disabled={settlementPeriodIdx <= 0}
+                    className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-semibold text-foreground min-w-[100px] text-center">
+                    {settlementPeriod?.label || "—"}
+                    <span className="block text-[10px] text-muted-foreground font-normal">
+                      {settlementPeriod?.start_date} ~ {settlementPeriod?.end_date}
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => setSettlementPeriodIdx(Math.min(allPeriods.length - 1, settlementPeriodIdx + 1))}
+                    disabled={settlementPeriodIdx >= allPeriods.length - 1}
+                    className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Summary cards */}
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
                 <p className="text-[10px] text-muted-foreground">완료 수업</p>
-                <p className="text-lg font-bold text-navy">{completedPeriodSessions.length}회</p>
+                <p className="text-lg font-bold text-navy">{completedSettlementSessions.length}회</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
                 <p className="text-[10px] text-muted-foreground">업무 미팅</p>
-                <p className="text-lg font-bold text-gold-dark">{completedPeriodMeetings.length}건</p>
+                <p className="text-lg font-bold text-gold-dark">{completedSettlementMeetings.length}건</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-3.5 space-y-1">
                 <p className="text-[10px] text-muted-foreground">정산 예정</p>
