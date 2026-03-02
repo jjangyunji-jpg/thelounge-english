@@ -224,7 +224,6 @@ export default function InstructorManagement() {
 
     const { error } = await supabase.from("instructors").insert({
       name: form.name,
-      email: "", // will be updated when account is linked
       join_date: form.joinDate || null,
       active: true,
       bio_notes: form.englishName ? `영어이름: ${form.englishName}` : null,
