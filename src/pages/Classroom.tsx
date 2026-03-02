@@ -495,13 +495,18 @@ export default function Classroom() {
         .maybeSingle();
       const startDate = isData?.start_date;
 
+      const isInstructor = role === "instructor";
       let query = supabase
         .from("class_sessions")
         .select("id, scheduled_at, topic, notes")
         .eq("student_name", session.dbStudentName)
-        .lte("scheduled_at", new Date().toISOString())
         .order("scheduled_at", { ascending: false })
         .limit(30);
+
+      // Students only see past + today sessions; instructors see all in the period
+      if (!isInstructor) {
+        query = query.lte("scheduled_at", new Date().toISOString());
+      }
 
       if (startDate) {
         query = query.gte("scheduled_at", startDate + "T00:00:00+09:00");
@@ -911,6 +916,7 @@ export default function Classroom() {
               });
             }}
             loading={sidebarLoading}
+            initialOpen={true}
           />
           <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto overflow-y-auto">
 

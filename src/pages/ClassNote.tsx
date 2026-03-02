@@ -227,7 +227,7 @@ export default function ClassNote() {
             selectedId={selectedSession.id}
             onSelect={handleSidebarSelect}
             loading={loadingSessions}
-            initialOpen={sidebarOpen}
+            initialOpen={true}
           />
 
           {/* Main content area */}
