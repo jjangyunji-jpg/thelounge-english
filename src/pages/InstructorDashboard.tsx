@@ -727,6 +727,81 @@ function AddMeetingModal({
   );
 }
 
+// ── Edit Meeting Modal ──────────────────────────────────────────────────────────
+function EditMeetingModal({
+  meeting,
+  onClose,
+  onSaved,
+}: {
+  meeting: BusinessMeeting;
+  onClose: () => void;
+  onSaved: (updated: BusinessMeeting) => void;
+}) {
+  const { toast } = useToast();
+  const initDate = new Date(meeting.scheduled_at);
+  const [date, setDate] = useState(initDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }));
+  const [time, setTime] = useState(initDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }));
+  const [duration, setDuration] = useState(meeting.duration_minutes);
+  const [notes, setNotes] = useState(meeting.notes || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!date || !time) return;
+    setSaving(true);
+    const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
+    const { data, error } = await supabase.from("business_meetings").update({
+      scheduled_at: scheduledAt,
+      duration_minutes: duration,
+      notes: notes.trim() || null,
+    }).eq("id", meeting.id).select().single();
+    if (error || !data) {
+      toast({ title: "수정 실패", description: error?.message, variant: "destructive" });
+      setSaving(false);
+      return;
+    }
+    toast({ title: "미팅 수정 완료 ✓" });
+    onSaved(data as BusinessMeeting);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold text-sm text-foreground">업무 미팅 수정</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">날짜</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">시간</Label>
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-9 text-sm" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">소요 시간 (분)</Label>
+            <Input type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} min={15} step={15} className="h-9 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">메모</Label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="미팅 내용..." className="h-9 text-sm" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onClose} className="flex-1 h-9 text-sm">취소</Button>
+          <Button onClick={handleSave} disabled={saving || !date} className="flex-1 h-9 text-sm bg-navy hover:bg-navy-light text-primary-foreground gap-1.5">
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} 저장
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Student Edit Modal ─────────────────────────────────────────────────────────
 function StudentEditModal({
   student,
@@ -1114,6 +1189,7 @@ export default function InstructorDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
+  const [editMeeting, setEditMeeting] = useState<BusinessMeeting | null>(null);
   const [showBulkGoalModal, setShowBulkGoalModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reviewHw, setReviewHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
@@ -1736,6 +1812,13 @@ export default function InstructorDashboard() {
                               <p className="text-[11px] text-muted-foreground">{m.duration_minutes}분</p>
                             </div>
                             <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => setEditMeeting(m)}
+                                className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-1 rounded hover:bg-muted"
+                                title="미팅 수정"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 onClick={async () => {
                                   if (!confirm("이 미팅을 삭제하시겠습니까?")) return;
@@ -2696,6 +2779,16 @@ export default function InstructorDashboard() {
           allInstructors={allInstructors}
           onClose={() => setShowMeetingModal(false)}
           onAdded={() => loadData(instructor)}
+        />
+      )}
+      {editMeeting && (
+        <EditMeetingModal
+          meeting={editMeeting}
+          onClose={() => setEditMeeting(null)}
+          onSaved={(updated) => {
+            setMeetings(prev => prev.map(m => m.id === updated.id ? updated : m));
+            setEditMeeting(null);
+          }}
         />
       )}
       {editStudent && (
