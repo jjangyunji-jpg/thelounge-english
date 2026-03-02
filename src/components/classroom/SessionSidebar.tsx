@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { FileText, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X } from "lucide-react";
 
 interface SessionItem {
   id: string;
@@ -58,6 +58,17 @@ export default function SessionSidebar({
   const [collapsed, setCollapsed] = useState(!initialOpen);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchActive, setSearchActive] = useState(false);
+  const [showFuture, setShowFuture] = useState(false);
+
+  const now = useMemo(() => {
+    // End of today in KST
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }, []);
+
+  const pastSessions = useMemo(() => sessions.filter(s => new Date(s.scheduled_at) <= now), [sessions, now]);
+  const futureSessions = useMemo(() => sessions.filter(s => new Date(s.scheduled_at) > now), [sessions, now]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim();
@@ -190,26 +201,62 @@ export default function SessionSidebar({
           {!loading && sessions.length === 0 && (
             <p className="text-xs text-muted-foreground px-3 py-4 text-center">수업 없음</p>
           )}
-          {!loading &&
-            sessions.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => onSelect(s.id)}
-                className={cn(
-                  "w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors",
-                  selectedId === s.id && "bg-gold/10 border-l-2 border-l-gold"
-                )}
-              >
-                <p className="text-[11px] font-semibold text-foreground leading-tight">
-                  {fmtDate(s.scheduled_at)}
-                </p>
-                {s.topic && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                    {s.topic}
+          {!loading && (
+            <>
+              {/* Past & today sessions */}
+              {pastSessions.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => onSelect(s.id)}
+                  className={cn(
+                    "w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors",
+                    selectedId === s.id && "bg-gold/10 border-l-2 border-l-gold"
+                  )}
+                >
+                  <p className="text-[11px] font-semibold text-foreground leading-tight">
+                    {fmtDate(s.scheduled_at)}
                   </p>
-                )}
-              </button>
-            ))}
+                  {s.topic && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                      {s.topic}
+                    </p>
+                  )}
+                </button>
+              ))}
+
+              {/* Future sessions toggle */}
+              {futureSessions.length > 0 && (
+                <>
+                  <button
+                    onClick={() => setShowFuture(v => !v)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border text-[10px] text-muted-foreground hover:bg-muted/60 transition-colors"
+                  >
+                    <span className="font-medium">예정된 수업 ({futureSessions.length})</span>
+                    <ChevronDown className={cn("w-3 h-3 transition-transform", showFuture && "rotate-180")} />
+                  </button>
+                  {showFuture && futureSessions.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => onSelect(s.id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors",
+                        selectedId === s.id && "bg-gold/10 border-l-2 border-l-gold"
+                      )}
+                    >
+                      <p className="text-[11px] font-semibold text-foreground leading-tight">
+                        {fmtDate(s.scheduled_at)}
+                      </p>
+                      {s.topic && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                          {s.topic}
+                        </p>
+                      )}
+                    </button>
+                  ))}
+                </>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
