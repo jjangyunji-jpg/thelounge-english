@@ -7,6 +7,7 @@ import OperationsDashboard from "@/components/admin/OperationsDashboard";
 import InstructorManagement from "@/components/admin/InstructorManagement";
 import StudentManagement from "@/components/admin/StudentManagement";
 import UserApproval from "@/components/admin/UserApproval";
+import GuideManagement from "@/components/admin/GuideManagement";
 import MessageCenter from "@/components/admin/MessageCenter";
 import SystemSettings from "@/components/admin/SystemSettings";
 import TeachingMaterials from "@/components/admin/TeachingMaterials";
@@ -54,6 +55,8 @@ export default function Admin() {
         return <UserApproval onNavigate={(tab) => setActiveTab(tab as AdminTab)} />;
       case "materials":
         return <TeachingMaterials />;
+      case "guide":
+        return <GuideManagement />;
       case "messages":
         return <MessageCenter />;
       case "settings":
