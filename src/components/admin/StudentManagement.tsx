@@ -1109,7 +1109,7 @@ export default function StudentManagement() {
                         <Button
                           size="sm" variant="ghost"
                           className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); setEditingMeetId(student.id); setMeetLinkInput(student.meetLink); }}
+                          onClick={(e) => { e.stopPropagation(); setEditingMeetId(student.id); setMeetLinkInput(student.meetLink || "https://"); }}
                         >
                           <Edit2 className="w-3 h-3" />
                           {student.meetLink ? "수정" : "추가"}
