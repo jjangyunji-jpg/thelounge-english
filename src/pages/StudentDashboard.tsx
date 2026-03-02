@@ -686,8 +686,9 @@ export default function StudentDashboard() {
   );
 
   // 다음 수업: 실제 세션 또는 반복 일정 중 가장 빠른 것
+  // 다음 수업 또는 현재 진행 중인 수업 (수업 시간 후 60분까지 포함)
   const nextSessionFromDB = sessions
-    .filter(s => msUntil(s.scheduled_at) > 0)
+    .filter(s => msUntil(s.scheduled_at) > -60 * 60 * 1000) // include sessions up to 60min past
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
   const nextVirtual = virtualUpcoming[0] ?? null;
 
@@ -1149,7 +1150,9 @@ export default function StudentDashboard() {
             <div className="p-3 grid grid-cols-2 gap-2">
               {/* 수업 입장하기 */}
               {(() => {
-                const canEnter = nextClassDate && (nextClassDate.getTime() - Date.now()) <= 60 * 60 * 1000;
+                const canEnter = nextClassDate && (
+                  (nextClassDate.getTime() - Date.now()) <= 60 * 60 * 1000 // 1시간 전부터
+                );
                 return (
                   <button
                     onClick={() => {
