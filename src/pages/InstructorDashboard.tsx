@@ -1265,8 +1265,14 @@ export default function InstructorDashboard() {
       pauses: pauseMap[s.id] || [],
     }));
 
-    const [sessRes, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
+    // Also collect student names to catch sessions that might have a stale instructor_name
+    const studentNames = loadedStudents.map((s: any) => s.student_name).filter(Boolean);
+
+    const [sessRes, sessRes2, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
       supabase.from("class_sessions").select("*").in("instructor_name", instructorNames).order("scheduled_at", { ascending: false }),
+      studentNames.length > 0
+        ? supabase.from("class_sessions").select("*").in("student_name", studentNames).order("scheduled_at", { ascending: false })
+        : Promise.resolve({ data: [] }),
       supabase.from("homework_assignments").select("id,title,type,student_name,session_id"),
       supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
@@ -1285,7 +1291,11 @@ export default function InstructorDashboard() {
       return st.pauses?.some((p) => dateStr >= p.pause_start && (!p.pause_end || dateStr <= p.pause_end)) ?? false;
     };
 
-    const filteredSessions = (sessRes.data || []).filter((s) => !shouldHideSession(s));
+    // Merge and deduplicate sessions from both queries
+    const sessMap = new Map<string, any>();
+    for (const s of (sessRes.data || [])) sessMap.set(s.id, s);
+    for (const s of (sessRes2.data || [])) sessMap.set(s.id, s);
+    const filteredSessions = Array.from(sessMap.values()).filter((s) => !shouldHideSession(s));
 
     setStudents(studentsWithPauses);
     setSessions(filteredSessions);
