@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import {
   Volume2, Loader2, Square, ChevronDown, ChevronUp, BookOpen,
   RefreshCw, ClipboardCheck, History, Download,
-  CheckCircle2, XCircle, Mic, Type,
+  CheckCircle2, XCircle, Mic, Type, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import VocabTestModal from "@/components/classroom/VocabTestModal";
+import { toast } from "sonner";
 import { exportWordsPdf } from "@/lib/exportVocabPdf";
 
 function getWeekLabel(date = new Date()) {
@@ -87,7 +88,7 @@ function TTSButton({ word }: { word: VocabWord }) {
   );
 }
 
-function WordRow({ word }: { word: VocabWord }) {
+function WordRow({ word, onDelete }: { word: VocabWord; onDelete?: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="border-b border-border/50 last:border-0">
@@ -104,6 +105,15 @@ function WordRow({ word }: { word: VocabWord }) {
           )}
         </div>
         <span className="text-xs text-muted-foreground flex-shrink-0 max-w-[90px] text-right leading-snug">{word.korean_meaning}</span>
+        {onDelete && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(word.id); }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex-shrink-0"
+            title="삭제"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
           {expanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
         </div>
@@ -117,11 +127,12 @@ function WordRow({ word }: { word: VocabWord }) {
   );
 }
 
-function WeekGroup({ weekLabel, words, lessonNumber, onDownloadPdf }: {
+function WeekGroup({ weekLabel, words, lessonNumber, onDownloadPdf, onDeleteWord }: {
   weekLabel: string;
   words: VocabWord[];
   lessonNumber: string | null;
   onDownloadPdf: () => void;
+  onDeleteWord: (id: string) => void;
 }) {
   const [open, setOpen] = useState(true);
   const label = lessonNumber != null ? `${lessonNumber} 수업` : weekLabel.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`);
@@ -145,7 +156,7 @@ function WeekGroup({ weekLabel, words, lessonNumber, onDownloadPdf }: {
           PDF
         </Button>
       </div>
-      {open && words.map((w) => <WordRow key={w.id} word={w} />)}
+      {open && words.map((w) => <WordRow key={w.id} word={w} onDelete={onDeleteWord} />)}
     </div>
   );
 }
@@ -244,6 +255,14 @@ export default function StudentVocabPanel({
   // Use the session's word week label instead of current calendar week
   const sessionWeekLabel = words.length > 0 ? words[0].week_label : getWeekLabel();
   const canTest = words.length >= 5;
+
+  const handleDeleteWord = async (wordId: string) => {
+    if (!confirm("이 단어를 삭제하시겠습니까?")) return;
+    const { error } = await supabase.from("vocabulary_words").delete().eq("id", wordId);
+    if (error) { toast.error("삭제 실패"); return; }
+    setWords((prev) => prev.filter((w) => w.id !== wordId));
+    toast.success("단어가 삭제되었습니다");
+  };
 
   const load = async () => {
     setLoading(true);
@@ -445,6 +464,7 @@ export default function StudentVocabPanel({
                   words={byWeek[wk]}
                   lessonNumber={lessonNumber}
                   onDownloadPdf={() => { exportWordsPdf(byWeek[wk], studentName); }}
+                  onDeleteWord={handleDeleteWord}
                 />
               ))}
             </div>
