@@ -203,28 +203,7 @@ export default function SessionSidebar({
           )}
           {!loading && (
             <>
-              {/* Past & today sessions */}
-              {pastSessions.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => onSelect(s.id)}
-                  className={cn(
-                    "w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors",
-                    selectedId === s.id && "bg-gold/10 border-l-2 border-l-gold"
-                  )}
-                >
-                  <p className="text-[11px] font-semibold text-foreground leading-tight">
-                    {fmtDate(s.scheduled_at)}
-                  </p>
-                  {s.topic && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                      {s.topic}
-                    </p>
-                  )}
-                </button>
-              ))}
-
-              {/* Future sessions toggle */}
+              {/* Future sessions toggle — top */}
               {futureSessions.length > 0 && (
                 <>
                   <button
@@ -255,6 +234,27 @@ export default function SessionSidebar({
                   ))}
                 </>
               )}
+
+              {/* Past & today sessions */}
+              {pastSessions.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => onSelect(s.id)}
+                  className={cn(
+                    "w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors",
+                    selectedId === s.id && "bg-gold/10 border-l-2 border-l-gold"
+                  )}
+                >
+                  <p className="text-[11px] font-semibold text-foreground leading-tight">
+                    {fmtDate(s.scheduled_at)}
+                  </p>
+                  {s.topic && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                      {s.topic}
+                    </p>
+                  )}
+                </button>
+              ))}
             </>
           )}
         </div>
