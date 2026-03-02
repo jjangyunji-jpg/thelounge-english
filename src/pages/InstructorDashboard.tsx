@@ -2885,6 +2885,7 @@ function BulkGoalModal({
   const [topics, setTopics] = useState<Record<string, string>>({}); // sessionId -> topic
   const [origTopics, setOrigTopics] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [loading, setLoading] = useState(true);
   const [currPeriodLabel, setCurrPeriodLabel] = useState("");
   const [prevPeriodLabel, setPrevPeriodLabel] = useState("");
@@ -3032,6 +3033,17 @@ function BulkGoalModal({
                           onChange={(e) => {
                             setTopics(prev => ({ ...prev, [sess.id]: e.target.value }));
                           }}
+                          onBlur={async () => {
+                            const val = (topics[sess.id] || "").trim();
+                            const orig = (origTopics[sess.id] || "").trim();
+                            if (val !== orig) {
+                              setAutoSaveStatus("saving");
+                              await supabase.from("class_sessions").update({ topic: val }).eq("id", sess.id);
+                              setOrigTopics(prev => ({ ...prev, [sess.id]: val }));
+                              setAutoSaveStatus("saved");
+                              setTimeout(() => setAutoSaveStatus(s => s === "saved" ? "idle" : s), 2000);
+                            }
+                          }}
                           placeholder={data.prev[i]?.topic || `${i + 1}회차 목표`}
                           className="flex-1 h-7 px-2 text-xs rounded border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                         />
@@ -3046,21 +3058,12 @@ function BulkGoalModal({
           })}
         </div>
         <div className="px-5 py-3 border-t border-border flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            {changedIds.length}개 변경됨
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            {autoSaveStatus === "saving" && <><Loader2 className="w-3 h-3 animate-spin" /> 저장 중...</>}
+            {autoSaveStatus === "saved" && <><Check className="w-3 h-3 text-green-600" /> 자동 저장됨</>}
+            {autoSaveStatus === "idle" && `${changedIds.length}개 변경됨`}
           </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">취소</Button>
-            <Button
-              size="sm"
-              className="h-8 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
-              onClick={handleSave}
-              disabled={saving || changedIds.length === 0}
-            >
-              {saving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
-              저장
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">닫기</Button>
         </div>
       </div>
     </div>
