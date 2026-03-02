@@ -1394,7 +1394,8 @@ export default function InstructorDashboard() {
   const englishNameMap = new Map(students.map(s => [s.student_name, s.english_name]));
   const fmtName = (name: string) => formatStudentName(name, englishNameMap.get(name));
   const myStudentNames = new Set(students.map((s) => s.student_name));
-  const todaySessions = sessions.filter((s) => isToday(s.scheduled_at));
+  const todaySessions = sessions.filter((s) => isToday(s.scheduled_at))
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
   const upcomingSessions = sessions.filter((s) => msUntil(s.scheduled_at) > 0)
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
