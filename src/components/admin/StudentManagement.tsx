@@ -466,7 +466,19 @@ export default function StudentManagement() {
   const saveInlineEdit = async (id: number) => {
     const student = students.find(s => s.id === id);
     if (student?.dbId) {
-      await supabase.from("instructor_students").update({
+      // Look up instructor_id when instructor name changes
+      let newInstructorId: string | null = null;
+      if (editInstructor && editInstructor !== student.instructor) {
+        const { data: instrData } = await supabase
+          .from("instructors")
+          .select("id")
+          .eq("name", editInstructor)
+          .eq("active", true)
+          .maybeSingle();
+        newInstructorId = instrData?.id ?? null;
+      }
+
+      const updatePayload: Record<string, any> = {
         level: editLevel,
         extra_lessons: editExtra,
         instructor_name: editInstructor,
@@ -474,7 +486,12 @@ export default function StudentManagement() {
         english_name: editEnglishName.trim() || null,
         start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
         schedules: editSchedules.length > 0 ? JSON.stringify(editSchedules) : null,
-      }).eq("id", student.dbId);
+      };
+      if (newInstructorId) {
+        updatePayload.instructor_id = newInstructorId;
+      }
+
+      await supabase.from("instructor_students").update(updatePayload).eq("id", student.dbId);
     }
     setStudents((prev) =>
       prev.map((s) => {
