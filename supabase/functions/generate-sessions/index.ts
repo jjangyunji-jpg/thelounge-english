@@ -130,16 +130,30 @@ serve(async (req) => {
     // 4. Get existing sessions in this period to avoid duplicates
     const { data: existingSessions } = await sb
       .from("class_sessions")
-      .select("student_name, scheduled_at, notes, topic, started_at")
+      .select("student_name, instructor_name, scheduled_at, reschedule_origin_dates")
       .gte("scheduled_at", period.start_date + "T00:00:00+09:00")
       .lte("scheduled_at", period.end_date + "T23:59:59+09:00");
 
     const existingSet = new Set<string>();
-    for (const s of existingSessions || []) {
-      const d = new Date(s.scheduled_at);
+    const toKstDateStr = (isoDate: string) => {
+      const d = new Date(isoDate);
       const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-      const dateStr = `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, "0")}-${String(kst.getUTCDate()).padStart(2, "0")}`;
-      existingSet.add(`${s.student_name}|${dateStr}`);
+      return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, "0")}-${String(kst.getUTCDate()).padStart(2, "0")}`;
+    };
+
+    for (const s of existingSessions || []) {
+      const dateStr = toKstDateStr(s.scheduled_at);
+      const instructorKey = s.instructor_name || "";
+      existingSet.add(`${s.student_name}|${instructorKey}|${dateStr}`);
+
+      const originDates = Array.isArray(s.reschedule_origin_dates)
+        ? s.reschedule_origin_dates
+        : [];
+      for (const originDate of originDates) {
+        if (originDate) {
+          existingSet.add(`${s.student_name}|${instructorKey}|${originDate}`);
+        }
+      }
     }
 
     // 5. Generate sessions
@@ -191,7 +205,7 @@ serve(async (req) => {
           if (!isMatchingWeek(dateStr, period.start_date, freq)) continue;
 
           // Skip if already exists
-          if (existingSet.has(`${student.student_name}|${dateStr}`)) continue;
+          if (existingSet.has(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`)) continue;
 
           const [hour, minute] = (sched.time || "10:00").split(":").map(Number);
           const scheduledAt = new Date(
@@ -209,7 +223,7 @@ serve(async (req) => {
             topic: null,
           });
 
-          existingSet.add(`${student.student_name}|${dateStr}`);
+          existingSet.add(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`);
         }
       }
     }
