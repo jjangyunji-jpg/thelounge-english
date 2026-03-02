@@ -10,6 +10,7 @@ import {
   Star, MessageSquare, Download,
 } from "lucide-react";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
+import InstructorGuide from "@/components/dashboard/InstructorGuide";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import { Button } from "@/components/ui/button";
@@ -1173,7 +1174,7 @@ export default function InstructorDashboard() {
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "profile" | "guide">("dashboard");
   const [feedbackData, setFeedbackData] = useState<any[]>([]);
   const [feedbackCategories, setFeedbackCategories] = useState<{ key: string; label: string }[]>([]);
   const [feedbackPeriodIdx, setFeedbackPeriodIdx] = useState(-1);
@@ -1672,6 +1673,7 @@ export default function InstructorDashboard() {
             { id: "students" as const, label: "학생 관리", icon: Users },
             { id: "feedback" as const, label: "수업 피드백", icon: MessageSquare },
             { id: "settlement" as const, label: "정산 관리", icon: Banknote },
+            { id: "guide" as const, label: "이용가이드", icon: BookOpen },
             { id: "profile" as const, label: "마이페이지", icon: User },
           ].map((t) => (
             <button
@@ -2647,6 +2649,10 @@ export default function InstructorDashboard() {
             )}
           </div>
         )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* ═══ GUIDE TAB ══════════════════════════════════════════════════ */}
+        {activeTab === "guide" && <InstructorGuide />}
 
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ═══ PROFILE TAB ═════════════════════════════════════════════════ */}
