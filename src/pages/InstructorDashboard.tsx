@@ -2484,7 +2484,7 @@ export default function InstructorDashboard() {
                               value={row.durationHours}
                               onChange={(e) => setDurationOverrides(prev => ({ ...prev, [row.key]: parseFloat(e.target.value) }))}
                             >
-                              {[0.5, 1, 1.5, 2, 2.5, 3].map(h => (
+                              {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4].map(h => (
                                 <option key={h} value={h}>{h}시간</option>
                               ))}
                             </select>
