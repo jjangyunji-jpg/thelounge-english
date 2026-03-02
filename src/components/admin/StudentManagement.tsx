@@ -310,6 +310,9 @@ export default function StudentManagement() {
    const [editNewObjective, setEditNewObjective] = useState("");
    const [editInstructor, setEditInstructor] = useState("");
    const [editStartDate, setEditStartDate] = useState<Date | undefined>(undefined);
+   const [editSchedules, setEditSchedules] = useState<ScheduleSlot[]>([]);
+   const [editSchedDay, setEditSchedDay] = useState("월");
+   const [editSchedTime, setEditSchedTime] = useState("09:00");
 
   // Meet link editing
   const [editingMeetId, setEditingMeetId] = useState<number | null>(null);
@@ -455,6 +458,9 @@ export default function StudentManagement() {
     setEditInstructor(s.instructor);
     setEditEnglishName(s.englishName);
     setEditStartDate(s.startDate ? new Date(s.startDate + "T00:00:00") : undefined);
+    setEditSchedules([...s.schedules]);
+    setEditSchedDay("월");
+    setEditSchedTime("09:00");
   };
 
   const saveInlineEdit = async (id: number) => {
@@ -467,6 +473,7 @@ export default function StudentManagement() {
         learning_objective: editObjectives.length > 0 ? JSON.stringify(editObjectives) : null,
         english_name: editEnglishName.trim() || null,
         start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
+        schedules: editSchedules.length > 0 ? JSON.stringify(editSchedules) : null,
       }).eq("id", student.dbId);
     }
     setStudents((prev) =>
@@ -480,6 +487,7 @@ export default function StudentManagement() {
           learningObjective: editObjectives.length > 0 ? JSON.stringify(editObjectives) : "",
           englishName: editEnglishName.trim(),
           startDate: editStartDate ? format(editStartDate, "yyyy-MM-dd") : "",
+          schedules: [...editSchedules],
         };
       })
     );
@@ -1174,6 +1182,60 @@ export default function StudentManagement() {
                               <Calendar mode="single" selected={editStartDate} onSelect={setEditStartDate} className={cn("p-3 pointer-events-auto")} />
                             </PopoverContent>
                           </Popover>
+                        </div>
+                        {/* Schedule editing */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> 수업 일정
+                          </Label>
+                          {editSchedules.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {editSchedules.map((slot, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">
+                                  {slot.day}요일 {slot.time}
+                                  <button type="button" onClick={() => setEditSchedules(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex gap-1">
+                            <Select value={editSchedDay} onValueChange={setEditSchedDay}>
+                              <SelectTrigger className="h-7 text-xs w-20">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DAYS_OF_WEEK.map((d) => (
+                                  <SelectItem key={d} value={d}>{d}요일</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select value={editSchedTime} onValueChange={setEditSchedTime}>
+                              <SelectTrigger className="h-7 text-xs w-24">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {HOURS.map((h) => (
+                                  <SelectItem key={h} value={h}>{h}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs px-2"
+                              onClick={() => {
+                                const exists = editSchedules.some(s => s.day === editSchedDay && s.time === editSchedTime);
+                                if (!exists) {
+                                  setEditSchedules(prev => [...prev, { day: editSchedDay, time: editSchedTime }]);
+                                }
+                              }}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
