@@ -251,6 +251,66 @@ export type Database = {
         }
         Relationships: []
       }
+      guide_documents: {
+        Row: {
+          category: string
+          created_at: string
+          file_url: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          file_url: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_url?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      guide_faqs: {
+        Row: {
+          answer: string
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          question: string
+          sort_order: number
+        }
+        Insert: {
+          answer: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          question: string
+          sort_order?: number
+        }
+        Update: {
+          answer?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          question?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       holiday_notices: {
         Row: {
           created_at: string
