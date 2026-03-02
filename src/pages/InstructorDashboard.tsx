@@ -1113,7 +1113,7 @@ function RescheduleModal({
 
   const handleSave = async () => {
     setSaving(true);
-    const newScheduled = new Date(`${date}T${time}:00`).toISOString();
+    const newScheduled = new Date(`${date}T${time}:00+09:00`).toISOString();
     const { error } = await supabase.from("class_sessions").update({ scheduled_at: newScheduled }).eq("id", session.id);
     if (error) {
       toast({ title: "변경 실패", description: error.message, variant: "destructive" });
