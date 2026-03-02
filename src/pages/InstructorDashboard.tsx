@@ -1524,18 +1524,21 @@ export default function InstructorDashboard() {
       payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate),
     });
   });
-  completedSettlementMeetings.forEach((m) => {
-    const key = `meeting-${m.id}`;
-    const durationHours = durationOverrides[key] ?? (m.duration_minutes / 60);
-    settlementRows.push({
-      key,
-      date: new Date(m.scheduled_at),
-      type: 'meeting',
-      description: m.notes || '업무 미팅',
-      durationHours,
-      payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : BASE_PAY,
+  // 대표는 미팅 정산 제외
+  if (!isOwner) {
+    completedSettlementMeetings.forEach((m) => {
+      const key = `meeting-${m.id}`;
+      const durationHours = durationOverrides[key] ?? (m.duration_minutes / 60);
+      settlementRows.push({
+        key,
+        date: new Date(m.scheduled_at),
+        type: 'meeting',
+        description: m.notes || '업무 미팅',
+        durationHours,
+        payPerHour: BASE_PAY,
+      });
     });
-  });
+  }
   settlementRows.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   let cumulative = 0;
