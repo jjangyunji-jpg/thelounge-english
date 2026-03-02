@@ -1114,6 +1114,24 @@ function RescheduleModal({
   const handleSave = async () => {
     setSaving(true);
     const newScheduled = new Date(`${date}T${time}:00+09:00`).toISOString();
+
+    // Check for duplicate: same student, same date (KST), different session
+    const dayStart = new Date(`${date}T00:00:00+09:00`).toISOString();
+    const dayEnd = new Date(`${date}T23:59:59+09:00`).toISOString();
+    const { data: existing } = await supabase
+      .from("class_sessions")
+      .select("id")
+      .eq("student_name", session.student_name)
+      .gte("scheduled_at", dayStart)
+      .lte("scheduled_at", dayEnd)
+      .neq("id", session.id);
+
+    if (existing && existing.length > 0) {
+      toast({ title: "변경 실패", description: `${session.student_name}의 ${date} 수업이 이미 존재합니다.`, variant: "destructive" });
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase.from("class_sessions").update({ scheduled_at: newScheduled }).eq("id", session.id);
     if (error) {
       toast({ title: "변경 실패", description: error.message, variant: "destructive" });
