@@ -2963,9 +2963,28 @@ function BulkGoalModal({
 
   const handleSave = async () => {
     setSaving(true);
+    // 1. Save all changed session topics
     for (const id of changedIds) {
       await supabase.from("class_sessions").update({ topic: topics[id].trim() }).eq("id", id);
     }
+    // 2. Sync lesson_goal on instructor_students for each student
+    for (const s of students) {
+      const data = studentSessions[s.student_name];
+      if (!data) continue;
+      const sessionTopics = data.curr
+        .map((sess, i) => {
+          const val = (topics[sess.id] || "").trim();
+          return val ? `${i + 1}회: ${val}` : null;
+        })
+        .filter(Boolean);
+      if (sessionTopics.length > 0) {
+        await supabase
+          .from("instructor_students")
+          .update({ lesson_goal: sessionTopics.join(" / ") })
+          .eq("id", s.id);
+      }
+    }
+    setOrigTopics({ ...topics });
     toast({ title: `${changedIds.length}개 세션의 수업 목표가 저장되었습니다 ✓` });
     setSaving(false);
     onSaved();
@@ -3063,7 +3082,18 @@ function BulkGoalModal({
             {autoSaveStatus === "saved" && <><Check className="w-3 h-3 text-green-600" /> 자동 저장됨</>}
             {autoSaveStatus === "idle" && `${changedIds.length}개 변경됨`}
           </p>
-          <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">닫기</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs">닫기</Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
+              onClick={handleSave}
+              disabled={saving || changedIds.length === 0}
+            >
+              {saving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
+              저장하기
+            </Button>
+          </div>
         </div>
       </div>
     </div>
