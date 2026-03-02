@@ -72,20 +72,23 @@ function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodSta
     }
   });
 
-  meetings.forEach((m) => {
-    const d = new Date(m.scheduled_at);
-    if (d >= start && d <= end && d <= now) {
-      const durationHours = m.duration_minutes / 60;
-      const meetingPay = Math.round(durationHours * (flatRate || BASE_PAY));
-      rows.push({
-        date: d,
-        type: "미팅",
-        description: m.notes || "업무 미팅",
-        durationHours,
-        pay: meetingPay,
-      });
-    }
-  });
+  // 대표는 미팅 정산 제외
+  if (!flatRate) {
+    meetings.forEach((m) => {
+      const d = new Date(m.scheduled_at);
+      if (d >= start && d <= end && d <= now) {
+        const durationHours = m.duration_minutes / 60;
+        const meetingPay = Math.round(durationHours * BASE_PAY);
+        rows.push({
+          date: d,
+          type: "미팅",
+          description: m.notes || "업무 미팅",
+          durationHours,
+          pay: meetingPay,
+        });
+      }
+    });
+  }
 
   rows.sort((a, b) => a.date.getTime() - b.date.getTime());
 
