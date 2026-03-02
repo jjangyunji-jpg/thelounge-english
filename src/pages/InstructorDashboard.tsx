@@ -1940,7 +1940,14 @@ export default function InstructorDashboard() {
                               onClick={async () => {
                                 const today = new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" });
                                 await exportNotesPdf(
-                                  completedWithNotes.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()).map(s => ({ ...s, remarks: null, student_name: s.student_name })),
+                                  completedWithNotes.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()).map(s => {
+                                    // Calculate lesson number for this student
+                                    const studentSessions = sessions
+                                      .filter(ss => ss.student_name === s.student_name && new Date(ss.scheduled_at) <= new Date(s.scheduled_at))
+                                      .sort((a2, b2) => new Date(a2.scheduled_at).getTime() - new Date(b2.scheduled_at).getTime());
+                                    const lessonNumber = studentSessions.findIndex(ss => ss.id === s.id) + 1;
+                                    return { ...s, remarks: null, student_name: s.student_name, level: s.level, lessonNumber: lessonNumber || null };
+                                  }),
                                   `${instructor?.name || "강사"}_${today}`
                                 );
                                 toast({ title: `${completedWithNotes.length}명의 오늘 수업노트를 PDF로 내보냈습니다` });
