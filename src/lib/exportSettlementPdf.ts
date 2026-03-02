@@ -122,7 +122,7 @@ export async function exportAllSettlementsPdf(
     doc.setTextColor(120);
     doc.text(`기간: ${period.label} (${period.start_date} ~ ${period.end_date})`, 14, 25);
     doc.text(`이메일: ${info.email}`, 14, 30);
-    doc.text(`생성일: ${new Date().toLocaleDateString("ko-KR")}`, 14, 35);
+    doc.text(`생성일: ${new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}`, 14, 35);
 
     if (rows.length === 0) {
       doc.setFontSize(10);
@@ -137,7 +137,7 @@ export async function exportAllSettlementsPdf(
       startY: 42,
       head: [["일자", "구분", "업무내용", "시간", "급여", "누적 금액"]],
       body: rows.map((r) => [
-        r.date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" }),
+        r.date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" }),
         r.type,
         r.description,
         `${r.durationHours}시간`,

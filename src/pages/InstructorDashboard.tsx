@@ -242,7 +242,7 @@ function buildHolidaySet(holidays: { date_start: string; date_end: string }[]): 
     const start = new Date(h.date_start + "T00:00:00");
     const end = new Date(h.date_end + "T00:00:00");
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      set.add(d.toISOString().slice(0, 10));
+      set.add(new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(d));
     }
   }
   return set;
@@ -1107,8 +1107,8 @@ function RescheduleModal({
 }) {
   const { toast } = useToast();
   const orig = new Date(session.scheduled_at);
-  const [date, setDate] = useState(orig.toISOString().slice(0, 10));
-  const [time, setTime] = useState(orig.toTimeString().slice(0, 5));
+  const [date, setDate] = useState(orig.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }));
+  const [time, setTime] = useState(orig.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }));
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -1321,7 +1321,7 @@ export default function InstructorDashboard() {
     setMeetings(allMeetings);
     setVocabTests(vocabRes.data || []);
     // Pick the period that contains today
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
     const periods = periodRes.data || [];
     setAllPeriods(periods);
     const currentIdx = periods.findIndex(p => p.start_date <= todayStr && p.end_date >= todayStr);

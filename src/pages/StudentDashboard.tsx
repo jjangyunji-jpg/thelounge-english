@@ -462,7 +462,7 @@ export default function StudentDashboard() {
     navigate("/login");
   };
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
   const visibleHolidays = holidays.filter(h => h.notify_students && !dismissedIds.includes(h.id) && h.date_end >= todayStr);
   const currentPopup = visibleHolidays[0] ?? null;
 
@@ -510,7 +510,7 @@ export default function StudentDashboard() {
 
     // Auto-select current period
     if (!selectedPeriodId && periodsRes.data?.length) {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
       const current = periodsRes.data.find((p: SchedulePeriod) => p.start_date <= today && p.end_date >= today);
       setSelectedPeriodId(current?.id || periodsRes.data[periodsRes.data.length - 1].id);
     }

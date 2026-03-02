@@ -3,7 +3,7 @@ import { Users, GraduationCap, DollarSign, UserPlus, Calendar, Star, RefreshCw, 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, todayKSTString } from "@/lib/utils";
 
 const BASE_SALARY = 11000;
 const LEVEL_RATES: Record<string, number> = {
@@ -41,8 +41,9 @@ export default function AdminDashboard() {
   const load = async () => {
     setLoading(true);
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const todayStr = todayKSTString();
+    const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const monthStart = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}-01`;
 
     const [
       insRes, studRes, periodRes, holidayRes, sessRes, feedbackRes,
@@ -150,7 +151,7 @@ export default function AdminDashboard() {
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
         >
           <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
-          <span className="hidden sm:inline">{lastUpdated.toLocaleTimeString("ko-KR")} 기준</span>
+          <span className="hidden sm:inline">{lastUpdated.toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul" })} 기준</span>
         </button>
       </div>
 

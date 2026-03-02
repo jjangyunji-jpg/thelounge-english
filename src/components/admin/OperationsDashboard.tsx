@@ -71,7 +71,7 @@ const typeColor: Record<string, string> = {
 // ────────────────────────────────────────────────────────────────────────────
 
 export default function OperationsDashboard() {
-  const [refreshed] = useState(new Date().toLocaleString("ko-KR"));
+  const [refreshed] = useState(new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }));
 
   return (
     <div className="space-y-6">

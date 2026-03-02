@@ -183,7 +183,7 @@ function TestDetailView({
           <div>
             <p className="font-bold text-sm text-foreground">테스트 상세 결과</p>
             <p className="text-[10px] text-muted-foreground">
-              {testRecord.completed_at ? new Date(testRecord.completed_at).toLocaleString("ko-KR") : ""}
+              {testRecord.completed_at ? new Date(testRecord.completed_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) : ""}
             </p>
           </div>
           <div className="flex items-center gap-3">

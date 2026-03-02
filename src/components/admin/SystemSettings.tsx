@@ -197,7 +197,7 @@ export default function SystemSettings() {
     setGeneratingPeriodId(null);
   };
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
   const upcomingNotices = notices.filter((n) => n.date_end >= today);
   const pastNotices = notices.filter((n) => n.date_end < today);
 

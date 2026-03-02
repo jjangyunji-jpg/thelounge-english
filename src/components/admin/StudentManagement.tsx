@@ -6,7 +6,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { formatStudentName } from "@/lib/formatStudentName";
-import { cn } from "@/lib/utils";
+import { cn, todayKSTString } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1068,7 +1068,7 @@ export default function StudentManagement() {
                       </span>
                     )}
                     {student.pauses.length > 0 && (() => {
-                      const now = new Date().toISOString().slice(0, 10);
+                      const now = todayKSTString();
                       const activePause = student.pauses.find(p => now >= p.pause_start && (!p.pause_end || now <= p.pause_end));
                       const futurePause = student.pauses.find(p => now < p.pause_start);
                       return activePause ? (
@@ -1196,7 +1196,7 @@ export default function StudentManagement() {
                     {student.pauses.length > 0 && (
                       <div className="space-y-1.5">
                         {student.pauses.map((p) => {
-                          const now = new Date().toISOString().slice(0, 10);
+                          const now = todayKSTString();
                           const isActive = now >= p.pause_start && (!p.pause_end || now <= p.pause_end);
                           return (
                             <div key={p.id} className={cn(

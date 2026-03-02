@@ -246,7 +246,7 @@ export default function InstructorManagement() {
     setDownloadingPdf(true);
     try {
       // Get current period
-      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
       const { data: periods } = await supabase
         .from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true });
       const period = (periods || []).find(p => p.start_date <= todayStr && p.end_date >= todayStr) || (periods || [])[0];
