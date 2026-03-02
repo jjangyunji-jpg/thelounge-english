@@ -2680,11 +2680,26 @@ export default function InstructorDashboard() {
                   }
                   setProfileSaving(true);
                   try {
+                    const oldName = instructor.name;
+                    const newName = profileName.trim();
                     const { error: insErr } = await supabase
                       .from("instructors")
-                      .update({ name: profileName.trim() })
+                      .update({ name: newName })
                       .eq("id", instructor.id);
                     if (insErr) throw insErr;
+
+                    // Sync instructor_students.instructor_name
+                    await supabase
+                      .from("instructor_students")
+                      .update({ instructor_name: newName })
+                      .eq("instructor_id", instructor.id);
+
+                    // Sync unstarted class_sessions
+                    await supabase
+                      .from("class_sessions")
+                      .update({ instructor_name: newName })
+                      .eq("instructor_name", oldName)
+                      .is("started_at", null);
 
                     const { data: { user: currentUser } } = await supabase.auth.getUser();
                     if (currentUser) {
