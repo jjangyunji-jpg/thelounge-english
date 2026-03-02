@@ -17,6 +17,7 @@ interface SessionNote {
   topic: string | null;
   notes: string | null;
   remarks: string | null;
+  student_name?: string;
 }
 
 function stripHtml(html: string): string {
@@ -50,6 +51,7 @@ export async function exportNotesPdf(sessions: SessionNote[], studentName: strin
 
   for (const s of sessions) {
     const dateLabel = formatDate(s.scheduled_at);
+    const studentLabel = s.student_name ? ` [${s.student_name}]` : "";
     const topicLabel = s.topic ? ` - ${s.topic}` : "";
     const notesText = s.notes ? stripHtml(s.notes) : "(노트 없음)";
     const remarksText = s.remarks ? `비고: ${s.remarks}` : "";
@@ -64,7 +66,7 @@ export async function exportNotesPdf(sessions: SessionNote[], studentName: strin
     // Date header
     doc.setFontSize(11);
     doc.setTextColor(40, 60, 100);
-    doc.text(`${dateLabel}${topicLabel}`, margin, y);
+    doc.text(`${dateLabel}${studentLabel}${topicLabel}`, margin, y);
     y += 2;
     doc.setDrawColor(200);
     doc.line(margin, y, pageWidth - margin, y);

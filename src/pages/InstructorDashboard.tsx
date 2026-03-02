@@ -7,8 +7,9 @@ import {
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
   Shield, Paperclip, CheckCircle, ChevronDown, User, Lock, Monitor, Target,
-  Star, MessageSquare,
+  Star, MessageSquare, Download,
 } from "lucide-react";
+import { exportNotesPdf } from "@/lib/exportNotesPdf";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import { Button } from "@/components/ui/button";
@@ -1803,6 +1804,27 @@ export default function InstructorDashboard() {
                         <Clock className="w-4 h-4 text-gold" />
                         오늘의 일정
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{totalToday}건</span>
+                        {(() => {
+                          const completedWithNotes = todaySessions.filter(s => (s.ended_at || new Date(s.scheduled_at) <= new Date()) && s.notes && s.notes.trim());
+                          if (completedWithNotes.length === 0) return null;
+                          return (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="ml-auto h-6 text-[10px] gap-1 text-muted-foreground hover:text-foreground"
+                              onClick={async () => {
+                                const today = new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" });
+                                await exportNotesPdf(
+                                  completedWithNotes.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()).map(s => ({ ...s, remarks: null, student_name: s.student_name })),
+                                  `${instructor?.name || "강사"}_${today}`
+                                );
+                                toast({ title: `${completedWithNotes.length}명의 오늘 수업노트를 PDF로 내보냈습니다` });
+                              }}
+                            >
+                              <Download className="w-3 h-3" />오늘 노트 PDF
+                            </Button>
+                          );
+                        })()}
                       </h3>
                       {totalToday === 0 ? (
                         <p className="text-xs text-muted-foreground py-1">오늘 예정된 일정이 없습니다</p>
