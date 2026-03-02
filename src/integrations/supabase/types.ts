@@ -463,7 +463,7 @@ export type Database = {
           created_at: string
           deactivation_reason: string | null
           education: string | null
-          email: string
+          email: string | null
           gender: string | null
           id: string
           join_date: string | null
@@ -483,7 +483,7 @@ export type Database = {
           created_at?: string
           deactivation_reason?: string | null
           education?: string | null
-          email: string
+          email?: string | null
           gender?: string | null
           id?: string
           join_date?: string | null
@@ -503,7 +503,7 @@ export type Database = {
           created_at?: string
           deactivation_reason?: string | null
           education?: string | null
-          email?: string
+          email?: string | null
           gender?: string | null
           id?: string
           join_date?: string | null
