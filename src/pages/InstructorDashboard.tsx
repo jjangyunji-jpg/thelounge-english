@@ -1135,8 +1135,14 @@ export default function InstructorDashboard() {
       .eq("role", "admin");
     if (adminRole && adminRole.length > 0) setIsAdmin(true);
 
-    const { data: ins } = await supabase
-      .from("instructors").select("*").eq("email", user.email).maybeSingle();
+    // Try user_id first, fallback to email
+    let { data: ins } = await supabase
+      .from("instructors").select("*").eq("user_id", user.id).maybeSingle();
+    if (!ins) {
+      const res = await supabase
+        .from("instructors").select("*").eq("email", user.email!).maybeSingle();
+      ins = res.data;
+    }
 
     if (!ins) {
       toast({ title: "강사 계정을 찾을 수 없습니다", variant: "destructive" });
