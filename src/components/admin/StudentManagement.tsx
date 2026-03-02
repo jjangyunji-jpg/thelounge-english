@@ -36,9 +36,18 @@ type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
 const LEVELS: Level[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-const BASE_LESSONS = 4;
 const LESSON_PRICE = 50000;
-const BASE_FEE = BASE_LESSONS * LESSON_PRICE;
+
+/** Calculate base monthly lessons from schedule slots */
+const calcBaseLessons = (schedules: ScheduleSlot[]): number => {
+  if (schedules.length === 0) return 4; // default
+  return schedules.reduce((sum, slot) => {
+    const freq = slot.frequency || "weekly";
+    return sum + (freq === "weekly" ? 4 : 2);
+  }, 0);
+};
+
+const calcMonthlyFee = (baseLessons: number, extra: number) => (baseLessons + extra) * LESSON_PRICE;
 
 const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string; hint: string }> = {
   writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]",      hint: "텍스트 작성 필수" },
@@ -112,7 +121,7 @@ interface Student {
   pauses: PauseRecord[];
 }
 
-const calcMonthlyFee = (extra: number) => BASE_FEE + extra * LESSON_PRICE;
+// removed old calcMonthlyFee - now using the one at module level
 
 const levelColors: Record<Level, string> = {
   A1: "bg-muted text-muted-foreground",
@@ -905,10 +914,14 @@ export default function StudentManagement() {
 
                 {/* Fee calculator */}
                 <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-3">
+                  {(() => {
+                    const baseLessons = calcBaseLessons(newStudent.schedules);
+                    const baseFee = baseLessons * LESSON_PRICE;
+                    return <>
                   <p className="text-xs font-semibold text-foreground">💰 이번달 수강료 계산</p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>기본 수업 ({BASE_LESSONS}회 × ₩{LESSON_PRICE.toLocaleString()})</span>
-                    <span className="font-medium text-foreground">₩{BASE_FEE.toLocaleString()}</span>
+                    <span>기본 수업 ({baseLessons}회 × ₩{LESSON_PRICE.toLocaleString()})</span>
+                    <span className="font-medium text-foreground">₩{baseFee.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground flex-1">추가 수업 횟수</span>
@@ -932,9 +945,11 @@ export default function StudentManagement() {
                   <div className="flex items-center justify-between pt-1 border-t border-border">
                     <span className="text-xs font-semibold text-foreground">이번달 총 수강료</span>
                     <span className="text-sm font-bold text-gold-dark">
-                      ₩{calcMonthlyFee(newStudent.extraLessons).toLocaleString()}
+                      ₩{calcMonthlyFee(baseLessons, newStudent.extraLessons).toLocaleString()}
                     </span>
                   </div>
+                  </>;
+                  })()}
                 </div>
 
                 <Button
@@ -1006,7 +1021,8 @@ export default function StudentManagement() {
               </div>
               <div className="space-y-2">
           {grouped[instrName].map((student) => {
-          const monthlyFee = calcMonthlyFee(student.extraLessons);
+          const baseLessons = calcBaseLessons(student.schedules);
+          const monthlyFee = calcMonthlyFee(baseLessons, student.extraLessons);
           const isEditing = editingStudentId === student.id;
 
           return (
@@ -1399,12 +1415,15 @@ export default function StudentManagement() {
                           </div>
                         </div>
                         {/* Fee preview */}
-                        <div className="p-2 rounded bg-muted/40 text-xs flex items-center justify-between">
+                        {(() => {
+                          const editBaseLessons = calcBaseLessons(editSchedules);
+                          return <div className="p-2 rounded bg-muted/40 text-xs flex items-center justify-between">
                           <span className="text-muted-foreground">
-                            기본 {BASE_LESSONS}회 + 추가 {editExtra}회 = {BASE_LESSONS + editExtra}회
+                            기본 {editBaseLessons}회 + 추가 {editExtra}회 = {editBaseLessons + editExtra}회
                           </span>
-                          <span className="font-bold text-gold-dark">₩{calcMonthlyFee(editExtra).toLocaleString()}</span>
-                        </div>
+                          <span className="font-bold text-gold-dark">₩{calcMonthlyFee(editBaseLessons, editExtra).toLocaleString()}</span>
+                        </div>;
+                        })()}
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -1437,7 +1456,7 @@ export default function StudentManagement() {
                           <div>
                             <p className="text-muted-foreground">이번달 수업</p>
                             <p className="font-semibold text-foreground mt-0.5">
-                              {BASE_LESSONS}회 {student.extraLessons > 0 && <span className="text-gold-dark">+{student.extraLessons}회</span>}
+                              {baseLessons}회 {student.extraLessons > 0 && <span className="text-gold-dark">+{student.extraLessons}회</span>}
                             </p>
                           </div>
                           <div>
