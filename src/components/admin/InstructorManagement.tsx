@@ -245,16 +245,13 @@ export default function InstructorManagement() {
   const handleDownloadSettlement = async () => {
     setDownloadingPdf(true);
     try {
-      // Get current period
-      const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-      const { data: periods } = await supabase
-        .from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true });
-      const period = (periods || []).find(p => p.start_date <= todayStr && p.end_date >= todayStr) || (periods || [])[0];
-      if (!period) {
-        toast({ title: "활성 기간이 없습니다", variant: "destructive" });
-        setDownloadingPdf(false);
-        return;
-      }
+      // 정산은 월 기준 (급여용)
+      // 정산은 월 기준 (급여용)
+      const now = new Date();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const monthLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
       // Fetch sessions & meetings for all active instructors
       const activeInstructors = instructors.filter(i => i.active && i.position !== '대표');
@@ -276,9 +273,9 @@ export default function InstructorManagement() {
       );
 
       await exportAllSettlementsPdf(allData, {
-        label: period.label,
-        start_date: period.start_date,
-        end_date: period.end_date,
+        label: monthLabel,
+        start_date: monthStart,
+        end_date: monthEnd,
       });
       toast({ title: "정산 자료 PDF 다운로드 완료" });
     } catch (err: unknown) {
