@@ -2098,7 +2098,12 @@ export default function InstructorDashboard() {
                                       <FileText className="w-3 h-3" /> 이번 수업
                                     </Button>
                                   </a>
-                                  {!isCompleted ? (
+                                  {(() => {
+                                    const scheduledKst = new Date(s.scheduled_at);
+                                    const nowMs = Date.now();
+                                    const diffMs = nowMs - scheduledKst.getTime();
+                                    const within12h = diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000;
+                                    if (!isCompleted && within12h) return (
                                     <Button
                                       size="sm"
                                       className="h-7 text-[10px] gap-1 bg-success hover:bg-success/90 text-primary-foreground px-2"
@@ -2118,7 +2123,8 @@ export default function InstructorDashboard() {
                                     >
                                       <Check className="w-3 h-3" /> 수업 완료
                                     </Button>
-                                  ) : (
+                                    );
+                                    if (isCompleted && within12h) return (
                                     <Button
                                       size="sm"
                                       variant="outline"
@@ -2137,7 +2143,9 @@ export default function InstructorDashboard() {
                                     >
                                       <X className="w-3 h-3" /> 완료 취소
                                     </Button>
-                                  )}
+                                    );
+                                    return null;
+                                  })()}
                                 </div>
                               </div>
                             );
