@@ -1440,8 +1440,19 @@ export default function InstructorDashboard() {
 
   const myAssignments = assignments.filter((a) => myStudentNames.has(a.student_name));
 
-  // Find most recent past session per student
+  // Find next upcoming session per student (for unchecked homework)
   const nowDate = new Date();
+  const nextSessionByStudent = new Map<string, ClassSession>();
+  sessions
+    .filter(s => new Date(s.scheduled_at) > nowDate && myStudentNames.has(s.student_name))
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+    .forEach(s => {
+      if (!nextSessionByStudent.has(s.student_name)) {
+        nextSessionByStudent.set(s.student_name, s);
+      }
+    });
+
+  // Find most recent past session per student (for 과제 제출 현황)
   const latestSessionByStudent = new Map<string, string>();
   sessions
     .filter(s => new Date(s.scheduled_at) <= nowDate && myStudentNames.has(s.student_name))
@@ -1455,9 +1466,19 @@ export default function InstructorDashboard() {
   const uncheckedHw = myAssignments.filter((a) => {
     const sub = submissions.find((s) => s.assignment_id === a.id);
     if (!sub || sub.status !== "submitted") return false;
-    // Only show if assignment belongs to the student's most recent past session
-    const latestSid = latestSessionByStudent.get(a.student_name);
-    return a.session_id && a.session_id === latestSid;
+    // Only show if assignment belongs to the session right before the student's next upcoming session
+    const nextSess = nextSessionByStudent.get(a.student_name);
+    if (!nextSess) {
+      // No next session — fall back to latest past session
+      const latestSid = latestSessionByStudent.get(a.student_name);
+      return a.session_id && a.session_id === latestSid;
+    }
+    // Find the session just before the next session for this student
+    const pastSessions = sessions
+      .filter(s => s.student_name === a.student_name && new Date(s.scheduled_at) <= nowDate)
+      .sort((x, y) => new Date(y.scheduled_at).getTime() - new Date(x.scheduled_at).getTime());
+    const latestPast = pastSessions[0];
+    return latestPast && a.session_id === latestPast.id;
   });
 
   // Reviewed homework: show until next session for that student starts
@@ -2053,6 +2074,119 @@ export default function InstructorDashboard() {
                   );
                 })()}
 
+                {/* Unchecked homework — moved above 과제 제출 현황 */}
+                <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+                    <h3 className="text-sm font-semibold text-destructive mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      미확인 숙제
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">{uncheckedHw.length}</span>
+                    </h3>
+                    {uncheckedHw.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {uncheckedHw.map((a) => {
+                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "submitted");
+                        const hwType = a.type as HwType;
+                        const meta = HW_TYPE_META[hwType];
+                        const Icon = meta?.icon || FileText;
+                        const isQuickCheck = hwType === "reading" || hwType === "memorizing";
+                        const nextSess = nextSessionByStudent.get(a.student_name);
+
+                        return (
+                          <div
+                            key={a.id}
+                            onClick={() => {
+                              if (!isQuickCheck && sub) {
+                                setReviewHw({ assignment: a, submission: sub });
+                              }
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border",
+                              !isQuickCheck && "cursor-pointer hover:bg-muted/40 transition-colors"
+                            )}
+                          >
+                            <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground">{a.title}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {fmtName(a.student_name)} · {meta?.label || a.type}
+                                {nextSess && (
+                                  <span className="ml-1.5 text-[hsl(var(--gold-dark))]">
+                                    · 다음 수업 {fmt(nextSess.scheduled_at)}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            {isQuickCheck && sub ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] gap-1 border-[hsl(var(--success)/0.4)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.1)]"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await supabase.from("homework_submissions").update({
+                                    status: "reviewed",
+                                    reviewed_at: new Date().toISOString(),
+                                  }).eq("id", sub.id);
+                                  toast({ title: "확인 완료 ✓" });
+                                  setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: "reviewed", reviewed_at: new Date().toISOString() } : s));
+                                }}
+                              >
+                                <Check className="w-3 h-3" /> 확인
+                              </Button>
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">미확인 숙제가 없습니다 ✓</p>
+                    )}
+                  </div>
+
+                {/* Checked homework */}
+                {checkedHw.length > 0 && (
+                  <details className="rounded-xl border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.03)] group">
+                    <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2 text-sm font-semibold text-[hsl(var(--success))]">
+                      <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+                      <CheckCircle className="w-4 h-4" />
+                      확인된 숙제
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-medium">{checkedHw.length}</span>
+                    </summary>
+                    <div className="px-4 pb-4 space-y-1.5">
+                      {checkedHw.map((a) => {
+                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "reviewed");
+                        const hwType = a.type as HwType;
+                        const meta = HW_TYPE_META[hwType];
+                        const Icon = meta?.icon || FileText;
+                        return (
+                          <div
+                            key={a.id}
+                            onClick={() => sub && setViewCheckedHw({ assignment: a, submission: sub })}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border cursor-pointer hover:bg-muted/40 transition-colors"
+                          >
+                            <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground">{a.title}</p>
+                              <p className="text-[10px] text-muted-foreground">{fmtName(a.student_name)} · {meta?.label || a.type}</p>
+                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); sub && setReviewHw({ assignment: a, submission: sub }); }}
+                              className="text-[10px] px-2 py-1 rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors flex-shrink-0"
+                            >
+                              재검토
+                            </button>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0">
+                              검토됨
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
+                )}
+
                 {/* Homework submission status per student */}
                 <div className="rounded-xl border border-border bg-card p-4">
                   <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -2062,7 +2196,6 @@ export default function InstructorDashboard() {
                   <div className="space-y-1.5 max-h-[360px] overflow-y-auto">
                     {(() => {
                       const nowTs = new Date();
-                      // Build per-student: latest past session, its assignments, submission status, next session date
                       const activeStudents = students.filter(s => s.status === "active");
                       const studentHwData = activeStudents.map(st => {
                         const sSessions = sessions.filter(s => s.student_name === st.student_name);
@@ -2070,7 +2203,6 @@ export default function InstructorDashboard() {
                         const latestPast = pastSessions[0] || null;
                         const futureSessions = sSessions.filter(s => new Date(s.scheduled_at) > nowTs).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
                         const nextSession = futureSessions[0] || null;
-                        // Assignments from latest past session
                         const sessionAssignments = latestPast ? assignments.filter(a => a.student_name === st.student_name && a.session_id === latestPast.id) : [];
                         const totalHw = sessionAssignments.length;
                         const submittedCount = sessionAssignments.filter(a => {
@@ -2083,7 +2215,6 @@ export default function InstructorDashboard() {
                         }).length;
                         return { student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount };
                       }).filter(d => d.totalHw > 0 || d.latestPast).sort((a, b) => {
-                        // Sort by next session date (closest first), students without next session go to end
                         const aTime = a.nextSession ? new Date(a.nextSession.scheduled_at).getTime() : Infinity;
                         const bTime = b.nextSession ? new Date(b.nextSession.scheduled_at).getTime() : Infinity;
                         return aTime - bTime;
@@ -2203,111 +2334,6 @@ export default function InstructorDashboard() {
                     })()}
                   </div>
                 </div>
-
-                {/* Unchecked homework */}
-                <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
-                    <h3 className="text-sm font-semibold text-destructive mb-3 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4" />
-                      미확인 숙제
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">{uncheckedHw.length}</span>
-                    </h3>
-                    {uncheckedHw.length > 0 ? (
-                    <div className="space-y-1.5">
-                      {uncheckedHw.map((a) => {
-                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "submitted");
-                        const hwType = a.type as HwType;
-                        const meta = HW_TYPE_META[hwType];
-                        const Icon = meta?.icon || FileText;
-                        const isQuickCheck = hwType === "reading" || hwType === "memorizing";
-
-                        return (
-                          <div
-                            key={a.id}
-                            onClick={() => {
-                              if (!isQuickCheck && sub) {
-                                setReviewHw({ assignment: a, submission: sub });
-                              }
-                            }}
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border",
-                              !isQuickCheck && "cursor-pointer hover:bg-muted/40 transition-colors"
-                            )}
-                          >
-                            <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-foreground">{a.title}</p>
-                               <p className="text-[10px] text-muted-foreground">{fmtName(a.student_name)} · {meta?.label || a.type}</p>
-                            </div>
-                            {isQuickCheck && sub ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[10px] gap-1 border-[hsl(var(--success)/0.4)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.1)]"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  await supabase.from("homework_submissions").update({
-                                    status: "reviewed",
-                                    reviewed_at: new Date().toISOString(),
-                                  }).eq("id", sub.id);
-                                  toast({ title: "확인 완료 ✓" });
-                                  setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: "reviewed", reviewed_at: new Date().toISOString() } : s));
-                                }}
-                              >
-                                <Check className="w-3 h-3" /> 확인
-                              </Button>
-                            ) : (
-                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">미확인 숙제가 없습니다 ✓</p>
-                    )}
-                  </div>
-
-                {/* Checked homework */}
-                {checkedHw.length > 0 && (
-                  <details className="rounded-xl border border-[hsl(var(--success)/0.2)] bg-[hsl(var(--success)/0.03)] group">
-                    <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2 text-sm font-semibold text-[hsl(var(--success))]">
-                      <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
-                      <CheckCircle className="w-4 h-4" />
-                      확인된 숙제
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-medium">{checkedHw.length}</span>
-                    </summary>
-                    <div className="px-4 pb-4 space-y-1.5">
-                      {checkedHw.map((a) => {
-                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "reviewed");
-                        const hwType = a.type as HwType;
-                        const meta = HW_TYPE_META[hwType];
-                        const Icon = meta?.icon || FileText;
-                        return (
-                          <div
-                            key={a.id}
-                            onClick={() => sub && setViewCheckedHw({ assignment: a, submission: sub })}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border cursor-pointer hover:bg-muted/40 transition-colors"
-                          >
-                            <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-foreground">{a.title}</p>
-                              <p className="text-[10px] text-muted-foreground">{fmtName(a.student_name)} · {meta?.label || a.type}</p>
-                            </div>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); sub && setReviewHw({ assignment: a, submission: sub }); }}
-                              className="text-[10px] px-2 py-1 rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors flex-shrink-0"
-                            >
-                              재검토
-                            </button>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0">
-                              검토됨
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </details>
-                )}
               </div>
             </div>
           </>
