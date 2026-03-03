@@ -517,7 +517,7 @@ export default function Classroom() {
       setSidebarLoading(false);
     };
     loadSidebar();
-  }, [session.dbStudentName, sessionLoading]);
+  }, [session.dbStudentName, sessionLoading, role]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
