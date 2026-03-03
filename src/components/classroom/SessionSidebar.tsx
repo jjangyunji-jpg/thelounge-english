@@ -15,6 +15,7 @@ interface SessionSidebarProps {
   onSelect: (id: string) => void;
   loading?: boolean;
   initialOpen?: boolean;
+  showFutureSection?: boolean;
 }
 
 function fmtDate(dateStr: string) {
@@ -54,6 +55,7 @@ export default function SessionSidebar({
   onSelect,
   loading,
   initialOpen = false,
+  showFutureSection = true,
 }: SessionSidebarProps) {
   const [collapsed, setCollapsed] = useState(!initialOpen);
   const [searchQuery, setSearchQuery] = useState("");
@@ -204,7 +206,7 @@ export default function SessionSidebar({
           {!loading && (
             <>
               {/* Future sessions toggle — top */}
-              {futureSessions.length > 0 && (
+              {showFutureSection && futureSessions.length > 0 && (
                 <>
                   <button
                     onClick={() => setShowFuture(v => !v)}

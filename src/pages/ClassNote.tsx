@@ -228,6 +228,7 @@ export default function ClassNote() {
             onSelect={handleSidebarSelect}
             loading={loadingSessions}
             initialOpen={true}
+            showFutureSection={false}
           />
 
           {/* Main content area */}
