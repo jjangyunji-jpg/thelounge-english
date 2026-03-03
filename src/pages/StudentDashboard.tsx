@@ -314,7 +314,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
             const holiday = isHoliday(date);
             const tuesdayOff = isTuesdayOff(date);
             const inPeriod = isInPeriod(date);
-            const session = allCalendarDates.has(date.toDateString());
+            const session = inPeriod && allCalendarDates.has(date.toDateString());
             const todayMark = today.getFullYear() === cell.year && today.getMonth() === cell.month && today.getDate() === cell.day;
             const isOff = holiday || tuesdayOff;
             return (
