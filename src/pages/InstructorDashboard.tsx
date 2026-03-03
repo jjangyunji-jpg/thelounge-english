@@ -1211,7 +1211,10 @@ export default function InstructorDashboard() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profilePwSaving, setProfilePwSaving] = useState(false);
   const [durationOverrides, setDurationOverrides] = useState<Record<string, number>>({});
-  const [settlementPeriodIdx, setSettlementPeriodIdx] = useState(-1);
+  // Settlement: month-based (급여 정산은 월 기준)
+  const nowForSettlement = new Date();
+  const [settlementYear, setSettlementYear] = useState(nowForSettlement.getFullYear());
+  const [settlementMonth, setSettlementMonth] = useState(nowForSettlement.getMonth()); // 0-indexed
   const [studentTabPeriodIdx, setStudentTabPeriodIdx] = useState(-1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
@@ -1353,7 +1356,7 @@ export default function InstructorDashboard() {
     const currentPeriod = currentIdx >= 0 ? periods[currentIdx] : periods[0] || null;
     setPeriod(currentPeriod);
     if (studentTabPeriodIdx < 0) setStudentTabPeriodIdx(periods.length > 0 ? periods.length - 1 : 0);
-    if (settlementPeriodIdx < 0) setSettlementPeriodIdx(periods.length > 0 ? periods.length - 1 : 0);
+    // settlementPeriodIdx removed — settlement uses month-based navigation
     setHolidays(holRes.data || []);
     setLoading(false);
   }, []);
@@ -1536,19 +1539,26 @@ export default function InstructorDashboard() {
   const completedPeriodMeetings = periodMeetings.filter((m) => new Date(m.scheduled_at) <= now);
   const lessonHours = periodSessions.length;
 
-  // Settlement: use settlementPeriodIdx for independent period navigation
-  const settlementPeriod = allPeriods[settlementPeriodIdx] || period;
-  const sStart = settlementPeriod ? new Date(settlementPeriod.start_date) : null;
-  const sEnd = settlementPeriod ? new Date(settlementPeriod.end_date) : null;
+  // Monthly lesson count for dashboard summary card (월 기준)
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const monthlyLessonCount = sessions.filter((s) => {
+    const d = new Date(s.scheduled_at);
+    return d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s);
+  }).length;
+
+  // Settlement: month-based filtering (급여 정산은 월 기준)
+  const sStart = new Date(settlementYear, settlementMonth, 1);
+  const sEnd = new Date(settlementYear, settlementMonth + 1, 0, 23, 59, 59);
+  const settlementLabel = `${settlementYear}-${String(settlementMonth + 1).padStart(2, "0")}`;
+  const settlementDateRange = `${settlementYear}-${String(settlementMonth + 1).padStart(2, "0")}-01 ~ ${settlementYear}-${String(settlementMonth + 1).padStart(2, "0")}-${String(sEnd.getDate()).padStart(2, "0")}`;
 
   const settlementSessions = sessions.filter((s) => {
-    if (!sStart || !sEnd) return false;
     const d = new Date(s.scheduled_at);
     return d >= sStart && d <= sEnd && !isSessionHidden(s);
   });
   const completedSettlementSessions = settlementSessions.filter((s) => !!s.ended_at);
   const settlementMeetings = meetings.filter((m) => {
-    if (!sStart || !sEnd) return false;
     const d = new Date(m.scheduled_at);
     return d >= sStart && d <= sEnd;
   });
@@ -1773,7 +1783,7 @@ export default function InstructorDashboard() {
             <div className="grid grid-cols-4 gap-3 mb-6">
               {[
                 { label: "담당 학생", value: `${students.filter(s => s.status === "active" && (!s.start_date || !period || s.start_date <= period.end_date)).length}명`, icon: Users, color: "text-navy", bg: "bg-navy/10" },
-                { label: "이번 기간 수업", value: `${lessonHours}회`, icon: BookOpen, color: "text-gold-dark", bg: "bg-gold/10" },
+                { label: "이번 달 수업", value: `${monthlyLessonCount}회`, icon: BookOpen, color: "text-gold-dark", bg: "bg-gold/10" },
                 { label: "미확인 숙제", value: `${uncheckedHw.length}건`, icon: ClipboardCheck, color: uncheckedHw.length > 0 ? "text-destructive" : "text-success", bg: uncheckedHw.length > 0 ? "bg-destructive/10" : "bg-success/10" },
                 { label: "정산 예정", value: `₩${totalAmount.toLocaleString()}`, icon: Banknote, color: "text-success", bg: "bg-success/10" },
               ].map(({ label, value, icon: Icon, color, bg }) => (
@@ -2540,30 +2550,32 @@ export default function InstructorDashboard() {
                 <Banknote className="w-4 h-4 text-success" />
                 정산 관리
               </h2>
-              {allPeriods.length > 0 && (
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setSettlementPeriodIdx(Math.max(0, settlementPeriodIdx - 1))}
-                    disabled={settlementPeriodIdx <= 0}
-                    className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"
+                    onClick={() => {
+                      if (settlementMonth === 0) { setSettlementYear(y => y - 1); setSettlementMonth(11); }
+                      else setSettlementMonth(m => m - 1);
+                    }}
+                    className="p-1 rounded hover:bg-muted text-muted-foreground"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <span className="text-xs font-semibold text-foreground min-w-[100px] text-center">
-                    {settlementPeriod?.label || "—"}
+                    {settlementLabel}
                     <span className="block text-[10px] text-muted-foreground font-normal">
-                      {settlementPeriod?.start_date} ~ {settlementPeriod?.end_date}
+                      {settlementDateRange}
                     </span>
                   </span>
                   <button
-                    onClick={() => setSettlementPeriodIdx(Math.min(allPeriods.length - 1, settlementPeriodIdx + 1))}
-                    disabled={settlementPeriodIdx >= allPeriods.length - 1}
-                    className="p-1 rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"
+                    onClick={() => {
+                      if (settlementMonth === 11) { setSettlementYear(y => y + 1); setSettlementMonth(0); }
+                      else setSettlementMonth(m => m + 1);
+                    }}
+                    className="p-1 rounded hover:bg-muted text-muted-foreground"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
-              )}
             </div>
 
             {/* Summary cards */}
