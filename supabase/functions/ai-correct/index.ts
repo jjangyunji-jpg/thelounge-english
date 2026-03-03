@@ -57,7 +57,9 @@ RULES:
 Return a JSON object with:
 - corrected: the corrected version of the text
 - errors: array of { original, corrected, explanation } objects for each error found. The "original" must be the EXACT substring from the student's text. Keep explanations concise in Korean.
-- score: naturalness score 1-10
+- score: naturalness score 1-10 (how natural the English sounds)
+- english_level: estimated English proficiency level as a string (e.g. "A1", "A2", "B1", "B2", "C1", "C2" using CEFR scale)
+- vocab_level: estimated vocabulary level as a string (e.g. "초급", "중급", "중상급", "고급")
 - feedback: object with:
   - praise: one warm, friendly, human-like sentence praising what the student did well STRICTLY in terms of GRAMMAR USAGE or LOGICAL STRUCTURE/FLOW of the writing (in Korean). Write as if a caring teacher is speaking directly to the student — use casual, encouraging tone (e.g. "~했네요!", "~한 부분이 정말 좋았어요!"). Do NOT praise effort, attitude, topic choice, or content. Focus ONLY on grammatical accuracy and structural organization.
   - priorities: array of exactly 3 strings, each describing the most important thing the student should fix or improve (in Korean, concise)
