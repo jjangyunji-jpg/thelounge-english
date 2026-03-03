@@ -6,7 +6,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked, Paperclip,
-  Loader2, Monitor, Download, History,
+  Loader2, Monitor, Download, History, Maximize2,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
@@ -409,10 +409,31 @@ export default function Classroom() {
     remarksTimerRef.current = setTimeout(() => autoSaveRemarks(val), 1500);
   };
 
-  const handleOpenNotesNewTab = () => {
+  const handleOpenEditorFullscreen = () => {
     if (!session.sessionId) return;
-    window.open(`/t/classroom/notes?sessionId=${session.sessionId}`, "_blank", "noopener");
+    window.open(`/t/classroom/editor?sessionId=${session.sessionId}`, "_blank", "noopener");
   };
+
+  // Listen for broadcast from fullscreen editor
+  const fullscreenChannelRef = useRef<any>(null);
+  useEffect(() => {
+    if (!session.sessionId) return;
+    const channel = supabase
+      .channel(`editor-sync-${session.sessionId}`)
+      .on("broadcast", { event: "notes-update" }, (payload) => {
+        const html = payload?.payload?.html;
+        const source = payload?.payload?.source;
+        if (typeof html === "string" && source === "fullscreen") {
+          setNotes(html);
+          // Also auto-save
+          if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+          autoSaveTimer.current = setTimeout(() => autoSaveNotes(html), 1500);
+        }
+      })
+      .subscribe();
+    fullscreenChannelRef.current = channel;
+    return () => { supabase.removeChannel(channel); };
+  }, [session.sessionId, autoSaveNotes]);
 
   const [addingHw, setAddingHw] = useState(false);
   const [newHwType, setNewHwType] = useState<HwType>("writing");
@@ -1002,6 +1023,13 @@ export default function Classroom() {
                     >
                       {saveFlash ? "저장됨 ✓" : "저장"}
                     </Button>
+                    <Button size="sm" variant="outline" onClick={handleOpenEditorFullscreen}
+                      disabled={!session.sessionId}
+                      className="h-7 text-xs gap-1.5 transition-all border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                      title="전체 화면 에디터 열기"
+                    >
+                      <Maximize2 className="w-3 h-3" />전체화면
+                    </Button>
                   </div>
                 </div>
                 <NotesEditor
@@ -1010,6 +1038,12 @@ export default function Classroom() {
                     setNotes(newVal);
                     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
                     autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 1500);
+                    // Broadcast to fullscreen editor
+                    fullscreenChannelRef.current?.send({
+                      type: "broadcast",
+                      event: "notes-update",
+                      payload: { html: newVal, source: "classroom" },
+                    });
                   }}
                   editable={notesEditMode}
                   disabled={isDisabled}
