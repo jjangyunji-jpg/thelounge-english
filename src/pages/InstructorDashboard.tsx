@@ -544,7 +544,12 @@ function CollapsibleSessions({ sessions, onReschedule, onTopicChange }: { sessio
         <div key={s.id} className="px-2.5 py-1.5 rounded-lg bg-muted/20 border border-border ml-4 space-y-1">
           <div className="flex items-center gap-2">
             <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-            <span className="text-[11px] text-foreground flex-1">{fmtDateTime(s.scheduled_at)}</span>
+            <span className="text-[11px] text-foreground flex-1">
+              {fmtDateTime(s.scheduled_at)}
+              {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
+                <RefreshCw className="w-2.5 h-2.5 text-gold-dark inline ml-1 -mt-0.5" />
+              )}
+            </span>
             {new Date(s.scheduled_at) <= new Date() ? (
               <span className="text-[10px] text-success font-medium">완료</span>
             ) : (
