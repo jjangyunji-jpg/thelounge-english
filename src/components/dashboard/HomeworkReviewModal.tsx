@@ -1,9 +1,10 @@
 import { useState } from "react";
 import {
-  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink, Undo2,
+  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink, Undo2, Plus, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -127,6 +128,7 @@ export default function HomeworkReviewModal({
   const [instructorNote, setInstructorNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [dismissedIndices, setDismissedIndices] = useState<Set<number>>(new Set());
+  const [manualCorrections, setManualCorrections] = useState<CorrectionItem[]>([]);
 
   const toggleDismiss = (idx: number) => {
     setDismissedIndices(prev => {
@@ -134,6 +136,18 @@ export default function HomeworkReviewModal({
       if (next.has(idx)) next.delete(idx); else next.add(idx);
       return next;
     });
+  };
+
+  const addManualCorrection = () => {
+    setManualCorrections(prev => [...prev, { original: "", corrected: "", explanation: "" }]);
+  };
+
+  const updateManualCorrection = (idx: number, field: keyof CorrectionItem, value: string) => {
+    setManualCorrections(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+  };
+
+  const removeManualCorrection = (idx: number) => {
+    setManualCorrections(prev => prev.filter((_, i) => i !== idx));
   };
 
   const runAICorrection = async () => {
@@ -173,8 +187,13 @@ export default function HomeworkReviewModal({
           reviewed_at: new Date().toISOString(),
           ai_correction: aiResult ? JSON.parse(JSON.stringify({
             ...aiResult,
-            errors: aiResult.errors.filter((_, i) => !dismissedIndices.has(i)),
-          })) : null,
+            errors: [
+              ...aiResult.errors.filter((_, i) => !dismissedIndices.has(i)),
+              ...manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
+            ],
+          })) : manualCorrections.filter(c => c.original.trim() && c.corrected.trim()).length > 0
+            ? { errors: manualCorrections.filter(c => c.original.trim() && c.corrected.trim()), score: null, corrected: null, feedback: null }
+            : null,
         })
         .eq("id", submissionId);
       if (error) throw error;
@@ -269,8 +288,16 @@ export default function HomeworkReviewModal({
             {/* Text with inline corrections */}
             {textContent && (
               <div className="rounded-lg border border-border bg-muted/10 p-4">
-                {aiResult ? (
-                  <InlineCorrectedText original={textContent} errors={aiResult.errors} dismissedIndices={dismissedIndices} onToggleDismiss={toggleDismiss} />
+                {(aiResult || manualCorrections.some(c => c.original.trim())) ? (
+                  <InlineCorrectedText
+                    original={textContent}
+                    errors={[
+                      ...(aiResult?.errors || []),
+                      ...manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
+                    ]}
+                    dismissedIndices={dismissedIndices}
+                    onToggleDismiss={toggleDismiss}
+                  />
                 ) : (
                   <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{textContent}</p>
                 )}
@@ -279,6 +306,56 @@ export default function HomeworkReviewModal({
           </div>
 
 
+
+          {/* Manual corrections by instructor */}
+          {isWriting && textContent && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">강사 추가 교정</p>
+                <button
+                  onClick={addManualCorrection}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-[hsl(var(--navy))] hover:text-[hsl(var(--navy-light))] transition-colors"
+                >
+                  <Plus className="w-3 h-3" /> 교정 추가
+                </button>
+              </div>
+              {manualCorrections.map((c, i) => (
+                <div key={i} className="rounded-lg border border-border bg-muted/10 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 space-y-1.5">
+                      <Input
+                        value={c.original}
+                        onChange={e => updateManualCorrection(i, "original", e.target.value)}
+                        placeholder="틀린 부분 (원문 그대로)"
+                        className="h-7 text-xs"
+                      />
+                      <Input
+                        value={c.corrected}
+                        onChange={e => updateManualCorrection(i, "corrected", e.target.value)}
+                        placeholder="올바른 표현"
+                        className="h-7 text-xs"
+                      />
+                      <Input
+                        value={c.explanation}
+                        onChange={e => updateManualCorrection(i, "explanation", e.target.value)}
+                        placeholder="설명 (선택)"
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                    <button
+                      onClick={() => removeManualCorrection(i)}
+                      className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0 p-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {manualCorrections.length === 0 && (
+                <p className="text-[10px] text-muted-foreground italic">AI 교정 외 추가로 교정할 내용이 있으면 위 버튼을 눌러주세요.</p>
+              )}
+            </div>
+          )}
 
           {/* Instructor Feedback */}
           <div className="space-y-2">
