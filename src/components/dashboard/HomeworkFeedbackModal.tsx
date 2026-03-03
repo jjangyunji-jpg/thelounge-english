@@ -24,6 +24,8 @@ interface AIResult {
   errors: CorrectionItem[];
   feedback: { praise: string; priorities: string[] };
   score: number;
+  english_level?: string;
+  vocab_level?: string;
 }
 
 interface Props {
@@ -101,7 +103,11 @@ export default function HomeworkFeedbackModal({
             <p className="text-xs text-muted-foreground mt-0.5">
               {meta.label} 숙제 · {reviewedAt ? `${new Date(reviewedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })} 검토됨` : "검토됨"}
               {aiCorrection && (
-                <span className="ml-2 text-[hsl(var(--navy))] font-semibold">자연스러움 {aiCorrection.score}/10</span>
+                <span className="ml-2 text-[hsl(var(--navy))] font-semibold">
+                  자연스러움 {aiCorrection.score}/10
+                  {aiCorrection.english_level && ` · 영어 ${aiCorrection.english_level}`}
+                  {aiCorrection.vocab_level && ` · 어휘 ${aiCorrection.vocab_level}`}
+                </span>
               )}
             </p>
           </div>
