@@ -575,6 +575,15 @@ export default function StudentManagement() {
     setSchedChangeSaving(true);
     const cutoff = format(schedEffectiveDate, "yyyy-MM-dd") + "T00:00:00+09:00";
 
+    // Clear topics on unstarted future sessions first (trigger prevents deleting sessions with topic)
+    await supabase
+      .from("class_sessions")
+      .update({ topic: null })
+      .eq("student_name", schedChangeTarget.studentName)
+      .is("started_at", null)
+      .is("notes", null)
+      .gte("scheduled_at", cutoff);
+
     // Delete unstarted future sessions from the effective date
     await supabase
       .from("class_sessions")
@@ -582,7 +591,6 @@ export default function StudentManagement() {
       .eq("student_name", schedChangeTarget.studentName)
       .is("started_at", null)
       .is("notes", null)
-      .is("topic", null)
       .gte("scheduled_at", cutoff);
 
     // Regenerate sessions for all active periods
