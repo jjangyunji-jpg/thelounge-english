@@ -2,9 +2,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Calls the generate-sessions edge function for all active schedule periods.
- * Used after registering a new student to auto-create their class sessions.
+ * 
+ * @param effectiveDate - Optional YYYY-MM-DD. When provided, only generates sessions from this date onward.
+ * @param studentName - Optional. When provided, only generates sessions for this specific student.
  */
-export async function autoGenerateSessions(): Promise<{ totalCreated: number }> {
+export async function autoGenerateSessions(
+  effectiveDate?: string,
+  studentName?: string
+): Promise<{ totalCreated: number }> {
   // 1. Get all active periods
   const { data: periods } = await supabase
     .from("schedule_periods")
@@ -18,8 +23,12 @@ export async function autoGenerateSessions(): Promise<{ totalCreated: number }> 
   // 2. Call generate-sessions for each active period
   for (const period of periods) {
     try {
+      const body: Record<string, any> = { period_id: period.id };
+      if (effectiveDate) body.effective_date = effectiveDate;
+      if (studentName) body.student_name = studentName;
+
       const { data, error } = await supabase.functions.invoke("generate-sessions", {
-        body: { period_id: period.id },
+        body,
       });
       if (!error && data?.created) {
         totalCreated += data.created;
