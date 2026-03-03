@@ -1270,7 +1270,29 @@ export default function StudentManagement() {
                             : s
                           ));
                         }
-                        toast({ title: `${student.name} 휴강 추가 완료 ✓`, description: `${start} ~ ${end}` });
+
+                        // Delete unstarted sessions within the pause period
+                        const pauseStart = new Date(start + "T00:00:00+09:00");
+                        const pauseEnd = new Date(end + "T23:59:59+09:00");
+                        const { data: overlapping } = await supabase
+                          .from("class_sessions")
+                          .select("id, scheduled_at, started_at, notes, reschedule_origin_dates")
+                          .eq("student_name", student.name)
+                          .gte("scheduled_at", pauseStart.toISOString())
+                          .lte("scheduled_at", pauseEnd.toISOString());
+
+                        const deletableIds = (overlapping || [])
+                          .filter(s => !s.started_at && (!s.notes || s.notes === ""))
+                          .map(s => s.id);
+
+                        if (deletableIds.length > 0) {
+                          await supabase.from("class_sessions").delete().in("id", deletableIds);
+                        }
+
+                        toast({
+                          title: `${student.name} 휴강 추가 완료 ✓`,
+                          description: `${start} ~ ${end}${deletableIds.length > 0 ? ` (${deletableIds.length}개 세션 삭제)` : ""}`,
+                        });
                       }}
                     />
                   </div>
