@@ -390,13 +390,14 @@ export default function NotesEditor({
         // Add strikethrough mark on original
         tr.addMark(errFrom, errTo, deleteMarkType.create());
 
-        // Insert corrected text after the original with suggestion mark (skip if empty = deletion)
-        if (err.corrected && err.corrected.trim()) {
-          const correctedText = editor.schema.text(err.corrected, [suggestMarkType.create()]);
+        // Insert corrected text after the original with suggestion mark (skip if empty/null = deletion)
+        const correctedStr = (err.corrected ?? "").toString();
+        if (correctedStr.trim()) {
+          const correctedText = editor.schema.text(correctedStr, [suggestMarkType.create()]);
           tr.insert(errTo, correctedText);
         }
 
-        drift += err.corrected.length;
+        drift += correctedStr.length;
         tempRemaining = tempRemaining.slice(idx + err.original.length);
         tempOffset = tempOffset + idx + err.original.length;
       }
