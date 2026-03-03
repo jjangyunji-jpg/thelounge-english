@@ -1539,12 +1539,13 @@ export default function InstructorDashboard() {
   const completedPeriodMeetings = periodMeetings.filter((m) => new Date(m.scheduled_at) <= now);
   const lessonHours = periodSessions.length;
 
-  // Monthly lesson count for dashboard summary card (월 기준)
+  // Monthly completed lesson count for dashboard summary card (완료 버튼 기준)
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const currentMonthNum = now.getMonth() + 1;
   const monthlyLessonCount = sessions.filter((s) => {
     const d = new Date(s.scheduled_at);
-    return d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s);
+    return d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s) && !!s.ended_at;
   }).length;
 
   // Settlement: month-based filtering (급여 정산은 월 기준)
@@ -1606,6 +1607,32 @@ export default function InstructorDashboard() {
   });
 
   const totalAmount = cumulative;
+
+  // Current month total for dashboard card (완료 기준)
+  const currentMonthTotal = (() => {
+    let total = 0;
+    sessions.filter(s => {
+      const d = new Date(s.scheduled_at);
+      return d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s) && !!s.ended_at;
+    }).forEach(s => {
+      const levelRate = LEVEL_RATES[s.level] || 19000;
+      const pay = isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate);
+      const key = `lesson-${s.id}`;
+      const dur = durationOverrides[key] ?? 1;
+      total += Math.round(dur * pay);
+    });
+    if (!isOwner) {
+      meetings.filter(m => {
+        const d = new Date(m.scheduled_at);
+        return d >= currentMonthStart && d <= currentMonthEnd && d <= now;
+      }).forEach(m => {
+        const key = `meeting-${m.id}`;
+        const dur = durationOverrides[key] ?? (m.duration_minutes / 60);
+        total += Math.round(dur * BASE_PAY);
+      });
+    }
+    return total;
+  })();
 
    // Selected date sessions + meetings + virtual schedules
     const selectedDateStr = selectedDate?.toDateString();
@@ -1783,9 +1810,9 @@ export default function InstructorDashboard() {
             <div className="grid grid-cols-4 gap-3 mb-6">
               {[
                 { label: "담당 학생", value: `${students.filter(s => s.status === "active" && (!s.start_date || !period || s.start_date <= period.end_date)).length}명`, icon: Users, color: "text-navy", bg: "bg-navy/10" },
-                { label: "이번 달 수업", value: `${monthlyLessonCount}회`, icon: BookOpen, color: "text-gold-dark", bg: "bg-gold/10" },
+                { label: `${currentMonthNum}월 수업`, value: `${monthlyLessonCount}회`, icon: BookOpen, color: "text-gold-dark", bg: "bg-gold/10" },
                 { label: "미확인 숙제", value: `${uncheckedHw.length}건`, icon: ClipboardCheck, color: uncheckedHw.length > 0 ? "text-destructive" : "text-success", bg: uncheckedHw.length > 0 ? "bg-destructive/10" : "bg-success/10" },
-                { label: "정산 예정", value: `₩${totalAmount.toLocaleString()}`, icon: Banknote, color: "text-success", bg: "bg-success/10" },
+                { label: `${currentMonthNum}월 정산 예정`, value: `₩${currentMonthTotal.toLocaleString()}`, icon: Banknote, color: "text-success", bg: "bg-success/10" },
               ].map(({ label, value, icon: Icon, color, bg }) => (
                 <div key={label} className="rounded-xl border border-border bg-card p-3.5 space-y-1.5">
                   <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", bg)}>
