@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink,
+  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink, Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,19 +38,25 @@ interface HomeworkReviewModalProps {
   onReviewed: () => void;
 }
 
-/** Render inline diff: strikethrough original, colored corrected */
-function InlineCorrectedText({ original, errors }: { original: string; errors: CorrectionItem[] }) {
+/** Render inline diff: strikethrough original, colored corrected — click to dismiss */
+function InlineCorrectedText({
+  original, errors, dismissedIndices, onToggleDismiss,
+}: {
+  original: string;
+  errors: CorrectionItem[];
+  dismissedIndices: Set<number>;
+  onToggleDismiss: (idx: number) => void;
+}) {
   if (!errors || errors.length === 0) {
     return <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{original}</p>;
   }
 
-  // Build the diff display by replacing errors inline
   let remaining = original;
   const parts: React.ReactNode[] = [];
   let key = 0;
 
-  // Sort errors by position in original text (find first occurrence)
-  const sortedErrors = [...errors].sort((a, b) => {
+  const indexedErrors = errors.map((e, i) => ({ ...e, origIdx: i }));
+  const sortedErrors = [...indexedErrors].sort((a, b) => {
     const posA = remaining.toLowerCase().indexOf(a.original.toLowerCase());
     const posB = remaining.toLowerCase().indexOf(b.original.toLowerCase());
     return posA - posB;
@@ -60,26 +66,43 @@ function InlineCorrectedText({ original, errors }: { original: string; errors: C
     const idx = remaining.toLowerCase().indexOf(err.original.toLowerCase());
     if (idx === -1) continue;
 
-    // Text before the error
     if (idx > 0) {
       parts.push(<span key={key++}>{remaining.slice(0, idx)}</span>);
     }
 
-    // The error with strikethrough + correction
-    parts.push(
-      <span key={key++} className="inline-flex items-baseline gap-0.5 group relative">
-        <span className="line-through text-destructive/70 decoration-destructive/50">{remaining.slice(idx, idx + err.original.length)}</span>
-        <span className="text-[hsl(var(--navy))] font-semibold">{err.corrected}</span>
-        <span className="hidden group-hover:block absolute -top-8 left-0 z-10 px-2 py-1 rounded bg-popover border border-border shadow-lg text-[10px] text-muted-foreground whitespace-nowrap max-w-[200px]">
-          {err.explanation}
+    const isDismissed = dismissedIndices.has(err.origIdx);
+
+    if (isDismissed) {
+      parts.push(
+        <span key={key++}
+          className="inline-flex items-baseline gap-0.5 cursor-pointer group relative rounded px-0.5 bg-muted/40 hover:bg-muted/60 transition-colors"
+          onClick={() => onToggleDismiss(err.origIdx)}
+          title="클릭하여 교정 복원"
+        >
+          <span className="text-foreground">{remaining.slice(idx, idx + err.original.length)}</span>
+          <Undo2 className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity inline-block ml-0.5" />
         </span>
-      </span>
-    );
+      );
+    } else {
+      parts.push(
+        <span key={key++}
+          className="inline-flex items-baseline gap-0.5 cursor-pointer group relative rounded px-0.5 hover:bg-destructive/5 transition-colors"
+          onClick={() => onToggleDismiss(err.origIdx)}
+          title="클릭하여 교정 취소"
+        >
+          <span className="line-through text-destructive/70 decoration-destructive/50">{remaining.slice(idx, idx + err.original.length)}</span>
+          <span className="text-[hsl(var(--navy))] font-semibold">{err.corrected}</span>
+          <X className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity inline-block ml-0.5" />
+          <span className="hidden group-hover:block absolute -top-8 left-0 z-10 px-2 py-1 rounded bg-popover border border-border shadow-lg text-[10px] text-muted-foreground whitespace-nowrap max-w-[200px]">
+            {err.explanation}
+          </span>
+        </span>
+      );
+    }
 
     remaining = remaining.slice(idx + err.original.length);
   }
 
-  // Remaining text
   if (remaining) {
     parts.push(<span key={key++}>{remaining}</span>);
   }
@@ -103,6 +126,15 @@ export default function HomeworkReviewModal({
   const [loading, setLoading] = useState(false);
   const [instructorNote, setInstructorNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [dismissedIndices, setDismissedIndices] = useState<Set<number>>(new Set());
+
+  const toggleDismiss = (idx: number) => {
+    setDismissedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      return next;
+    });
+  };
 
   const runAICorrection = async () => {
     if (!textContent?.trim()) {
@@ -139,7 +171,10 @@ export default function HomeworkReviewModal({
           status: "reviewed",
           instructor_note: instructorNote.trim() || null,
           reviewed_at: new Date().toISOString(),
-          ai_correction: aiResult ? JSON.parse(JSON.stringify(aiResult)) : null,
+          ai_correction: aiResult ? JSON.parse(JSON.stringify({
+            ...aiResult,
+            errors: aiResult.errors.filter((_, i) => !dismissedIndices.has(i)),
+          })) : null,
         })
         .eq("id", submissionId);
       if (error) throw error;
@@ -235,7 +270,7 @@ export default function HomeworkReviewModal({
             {textContent && (
               <div className="rounded-lg border border-border bg-muted/10 p-4">
                 {aiResult ? (
-                  <InlineCorrectedText original={textContent} errors={aiResult.errors} />
+                  <InlineCorrectedText original={textContent} errors={aiResult.errors} dismissedIndices={dismissedIndices} onToggleDismiss={toggleDismiss} />
                 ) : (
                   <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{textContent}</p>
                 )}
