@@ -437,7 +437,7 @@ function BigCalendar({
           const now = new Date();
           const displayItems: { label: string; type: "actual" | "completed" | "virtual" | "meeting" }[] = [];
           daySessions.slice(0, 2).forEach(s => {
-            const isCompleted = !!s.ended_at || new Date(s.scheduled_at) <= now;
+            const isCompleted = !!s.ended_at;
             displayItems.push({
               label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })} ${s.student_name}`,
               type: isCompleted ? "completed" : "actual",
@@ -1546,7 +1546,7 @@ export default function InstructorDashboard() {
     const d = new Date(s.scheduled_at);
     return d >= sStart && d <= sEnd && !isSessionHidden(s);
   });
-  const completedSettlementSessions = settlementSessions.filter((s) => new Date(s.scheduled_at) <= now);
+  const completedSettlementSessions = settlementSessions.filter((s) => !!s.ended_at);
   const settlementMeetings = meetings.filter((m) => {
     if (!sStart || !sEnd) return false;
     const d = new Date(m.scheduled_at);
@@ -2020,11 +2020,15 @@ export default function InstructorDashboard() {
                               .filter((ps) => ps.student_name === s.student_name && new Date(ps.scheduled_at) < new Date(s.scheduled_at))
                               .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0];
 
+                            const isCompleted = !!s.ended_at;
                             return (
-                              <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
+                              <div key={s.id} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg border", isCompleted ? "border-success/30 bg-success/5" : "border-border bg-muted/20")}>
                                 <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-foreground">{fmtName(s.student_name)}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-sm font-medium text-foreground">{fmtName(s.student_name)}</p>
+                                    {isCompleted && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
+                                  </div>
                             <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
                               {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
                                 <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
@@ -2046,6 +2050,46 @@ export default function InstructorDashboard() {
                                       <FileText className="w-3 h-3" /> 이번 수업
                                     </Button>
                                   </a>
+                                  {!isCompleted ? (
+                                    <Button
+                                      size="sm"
+                                      className="h-7 text-[10px] gap-1 bg-success hover:bg-success/90 text-primary-foreground px-2"
+                                      onClick={async () => {
+                                        const endedAt = new Date().toISOString();
+                                        const { error } = await supabase.from("class_sessions").update({
+                                          ended_at: endedAt,
+                                          started_at: s.started_at || s.scheduled_at,
+                                        }).eq("id", s.id);
+                                        if (error) {
+                                          toast({ title: "수업 완료 실패", description: error.message, variant: "destructive" });
+                                        } else {
+                                          toast({ title: "수업 완료 처리됨 ✓" });
+                                          setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, ended_at: endedAt, started_at: s.started_at || s.scheduled_at } : sess));
+                                        }
+                                      }}
+                                    >
+                                      <Check className="w-3 h-3" /> 수업 완료
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-[10px] gap-1 border-muted-foreground/30 text-muted-foreground px-2"
+                                      onClick={async () => {
+                                        const { error } = await supabase.from("class_sessions").update({
+                                          ended_at: null,
+                                        }).eq("id", s.id);
+                                        if (error) {
+                                          toast({ title: "취소 실패", description: error.message, variant: "destructive" });
+                                        } else {
+                                          toast({ title: "수업 완료 취소됨" });
+                                          setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, ended_at: null } : sess));
+                                        }
+                                      }}
+                                    >
+                                      <X className="w-3 h-3" /> 완료 취소
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             );
