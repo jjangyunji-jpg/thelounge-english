@@ -22,6 +22,8 @@ interface AIResult {
     priorities: string[];
   };
   score: number;
+  english_level?: string;
+  vocab_level?: string;
 }
 
 interface HomeworkReviewModalProps {
@@ -189,9 +191,21 @@ export default function HomeworkReviewModal({
                 )}
               </Button>
               {aiResult && (
-                <span className="text-[10px] text-muted-foreground">
-                  자연스러움 점수: <span className="font-bold text-[hsl(var(--navy))]">{aiResult.score}/10</span>
-                </span>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-[10px] text-muted-foreground">
+                    자연스러움 <span className="font-bold text-[hsl(var(--navy))]">{aiResult.score}/10</span>
+                  </span>
+                  {aiResult.english_level && (
+                    <span className="text-[10px] text-muted-foreground">
+                      영어 레벨 <span className="font-bold text-[hsl(var(--navy))]">{aiResult.english_level}</span>
+                    </span>
+                  )}
+                  {aiResult.vocab_level && (
+                    <span className="text-[10px] text-muted-foreground">
+                      어휘 레벨 <span className="font-bold text-[hsl(var(--navy))]">{aiResult.vocab_level}</span>
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
