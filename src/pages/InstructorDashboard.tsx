@@ -315,21 +315,27 @@ function BigCalendar({
   const primaryMonth = baseStart.getMonth();
   const primaryYear = baseStart.getFullYear();
 
-  // Group sessions by date
+  // Group sessions by date — only within period range
+  const periodEndOfDay = new Date(baseEnd);
+  periodEndOfDay.setHours(23, 59, 59, 999);
   const sessionsByDate = new Map<string, ClassSession[]>();
   sessions.forEach((s) => {
-    const key = new Date(s.scheduled_at).toDateString();
+    const d = new Date(s.scheduled_at);
+    if (d < baseStart || d > periodEndOfDay) return; // period 범위 밖은 제외
+    const key = d.toDateString();
     if (!sessionsByDate.has(key)) sessionsByDate.set(key, []);
     sessionsByDate.get(key)!.push(s);
   });
   const meetingsByDate = new Map<string, BusinessMeeting[]>();
   meetings.forEach((m) => {
-    const key = new Date(m.scheduled_at).toDateString();
+    const d = new Date(m.scheduled_at);
+    if (d < baseStart || d > periodEndOfDay) return; // period 범위 밖은 제외
+    const key = d.toDateString();
     if (!meetingsByDate.has(key)) meetingsByDate.set(key, []);
     meetingsByDate.get(key)!.push(m);
   });
 
-  // Virtual (recurring) schedules - build for all months in range
+  // Virtual (recurring) schedules - build for all months in range, but only within period
   const holidaySet = buildHolidaySet(holidays);
   const virtualByDate = new Map<string, { student_name: string; time: string }[]>();
   {
@@ -339,7 +345,12 @@ function BigCalendar({
       if (!seenMonths.has(key)) {
         seenMonths.add(key);
         const mv = buildVirtualSchedules(students, d.getFullYear(), d.getMonth(), holidaySet);
-        mv.forEach((v, k) => { if (!virtualByDate.has(k)) virtualByDate.set(k, v); });
+        mv.forEach((v, k) => {
+          // Only include virtual schedules within period range
+          const vDate = new Date(k);
+          if (vDate < baseStart || vDate > periodEndOfDay) return;
+          if (!virtualByDate.has(k)) virtualByDate.set(k, v);
+        });
       }
     }
   }
