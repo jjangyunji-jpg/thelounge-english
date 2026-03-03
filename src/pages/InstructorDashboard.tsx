@@ -76,6 +76,7 @@ interface ClassSession {
   started_at: string | null;
   ended_at: string | null;
   notes: string | null;
+  reschedule_origin_dates?: string[];
 }
 
 interface HomeworkAssignment {
@@ -544,6 +545,12 @@ function CollapsibleSessions({ sessions, onReschedule, onTopicChange }: { sessio
               </button>
             )}
           </div>
+          {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
+            <p className="ml-5 text-[9px] text-gold-dark flex items-center gap-1">
+              <RefreshCw className="w-2.5 h-2.5" />
+              {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경
+            </p>
+          )}
           {/* Inline topic editing */}
           {editingId === s.id ? (
             <div className="flex items-center gap-1 ml-5">
@@ -1797,6 +1804,12 @@ export default function InstructorDashboard() {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-foreground">{fmtName(s.student_name)}</p>
                               <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
+                              {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
+                                <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
+                                  <RefreshCw className="w-2.5 h-2.5" />
+                                  {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨
+                                </p>
+                              )}
                             </div>
                             <div className="flex items-center gap-1.5">
                               <button
@@ -1991,10 +2004,16 @@ export default function InstructorDashboard() {
                                 <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-foreground">{fmtName(s.student_name)}</p>
-                                  <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  {prevSession && (
+                            <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
+                              {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
+                                <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
+                                  <RefreshCw className="w-2.5 h-2.5" />
+                                  {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {prevSession && (
                                     <a href={`/t/classroom?sessionId=${prevSession.id}`}>
                                       <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 px-2">
                                         <ChevronLeft className="w-3 h-3" /> 지난 수업
