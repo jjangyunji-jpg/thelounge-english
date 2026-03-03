@@ -7,6 +7,8 @@ import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
 
 import Underline from "@tiptap/extension-underline";
+import Link from "@tiptap/extension-link";
+import Youtube from "@tiptap/extension-youtube";
 import { Callout } from "./CalloutExtension";
 import { Suggestion, SuggestionDelete } from "./SuggestionExtension";
 
@@ -80,6 +82,24 @@ export default function NotesEditor({
       Callout,
       Suggestion,
       SuggestionDelete,
+      Link.configure({
+        openOnClick: true,
+        autolink: true,
+        linkOnPaste: true,
+        HTMLAttributes: {
+          class: "text-primary underline cursor-pointer",
+          target: "_blank",
+          rel: "noopener noreferrer",
+        },
+      }),
+      Youtube.configure({
+        inline: false,
+        width: 640,
+        height: 360,
+        HTMLAttributes: {
+          class: "rounded-lg my-3",
+        },
+      }),
       Placeholder.configure({ placeholder }),
     ],
     content: content || "",
@@ -119,6 +139,18 @@ export default function NotesEditor({
         class: "outline-none min-h-[500px] px-4 py-4 text-sm leading-relaxed",
         spellcheck: "true",
         lang: "en",
+      },
+      handlePaste: (view, event) => {
+        const text = event.clipboardData?.getData("text/plain") ?? "";
+        const ytMatch = text.match(
+          /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]+)/
+        );
+        if (ytMatch && editor) {
+          event.preventDefault();
+          editor.commands.setYoutubeVideo({ src: text.trim() });
+          return true;
+        }
+        return false;
       },
       handleKeyDown: (view, event) => {
         if (slashMenuOpen && event.key === "Escape") {
