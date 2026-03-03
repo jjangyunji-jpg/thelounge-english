@@ -57,7 +57,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const { period_id } = await req.json();
+    const { period_id, effective_date, student_name: filterStudentName } = await req.json();
     if (!period_id) throw new Error("period_id is required");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -73,10 +73,14 @@ serve(async (req) => {
     if (pErr || !period) throw new Error("Period not found");
 
     // 2. Get active students with schedules
-    const { data: students } = await sb
+    let studentQuery = sb
       .from("instructor_students")
       .select("id, student_name, schedules, level, instructor_name, meet_link, start_date")
       .eq("status", "active");
+    if (filterStudentName) {
+      studentQuery = studentQuery.eq("student_name", filterStudentName);
+    }
+    const { data: students } = await studentQuery;
     if (!students || students.length === 0) {
       return new Response(
         JSON.stringify({ created: 0, message: "No active students found" }),
@@ -191,6 +195,9 @@ serve(async (req) => {
 
         // Skip dates before student's start date
         if (student.start_date && dateStr < student.start_date) continue;
+
+        // Skip dates before effective date (for schedule changes)
+        if (effective_date && dateStr < effective_date) continue;
 
         // Skip dates during any pause period
         if (student.id && isStudentPausedOn(student.id, dateStr)) continue;

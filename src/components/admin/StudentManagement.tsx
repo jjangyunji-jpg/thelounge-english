@@ -574,27 +574,45 @@ export default function StudentManagement() {
     if (!schedChangeTarget || !schedEffectiveDate) return;
     setSchedChangeSaving(true);
     const cutoff = format(schedEffectiveDate, "yyyy-MM-dd") + "T00:00:00+09:00";
+    const studentName = schedChangeTarget.studentName;
 
-    // Clear topics on unstarted future sessions first (trigger prevents deleting sessions with topic)
-    await supabase
+    // 1. Fetch all unstarted sessions for this student to identify deletable ones
+    const { data: futureSessions } = await supabase
       .from("class_sessions")
-      .update({ topic: null })
-      .eq("student_name", schedChangeTarget.studentName)
+      .select("id, scheduled_at, started_at, notes, topic, reschedule_origin_dates, ended_at")
+      .eq("student_name", studentName)
       .is("started_at", null)
       .is("notes", null)
+      .is("ended_at", null)
       .gte("scheduled_at", cutoff);
 
-    // Delete unstarted future sessions from the effective date
-    await supabase
-      .from("class_sessions")
-      .delete()
-      .eq("student_name", schedChangeTarget.studentName)
-      .is("started_at", null)
-      .is("notes", null)
-      .gte("scheduled_at", cutoff);
+    // 2. Filter: protect rescheduled sessions (they have reschedule_origin_dates)
+    const deletableIds = (futureSessions || [])
+      .filter(s => {
+        const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+        return origins.length === 0; // Only delete non-rescheduled sessions
+      })
+      .map(s => s.id);
 
-    // Regenerate sessions for all active periods
-    const result = await autoGenerateSessions();
+    if (deletableIds.length > 0) {
+      // Clear topics first (trigger prevents deleting sessions with topic)
+      await supabase
+        .from("class_sessions")
+        .update({ topic: null })
+        .in("id", deletableIds);
+
+      // Delete
+      await supabase
+        .from("class_sessions")
+        .delete()
+        .in("id", deletableIds);
+    }
+
+    // 3. Regenerate sessions only from effective date onward
+    const result = await autoGenerateSessions(
+      format(schedEffectiveDate, "yyyy-MM-dd"),
+      studentName
+    );
     toast({
       title: "수업 일정이 재생성되었습니다 ✓",
       description: `${format(schedEffectiveDate, "yyyy-MM-dd")}부터 적용 · ${result.totalCreated}개 세션 생성`,
