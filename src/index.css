@@ -284,3 +284,26 @@
   text-decoration-color: hsl(0 70% 55%);
   opacity: 0.7;
 }
+
+/* Link styles */
+.tiptap a,
+.notes-mirror-content a {
+  @apply text-primary underline cursor-pointer;
+  text-underline-offset: 2px;
+}
+.tiptap a:hover,
+.notes-mirror-content a:hover {
+  @apply text-primary/80;
+}
+
+/* YouTube embed */
+.tiptap div[data-youtube-video],
+.notes-mirror-content iframe[src*="youtube"] {
+  @apply my-4;
+}
+.tiptap div[data-youtube-video] iframe {
+  @apply rounded-lg w-full;
+  max-width: 640px;
+  aspect-ratio: 16/9;
+  height: auto;
+}
