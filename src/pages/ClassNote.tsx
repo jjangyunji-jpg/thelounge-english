@@ -240,9 +240,26 @@ export default function ClassNote() {
                 <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
                   <FileText className="w-4 h-4 text-gold" />
                   <span className="font-semibold text-sm text-foreground">수업 노트</span>
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {formatDate(selectedSession.scheduled_at)} {formatTime(selectedSession.scheduled_at)}
-                  </span>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <span className="text-xs text-muted-foreground">
+                      {formatDate(selectedSession.scheduled_at)} {formatTime(selectedSession.scheduled_at)}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-[10px] gap-1 text-muted-foreground hover:text-foreground"
+                      onClick={async () => {
+                        if (!selectedSession.notes?.trim()) {
+                          toast({ title: "이 수업에 노트가 없습니다", variant: "destructive" });
+                          return;
+                        }
+                        await exportNotesPdf([selectedSession], student);
+                        toast({ title: "이 수업 노트를 PDF로 내보냈습니다" });
+                      }}
+                    >
+                      <Download className="w-3 h-3" />PDF
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Session meta */}
