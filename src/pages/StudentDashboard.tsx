@@ -1458,7 +1458,7 @@ export default function StudentDashboard() {
                 className="flex items-center gap-1.5 hover:opacity-70 transition-opacity"
               >
                 <BookOpen className="w-3.5 h-3.5 text-gold" />
-                <span className="text-xs font-semibold text-foreground">단어장</span>
+                <span className="text-xs font-semibold text-foreground">이달의 단어장</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{periodVocabWords.length}개</span>
               </button>
               <button
