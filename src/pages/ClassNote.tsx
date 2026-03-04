@@ -229,14 +229,19 @@ export default function ClassNote() {
             loading={loadingSessions}
             initialOpen={true}
             showFutureSection={false}
-            onDownloadAllPdf={async () => {
-              const withNotes = sessions.filter(s => s.notes && s.notes.trim());
-              if (withNotes.length === 0) {
-                toast({ title: "노트가 있는 수업이 없습니다", variant: "destructive" });
+            onDownloadAllPdf={async (periodMonths: number | null) => {
+              let filtered = sessions.filter(s => s.notes && s.notes.trim());
+              if (periodMonths !== null) {
+                const cutoff = new Date();
+                cutoff.setMonth(cutoff.getMonth() - periodMonths);
+                filtered = filtered.filter(s => new Date(s.scheduled_at) >= cutoff);
+              }
+              if (filtered.length === 0) {
+                toast({ title: "해당 기간에 노트가 있는 수업이 없습니다", variant: "destructive" });
                 return;
               }
-              await exportNotesPdf(withNotes, student);
-              toast({ title: `${withNotes.length}개 수업 노트를 PDF로 내보냈습니다` });
+              await exportNotesPdf(filtered, student);
+              toast({ title: `${filtered.length}개 수업 노트를 PDF로 내보냈습니다` });
             }}
           />
 
