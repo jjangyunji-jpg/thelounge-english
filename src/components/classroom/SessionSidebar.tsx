@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X, Download } from "lucide-react";
+import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X, Download, Calendar } from "lucide-react";
 
 interface SessionItem {
   id: string;
@@ -16,7 +16,7 @@ interface SessionSidebarProps {
   loading?: boolean;
   initialOpen?: boolean;
   showFutureSection?: boolean;
-  onDownloadAllPdf?: () => void;
+  onDownloadAllPdf?: (periodMonths: number | null) => void;
 }
 
 function fmtDate(dateStr: string) {
@@ -63,6 +63,7 @@ export default function SessionSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchActive, setSearchActive] = useState(false);
   const [showFuture, setShowFuture] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   const now = useMemo(() => {
     // End of today in KST
@@ -124,19 +125,47 @@ export default function SessionSidebar({
           <div className="flex items-center gap-1.5 px-3 w-full">
             <FileText className="w-3.5 h-3.5 text-gold flex-shrink-0" />
             <span className="text-xs font-semibold text-foreground flex-1">이전 수업</span>
-            {onDownloadAllPdf && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onDownloadAllPdf(); }}
-                className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-                title="전체 노트 PDF 다운로드"
-              >
-                <Download className="w-3 h-3" />
-              </button>
-            )}
             <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
           </div>
         )}
       </button>
+
+      {/* Download All PDF */}
+      {!collapsed && onDownloadAllPdf && (
+        <div className="px-2 py-2 border-b border-border">
+          <div className="relative">
+            <button
+              onClick={() => setShowDownloadMenu(v => !v)}
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <Download className="w-3 h-3 flex-shrink-0" />
+              <span>전체 노트 다운로드</span>
+              <ChevronDown className={cn("w-3 h-3 ml-auto transition-transform", showDownloadMenu && "rotate-180")} />
+            </button>
+            {showDownloadMenu && (
+              <div className="mt-1 rounded-md border border-border bg-card shadow-md overflow-hidden">
+                {[
+                  { label: "최근 1개월", months: 1 },
+                  { label: "최근 3개월", months: 3 },
+                  { label: "전체", months: null },
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => {
+                      setShowDownloadMenu(false);
+                      onDownloadAllPdf(opt.months);
+                    }}
+                    className="w-full text-left px-3 py-2 text-[11px] hover:bg-muted/50 transition-colors flex items-center gap-2"
+                  >
+                    <Calendar className="w-3 h-3 text-muted-foreground" />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       {!collapsed && (
