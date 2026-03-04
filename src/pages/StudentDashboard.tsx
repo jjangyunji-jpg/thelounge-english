@@ -12,6 +12,7 @@ import {
   RotateCcw, X, Activity, CreditCard, Heart, Paperclip, Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import BugReportModal from "@/components/dashboard/BugReportModal";
 import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -395,6 +396,7 @@ export default function StudentDashboard() {
   const [classHistoryOpen, setClassHistoryOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(false);
   const [vocabListOpen, setVocabListOpen] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
   const [vocabStudyOpen] = useState(false); // kept for potential future use
   const [hwModalAssignment, setHwModalAssignment] = useState<Assignment | null>(null);
   const [hwCompletingId, setHwCompletingId] = useState<string | null>(null);
@@ -1039,6 +1041,14 @@ export default function StudentDashboard() {
         />
       )}
 
+      {/* Bug Report Modal */}
+      <BugReportModal
+        open={showBugReport}
+        onClose={() => setShowBugReport(false)}
+        userName={student}
+        role="student"
+      />
+
       {/* ── Header ── */}
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-5 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -1065,6 +1075,13 @@ export default function StudentDashboard() {
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
                 이용가이드
+              </button>
+              <button
+                onClick={() => setShowBugReport(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="버그 신고 / 개선 제안"
+              >
+                제안/신고
               </button>
               <button
                 onClick={() => navigate("/my/profile")}
