@@ -1929,7 +1929,7 @@ export default function InstructorDashboard() {
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
-                              <a href={`/t/classroom?sessionId=${s.id}`}>
+                              <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
                                 <Button size="sm" className="h-6 text-[10px] gap-1 bg-navy hover:bg-navy-light text-primary-foreground px-2">
                                   <FileText className="w-3 h-3" /> 수업노트
                                 </Button>
@@ -1947,7 +1947,7 @@ export default function InstructorDashboard() {
                               <p className="text-sm font-medium text-foreground/70">{fmtName(v.student_name)}</p>
                               <p className="text-[11px] text-muted-foreground">{v.level || "—"} · 예정</p>
                             </div>
-                            <a href={`/t/classroom?student=${encodeURIComponent(v.student_name)}`}>
+                            <a href={`/t/classroom?student=${encodeURIComponent(v.student_name)}`} target="_blank" rel="noopener noreferrer">
                               <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 px-2">
                                 <FileText className="w-3 h-3" /> 수업노트
                               </Button>
@@ -2021,6 +2021,8 @@ export default function InstructorDashboard() {
                         <a
                           key={s.id}
                           href={`/t/classroom?sessionId=${s.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-navy/15 bg-card hover:bg-navy/10 transition-colors group"
                         >
                           <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
@@ -2439,7 +2441,7 @@ export default function InstructorDashboard() {
                                   <p className="text-[10px] text-muted-foreground py-1">직전 수업에 할당된 과제가 없습니다</p>
                                 )}
                                 {latestPast && (
-                                  <a href={`/t/classroom?sessionId=${latestPast.id}`} className="inline-flex items-center gap-1 text-[10px] text-navy hover:underline mt-1">
+                                  <a href={`/t/classroom?sessionId=${latestPast.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-navy hover:underline mt-1">
                                     <FileText className="w-3 h-3" /> 수업노트 보기
                                   </a>
                                 )}
