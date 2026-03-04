@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X } from "lucide-react";
+import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X, Download } from "lucide-react";
 
 interface SessionItem {
   id: string;
@@ -16,6 +16,7 @@ interface SessionSidebarProps {
   loading?: boolean;
   initialOpen?: boolean;
   showFutureSection?: boolean;
+  onDownloadAllPdf?: () => void;
 }
 
 function fmtDate(dateStr: string) {
@@ -56,6 +57,7 @@ export default function SessionSidebar({
   loading,
   initialOpen = false,
   showFutureSection = true,
+  onDownloadAllPdf,
 }: SessionSidebarProps) {
   const [collapsed, setCollapsed] = useState(!initialOpen);
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,6 +124,15 @@ export default function SessionSidebar({
           <div className="flex items-center gap-1.5 px-3 w-full">
             <FileText className="w-3.5 h-3.5 text-gold flex-shrink-0" />
             <span className="text-xs font-semibold text-foreground flex-1">이전 수업</span>
+            {onDownloadAllPdf && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDownloadAllPdf(); }}
+                className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+                title="전체 노트 PDF 다운로드"
+              >
+                <Download className="w-3 h-3" />
+              </button>
+            )}
             <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
           </div>
         )}

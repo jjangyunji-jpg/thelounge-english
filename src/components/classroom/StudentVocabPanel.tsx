@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Volume2, Loader2, Square, ChevronDown, ChevronUp, BookOpen,
   RefreshCw, ClipboardCheck, History, Download,
-  CheckCircle2, XCircle, Mic, Type, Trash2,
+  CheckCircle2, XCircle, Mic, Type, Trash2, BookMarked,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -161,6 +161,62 @@ function WeekGroup({ weekLabel, words, lessonNumber, onDownloadPdf, onDeleteWord
   );
 }
 
+// ── Flashcard Study View ──────────────────────────────────────────────────────
+function StudyView({ words, onClose }: { words: VocabWord[]; onClose: () => void }) {
+  const [idx, setIdx] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [shuffled] = useState(() => [...words].sort(() => Math.random() - 0.5));
+  const word = shuffled[idx];
+
+  if (!word) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="px-5 pt-5 pb-3 border-b border-border flex items-center justify-between">
+          <span className="text-xs font-semibold text-muted-foreground">{idx + 1} / {shuffled.length}</span>
+          <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground">닫기</button>
+        </div>
+        <div className="p-8 text-center space-y-4 min-h-[220px] flex flex-col items-center justify-center">
+          <p className="text-2xl font-bold text-foreground">{word.korean_meaning}</p>
+          {word.part_of_speech && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{word.part_of_speech}</span>
+          )}
+          {showAnswer ? (
+            <div className="space-y-2">
+              <p className="text-xl font-bold text-navy">{word.english_word}</p>
+              {word.example_sentence && (
+                <p className="text-xs text-muted-foreground italic">"{word.example_sentence}"</p>
+              )}
+            </div>
+          ) : (
+            <button onClick={() => setShowAnswer(true)}
+              className="text-sm text-gold-dark hover:text-gold font-medium transition-colors"
+            >
+              정답 보기
+            </button>
+          )}
+        </div>
+        <div className="px-5 py-4 border-t border-border flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => { setIdx(i => Math.max(0, i - 1)); setShowAnswer(false); }}
+            disabled={idx === 0} className="flex-1 text-xs"
+          >
+            이전
+          </Button>
+          <Button size="sm" onClick={() => {
+            if (idx < shuffled.length - 1) { setIdx(i => i + 1); setShowAnswer(false); }
+            else onClose();
+          }}
+            className="flex-1 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
+          >
+            {idx === shuffled.length - 1 ? "완료" : "다음"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Test Detail Modal ─────────────────────────────────────────────────────────
 function TestDetailView({
   testRecord,
@@ -243,6 +299,7 @@ export default function StudentVocabPanel({
   const [words, setWords] = useState<VocabWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [testModalOpen, setTestModalOpen] = useState(false);
+  const [studyOpen, setStudyOpen] = useState(false);
   const [completedTests, setCompletedTests] = useState(0);
   const [loadingTests, setLoadingTests] = useState(true);
   const [testHistory, setTestHistory] = useState<TestRecord[]>([]);
@@ -362,32 +419,61 @@ export default function StudentVocabPanel({
           </button>
         </div>
 
-        {/* Test Button Section */}
+        {/* Test & Study Button Section */}
         {!loading && currentWeekWords.length >= 5 && (
           <div className="px-3 py-2.5 border-b border-border flex items-center justify-between gap-2 bg-muted/10">
             <div className="flex items-center gap-2 min-w-0">
               <ClipboardCheck className="w-3.5 h-3.5 text-gold flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-foreground">
-                  단어 테스트 ({completedTests}회 완료)
+                  단어 학습 & 테스트 ({completedTests}회 완료)
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate">
-                  현재 주차 단어로 실력을 확인하세요
+                  플래시카드로 학습하거나 테스트하세요
                 </p>
               </div>
             </div>
 
             {!loadingTests && (
-              <Button
-                size="sm"
-                onClick={() => setTestModalOpen(true)}
-                disabled={!canTest}
-                className="h-7 text-xs flex-shrink-0 gap-1 bg-navy hover:bg-navy-light text-primary-foreground"
-              >
-                <ClipboardCheck className="w-3 h-3" />
-                테스트
-              </Button>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setStudyOpen(true)}
+                  className="h-7 text-xs gap-1 border-gold/50 text-gold-dark hover:bg-gold/10"
+                >
+                  <BookMarked className="w-3 h-3" />
+                  학습
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setTestModalOpen(true)}
+                  disabled={!canTest}
+                  className="h-7 text-xs gap-1 bg-navy hover:bg-navy-light text-primary-foreground"
+                >
+                  <ClipboardCheck className="w-3 h-3" />
+                  테스트
+                </Button>
+              </div>
             )}
+          </div>
+        )}
+        {/* Study mode for fewer than 5 words */}
+        {!loading && words.length > 0 && currentWeekWords.length < 5 && (
+          <div className="px-3 py-2.5 border-b border-border flex items-center justify-between gap-2 bg-muted/10">
+            <div className="flex items-center gap-2 min-w-0">
+              <BookMarked className="w-3.5 h-3.5 text-gold flex-shrink-0" />
+              <p className="text-xs font-semibold text-foreground">플래시카드 학습</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setStudyOpen(true)}
+              className="h-7 text-xs gap-1 border-gold/50 text-gold-dark hover:bg-gold/10 flex-shrink-0"
+            >
+              <BookMarked className="w-3 h-3" />
+              학습
+            </Button>
           </div>
         )}
 
@@ -482,6 +568,10 @@ export default function StudentVocabPanel({
           onClose={() => setTestModalOpen(false)}
           onTestComplete={() => { loadTestCount(); setHistoryOpen(true); setTestModalOpen(false); }}
         />
+      )}
+
+      {studyOpen && words.length > 0 && (
+        <StudyView words={words} onClose={() => setStudyOpen(false)} />
       )}
 
       {selectedTest && !loadingDetails && (
