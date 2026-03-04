@@ -1,18 +1,21 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X, Download, Calendar } from "lucide-react";
+import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X, Download, Calendar, Trash2 } from "lucide-react";
 
 interface SessionItem {
   id: string;
   scheduled_at: string;
   topic: string | null;
   notes?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
 }
 
 interface SessionSidebarProps {
   sessions: SessionItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onDelete?: (id: string) => void;
   loading?: boolean;
   initialOpen?: boolean;
   showFutureSection?: boolean;
@@ -50,10 +53,17 @@ function getSnippet(text: string, query: string, contextLen = 30): string | null
   return snippet;
 }
 
+/** Check if a session is deletable: no notes, not started, not ended */
+function isDeletable(s: SessionItem): boolean {
+  const hasNotes = s.notes && s.notes.replace(/<[^>]*>/g, "").trim().length > 0;
+  return !hasNotes && !s.started_at && !s.ended_at;
+}
+
 export default function SessionSidebar({
   sessions,
   selectedId,
   onSelect,
+  onDelete,
   loading,
   initialOpen = false,
   showFutureSection = true,
@@ -66,7 +76,6 @@ export default function SessionSidebar({
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   const now = useMemo(() => {
-    // End of today in KST
     const d = new Date();
     d.setHours(23, 59, 59, 999);
     return d;
@@ -103,6 +112,45 @@ export default function SessionSidebar({
       ) : (
         part
       )
+    );
+  };
+
+  const renderSessionItem = (s: SessionItem) => {
+    const canDelete = onDelete && isDeletable(s);
+    return (
+      <div
+        key={s.id}
+        className={cn(
+          "group relative w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors",
+          selectedId === s.id && "bg-gold/10 border-l-2 border-l-gold"
+        )}
+      >
+        <button
+          onClick={() => onSelect(s.id)}
+          className="w-full text-left"
+        >
+          <p className="text-[11px] font-semibold text-foreground leading-tight pr-5">
+            {fmtDate(s.scheduled_at)}
+          </p>
+          {s.topic && (
+            <p className="text-[10px] text-muted-foreground mt-0.5 truncate pr-5">
+              {s.topic}
+            </p>
+          )}
+        </button>
+        {canDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(s.id);
+            }}
+            title="이 수업 삭제"
+            className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
+      </div>
     );
   };
 
@@ -255,48 +303,12 @@ export default function SessionSidebar({
                     <span className="font-medium">예정된 수업 ({futureSessions.length})</span>
                     <ChevronDown className={cn("w-3 h-3 transition-transform", showFuture && "rotate-180")} />
                   </button>
-                  {showFuture && futureSessions.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => onSelect(s.id)}
-                      className={cn(
-                        "w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors",
-                        selectedId === s.id && "bg-gold/10 border-l-2 border-l-gold"
-                      )}
-                    >
-                      <p className="text-[11px] font-semibold text-foreground leading-tight">
-                        {fmtDate(s.scheduled_at)}
-                      </p>
-                      {s.topic && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                          {s.topic}
-                        </p>
-                      )}
-                    </button>
-                  ))}
+                  {showFuture && futureSessions.map(renderSessionItem)}
                 </>
               )}
 
               {/* Past & today sessions */}
-              {pastSessions.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => onSelect(s.id)}
-                  className={cn(
-                    "w-full text-left px-3 py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors",
-                    selectedId === s.id && "bg-gold/10 border-l-2 border-l-gold"
-                  )}
-                >
-                  <p className="text-[11px] font-semibold text-foreground leading-tight">
-                    {fmtDate(s.scheduled_at)}
-                  </p>
-                  {s.topic && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                      {s.topic}
-                    </p>
-                  )}
-                </button>
-              ))}
+              {pastSessions.map(renderSessionItem)}
             </>
           )}
         </div>

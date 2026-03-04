@@ -315,7 +315,7 @@ export default function Classroom() {
   const [objectives, setObjectives] = useState<string[]>([]);
   const [sessionTopic, setSessionTopic] = useState("");
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
-  const [sidebarSessions, setSidebarSessions] = useState<{ id: string; scheduled_at: string; topic: string | null; notes?: string | null }[]>([]);
+  const [sidebarSessions, setSidebarSessions] = useState<{ id: string; scheduled_at: string; topic: string | null; notes?: string | null; started_at?: string | null; ended_at?: string | null }[]>([]);
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -519,7 +519,7 @@ export default function Classroom() {
       const isInstructor = role === "instructor";
       let query = supabase
         .from("class_sessions")
-        .select("id, scheduled_at, topic, notes")
+        .select("id, scheduled_at, topic, notes, started_at, ended_at")
         .eq("student_name", session.dbStudentName)
         .order("scheduled_at", { ascending: false })
         .limit(30);
@@ -936,6 +936,67 @@ export default function Classroom() {
                 return next;
               });
             }}
+            onDelete={role === "instructor" ? async (id) => {
+              // Check for related homework assignments
+              const { count: hwCount } = await supabase
+                .from("homework_assignments")
+                .select("id", { count: "exact", head: true })
+                .eq("session_id", id);
+
+              // Check for related vocabulary words
+              const { count: vocabCount } = await supabase
+                .from("vocabulary_words")
+                .select("id", { count: "exact", head: true })
+                .eq("session_id", id);
+
+              const relatedItems: string[] = [];
+              if (hwCount && hwCount > 0) relatedItems.push(`숙제 ${hwCount}개`);
+              if (vocabCount && vocabCount > 0) relatedItems.push(`단어 ${vocabCount}개`);
+
+              let confirmMsg = "이 수업 일정을 삭제하시겠습니까?";
+              if (relatedItems.length > 0) {
+                confirmMsg += `\n\n⚠️ 연관 데이터: ${relatedItems.join(", ")}도 함께 삭제됩니다.`;
+              }
+
+              if (!window.confirm(confirmMsg)) return;
+
+              // Delete related data first
+              if (hwCount && hwCount > 0) {
+                await supabase.from("homework_assignments").delete().eq("session_id", id);
+              }
+              if (vocabCount && vocabCount > 0) {
+                await supabase.from("vocabulary_words").delete().eq("session_id", id);
+              }
+
+              const { error } = await supabase.from("class_sessions").delete().eq("id", id);
+              if (error) {
+                toast({
+                  title: "삭제 실패",
+                  description: error.message.includes("Cannot delete")
+                    ? "노트나 시작 기록이 있는 수업은 삭제할 수 없습니다."
+                    : "수업 삭제에 실패했습니다.",
+                  variant: "destructive",
+                });
+                return;
+              }
+
+              toast({ title: "수업이 삭제되었습니다." });
+
+              // Remove from sidebar list
+              setSidebarSessions(prev => prev.filter(s => s.id !== id));
+
+              // If deleted the currently selected session, navigate to the first remaining
+              if (session.sessionId === id) {
+                const remaining = sidebarSessions.filter(s => s.id !== id);
+                if (remaining.length > 0) {
+                  setSearchParams(prev => {
+                    const next = new URLSearchParams(prev);
+                    next.set("sessionId", remaining[0].id);
+                    return next;
+                  });
+                }
+              }
+            } : undefined}
             loading={sidebarLoading}
             initialOpen={true}
           />
