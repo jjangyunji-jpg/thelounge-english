@@ -670,6 +670,48 @@ export type Database = {
         }
         Relationships: []
       }
+      support_requests: {
+        Row: {
+          admin_note: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          resolved_at: string | null
+          role: string
+          status: string
+          title: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          admin_note?: string | null
+          category?: string
+          created_at?: string
+          description: string
+          id?: string
+          resolved_at?: string | null
+          role: string
+          status?: string
+          title: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          admin_note?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          resolved_at?: string | null
+          role?: string
+          status?: string
+          title?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
       teaching_material_categories: {
         Row: {
           created_at: string

@@ -7,8 +7,9 @@ import {
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
   Shield, Paperclip, CheckCircle, ChevronDown, User, Lock, Monitor, Target,
-  Star, MessageSquare, Download,
+  Star, MessageSquare, Download, Bug,
 } from "lucide-react";
+import BugReportModal from "@/components/dashboard/BugReportModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
 import InstructorGuide from "@/components/dashboard/InstructorGuide";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
@@ -1215,6 +1216,7 @@ export default function InstructorDashboard() {
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "profile" | "guide">("dashboard");
   const [feedbackData, setFeedbackData] = useState<any[]>([]);
   const [feedbackCategories, setFeedbackCategories] = useState<{ key: string; label: string }[]>([]);
@@ -1782,11 +1784,21 @@ export default function InstructorDashboard() {
           >
             <Plus className="w-3 h-3" /> 업무 미팅
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setShowBugReport(true)} className="h-8 text-xs gap-1.5 text-muted-foreground" title="버그 신고 / 개선 제안">
+            <Bug className="w-3 h-3" /> 제안/신고
+          </Button>
           <Button size="sm" variant="outline" onClick={handleLogout} className="h-8 text-xs gap-1.5 text-muted-foreground">
             <LogOut className="w-3 h-3" />
           </Button>
         </div>
       </header>
+
+      <BugReportModal
+        open={showBugReport}
+        onClose={() => setShowBugReport(false)}
+        userName={instructor.name}
+        role="instructor"
+      />
 
       {/* Tab Nav */}
       <div className="border-b border-border bg-card px-5">
