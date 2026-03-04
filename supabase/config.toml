@@ -11,3 +11,30 @@ verify_jwt = false
 
 [functions.generate-sessions]
 verify_jwt = false
+
+[functions.extract-vocab]
+verify_jwt = false
+
+[functions.generate-objectives]
+verify_jwt = false
+
+[functions.tts-cache]
+verify_jwt = false
+
+[functions.register]
+verify_jwt = false
+
+[functions.delete-user]
+verify_jwt = false
+
+[functions.invite-student]
+verify_jwt = false
+
+[functions.invite-user]
+verify_jwt = false
+
+[functions.send-reset-password]
+verify_jwt = false
+
+[functions.create-instructor]
+verify_jwt = false
