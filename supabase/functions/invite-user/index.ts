@@ -8,40 +8,84 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const adminClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  try {
+    // Auth check - admin only
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-  const { email, role } = await req.json();
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
 
-  // 1. Invite user by email (sends invite link)
-  const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo: "https://thelounge-english.lovable.app/set-password",
-  });
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const callerUserId = claimsData.claims.sub as string;
+
+    const { data: roleData } = await adminClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", callerUserId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleData) {
+      return new Response(JSON.stringify({ error: "권한이 없습니다." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { email, role } = await req.json();
+    if (!email) {
+      return new Response(JSON.stringify({ error: "이메일이 필요합니다." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
+      redirectTo: "https://thelounge-english.lovable.app/set-password",
+    });
+    if (error) {
+      console.error("Invite user error:", error);
+      return new Response(JSON.stringify({ error: "초대 발송에 실패했습니다." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = data.user.id;
+
+    const { error: roleError } = await adminClient.from("user_roles").insert({
+      user_id: userId,
+      role: role ?? "admin",
+    });
+
+    if (roleError) {
+      console.error("Role insert error:", roleError);
+      return new Response(JSON.stringify({ error: "역할 설정에 실패했습니다." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, userId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  }
-
-  const userId = data.user.id;
-
-  // 2. Assign role in user_roles
-  const { error: roleError } = await adminClient.from("user_roles").insert({
-    user_id: userId,
-    role: role ?? "admin",
-  });
-
-  if (roleError) {
-    return new Response(JSON.stringify({ error: roleError.message }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  } catch (err) {
+    console.error("Invite user error:", err);
+    return new Response(JSON.stringify({ error: "요청을 처리할 수 없습니다." }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
-  return new Response(JSON.stringify({ success: true, userId }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 });

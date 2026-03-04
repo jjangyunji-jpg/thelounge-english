@@ -8,25 +8,35 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const adminClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  try {
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
 
-  const { email } = await req.json();
+    const { email } = await req.json();
+    if (!email) {
+      return new Response(JSON.stringify({ error: "이메일을 입력해주세요." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-  const { error } = await adminClient.auth.resetPasswordForEmail(email, {
-    redirectTo: "https://thelounge-english.lovable.app/set-password",
-  });
+    const { error } = await adminClient.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://thelounge-english.lovable.app/set-password",
+    });
 
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+    if (error) {
+      console.error("Reset password error:", error);
+    }
+
+    // Always return success to prevent email enumeration
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    return new Response(JSON.stringify({ error: "요청을 처리할 수 없습니다." }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
-
-  return new Response(JSON.stringify({ success: true }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 });
