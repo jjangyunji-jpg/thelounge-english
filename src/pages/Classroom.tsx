@@ -601,16 +601,12 @@ export default function Classroom() {
     if (!notes.trim()) return;
     setExtracting(true);
     const weekLabel = getWeekLabel(session.scheduledAt ? new Date(session.scheduledAt) : undefined);
-    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-    const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     try {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/extract-vocab`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({ notes, studentName: session.dbStudentName, weekLabel, sessionId: session.sessionId }),
+      const { data, error: fnError } = await supabase.functions.invoke("extract-vocab", {
+        body: { notes, studentName: session.dbStudentName, weekLabel, sessionId: session.sessionId },
       });
-      const data = await res.json();
-      if (!res.ok) { toast({ title: "추출 실패", description: data.error ?? "오류", variant: "destructive" }); return; }
+      if (fnError) { toast({ title: "추출 실패", description: "오류가 발생했습니다.", variant: "destructive" }); return; }
+      if (data.error) { toast({ title: "추출 실패", description: data.error, variant: "destructive" }); return; }
       if (data.inserted === 0) {
         toast({ title: data.message ?? "새로운 단어가 없습니다.", description: "이미 단어장에 추가된 단어들입니다." });
       } else {
