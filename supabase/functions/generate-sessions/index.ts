@@ -19,10 +19,6 @@ interface ScheduleSlot {
   frequency?: Frequency;
 }
 
-/**
- * For biweekly: check if the week number (from period start) is even (0-based).
- * Generates on weeks 0, 2, 4, ... (i.e. every other week).
- */
 function isMatchingWeek(dateStr: string, periodStartStr: string, frequency: Frequency): boolean {
   if (frequency === "weekly") return true;
 
@@ -37,10 +33,8 @@ function isMatchingWeek(dateStr: string, periodStartStr: string, frequency: Freq
     return weekNum % 2 === 0;
   }
 
-  // monthly2: 1st and 3rd occurrence of that weekday in the month
   if (frequency === "monthly2") {
     const dayOfWeek = date.getDay();
-    // Count which occurrence this is in the month
     const firstOfMonth = new Date(dp[0], dp[1] - 1, 1);
     let count = 0;
     for (let d = new Date(firstOfMonth); d <= date; d.setDate(d.getDate() + 1)) {
@@ -57,12 +51,44 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
 
   try {
-    const { period_id, effective_date, student_name: filterStudentName } = await req.json();
-    if (!period_id) throw new Error("period_id is required");
+    // Auth check - admin or instructor only
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = claimsData.claims.sub as string;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(supabaseUrl, serviceKey);
+
+    // Check role
+    const { data: roleData } = await sb
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "instructor"]);
+    if (!roleData || roleData.length === 0) {
+      return new Response(JSON.stringify({ error: "권한이 없습니다." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { period_id, effective_date, student_name: filterStudentName } = await req.json();
+    if (!period_id) throw new Error("period_id is required");
 
     // 1. Get the period
     const { data: period, error: pErr } = await sb
@@ -116,7 +142,6 @@ serve(async (req) => {
       .gte("date_end", period.start_date)
       .lte("date_start", period.end_date);
 
-    // Build holiday date set
     const holidayDates = new Set<string>();
     for (const h of holidays || []) {
       const startParts = h.date_start.split("-").map(Number);
@@ -131,7 +156,7 @@ serve(async (req) => {
       }
     }
 
-    // 4. Get existing sessions in this period to avoid duplicates
+    // 4. Get existing sessions to avoid duplicates
     const { data: existingSessions } = await sb
       .from("class_sessions")
       .select("student_name, instructor_name, scheduled_at, reschedule_origin_dates")
@@ -190,28 +215,18 @@ serve(async (req) => {
         const dd = String(d.getDate()).padStart(2, "0");
         const dateStr = `${yyyy}-${mm}-${dd}`;
 
-        // Skip holidays
         if (holidayDates.has(dateStr)) continue;
-
-        // Skip dates before student's start date
         if (student.start_date && dateStr < student.start_date) continue;
-
-        // Skip dates before effective date (for schedule changes)
         if (effective_date && dateStr < effective_date) continue;
-
-        // Skip dates during any pause period
         if (student.id && isStudentPausedOn(student.id, dateStr)) continue;
 
-        // Check if this day matches any schedule
         for (const sched of schedules) {
           const schedDay = DAY_MAP[sched.day];
           if (schedDay === undefined || schedDay !== dayOfWeek) continue;
 
-          // Check frequency
           const freq: Frequency = sched.frequency || "weekly";
           if (!isMatchingWeek(dateStr, period.start_date, freq)) continue;
 
-          // Skip if already exists
           if (existingSet.has(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`)) continue;
 
           const [hour, minute] = (sched.time || "10:00").split(":").map(Number);
@@ -245,7 +260,7 @@ serve(async (req) => {
           .insert(batch);
         if (insertErr) {
           console.error("Insert error:", insertErr);
-          throw new Error(`Insert failed: ${insertErr.message}`);
+          throw new Error("세션 생성 중 오류가 발생했습니다.");
         }
         created += batch.length;
       }
@@ -263,9 +278,9 @@ serve(async (req) => {
   } catch (e) {
     console.error("generate-sessions error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      JSON.stringify({ error: "요청을 처리할 수 없습니다. 나중에 다시 시도해주세요." }),
       {
-        status: 400,
+        status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );

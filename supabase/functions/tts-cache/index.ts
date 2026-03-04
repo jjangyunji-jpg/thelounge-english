@@ -7,7 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// ElevenLabs voice ID — Rachel (clear, natural)
 const VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 
 serve(async (req) => {
@@ -16,6 +15,25 @@ serve(async (req) => {
   }
 
   try {
+    // Auth check - any authenticated user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -34,7 +52,7 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // 1) Check cache: does this word already have an audio_url?
+    // 1) Check cache
     const { data: existing } = await supabase
       .from("vocabulary_words")
       .select("audio_url")
@@ -65,8 +83,8 @@ serve(async (req) => {
     );
 
     if (!ttsRes.ok) {
-      const err = await ttsRes.text();
-      throw new Error(`ElevenLabs TTS error [${ttsRes.status}]: ${err}`);
+      console.error(`ElevenLabs TTS error [${ttsRes.status}]`);
+      throw new Error("TTS 생성 중 오류가 발생했습니다.");
     }
 
     const audioBuffer = await ttsRes.arrayBuffer();
@@ -80,7 +98,7 @@ serve(async (req) => {
         upsert: true,
       });
 
-    if (uploadError) throw new Error(`Storage upload error: ${uploadError.message}`);
+    if (uploadError) throw new Error("오디오 저장 중 오류가 발생했습니다.");
 
     const { data: urlData } = supabase.storage
       .from("vocab-audio")
@@ -100,7 +118,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("TTS cache error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "요청을 처리할 수 없습니다. 나중에 다시 시도해주세요." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

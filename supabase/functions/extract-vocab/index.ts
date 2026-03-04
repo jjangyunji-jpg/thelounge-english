@@ -13,12 +13,44 @@ serve(async (req) => {
   }
 
   try {
+    // Auth check - instructor or admin only
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = claimsData.claims.sub as string;
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Verify role
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "instructor"]);
+    if (!roleData || roleData.length === 0) {
+      return new Response(JSON.stringify({ error: "권한이 없습니다." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { notes, studentName, weekLabel, sessionId } = await req.json();
     if (!notes || !studentName || !weekLabel) {
@@ -72,7 +104,6 @@ If no clear English-Korean pairs are found, return { "words": [] }.`;
     });
 
     if (!response.ok) {
-      const errText = await response.text();
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "AI 요청 한도 초과. 잠시 후 다시 시도해주세요." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -83,7 +114,7 @@ If no clear English-Korean pairs are found, return { "words": [] }.`;
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`AI gateway error [${response.status}]: ${errText}`);
+      throw new Error("AI gateway error");
     }
 
     const aiData = await response.json();
@@ -104,7 +135,6 @@ If no clear English-Korean pairs are found, return { "words": [] }.`;
       });
     }
 
-    // 해당 세션의 기존 단어 삭제 후 새 단어로 대체 (sessionId가 있으면 세션 기준, 없으면 주차 기준)
     if (sessionId) {
       const { error: deleteError } = await supabase
         .from("vocabulary_words")
@@ -148,7 +178,7 @@ If no clear English-Korean pairs are found, return { "words": [] }.`;
   } catch (error) {
     console.error("Error in extract-vocab:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "요청을 처리할 수 없습니다. 나중에 다시 시도해주세요." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

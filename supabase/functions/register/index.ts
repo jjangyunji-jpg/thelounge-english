@@ -17,13 +17,19 @@ Deno.serve(async (req) => {
     const { email, password, name, role } = await req.json();
 
     if (!email || !password || !name || !role) {
-      throw new Error("email, password, name, role are required");
+      return new Response(JSON.stringify({ error: "이메일, 비밀번호, 이름, 역할을 입력해주세요." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
     if (!["student", "instructor"].includes(role)) {
-      throw new Error("role must be student or instructor");
+      return new Response(JSON.stringify({ error: "올바른 역할을 선택해주세요." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
     if (password.length < 8) {
-      throw new Error("비밀번호는 8자 이상이어야 합니다.");
+      return new Response(JSON.stringify({ error: "비밀번호는 8자 이상이어야 합니다." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // 1. Create auth user
@@ -32,7 +38,12 @@ Deno.serve(async (req) => {
       password,
       email_confirm: true,
     });
-    if (createError) throw createError;
+    if (createError) {
+      console.error("User creation error:", createError);
+      return new Response(JSON.stringify({ error: "계정 생성에 실패했습니다. 다시 시도해주세요." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const userId = newUser.user.id;
 
     // 2. Insert role (approved = false, admin must approve)
@@ -44,7 +55,10 @@ Deno.serve(async (req) => {
     });
     if (roleError) {
       await adminClient.auth.admin.deleteUser(userId);
-      throw roleError;
+      console.error("Role insert error:", roleError);
+      return new Response(JSON.stringify({ error: "계정 생성에 실패했습니다. 다시 시도해주세요." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // 3. If student, create student_profiles
@@ -56,7 +70,10 @@ Deno.serve(async (req) => {
       });
       if (profileError) {
         await adminClient.auth.admin.deleteUser(userId);
-        throw profileError;
+        console.error("Profile insert error:", profileError);
+        return new Response(JSON.stringify({ error: "계정 생성에 실패했습니다. 다시 시도해주세요." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
 
@@ -64,9 +81,9 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return new Response(JSON.stringify({ error: message }), {
-      status: 400,
+    console.error("Register error:", err);
+    return new Response(JSON.stringify({ error: "요청을 처리할 수 없습니다. 나중에 다시 시도해주세요." }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
