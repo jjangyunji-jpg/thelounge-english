@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   X, ChevronRight, CheckCircle2,
-  XCircle, Loader2, Trophy,
+  XCircle, Loader2, Trophy, Volume2, Mic, MicOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,26 +20,17 @@ interface VocabWord {
 }
 
 type Phase = "confirm" | "testing" | "results";
+type TestMode = "text" | "speech";
 
-interface Question {
-  word: VocabWord;
-}
+interface Question { word: VocabWord; }
+interface Answer { questionIdx: number; userAnswer: string; correct: boolean; expected: string; }
 
-interface Answer {
-  questionIdx: number;
-  userAnswer: string;
-  correct: boolean;
-  expected: string;
-}
-
-// ── Helper: build questions ────────────────────────────────────────────────────
 function buildQuestions(words: VocabWord[]): Question[] {
   const shuffled = [...words].sort(() => Math.random() - 0.5);
   const count = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
   return shuffled.slice(0, count).map((w) => ({ word: w }));
 }
 
-// ── Normalize for comparison ───────────────────────────────────────────────────
 function normalize(s: string) {
   return s.toLowerCase().trim().replace(/[.,!?'"]/g, "");
 }
@@ -51,22 +42,60 @@ function isCorrect(userAnswer: string, expected: string): boolean {
   return e.split(" ").every((word) => u.includes(normalize(word)));
 }
 
-// ── Question Card ──────────────────────────────────────────────────────────────
+// ── TTS helper (browser built-in) ──
+function speakKorean(text: string) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "ko-KR";
+  utter.rate = 0.9;
+  window.speechSynthesis.speak(utter);
+}
+
+// ── Speech Recognition hook ──
+function useSpeechRecognition(onResult: (transcript: string) => void) {
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const start = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return false;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      onResult(transcript);
+      setListening(false);
+    };
+    recognition.onerror = () => setListening(false);
+    recognition.onend = () => setListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+    return true;
+  }, [onResult]);
+
+  const stop = useCallback(() => {
+    recognitionRef.current?.stop();
+    setListening(false);
+  }, []);
+
+  return { listening, start, stop };
+}
+
+// ── Question Card (Text mode) ──
 function TextQuestion({
   question, qIndex, total, onAnswer,
 }: {
-  question: Question;
-  qIndex: number;
-  total: number;
-  onAnswer: (answer: string) => void;
+  question: Question; qIndex: number; total: number; onAnswer: (answer: string) => void;
 }) {
   const [value, setValue] = useState("");
-
-  const submit = () => {
-    if (!value.trim()) return;
-    onAnswer(value.trim());
-    setValue("");
-  };
+  const submit = () => { if (!value.trim()) return; onAnswer(value.trim()); setValue(""); };
 
   return (
     <div className="space-y-4">
@@ -81,28 +110,97 @@ function TextQuestion({
           </span>
         )}
       </div>
-
       <div className="flex gap-2">
-        <Input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+        <Input value={value} onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="영어로 입력하세요..."
-          className="flex-1 text-sm"
-          autoFocus
+          placeholder="영어로 입력하세요..." className="flex-1 text-sm" autoFocus
         />
         <Button size="sm" onClick={submit} disabled={!value.trim()}
           className="bg-navy hover:bg-navy-light text-primary-foreground gap-1.5"
-        >
-          확인 <ChevronRight className="w-3.5 h-3.5" />
-        </Button>
+        >확인 <ChevronRight className="w-3.5 h-3.5" /></Button>
       </div>
       <p className="text-center text-[10px] text-muted-foreground">{qIndex + 1} / {total}</p>
     </div>
   );
 }
 
-// ── Result Item ────────────────────────────────────────────────────────────────
+// ── Question Card (Speech mode) ──
+function SpeechQuestion({
+  question, qIndex, total, onAnswer,
+}: {
+  question: Question; qIndex: number; total: number; onAnswer: (answer: string) => void;
+}) {
+  const [value, setValue] = useState("");
+  const [spoken, setSpoken] = useState(false);
+
+  const { listening, start, stop } = useSpeechRecognition(
+    useCallback((transcript: string) => {
+      setValue(transcript);
+    }, [])
+  );
+
+  // Auto-speak the Korean meaning when question appears
+  useEffect(() => {
+    setSpoken(false);
+    setValue("");
+    const timer = setTimeout(() => {
+      speakKorean(question.word.korean_meaning);
+      setSpoken(true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [question.word.korean_meaning]);
+
+  const replay = () => speakKorean(question.word.korean_meaning);
+  const submit = () => { if (!value.trim()) return; onAnswer(value.trim()); setValue(""); };
+
+  const hasSpeechAPI = typeof window !== "undefined" &&
+    !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center space-y-3">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
+          🔊 뜻을 듣고 영어로 답하세요
+        </p>
+
+        {/* Replay button */}
+        <button onClick={replay}
+          className="w-16 h-16 rounded-full bg-navy/10 hover:bg-navy/20 flex items-center justify-center mx-auto transition-colors"
+        >
+          <Volume2 className="w-7 h-7 text-navy" />
+        </button>
+        <p className="text-[10px] text-muted-foreground">다시 듣기</p>
+
+        {question.word.part_of_speech && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            {question.word.part_of_speech}
+          </span>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <Input value={value} onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder="영어로 입력 또는 🎙️ 음성 입력..." className="flex-1 text-sm" autoFocus
+        />
+        {hasSpeechAPI && (
+          <Button size="sm" variant={listening ? "destructive" : "outline"}
+            onClick={() => listening ? stop() : start()}
+            className="gap-1 flex-shrink-0"
+          >
+            {listening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+          </Button>
+        )}
+        <Button size="sm" onClick={submit} disabled={!value.trim()}
+          className="bg-navy hover:bg-navy-light text-primary-foreground gap-1.5"
+        >확인 <ChevronRight className="w-3.5 h-3.5" /></Button>
+      </div>
+      <p className="text-center text-[10px] text-muted-foreground">{qIndex + 1} / {total}</p>
+    </div>
+  );
+}
+
+// ── Result Item ──
 function ResultItem({ question, answer }: { question: Question; answer: Answer }) {
   return (
     <div className={cn("rounded-lg p-3 border text-sm space-y-1",
@@ -124,26 +222,16 @@ function ResultItem({ question, answer }: { question: Question; answer: Answer }
   );
 }
 
-// ── Main Modal ─────────────────────────────────────────────────────────────────
+// ── Main Modal ──
 export default function VocabTestModal({
-  words,
-  studentName,
-  weekLabel,
-  completedTests,
-  scheduledAt,
-  onClose,
-  onTestComplete,
+  words, studentName, weekLabel, completedTests, scheduledAt, onClose, onTestComplete,
 }: {
-  words: VocabWord[];
-  studentName: string;
-  weekLabel: string;
-  completedTests: number;
-  scheduledAt: Date;
-  onClose: () => void;
-  onTestComplete: () => void;
+  words: VocabWord[]; studentName: string; weekLabel: string; completedTests: number;
+  scheduledAt: Date; onClose: () => void; onTestComplete: () => void;
 }) {
   const { toast } = useToast();
   const [phase, setPhase] = useState<Phase>("confirm");
+  const [testMode, setTestMode] = useState<TestMode>("text");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
@@ -151,7 +239,8 @@ export default function VocabTestModal({
 
   const questionCount = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
 
-  const startTest = () => {
+  const startTest = (mode: TestMode) => {
+    setTestMode(mode);
     const qs = buildQuestions(words);
     setQuestions(qs);
     setCurrentIdx(0);
@@ -163,11 +252,9 @@ export default function VocabTestModal({
     const q = questions[currentIdx];
     const expected = q.word.english_word;
     const correct = isCorrect(userAnswer, expected);
-
     const newAnswer: Answer = { questionIdx: currentIdx, userAnswer, correct, expected };
     const newAnswers = [...answers, newAnswer];
     setAnswers(newAnswers);
-
     if (currentIdx + 1 < questions.length) {
       setCurrentIdx((i) => i + 1);
     } else {
@@ -179,39 +266,26 @@ export default function VocabTestModal({
     setSaving(true);
     const score = finalAnswers.filter((a) => a.correct).length;
     const total = finalAnswers.length;
-
     try {
       const { data: testData, error: testErr } = await supabase
         .from("vocabulary_tests")
         .insert({
-          student_name: studentName,
-          type: "text",
-          week_label: weekLabel,
-          word_ids: finalQuestions.map((q) => q.word.id),
-          score,
-          total,
+          student_name: studentName, type: testMode, week_label: weekLabel,
+          word_ids: finalQuestions.map((q) => q.word.id), score, total,
           completed_at: new Date().toISOString(),
         })
-        .select()
-        .single();
-
+        .select().single();
       if (testErr) throw testErr;
-
       const resultRows = finalAnswers.map((a) => ({
-        test_id: testData.id,
-        word_id: finalQuestions[a.questionIdx].word.id,
-        student_answer: a.userAnswer,
-        is_correct: a.correct,
+        test_id: testData.id, word_id: finalQuestions[a.questionIdx].word.id,
+        student_answer: a.userAnswer, is_correct: a.correct,
       }));
       await supabase.from("vocabulary_test_results").insert(resultRows);
-
       setPhase("results");
       onTestComplete();
     } catch (e: unknown) {
       toast({ title: "저장 실패", description: e instanceof Error ? e.message : "오류", variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const score = answers.filter((a) => a.correct).length;
@@ -228,8 +302,8 @@ export default function VocabTestModal({
             <p className="font-bold text-sm text-foreground">단어 테스트</p>
             <p className="text-[10px] text-muted-foreground">
               {weekLabel.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`)}
-              {" · "}
-              {`${completedTests + 1}회차`}
+              {" · "}{`${completedTests + 1}회차`}
+              {phase === "testing" && testMode === "speech" && " · 🔊 음성 모드"}
             </p>
           </div>
           {phase !== "testing" && (
@@ -245,7 +319,6 @@ export default function VocabTestModal({
           {/* ── Confirm ── */}
           {phase === "confirm" && (
             <div className="space-y-5">
-
               <div className="text-center space-y-3 py-4">
                 <div className="w-14 h-14 rounded-2xl bg-navy/10 flex items-center justify-center mx-auto">
                   <span className="text-2xl font-bold text-navy">T</span>
@@ -253,16 +326,26 @@ export default function VocabTestModal({
                 <div>
                   <p className="text-sm font-semibold text-foreground">단어 테스트 준비됐나요?</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    총 {questionCount}개 단어 · 한국어 뜻을 보고 영어로 입력
+                    총 {questionCount}개 단어 · 모드를 선택하세요
                   </p>
                 </div>
               </div>
 
-              <Button className="w-full bg-navy hover:bg-navy-light text-primary-foreground font-semibold"
-                onClick={startTest}
-              >
-                테스트 시작
-              </Button>
+              {/* Mode selection */}
+              <div className="space-y-2">
+                <Button className="w-full bg-navy hover:bg-navy-light text-primary-foreground font-semibold gap-2"
+                  onClick={() => startTest("text")}
+                >
+                  ✏️ 텍스트 모드
+                  <span className="text-[10px] font-normal opacity-80">뜻을 보고 영어 입력</span>
+                </Button>
+                <Button className="w-full bg-gold hover:bg-gold-dark text-foreground font-semibold gap-2"
+                  onClick={() => startTest("speech")}
+                >
+                  🔊 음성 모드
+                  <span className="text-[10px] font-normal opacity-80">뜻을 듣고 영어 입력/말하기</span>
+                </Button>
+              </div>
             </div>
           )}
 
@@ -272,22 +355,24 @@ export default function VocabTestModal({
               <div className="mb-5">
                 <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5">
                   <span>{currentIdx + 1} / {questions.length}</span>
-                  <span>💬 단어</span>
+                  <span>{testMode === "speech" ? "🔊 음성" : "💬 단어"}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-navy transition-all duration-300"
+                  <div className="h-full rounded-full bg-navy transition-all duration-300"
                     style={{ width: `${(currentIdx / questions.length) * 100}%` }}
                   />
                 </div>
               </div>
 
-              <TextQuestion
-                question={questions[currentIdx]}
-                qIndex={currentIdx}
-                total={questions.length}
-                onAnswer={handleAnswer}
-              />
+              {testMode === "text" ? (
+                <TextQuestion question={questions[currentIdx]} qIndex={currentIdx}
+                  total={questions.length} onAnswer={handleAnswer}
+                />
+              ) : (
+                <SpeechQuestion question={questions[currentIdx]} qIndex={currentIdx}
+                  total={questions.length} onAnswer={handleAnswer}
+                />
+              )}
 
               {saving && (
                 <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
