@@ -768,6 +768,7 @@ export default function StudentDashboard() {
 
   const isBeforeStartDate = (dateStr: string) => {
     if (!studentRecord?.start_date) return false;
+    if (studentRecord.student_type === "corporate") return false;
     const d = dateStr.slice(0, 10);
     return d < studentRecord.start_date;
   };
