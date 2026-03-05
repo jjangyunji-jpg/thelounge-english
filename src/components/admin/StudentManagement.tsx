@@ -279,6 +279,7 @@ export default function StudentManagement() {
       schedules: row.schedules ? JSON.parse(row.schedules) : [],
       withdrawalReason: row.withdrawal_reason || "",
       pauses: [],
+      studentType: row.student_type || "regular",
     }));
     setStudents(dbStudents);
 
