@@ -506,8 +506,17 @@ export default function StudentDashboard() {
       supabase.from("holiday_notices").select("id,title,date_start,date_end,reason,notify_students").order("date_start", { ascending: true }),
     ]);
 
-    let visibleRecentSessions = sessRes.data || [];
-    let visibleAllSessions = allSessRes.data || [];
+    // Merge direct + group sessions, deduplicate by id
+    const mergeAndDedup = (direct: any[], group: any[]) => {
+      const map = new Map<string, any>();
+      for (const s of direct) map.set(s.id, s);
+      for (const s of group) map.set(s.id, s);
+      return Array.from(map.values());
+    };
+    let visibleRecentSessions = mergeAndDedup(sessRes.data || [], groupSessRes.data || [])
+      .sort((a: any, b: any) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()).slice(0, 20);
+    let visibleAllSessions = mergeAndDedup(allSessRes.data || [], groupAllSessRes.data || [])
+      .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
     setAssignments(hwRes.data || []);
     setSubmissions(subRes.data || []);
