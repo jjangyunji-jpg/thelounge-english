@@ -31,14 +31,14 @@ serve(async (req) => {
 
     if (type === "summaries") {
       systemPrompt =
-        "당신은 영어 수업 보고서를 작성하는 전문가입니다. 각 수업의 노트를 기반으로 그날 진행한 수업 내용을 한국어로 간결하게 요약해주세요. 각 요약은 15~30자 내외로 작성하세요.";
+        "당신은 영어 수업 보고서를 작성하는 전문가입니다. 각 수업의 노트를 기반으로 그날 어떻게 수업을 진행했는지 한국어로 2~3문장으로 서술해주세요. 글 형식으로 자연스럽게 작성하세요.";
       const sessionsText = sessions
         .map(
           (s, i) =>
             `수업 ${i + 1} (${s.date}):\n주제: ${s.topic || "없음"}\n노트: ${s.notes || "없음"}`
         )
         .join("\n\n");
-      userPrompt = `다음 영어 수업들의 내용을 각각 한국어로 간결하게 요약해주세요.\n\n${sessionsText}`;
+      userPrompt = `다음 영어 수업들의 내용을 각각 한국어로 2~3문장의 글 형식으로 요약해주세요. 수업에서 어떤 활동을 하고 무엇을 학습했는지 서술해주세요.\n\n${sessionsText}`;
 
       const response = await fetch(
         "https://ai.gateway.lovable.dev/v1/chat/completions",
