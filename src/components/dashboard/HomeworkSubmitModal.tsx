@@ -115,14 +115,17 @@ export default function HomeworkSubmitModal({
   const Icon = meta.icon;
   const recorder = useAudioRecorder();
 
-  const showTextArea = meta.requiresText || assignment.type === "memorizing";
+  const isReadingType = assignment.type === "reading" || assignment.type === "watching";
+  const showTextArea = meta.requiresText || assignment.type === "memorizing" || isReadingType;
   const showAudio = meta.requiresAudio || assignment.type === "memorizing";
   const showFile = !!meta.requiresFile;
 
-  const canSubmit =
-    (!meta.requiresText || text.trim().length > 0) &&
-    (!meta.requiresAudio || recorder.audioBlob !== null) &&
-    (!meta.requiresFile || fileObj !== null);
+  // Reading/watching: text is optional, no other requirements
+  const canSubmit = isReadingType
+    ? true
+    : (!meta.requiresText || text.trim().length > 0) &&
+      (!meta.requiresAudio || recorder.audioBlob !== null) &&
+      (!meta.requiresFile || fileObj !== null);
 
   const handleSubmit = async () => {
     setSubmitting(true);
