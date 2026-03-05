@@ -708,9 +708,10 @@ export default function StudentManagement() {
       reminderEnabled: true,
       meetLink: "",
       schedules: newStudent.schedules,
+      studentType: newStudent.studentType,
     };
     setStudents((prev) => [s, ...prev]);
-    setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [] });
+    setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular" });
     setDialogOpen(false);
     toast({ title: `${newStudent.name} 수강생 등록 완료 ✓` });
 
