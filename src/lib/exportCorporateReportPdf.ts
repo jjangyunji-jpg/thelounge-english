@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { supabase } from "@/integrations/supabase/client";
 
 const INDIVIDUAL_RATE = 50000;
 const GROUP_RATE = 70000;
@@ -15,9 +16,10 @@ interface Session {
 }
 
 interface ReportInfo {
-  companyName: string;
+  studentName: string;
   instructorName: string;
   learningObjective: string;
+  groupStudents: string[];
 }
 
 interface PeriodInfo {
@@ -43,6 +45,33 @@ function stripHtml(html: string | null): string {
   return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
 }
 
+async function fetchAiSummaries(sessions: { date: string; topic: string | null; notes: string | null }[]): Promise<string[]> {
+  try {
+    const { data, error } = await supabase.functions.invoke("summarize-report", {
+      body: { sessions, type: "summaries" },
+    });
+    if (error || !data?.summaries) return sessions.map(() => "-");
+    return data.summaries;
+  } catch {
+    return sessions.map(() => "-");
+  }
+}
+
+async function fetchAiRemarks(
+  sessions: { date: string; topic: string | null; notes: string | null }[],
+  learningObjective: string
+): Promise<string> {
+  try {
+    const { data, error } = await supabase.functions.invoke("summarize-report", {
+      body: { sessions, learningObjective, type: "remarks" },
+    });
+    if (error || !data?.remarks) return "";
+    return data.remarks;
+  } catch {
+    return "";
+  }
+}
+
 export async function exportCorporateReportPdf(
   sessions: Session[],
   info: ReportInfo,
@@ -55,11 +84,11 @@ export async function exportCorporateReportPdf(
   const end = new Date(period.end_date);
   const now = new Date();
 
-  // Filter completed sessions in period
+  // Filter sessions in period that have notes OR are completed
   const completedSessions = sessions
     .filter((s) => {
       const d = new Date(s.scheduled_at);
-      return d >= start && d <= end && d <= now && s.ended_at;
+      return d >= start && d <= end && d <= now && (s.ended_at || (s.notes && s.notes.trim() !== ""));
     })
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
@@ -68,41 +97,63 @@ export async function exportCorporateReportPdf(
   doc.setTextColor(30, 58, 95);
   doc.text("수업 보고서", 14, 20);
 
+  // Student name display
+  const isGroup = info.groupStudents && info.groupStudents.length > 0;
+  const studentLabel = isGroup
+    ? `학생명: ${info.groupStudents.join("  ")}`
+    : `학생명: ${info.studentName}`;
+
   doc.setFontSize(10);
   doc.setTextColor(80);
-  doc.text(`기업명: ${info.companyName}`, 14, 30);
+  doc.text(studentLabel, 14, 30);
   doc.text(`담당 강사: ${info.instructorName}`, 14, 36);
-  doc.text(`보고 기간: ${period.label} (${period.start_date} ~ ${period.end_date})`, 14, 42);
-  doc.text(`생성일: ${new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}`, 14, 48);
+  doc.text(`수업 기간: ${period.label} (${period.start_date} ~ ${period.end_date})`, 14, 42);
 
+  let nextY = 48;
   if (info.learningObjective) {
-    doc.text(`수업 목표: ${info.learningObjective}`, 14, 54);
+    doc.text(`수업 목표: ${info.learningObjective}`, 14, nextY);
+    nextY += 6;
   }
 
-  const startY = info.learningObjective ? 62 : 56;
+  const startY = nextY + 4;
 
   if (completedSessions.length === 0) {
     doc.setFontSize(10);
     doc.setTextColor(150);
     doc.text("해당 기간에 완료된 수업이 없습니다.", 14, startY + 6);
-    doc.save(`수업보고서_${info.companyName}_${period.label}.pdf`);
+    doc.save(`수업보고서_${info.studentName}_${period.label}.pdf`);
     return;
   }
+
+  // Fetch AI summaries for notes
+  const sessionDataForAi = completedSessions.map((s) => {
+    const d = new Date(s.scheduled_at);
+    return {
+      date: d.toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" }),
+      topic: s.topic,
+      notes: stripHtml(s.notes),
+    };
+  });
+
+  const [aiSummaries, aiRemarks] = await Promise.all([
+    fetchAiSummaries(sessionDataForAi),
+    fetchAiRemarks(sessionDataForAi, info.learningObjective),
+  ]);
 
   // Session detail table
   const fmt = (n: number) => n.toLocaleString("en-US");
 
   const rows = completedSessions.map((s, idx) => {
-    const isGroup = s.group_students && s.group_students.length > 0;
-    const rate = isGroup ? GROUP_RATE : INDIVIDUAL_RATE;
+    const sessionIsGroup = s.group_students && s.group_students.length > 0;
+    const rate = sessionIsGroup ? GROUP_RATE : INDIVIDUAL_RATE;
     const d = new Date(s.scheduled_at);
     return [
       String(idx + 1),
       d.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" }),
       d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }),
       s.topic || "-",
-      stripHtml(s.notes).slice(0, 60) || "-",
-      isGroup ? "그룹" : "개인",
+      aiSummaries[idx] || stripHtml(s.notes).slice(0, 60) || "-",
+      sessionIsGroup ? "그룹" : "개인",
       `${fmt(rate)}원`,
     ];
   });
@@ -162,5 +213,29 @@ export async function exportCorporateReportPdf(
   doc.setTextColor(30, 30, 30);
   doc.text(`총 수업료: ₩${fmt(totalFee)}`, 14, summaryY + 7 + lines.length * 6 + 4);
 
-  doc.save(`수업보고서_${info.companyName}_${period.label}.pdf`);
+  // Remarks section (AI-generated)
+  if (aiRemarks) {
+    const remarksY = summaryY + 7 + lines.length * 6 + 14;
+
+    // Check if we need a new page
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const needsNewPage = remarksY + 30 > pageHeight - 20;
+
+    let actualRemarksY = remarksY;
+    if (needsNewPage) {
+      doc.addPage();
+      actualRemarksY = 20;
+    }
+
+    doc.setFontSize(11);
+    doc.setTextColor(30, 58, 95);
+    doc.text("비고", 14, actualRemarksY);
+
+    doc.setFontSize(9);
+    doc.setTextColor(60);
+    const remarkLines = doc.splitTextToSize(aiRemarks, 180);
+    doc.text(remarkLines, 14, actualRemarksY + 7);
+  }
+
+  doc.save(`수업보고서_${info.studentName}_${period.label}.pdf`);
 }
