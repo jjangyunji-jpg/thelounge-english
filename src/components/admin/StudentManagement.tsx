@@ -142,6 +142,7 @@ interface NewStudent {
   startDate: string;
   extraLessons: number;
   schedules: ScheduleSlot[];
+  studentType: string;
 }
 
 // Pause form sub-component
