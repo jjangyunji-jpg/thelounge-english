@@ -872,6 +872,10 @@ function StudentEditModal({
   const [newPresetTitle, setNewPresetTitle] = useState("");
   const [newPresetDesc, setNewPresetDesc] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
+  const [editPresetType, setEditPresetType] = useState<HwType>("writing");
+  const [editPresetTitle, setEditPresetTitle] = useState("");
+  const [editPresetDesc, setEditPresetDesc] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -904,6 +908,23 @@ function StudentEditModal({
   const removePreset = async (hwId: string) => {
     await supabase.from("homework_assignments").delete().eq("id", hwId);
     setPresets((p) => p.filter((h) => h.id !== hwId));
+  };
+
+  const startEditPreset = (hw: PresetHw) => {
+    setEditingPresetId(hw.id); setEditPresetType(hw.type); setEditPresetTitle(hw.title); setEditPresetDesc(hw.description); setAddingPreset(false);
+  };
+
+  const saveEditPreset = async () => {
+    if (!editPresetTitle.trim() || !editingPresetId) return;
+    setSavingPreset(true);
+    const { error } = await supabase.from("homework_assignments")
+      .update({ type: editPresetType, title: editPresetTitle.trim(), description: editPresetDesc.trim() || null })
+      .eq("id", editingPresetId);
+    if (!error) {
+      setPresets((p) => p.map((h) => h.id === editingPresetId ? { ...h, type: editPresetType, title: editPresetTitle.trim(), description: editPresetDesc.trim() } : h));
+      toast({ title: "정기 숙제 수정 완료 ✓" });
+    }
+    setEditingPresetId(null); setSavingPreset(false);
   };
 
   const handleSave = async () => {
@@ -1051,16 +1072,59 @@ function StudentEditModal({
                 {presets.map((hw) => {
                   const meta = HW_TYPE_META[hw.type];
                   const Icon = meta?.icon;
+                  const isEditing = editingPresetId === hw.id;
+
+                  if (isEditing) {
+                    return (
+                      <div key={hw.id} className="border border-[hsl(var(--gold)/0.5)] rounded-lg p-3 space-y-2 bg-[hsl(var(--gold)/0.04)]">
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {(Object.keys(HW_TYPE_META) as HwType[]).map((t) => {
+                            const m = HW_TYPE_META[t]; const TIcon = m.icon;
+                            return (
+                              <button key={t} onClick={() => setEditPresetType(t)}
+                                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                                  editPresetType === t
+                                    ? "border-[hsl(var(--gold))] bg-[hsl(var(--gold)/0.10)] text-foreground"
+                                    : "border-border bg-card text-muted-foreground hover:border-[hsl(var(--gold)/0.4)]"
+                                }`}
+                              >
+                                <TIcon className={`w-3.5 h-3.5 ${editPresetType === t ? m.color : ""}`} />
+                                {m.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <Input value={editPresetTitle} onChange={(e) => setEditPresetTitle(e.target.value)} placeholder="숙제 제목 (필수)" className="h-8 text-xs" autoFocus />
+                        <Input value={editPresetDesc} onChange={(e) => setEditPresetDesc(e.target.value)} placeholder="상세 설명 (선택)" className="h-8 text-xs" />
+                        <div className="flex gap-1.5">
+                          <Button size="sm" disabled={!editPresetTitle.trim() || savingPreset}
+                            className="flex-1 h-7 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
+                            onClick={saveEditPreset}
+                          >
+                            {savingPreset ? "저장 중..." : "저장"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingPresetId(null)}>취소</Button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={hw.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-muted/20 group">
                       {Icon && <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${meta.color}`} />}
                       <div className="flex-1 min-w-0">
                         <span className="text-xs font-medium text-foreground">{hw.title}</span>
                         <span className={`text-[10px] ml-1.5 ${meta.color}`}>{meta.label}</span>
+                        {hw.description && <p className="text-[10px] text-muted-foreground truncate">{hw.description}</p>}
                       </div>
-                      <button onClick={() => removePreset(hw.id)} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => startEditPreset(hw)} className="text-muted-foreground hover:text-foreground">
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => removePreset(hw.id)} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
