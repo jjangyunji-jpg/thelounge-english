@@ -1231,7 +1231,8 @@ export default function StudentDashboard() {
                   <p className="text-[10px] mt-0.5 text-muted-foreground">이전 노트 보기</p>
                 </div>
               </button>
-              {/* 보강 신청하기 */}
+              {/* 보강 신청하기 — corporate 학생은 숨김 */}
+              {studentRecord?.student_type !== 'corporate' && (
               <a
                 href="https://naver.me/57QYErVk"
                 target="_blank"
@@ -1246,7 +1247,10 @@ export default function StudentDashboard() {
                   <p className="text-[10px] mt-0.5 text-muted-foreground">수업 48시간 전까지 가능</p>
                 </div>
               </a>
-              {/* 수업료 결제하기 */}
+              )}
+              {/* 수업료 결제하기 — corporate 학생은 숨김 */}
+              {studentRecord?.student_type !== 'corporate' && (
+              <>
               {paymentAvailable ? (
                 <a
                   href="https://smartstore.naver.com/thelounge_english/products/11688767366"
@@ -1280,6 +1284,8 @@ export default function StudentDashboard() {
                     기간 종료 전 결제가 가능합니다
                   </div>
                 </div>
+              )}
+              </>
               )}
             </div>
           </div>
