@@ -2071,6 +2071,21 @@ export default function InstructorDashboard() {
                         ))}
                       </div>
                     )}
+
+                    {/* Add session button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full h-8 text-xs gap-1.5 border-dashed mt-2"
+                      onClick={() => {
+                        const d = selectedDate!;
+                        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                        setAddSessionDefaultDate(dateStr);
+                        setShowAddSession(true);
+                      }}
+                    >
+                      <Plus className="w-3 h-3" /> 수업 추가
+                    </Button>
                   </div>
                 )}
               </div>
