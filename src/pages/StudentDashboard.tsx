@@ -822,7 +822,7 @@ export default function StudentDashboard() {
   const periodSessionIds = new Set(periodSessions.map(s => s.id));
 
   const periodAssignments = selectedPeriod
-    ? assignments.filter(a => a.session_id ? periodSessionIds.has(a.session_id) : false)
+    ? assignments.filter(a => a.is_preset || (a.session_id ? periodSessionIds.has(a.session_id) : false))
     : assignments;
 
   const periodVocabWords = selectedPeriod
@@ -910,7 +910,7 @@ export default function StudentDashboard() {
       .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
     const latestSession = pastSess[0];
     if (!latestSession) return { submitted: 0, total: 0, pending: 0 };
-    const sessionHw = assignments.filter(a => a.session_id === latestSession.id);
+    const sessionHw = assignments.filter(a => a.session_id === latestSession.id || a.is_preset);
     const submitted = sessionHw.filter(a => {
       const sub = getSubmission(a.id);
       return sub && sub.status !== "pending";
