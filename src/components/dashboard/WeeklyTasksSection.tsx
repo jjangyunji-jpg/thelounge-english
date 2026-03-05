@@ -114,8 +114,8 @@ export default function WeeklyTasksSection({
   const totalTasks = weekAssignments.length + (weekVocabCount > 0 ? 1 : 0);
   const totalDone = completedCount + (weekTestsDone > 0 ? 1 : 0);
 
-  // Handle reading homework quick complete
-  const handleReadingComplete = async (assignment: Assignment) => {
+  // Handle quick complete for memorizing type only
+  const handleQuickComplete = async (assignment: Assignment) => {
     setCompletingId(assignment.id);
     try {
       const existing = getSub(assignment.id);
@@ -141,7 +141,7 @@ export default function WeeklyTasksSection({
         if (error) throw error;
         if (data) onSubmissionUpdate(data);
       }
-      toast({ title: "읽기 숙제 완료 ✓" });
+      toast({ title: "완료 처리됨 ✓" });
     } catch (e: unknown) {
       toast({ title: "완료 처리 실패", variant: "destructive" });
     } finally {
