@@ -677,7 +677,8 @@ export default function StudentManagement() {
         extra_lessons: newStudent.extraLessons,
         schedules: newStudent.schedules.length > 0 ? JSON.stringify(newStudent.schedules) : null,
         status: "active",
-      })
+        student_type: newStudent.studentType,
+      } as any)
       .select()
       .single();
 
