@@ -162,7 +162,7 @@ export default function Classroom() {
         const nameFilter = urlStudentName || studentNameFilter;
         let query = supabase
           .from("class_sessions")
-          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
+          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic,group_students")
           .order("scheduled_at", { ascending: false })
           .limit(1);
         if (nameFilter) {
@@ -202,10 +202,11 @@ export default function Classroom() {
       } else {
         const { data } = await supabase
           .from("class_sessions")
-          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
+          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic,group_students")
           .eq("id", urlSessionId)
           .single();
         sessionData = data;
+        if (data) setGroupStudents(Array.isArray((data as any).group_students) ? (data as any).group_students : []);
       }
       if (sessionData) {
         // If session has no meet_link, fall back to instructor_students meet_link
@@ -316,6 +317,7 @@ export default function Classroom() {
   const [sessionTopic, setSessionTopic] = useState("");
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
   const [sidebarSessions, setSidebarSessions] = useState<{ id: string; scheduled_at: string; topic: string | null; notes?: string | null; started_at?: string | null; ended_at?: string | null }[]>([]);
+  const [groupStudents, setGroupStudents] = useState<string[]>([]);
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -632,15 +634,20 @@ export default function Classroom() {
     if (!newHwTitle.trim()) return;
     setSavingHw(true);
     try {
-      const { data, error } = await supabase.from("homework_assignments").insert({
-        student_name: session.dbStudentName, title: newHwTitle.trim(),
+      // For group sessions, create homework for each group member individually
+      const targetStudents = groupStudents.length > 0 ? groupStudents : [session.dbStudentName];
+      const inserts = targetStudents.map(sn => ({
+        student_name: sn, title: newHwTitle.trim(),
         description: newHwDesc.trim() || null, type: newHwType, is_preset: newHwPreset,
         session_id: newHwPreset ? null : (session.sessionId || null),
-      }).select().single();
+      }));
+      const { data, error } = await supabase.from("homework_assignments").insert(inserts).select();
       if (error) throw error;
-      if (data) {
-        setHwList((prev) => [...prev, { id: data.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true }]);
-        toast({ title: "숙제가 추가됐습니다 ✓" });
+      if (data && data.length > 0) {
+        // Show the first one in the UI list (for the group/primary student)
+        setHwList((prev) => [...prev, { id: data[0].id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true }]);
+        const msg = groupStudents.length > 0 ? `숙제가 ${groupStudents.length}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
+        toast({ title: msg });
         setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing"); setNewHwPreset(false);
         setAddingHw(false);
       }

@@ -101,7 +101,7 @@ serve(async (req) => {
     // 2. Get active students with schedules
     let studentQuery = sb
       .from("instructor_students")
-      .select("id, student_name, schedules, level, instructor_name, meet_link, start_date")
+      .select("id, student_name, schedules, level, instructor_name, meet_link, start_date, group_students")
       .eq("status", "active");
     if (filterStudentName) {
       studentQuery = studentQuery.eq("student_name", filterStudentName);
@@ -236,6 +236,8 @@ serve(async (req) => {
             ).padStart(2, "0")}:00+09:00`
           );
 
+          const groupStudents = Array.isArray((student as any).group_students) ? (student as any).group_students : [];
+
           sessionsToInsert.push({
             student_name: student.student_name,
             instructor_name: student.instructor_name || "Unknown",
@@ -243,6 +245,7 @@ serve(async (req) => {
             scheduled_at: scheduledAt.toISOString(),
             meet_link: student.meet_link || null,
             topic: null,
+            group_students: groupStudents,
           });
 
           existingSet.add(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`);

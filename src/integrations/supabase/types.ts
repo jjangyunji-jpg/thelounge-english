@@ -177,6 +177,7 @@ export type Database = {
         Row: {
           created_at: string
           ended_at: string | null
+          group_students: string[]
           id: string
           instructor_name: string
           level: string
@@ -193,6 +194,7 @@ export type Database = {
         Insert: {
           created_at?: string
           ended_at?: string | null
+          group_students?: string[]
           id?: string
           instructor_name: string
           level?: string
@@ -209,6 +211,7 @@ export type Database = {
         Update: {
           created_at?: string
           ended_at?: string | null
+          group_students?: string[]
           id?: string
           instructor_name?: string
           level?: string
@@ -446,6 +449,7 @@ export type Database = {
           created_at: string
           english_name: string | null
           extra_lessons: number | null
+          group_students: string[]
           id: string
           instructor_id: string
           instructor_name: string | null
@@ -468,6 +472,7 @@ export type Database = {
           created_at?: string
           english_name?: string | null
           extra_lessons?: number | null
+          group_students?: string[]
           id?: string
           instructor_id: string
           instructor_name?: string | null
@@ -490,6 +495,7 @@ export type Database = {
           created_at?: string
           english_name?: string | null
           extra_lessons?: number | null
+          group_students?: string[]
           id?: string
           instructor_id?: string
           instructor_name?: string | null

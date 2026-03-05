@@ -14,6 +14,7 @@ import { exportNotesPdf } from "@/lib/exportNotesPdf";
 import InstructorGuide from "@/components/dashboard/InstructorGuide";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
+import AddSessionModal from "@/components/dashboard/AddSessionModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1303,6 +1304,8 @@ export default function InstructorDashboard() {
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
   const [editMeeting, setEditMeeting] = useState<BusinessMeeting | null>(null);
+  const [showAddSession, setShowAddSession] = useState(false);
+  const [addSessionDefaultDate, setAddSessionDefaultDate] = useState("");
   const [showBulkGoalModal, setShowBulkGoalModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reviewHw, setReviewHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
@@ -1870,6 +1873,21 @@ export default function InstructorDashboard() {
         role="instructor"
       />
 
+      {showAddSession && instructor && (
+        <AddSessionModal
+          students={students.filter(s => s.status === "active").map(s => ({
+            student_name: s.student_name,
+            level: s.level,
+            meet_link: s.meet_link,
+            instructor_name: s.instructor_name,
+          }))}
+          instructorName={instructor.name}
+          defaultDate={addSessionDefaultDate}
+          onClose={() => setShowAddSession(false)}
+          onAdded={() => loadData(instructor)}
+        />
+      )}
+
       {/* Tab Nav */}
       <div className="border-b border-border bg-card px-5">
         <div className="flex gap-0 max-w-5xl mx-auto">
@@ -2068,6 +2086,21 @@ export default function InstructorDashboard() {
                         ))}
                       </div>
                     )}
+
+                    {/* Add session button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full h-8 text-xs gap-1.5 border-dashed mt-2"
+                      onClick={() => {
+                        const d = selectedDate!;
+                        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                        setAddSessionDefaultDate(dateStr);
+                        setShowAddSession(true);
+                      }}
+                    >
+                      <Plus className="w-3 h-3" /> 수업 추가
+                    </Button>
                   </div>
                 )}
               </div>
