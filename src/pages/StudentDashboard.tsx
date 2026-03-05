@@ -821,9 +821,10 @@ export default function StudentDashboard() {
 
   const periodSessionIds = new Set(periodSessions.map(s => s.id));
 
-  const periodAssignments = selectedPeriod
+  const periodAssignments = (selectedPeriod
     ? assignments.filter(a => a.is_preset || (a.session_id ? periodSessionIds.has(a.session_id) : false))
-    : assignments;
+    : assignments
+  ).filter(a => !(a.is_preset && a.type === "memorizing"));
 
   const periodVocabWords = selectedPeriod
     ? vocabWords.filter(w => {
