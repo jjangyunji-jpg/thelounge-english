@@ -248,7 +248,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
 
   const isHoliday = (d: Date) =>
     holidayRanges.some(r => d >= r.start && d <= r.end);
-  const isTuesdayOff = (d: Date) => d.getDay() === 2;
+  
 
   // Build cells: from period start's week Sunday to period end's week Saturday
   const periodStart = selectedPeriod
