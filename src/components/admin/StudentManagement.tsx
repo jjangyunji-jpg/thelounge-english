@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock, Mail, Loader2, FileText, Paperclip, Monitor, Pause, Play } from "lucide-react";
 import { format } from "date-fns";
@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import { useToast } from "@/hooks/use-toast";
 import { autoGenerateSessions } from "@/lib/autoGenerateSessions";
 
@@ -216,6 +217,8 @@ export default function StudentManagement() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStudentName, setInviteStudentName] = useState("");
   const [inviting, setInviting] = useState(false);
+  const [reportPreview, setReportPreview] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState<string | null>(null);
 
   const handleInviteStudent = async () => {
     if (!inviteEmail.trim() || !inviteStudentName.trim()) return;
@@ -1594,36 +1597,44 @@ export default function StudentManagement() {
                                 variant="outline"
                                 size="sm"
                                 className="mt-1 h-7 text-xs gap-1 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                disabled={reportLoading === student.name}
                                 onClick={async (e) => {
                                   e.stopPropagation();
-                                  const { exportCorporateReportPdf } = await import("@/lib/exportCorporateReportPdf");
-                                  // Corporate reports always use calendar month (1st ~ last day)
-                                  const _now = new Date();
-                                  const _y = _now.getFullYear();
-                                  const _m = _now.getMonth();
-                                  const _startDate = `${_y}-${String(_m + 1).padStart(2, "0")}-01`;
-                                  const _lastDay = new Date(_y, _m + 1, 0).getDate();
-                                  const _endDate = `${_y}-${String(_m + 1).padStart(2, "0")}-${String(_lastDay).padStart(2, "0")}`;
-                                  const _label = `${_y}년 ${_m + 1}월`;
-                                  const { data: sessData } = await supabase
-                                    .from("class_sessions")
-                                    .select("scheduled_at,student_name,topic,notes,level,ended_at,group_students")
-                                    .eq("student_name", student.name)
-                                    .gte("scheduled_at", _startDate + "T00:00:00+09:00")
-                                    .lte("scheduled_at", _endDate + "T23:59:59+09:00")
-                                    .order("scheduled_at");
-                                  let objs: string[] = [];
-                                  try { objs = JSON.parse(student.learningObjective || "[]"); } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
-                                  const groupStudents = (sessData || []).find(s => s.group_students && s.group_students.length > 0)?.group_students || [];
-                                  await exportCorporateReportPdf(
-                                    sessData || [],
-                                    { studentName: student.name, instructorName: student.instructor, learningObjective: objs.join(", "), groupStudents },
-                                    { label: _label, start_date: _startDate, end_date: _endDate },
-                                  );
-                                  toast({ title: "수업 보고서 다운로드 완료 ✓" });
+                                  setReportLoading(student.name);
+                                  try {
+                                    const { prepareReportData } = await import("@/lib/exportCorporateReportPdf");
+                                    const _now = new Date();
+                                    const _y = _now.getFullYear();
+                                    const _m = _now.getMonth();
+                                    const _startDate = `${_y}-${String(_m + 1).padStart(2, "0")}-01`;
+                                    const _lastDay = new Date(_y, _m + 1, 0).getDate();
+                                    const _endDate = `${_y}-${String(_m + 1).padStart(2, "0")}-${String(_lastDay).padStart(2, "0")}`;
+                                    const _label = `${_y}년 ${_m + 1}월`;
+                                    const { data: sessData } = await supabase
+                                      .from("class_sessions")
+                                      .select("scheduled_at,student_name,topic,notes,level,ended_at,group_students")
+                                      .eq("student_name", student.name)
+                                      .gte("scheduled_at", _startDate + "T00:00:00+09:00")
+                                      .lte("scheduled_at", _endDate + "T23:59:59+09:00")
+                                      .order("scheduled_at");
+                                    let objs: string[] = [];
+                                    try { objs = JSON.parse(student.learningObjective || "[]"); } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
+                                    const groupStudents = (sessData || []).find(s => s.group_students && s.group_students.length > 0)?.group_students || [];
+                                    const previewData = await prepareReportData(
+                                      sessData || [],
+                                      { studentName: student.name, instructorName: student.instructor, learningObjective: objs.join(", "), groupStudents },
+                                      { label: _label, start_date: _startDate, end_date: _endDate },
+                                    );
+                                    setReportPreview(previewData);
+                                  } catch (err) {
+                                    toast({ title: "보고서 생성 실패", variant: "destructive" });
+                                  } finally {
+                                    setReportLoading(null);
+                                  }
                                 }}
                               >
-                                <Download className="w-3 h-3" /> 보고서 다운로드
+                                {reportLoading === student.name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                                {reportLoading === student.name ? "AI 생성 중..." : "보고서 다운로드"}
                               </Button>
                             </div>
                           )}
@@ -2032,6 +2043,20 @@ export default function StudentManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Corporate Report Preview Modal */}
+      {reportPreview && (
+        <CorporateReportPreviewModal
+          data={reportPreview}
+          onClose={() => setReportPreview(null)}
+          onDownload={async (finalData) => {
+            const { exportCorporateReportPdf } = await import("@/lib/exportCorporateReportPdf");
+            await exportCorporateReportPdf(finalData);
+            toast({ title: "수업 보고서 다운로드 완료 ✓" });
+            setReportPreview(null);
+          }}
+        />
+      )}
     </div>
   );
 }
