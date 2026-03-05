@@ -1565,8 +1565,45 @@ export default function StudentManagement() {
                           </div>
                           <div>
                             <p className="text-muted-foreground">이번달 수강료</p>
-                            <p className="font-bold text-gold-dark mt-0.5">₩{monthlyFee.toLocaleString()}</p>
+                            {student.studentType === "corporate" ? (
+                              <p className="font-bold text-blue-600 mt-0.5">회당 정산 (기업)</p>
+                            ) : (
+                              <p className="font-bold text-gold-dark mt-0.5">₩{monthlyFee.toLocaleString()}</p>
+                            )}
                           </div>
+                          {student.studentType === "corporate" && (
+                            <div>
+                              <p className="text-muted-foreground">수업 보고서</p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-1 h-7 text-xs gap-1 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const { exportCorporateReportPdf } = await import("@/lib/exportCorporateReportPdf");
+                                  // Fetch completed sessions for this student
+                                  const { data: periodData } = await supabase.from("schedule_periods").select("*").eq("is_active", true).maybeSingle();
+                                  const period = periodData || { label: new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long" }), start_date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`, end_date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()}` };
+                                  const { data: sessData } = await supabase
+                                    .from("class_sessions")
+                                    .select("scheduled_at,student_name,topic,notes,level,ended_at,group_students")
+                                    .eq("student_name", student.name)
+                                    .gte("scheduled_at", period.start_date)
+                                    .order("scheduled_at");
+                                  let objs: string[] = [];
+                                  try { objs = JSON.parse(student.learningObjective || "[]"); } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
+                                  await exportCorporateReportPdf(
+                                    sessData || [],
+                                    { companyName: student.name, instructorName: student.instructor, learningObjective: objs.join(", ") },
+                                    { label: period.label, start_date: period.start_date, end_date: period.end_date },
+                                  );
+                                  toast({ title: "수업 보고서 다운로드 완료 ✓" });
+                                }}
+                              >
+                                <Download className="w-3 h-3" /> 보고서 다운로드
+                              </Button>
+                            </div>
+                          )}
                           <div>
                             <p className="text-muted-foreground">시작일</p>
                             <p className="font-semibold text-foreground mt-0.5">{student.startDate || <span className="text-muted-foreground font-normal">미설정</span>}</p>
