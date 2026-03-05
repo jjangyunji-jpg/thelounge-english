@@ -119,6 +119,7 @@ interface Student {
   schedules: ScheduleSlot[];
   withdrawalReason?: string;
   pauses: PauseRecord[];
+  studentType: string;
 }
 
 // removed old calcMonthlyFee - now using the one at module level
