@@ -1597,21 +1597,27 @@ export default function StudentManagement() {
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   const { exportCorporateReportPdf } = await import("@/lib/exportCorporateReportPdf");
-                                  // Fetch completed sessions for this student
-                                  const { data: periodData } = await supabase.from("schedule_periods").select("*").eq("is_active", true).maybeSingle();
-                                  const period = periodData || { label: new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long" }), start_date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`, end_date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()}` };
+                                  // Corporate reports always use calendar month (1st ~ last day)
+                                  const _now = new Date();
+                                  const _y = _now.getFullYear();
+                                  const _m = _now.getMonth();
+                                  const _startDate = `${_y}-${String(_m + 1).padStart(2, "0")}-01`;
+                                  const _lastDay = new Date(_y, _m + 1, 0).getDate();
+                                  const _endDate = `${_y}-${String(_m + 1).padStart(2, "0")}-${String(_lastDay).padStart(2, "0")}`;
+                                  const _label = `${_y}년 ${_m + 1}월`;
                                   const { data: sessData } = await supabase
                                     .from("class_sessions")
                                     .select("scheduled_at,student_name,topic,notes,level,ended_at,group_students")
                                     .eq("student_name", student.name)
-                                    .gte("scheduled_at", period.start_date)
+                                    .gte("scheduled_at", _startDate + "T00:00:00+09:00")
+                                    .lte("scheduled_at", _endDate + "T23:59:59+09:00")
                                     .order("scheduled_at");
                                   let objs: string[] = [];
                                   try { objs = JSON.parse(student.learningObjective || "[]"); } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
                                   await exportCorporateReportPdf(
                                     sessData || [],
                                     { companyName: student.name, instructorName: student.instructor, learningObjective: objs.join(", ") },
-                                    { label: period.label, start_date: period.start_date, end_date: period.end_date },
+                                    { label: _label, start_date: _startDate, end_date: _endDate },
                                   );
                                   toast({ title: "수업 보고서 다운로드 완료 ✓" });
                                 }}
