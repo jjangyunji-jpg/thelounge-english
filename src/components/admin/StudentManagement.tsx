@@ -2042,6 +2042,20 @@ export default function StudentManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Corporate Report Preview Modal */}
+      {reportPreview && (
+        <CorporateReportPreviewModal
+          data={reportPreview}
+          onClose={() => setReportPreview(null)}
+          onDownload={async (finalData) => {
+            const { exportCorporateReportPdf } = await import("@/lib/exportCorporateReportPdf");
+            await exportCorporateReportPdf(finalData);
+            toast({ title: "수업 보고서 다운로드 완료 ✓" });
+            setReportPreview(null);
+          }}
+        />
+      )}
     </div>
   );
 }
