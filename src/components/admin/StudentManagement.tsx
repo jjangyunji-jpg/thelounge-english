@@ -1141,8 +1141,17 @@ export default function StudentManagement() {
                     <p className="text-xs text-muted-foreground">누적수업</p>
                   </div>
                   <div className="text-center">
-                    <p className="font-semibold text-gold-dark">₩{monthlyFee.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">이번달 수강료</p>
+                    {student.studentType === "corporate" ? (
+                      <>
+                        <p className="font-semibold text-blue-600">회당 정산</p>
+                        <p className="text-xs text-muted-foreground">기업 수업</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-gold-dark">₩{monthlyFee.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">이번달 수강료</p>
+                      </>
+                    )}
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">시작일</p>
