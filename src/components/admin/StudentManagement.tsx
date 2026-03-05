@@ -471,6 +471,7 @@ export default function StudentManagement() {
   };
 
   const [editEnglishName, setEditEnglishName] = useState("");
+  const [editStudentType, setEditStudentType] = useState<"regular" | "corporate">("regular");
 
   const startInlineEdit = (s: Student) => {
     setEditingStudentId(s.id);
@@ -486,6 +487,7 @@ export default function StudentManagement() {
     setEditEnglishName(s.englishName);
     setEditStartDate(s.startDate ? new Date(s.startDate + "T00:00:00") : undefined);
     setEditSchedules([...s.schedules]);
+    setEditStudentType(s.studentType as "regular" | "corporate");
     setEditSchedDay("월");
     setEditSchedTime("09:00");
   };
@@ -515,6 +517,7 @@ export default function StudentManagement() {
         english_name: editEnglishName.trim() || null,
         start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
         schedules: editSchedules.length > 0 ? JSON.stringify(editSchedules) : null,
+        student_type: editStudentType,
       };
       if (newInstructorId) {
         updatePayload.instructor_id = newInstructorId;
@@ -561,6 +564,7 @@ export default function StudentManagement() {
           englishName: editEnglishName.trim(),
           startDate: editStartDate ? format(editStartDate, "yyyy-MM-dd") : "",
           schedules: [...editSchedules],
+          studentType: editStudentType,
         };
       })
     );
@@ -1357,6 +1361,18 @@ export default function StudentManagement() {
                             placeholder="Joy"
                             className="h-8 text-sm"
                           />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">수강생 유형</Label>
+                          <Select value={editStudentType} onValueChange={(v) => setEditStudentType(v as "regular" | "corporate")}>
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="regular">정규</SelectItem>
+                              <SelectItem value="corporate">기업 (비정기)</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
