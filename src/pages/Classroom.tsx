@@ -1080,14 +1080,12 @@ export default function Classroom() {
                       <BookMarked className="w-3 h-3" />
                       {extracting ? "추출 중..." : extracted ? "단어 추출됨 ✓" : "단어 추출"}
                     </Button>
-                    {extracted && (
-                      <Button size="sm" variant="outline" onClick={handleDeleteExtractedVocab}
-                        disabled={isDisabled}
-                        className="h-7 text-xs gap-1.5 transition-all border-destructive/30 text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3 h-3" />단어 삭제
-                      </Button>
-                    )}
+                    <Button size="sm" variant="outline" onClick={handleDeleteExtractedVocab}
+                      disabled={isDisabled}
+                      className="h-7 text-xs gap-1.5 transition-all border-destructive/30 text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-3 h-3" />단어 삭제
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setNotesEditMode((v) => !v)} disabled={isDisabled}
                       className={cn("h-7 text-xs gap-1.5 transition-all",
                         notesEditMode ? "border-gold/50 text-gold hover:bg-gold/10" : "border-muted-foreground/30 text-muted-foreground hover:bg-muted")}
