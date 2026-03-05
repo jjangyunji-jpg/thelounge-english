@@ -446,6 +446,7 @@ export default function Classroom() {
   const [editHwType, setEditHwType] = useState<HwType>("writing");
   const [editHwTitle, setEditHwTitle] = useState("");
   const [editHwDesc, setEditHwDesc] = useState("");
+  const [editHwPreset, setEditHwPreset] = useState(false);
   const [savingEditHw, setSavingEditHw] = useState(false);
 
   useEffect(() => {
@@ -647,17 +648,17 @@ export default function Classroom() {
     setHwList((prev) => prev.filter((h) => h.id !== id));
   };
 
-  const startEditHw = (hw: HomeworkItem) => { setEditingHwId(hw.id); setEditHwType(hw.type); setEditHwTitle(hw.title); setEditHwDesc(hw.description); setAddingHw(false); };
-  const cancelEditHw = () => { setEditingHwId(null); setEditHwTitle(""); setEditHwDesc(""); };
+  const startEditHw = (hw: HomeworkItem) => { setEditingHwId(hw.id); setEditHwType(hw.type); setEditHwTitle(hw.title); setEditHwDesc(hw.description); setEditHwPreset(hw.isPreset); setAddingHw(false); };
+  const cancelEditHw = () => { setEditingHwId(null); setEditHwTitle(""); setEditHwDesc(""); setEditHwPreset(false); };
 
   const handleSaveEditHw = async () => {
     if (!editHwTitle.trim() || !editingHwId) return;
     setSavingEditHw(true);
     const { error } = await supabase.from("homework_assignments")
-      .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null })
+      .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null, is_preset: editHwPreset, session_id: editHwPreset ? null : (session.sessionId || null) })
       .eq("id", editingHwId);
     if (!error) {
-      setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() } : h));
+      setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim(), isPreset: editHwPreset } : h));
       toast({ title: "숙제가 수정됐습니다 ✓" });
     }
     setSavingEditHw(false);
@@ -1184,6 +1185,10 @@ export default function Classroom() {
                             <p className="text-[10px] text-muted-foreground px-0.5">{HW_TYPE_META[editHwType].hint}</p>
                             <Input value={editHwTitle} onChange={(e) => setEditHwTitle(e.target.value)} placeholder="숙제 제목 (필수)" className="h-8 text-sm" onKeyDown={(e) => e.key === "Enter" && handleSaveEditHw()} />
                             <Textarea value={editHwDesc} onChange={(e) => setEditHwDesc(e.target.value)} placeholder="상세 설명 (선택)" className="min-h-[60px] resize-none text-xs" />
+                            <label className="flex items-center gap-2 px-1 cursor-pointer">
+                              <input type="checkbox" checked={editHwPreset} onChange={(e) => setEditHwPreset(e.target.checked)} className="rounded border-border" />
+                              <span className="text-xs text-muted-foreground">정기 숙제로 등록 (모든 수업에 노출)</span>
+                            </label>
                             <div className="flex gap-1.5">
                               <Button size="sm" onClick={handleSaveEditHw} disabled={!editHwTitle.trim() || savingEditHw}
                                 className="flex-1 h-8 text-xs bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground gap-1.5"
