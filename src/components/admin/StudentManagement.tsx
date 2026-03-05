@@ -1360,6 +1360,18 @@ export default function StudentManagement() {
                             className="h-8 text-sm"
                           />
                         </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">수강생 유형</Label>
+                          <Select value={editStudentType} onValueChange={(v) => setEditStudentType(v as "regular" | "corporate")}>
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="regular">정규</SelectItem>
+                              <SelectItem value="corporate">기업 (비정기)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">레벨</Label>
