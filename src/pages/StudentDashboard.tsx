@@ -584,7 +584,8 @@ export default function StudentDashboard() {
 
       const isSessionVisible = (scheduledAt: string) => {
         const d = scheduledAt.slice(0, 10);
-        if (studentRes.data.start_date && d < studentRes.data.start_date) return false;
+        const isCorporate = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
+        if (!isCorporate && studentRes.data.start_date && d < studentRes.data.start_date) return false;
         if (pauses.some((p) => d >= p.pause_start && (!p.pause_end || d <= p.pause_end))) return false;
         return true;
       };
