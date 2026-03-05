@@ -439,6 +439,7 @@ export default function Classroom() {
   const [newHwType, setNewHwType] = useState<HwType>("writing");
   const [newHwTitle, setNewHwTitle] = useState("");
   const [newHwDesc, setNewHwDesc] = useState("");
+  const [newHwPreset, setNewHwPreset] = useState(false);
   const [savingHw, setSavingHw] = useState(false);
 
   const [editingHwId, setEditingHwId] = useState<string | null>(null);
@@ -494,7 +495,7 @@ export default function Classroom() {
       if (data && data.length > 0) {
         setHwList(data.map((d) => ({
           id: d.id, type: d.type as HwType, title: d.title,
-          description: d.description || "", isPreset: true, saved: true,
+          description: d.description || "", isPreset: d.is_preset, saved: true,
         })));
       }
       setSessionTopic(session.topic);
@@ -623,14 +624,14 @@ export default function Classroom() {
     try {
       const { data, error } = await supabase.from("homework_assignments").insert({
         student_name: session.dbStudentName, title: newHwTitle.trim(),
-        description: newHwDesc.trim() || null, type: newHwType, is_preset: false,
-        session_id: session.sessionId || null,
+        description: newHwDesc.trim() || null, type: newHwType, is_preset: newHwPreset,
+        session_id: newHwPreset ? null : (session.sessionId || null),
       }).select().single();
       if (error) throw error;
       if (data) {
-        setHwList((prev) => [...prev, { id: data.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: false, saved: true }]);
+        setHwList((prev) => [...prev, { id: data.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true }]);
         toast({ title: "숙제가 추가됐습니다 ✓" });
-        setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing");
+        setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing"); setNewHwPreset(false);
         setAddingHw(false);
       }
     } catch (e: unknown) {
@@ -1202,6 +1203,7 @@ export default function Classroom() {
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-xs font-semibold text-foreground">{hw.title}</span>
                               <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>{meta.label}</span>
+                              {hw.isPreset && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--navy)/0.1)] text-[hsl(var(--navy))]">정기</span>}
                             </div>
                             {hw.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{hw.description}</p>}
                             <p className="text-[10px] text-muted-foreground/70 mt-0.5">{meta.hint}</p>
@@ -1234,13 +1236,17 @@ export default function Classroom() {
                         <p className="text-[10px] text-muted-foreground px-0.5">{HW_TYPE_META[newHwType].hint}</p>
                         <Input value={newHwTitle} onChange={(e) => setNewHwTitle(e.target.value)} placeholder="숙제 제목 (필수)" className="h-8 text-sm" onKeyDown={(e) => e.key === "Enter" && handleAddHw()} />
                         <Textarea value={newHwDesc} onChange={(e) => setNewHwDesc(e.target.value)} placeholder="상세 설명 (선택)" className="min-h-[60px] resize-none text-xs" />
+                        <label className="flex items-center gap-2 px-0.5 cursor-pointer">
+                          <input type="checkbox" checked={newHwPreset} onChange={(e) => setNewHwPreset(e.target.checked)} className="rounded border-border" />
+                          <span className="text-xs text-muted-foreground">정기 숙제로 등록 <span className="text-[10px]">(매 수업마다 자동 표시)</span></span>
+                        </label>
                         <div className="flex gap-1.5">
                           <Button size="sm" onClick={handleAddHw} disabled={!newHwTitle.trim() || savingHw}
                             className="flex-1 h-8 text-xs bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground gap-1.5"
                           >
                             <Plus className="w-3.5 h-3.5" />{savingHw ? "저장 중..." : "추가"}
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => { setAddingHw(false); setNewHwTitle(""); setNewHwDesc(""); }} className="h-8 text-xs">취소</Button>
+                          <Button size="sm" variant="ghost" onClick={() => { setAddingHw(false); setNewHwTitle(""); setNewHwDesc(""); setNewHwPreset(false); }} className="h-8 text-xs">취소</Button>
                         </div>
                       </div>
                     ) : (

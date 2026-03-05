@@ -2510,7 +2510,7 @@ export default function InstructorDashboard() {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 if (!st.start_date || !selectedPeriod) return true;
                 return st.start_date <= selectedPeriod.end_date;
-              }).map((st) => {
+              }).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko")).map((st) => {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 const stats = getStudentStats(st.student_name, st.schedules, selectedPeriod);
                 // goals variable removed - lesson goals are now per-session topics
