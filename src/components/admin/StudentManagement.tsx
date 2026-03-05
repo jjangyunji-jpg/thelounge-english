@@ -1614,9 +1614,10 @@ export default function StudentManagement() {
                                     .order("scheduled_at");
                                   let objs: string[] = [];
                                   try { objs = JSON.parse(student.learningObjective || "[]"); } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
+                                  const groupStudents = (sessData || []).find(s => s.group_students && s.group_students.length > 0)?.group_students || [];
                                   await exportCorporateReportPdf(
                                     sessData || [],
-                                    { companyName: student.name, instructorName: student.instructor, learningObjective: objs.join(", ") },
+                                    { studentName: student.name, instructorName: student.instructor, learningObjective: objs.join(", "), groupStudents },
                                     { label: _label, start_date: _startDate, end_date: _endDate },
                                   );
                                   toast({ title: "수업 보고서 다운로드 완료 ✓" });
