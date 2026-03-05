@@ -305,7 +305,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
           {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
             <div key={d} className={cn(
               "text-[10px] font-semibold pb-1",
-              i === 0 ? "text-destructive/70" : i === 2 ? "text-muted-foreground/40" : "text-muted-foreground"
+              i === 0 ? "text-destructive/70" : "text-muted-foreground"
             )}>{d}</div>
           ))}
         </div>
