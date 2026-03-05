@@ -526,10 +526,17 @@ export default function StudentDashboard() {
     setSchedulePeriods(periodsRes.data || []);
 
     // Auto-select current period
-    if (!selectedPeriodId && periodsRes.data?.length) {
-      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-      const current = periodsRes.data.find((p: SchedulePeriod) => p.start_date <= today && p.end_date >= today);
-      setSelectedPeriodId(current?.id || periodsRes.data[periodsRes.data.length - 1].id);
+    const isCorporate = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
+    if (!selectedPeriodId) {
+      if (isCorporate) {
+        // For corporate students, auto-select current month
+        const todayYm = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()).slice(0, 7);
+        setSelectedPeriodId(`corp-${todayYm}`);
+      } else if (periodsRes.data?.length) {
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+        const current = periodsRes.data.find((p: SchedulePeriod) => p.start_date <= today && p.end_date >= today);
+        setSelectedPeriodId(current?.id || periodsRes.data[periodsRes.data.length - 1].id);
+      }
     }
 
     // 캘린더용은 전체 휴강, 팝업 필터링은 visibleHolidays에서 처리
