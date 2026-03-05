@@ -176,16 +176,15 @@ export default function WeeklyTasksSection({
             const done = sub && (sub.status === "submitted" || sub.status === "reviewed");
             const meta = HW_META[a.type as HwType] ?? HW_META.writing;
             const Icon = meta.icon;
-            const isReading = a.type === "reading" || a.type === "watching";
-            const urls = extractUrls(a.description);
+            const isQuickType = a.type === "memorizing" || a.type === "speaking";
 
             return (
               <div key={a.id} className="px-3 py-2.5 space-y-1.5">
                 <div className="flex items-center gap-2.5">
-                  {/* Check circle / complete button */}
-                  {isReading ? (
+                  {/* Check circle */}
+                  {isQuickType ? (
                     <button
-                      onClick={() => !done && handleReadingComplete(a)}
+                      onClick={() => !done && handleQuickComplete(a)}
                       disabled={!!done || completingId === a.id}
                       className="flex-shrink-0"
                     >
@@ -215,7 +214,7 @@ export default function WeeklyTasksSection({
                   </div>
 
                   {/* Action button */}
-                  {!isReading && !done && (
+                  {!isQuickType && !done && (
                     <button
                       onClick={() => setModalAssignment(a)}
                       className="flex-shrink-0 text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10"
@@ -237,17 +236,21 @@ export default function WeeklyTasksSection({
                   ) : null}
                 </div>
 
-                {/* Reading: show URLs inline */}
-                {isReading && urls.length > 0 && (
-                  <div className="ml-8 space-y-1">
-                    {urls.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-muted/20 hover:bg-muted/40 hover:border-[hsl(var(--gold)/0.5)] transition-all group text-xs">
-                        <Link2 className="w-3.5 h-3.5 text-[hsl(var(--gold-dark))] flex-shrink-0" />
-                        <span className="truncate text-muted-foreground group-hover:text-foreground transition-colors">{getDomain(url)}</span>
-                        <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                      </a>
-                    ))}
+                {/* Description preview for reading/watching */}
+                {(a.type === "reading" || a.type === "watching") && a.description && (
+                  <div className="ml-8">
+                    {extractUrls(a.description).length > 0 && (
+                      <div className="space-y-1">
+                        {extractUrls(a.description).map((url, i) => (
+                          <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-muted/20 hover:bg-muted/40 hover:border-[hsl(var(--gold)/0.5)] transition-all group text-xs">
+                            <Link2 className="w-3.5 h-3.5 text-[hsl(var(--gold-dark))] flex-shrink-0" />
+                            <span className="truncate text-muted-foreground group-hover:text-foreground transition-colors">{getDomain(url)}</span>
+                            <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
