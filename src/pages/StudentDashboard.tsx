@@ -75,6 +75,7 @@ interface StudentRecord {
   instructor_name: string | null;
   instructor_display_name: string | null;
   pauses: PauseRecord[];
+  student_type: string;
 }
 
 interface SchedulePeriod {
@@ -498,7 +499,7 @@ export default function StudentDashboard() {
         .eq("student_name", student).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
-      supabase.from("instructor_students").select("id,schedules,start_date,level,instructor_name,instructor_id")
+      supabase.from("instructor_students").select("id,schedules,start_date,level,instructor_name,instructor_id,student_type")
         .eq("student_name", student).maybeSingle(),
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
@@ -578,6 +579,7 @@ export default function StudentDashboard() {
         instructor_name: studentRes.data.instructor_name,
         instructor_display_name: instrDisplayName,
         pauses,
+        student_type: (studentRes.data as any).student_type || 'regular',
       });
 
       const isSessionVisible = (scheduledAt: string) => {
@@ -1229,7 +1231,8 @@ export default function StudentDashboard() {
                   <p className="text-[10px] mt-0.5 text-muted-foreground">이전 노트 보기</p>
                 </div>
               </button>
-              {/* 보강 신청하기 */}
+              {/* 보강 신청하기 — corporate 학생은 숨김 */}
+              {studentRecord?.student_type !== 'corporate' && (
               <a
                 href="https://naver.me/57QYErVk"
                 target="_blank"
@@ -1244,7 +1247,10 @@ export default function StudentDashboard() {
                   <p className="text-[10px] mt-0.5 text-muted-foreground">수업 48시간 전까지 가능</p>
                 </div>
               </a>
-              {/* 수업료 결제하기 */}
+              )}
+              {/* 수업료 결제하기 — corporate 학생은 숨김 */}
+              {studentRecord?.student_type !== 'corporate' && (
+              <>
               {paymentAvailable ? (
                 <a
                   href="https://smartstore.naver.com/thelounge_english/products/11688767366"
@@ -1278,6 +1284,8 @@ export default function StudentDashboard() {
                     기간 종료 전 결제가 가능합니다
                   </div>
                 </div>
+              )}
+              </>
               )}
             </div>
           </div>

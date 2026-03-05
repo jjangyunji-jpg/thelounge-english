@@ -119,6 +119,7 @@ interface Student {
   schedules: ScheduleSlot[];
   withdrawalReason?: string;
   pauses: PauseRecord[];
+  studentType: string;
 }
 
 // removed old calcMonthlyFee - now using the one at module level
@@ -141,6 +142,7 @@ interface NewStudent {
   startDate: string;
   extraLessons: number;
   schedules: ScheduleSlot[];
+  studentType: string;
 }
 
 // Pause form sub-component
@@ -277,6 +279,7 @@ export default function StudentManagement() {
       schedules: row.schedules ? JSON.parse(row.schedules) : [],
       withdrawalReason: row.withdrawal_reason || "",
       pauses: [],
+      studentType: row.student_type || "regular",
     }));
     setStudents(dbStudents);
 
@@ -339,7 +342,7 @@ export default function StudentManagement() {
 
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
-    name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [],
+    name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular",
   });
 
   const filtered = students.filter(
@@ -674,7 +677,8 @@ export default function StudentManagement() {
         extra_lessons: newStudent.extraLessons,
         schedules: newStudent.schedules.length > 0 ? JSON.stringify(newStudent.schedules) : null,
         status: "active",
-      })
+        student_type: newStudent.studentType,
+      } as any)
       .select()
       .single();
 
@@ -705,9 +709,10 @@ export default function StudentManagement() {
       reminderEnabled: true,
       meetLink: "",
       schedules: newStudent.schedules,
+      studentType: newStudent.studentType,
     };
     setStudents((prev) => [s, ...prev]);
-    setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [] });
+    setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular" });
     setDialogOpen(false);
     toast({ title: `${newStudent.name} 수강생 등록 완료 ✓` });
 
@@ -860,6 +865,23 @@ export default function StudentManagement() {
                     value={newStudent.startDate}
                     onChange={(e) => setNewStudent((p) => ({ ...p, startDate: e.target.value }))}
                   />
+                </div>
+
+                {/* 수업 유형 */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">수업 유형</Label>
+                  <Select
+                    value={newStudent.studentType}
+                    onValueChange={(v) => setNewStudent((p) => ({ ...p, studentType: v }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="regular">정기 (개인)</SelectItem>
+                      <SelectItem value="corporate">기업 수업 (비정기)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* 수업 일정 */}
@@ -1088,6 +1110,9 @@ export default function StudentManagement() {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${levelColors[student.level]}`}>
                       {student.level}
                     </span>
+                    {student.studentType === "corporate" && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">기업</span>
+                    )}
                     {student.extraLessons > 0 && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-gold/15 text-gold-dark font-medium">
                         +{student.extraLessons}회
@@ -1116,8 +1141,17 @@ export default function StudentManagement() {
                     <p className="text-xs text-muted-foreground">누적수업</p>
                   </div>
                   <div className="text-center">
-                    <p className="font-semibold text-gold-dark">₩{monthlyFee.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">이번달 수강료</p>
+                    {student.studentType === "corporate" ? (
+                      <>
+                        <p className="font-semibold text-blue-600">회당 정산</p>
+                        <p className="text-xs text-muted-foreground">기업 수업</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold text-gold-dark">₩{monthlyFee.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">이번달 수강료</p>
+                      </>
+                    )}
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">시작일</p>
@@ -1531,8 +1565,45 @@ export default function StudentManagement() {
                           </div>
                           <div>
                             <p className="text-muted-foreground">이번달 수강료</p>
-                            <p className="font-bold text-gold-dark mt-0.5">₩{monthlyFee.toLocaleString()}</p>
+                            {student.studentType === "corporate" ? (
+                              <p className="font-bold text-blue-600 mt-0.5">회당 정산 (기업)</p>
+                            ) : (
+                              <p className="font-bold text-gold-dark mt-0.5">₩{monthlyFee.toLocaleString()}</p>
+                            )}
                           </div>
+                          {student.studentType === "corporate" && (
+                            <div>
+                              <p className="text-muted-foreground">수업 보고서</p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-1 h-7 text-xs gap-1 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const { exportCorporateReportPdf } = await import("@/lib/exportCorporateReportPdf");
+                                  // Fetch completed sessions for this student
+                                  const { data: periodData } = await supabase.from("schedule_periods").select("*").eq("is_active", true).maybeSingle();
+                                  const period = periodData || { label: new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long" }), start_date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`, end_date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()}` };
+                                  const { data: sessData } = await supabase
+                                    .from("class_sessions")
+                                    .select("scheduled_at,student_name,topic,notes,level,ended_at,group_students")
+                                    .eq("student_name", student.name)
+                                    .gte("scheduled_at", period.start_date)
+                                    .order("scheduled_at");
+                                  let objs: string[] = [];
+                                  try { objs = JSON.parse(student.learningObjective || "[]"); } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
+                                  await exportCorporateReportPdf(
+                                    sessData || [],
+                                    { companyName: student.name, instructorName: student.instructor, learningObjective: objs.join(", ") },
+                                    { label: period.label, start_date: period.start_date, end_date: period.end_date },
+                                  );
+                                  toast({ title: "수업 보고서 다운로드 완료 ✓" });
+                                }}
+                              >
+                                <Download className="w-3 h-3" /> 보고서 다운로드
+                              </Button>
+                            </div>
+                          )}
                           <div>
                             <p className="text-muted-foreground">시작일</p>
                             <p className="font-semibold text-foreground mt-0.5">{student.startDate || <span className="text-muted-foreground font-normal">미설정</span>}</p>
@@ -1719,7 +1790,7 @@ export default function StudentManagement() {
                         정기 숙제 추가
                       </Button>
                     )}
-                  </div>
+                </div>
 
 
                   {/* Lesson history preview */}
