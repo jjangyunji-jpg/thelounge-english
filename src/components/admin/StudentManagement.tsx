@@ -516,6 +516,7 @@ export default function StudentManagement() {
         english_name: editEnglishName.trim() || null,
         start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
         schedules: editSchedules.length > 0 ? JSON.stringify(editSchedules) : null,
+        student_type: editStudentType,
       };
       if (newInstructorId) {
         updatePayload.instructor_id = newInstructorId;
