@@ -564,6 +564,7 @@ export default function StudentManagement() {
           englishName: editEnglishName.trim(),
           startDate: editStartDate ? format(editStartDate, "yyyy-MM-dd") : "",
           schedules: [...editSchedules],
+          studentType: editStudentType,
         };
       })
     );
