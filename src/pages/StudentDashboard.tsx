@@ -526,10 +526,17 @@ export default function StudentDashboard() {
     setSchedulePeriods(periodsRes.data || []);
 
     // Auto-select current period
-    if (!selectedPeriodId && periodsRes.data?.length) {
-      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-      const current = periodsRes.data.find((p: SchedulePeriod) => p.start_date <= today && p.end_date >= today);
-      setSelectedPeriodId(current?.id || periodsRes.data[periodsRes.data.length - 1].id);
+    const isCorporate = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
+    if (!selectedPeriodId) {
+      if (isCorporate) {
+        // For corporate students, auto-select current month
+        const todayYm = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()).slice(0, 7);
+        setSelectedPeriodId(`corp-${todayYm}`);
+      } else if (periodsRes.data?.length) {
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+        const current = periodsRes.data.find((p: SchedulePeriod) => p.start_date <= today && p.end_date >= today);
+        setSelectedPeriodId(current?.id || periodsRes.data[periodsRes.data.length - 1].id);
+      }
     }
 
     // 캘린더용은 전체 휴강, 팝업 필터링은 visibleHolidays에서 처리
@@ -761,8 +768,35 @@ export default function StudentDashboard() {
       .map((d) => d.toDateString()),
   ]);
 
+  // ── Generate monthly periods for corporate students ──
+  const corporateMonthlyPeriods: SchedulePeriod[] = (() => {
+    if (studentRecord?.student_type !== "corporate") return [];
+    // Determine range from allSessions or fallback to current month
+    const months = new Set<string>();
+    const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+    months.add(nowKst.slice(0, 7)); // current month always included
+    for (const s of allSessions) {
+      const d = new Date(s.scheduled_at);
+      const kst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(d);
+      months.add(kst.slice(0, 7));
+    }
+    return [...months].sort().map(ym => {
+      const [y, m] = ym.split("-").map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
+      return {
+        id: `corp-${ym}`,
+        label: ym,
+        start_date: `${ym}-01`,
+        end_date: `${ym}-${String(lastDay).padStart(2, "0")}`,
+        is_active: false,
+      } as SchedulePeriod;
+    });
+  })();
+
+  const effectivePeriods = studentRecord?.student_type === "corporate" ? corporateMonthlyPeriods : schedulePeriods;
+
   // ── Period-based filtering ──
-  const selectedPeriod = schedulePeriods.find(p => p.id === selectedPeriodId) || null;
+  const selectedPeriod = effectivePeriods.find(p => p.id === selectedPeriodId) || null;
   const periodStart = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00") : null;
   const periodEnd = selectedPeriod ? new Date(selectedPeriod.end_date + "T23:59:59") : null;
 
@@ -809,7 +843,7 @@ export default function StudentDashboard() {
     : testHistory;
 
   // Period navigation helpers
-  const sortedPeriods = [...schedulePeriods]
+  const sortedPeriods = [...effectivePeriods]
     .filter(p => studentRecord?.student_type === "corporate" || !studentRecord?.start_date || p.end_date >= studentRecord.start_date)
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
   const currentPeriodIdx = sortedPeriods.findIndex(p => p.id === selectedPeriodId);
