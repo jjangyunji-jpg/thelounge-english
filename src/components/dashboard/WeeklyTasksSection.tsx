@@ -93,8 +93,11 @@ export default function WeeklyTasksSection({
   const latestSession = pastSessions[0] ?? null;
   const latestSessionId = latestSession?.id ?? null;
 
-  // Assignments for the latest session + preset homework
-  const weekAssignments = assignments.filter(a => a.is_preset || (a.session_id && a.session_id === latestSessionId));
+  // Assignments for the latest session + preset homework (exclude memorizing presets - vocab test handles it)
+  const weekAssignments = assignments.filter(a => {
+    if (a.is_preset && a.type === "memorizing") return false;
+    return a.is_preset || (a.session_id && a.session_id === latestSessionId);
+  });
 
   const getSub = (aId: string) => submissions.find(s => s.assignment_id === aId);
 
