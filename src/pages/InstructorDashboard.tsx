@@ -3237,6 +3237,15 @@ export default function InstructorDashboard() {
             reviewedAt={sub.reviewed_at}
             aiCorrection={sub.ai_correction}
             onClose={() => setViewCheckedHw(null)}
+            onUnreview={async () => {
+              const { error } = await supabase
+                .from("homework_submissions")
+                .update({ status: "submitted", reviewed_at: null, instructor_note: null, ai_correction: null })
+                .eq("id", sub.id);
+              if (error) throw error;
+              setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: "submitted", reviewed_at: null, instructor_note: null, ai_correction: null } : s));
+              setViewCheckedHw(null);
+            }}
           />
         );
       })()}

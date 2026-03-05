@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle } from "lucide-react";
+import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
@@ -39,6 +40,8 @@ interface Props {
   reviewedAt: string | null;
   aiCorrection: AIResult | null;
   onClose: () => void;
+  /** If provided, show "Cancel Review" button (instructor only) */
+  onUnreview?: () => Promise<void>;
 }
 
 /** Render inline diff: strikethrough original, colored corrected */
@@ -87,9 +90,11 @@ export default function HomeworkFeedbackModal({
   reviewedAt,
   aiCorrection,
   onClose,
+  onUnreview,
 }: Props) {
   const meta = HW_META[assignmentType as HwType] ?? HW_META.writing;
   const Icon = meta.icon;
+  const [unreviewLoading, setUnreviewLoading] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
@@ -223,6 +228,29 @@ export default function HomeworkFeedbackModal({
           {!instructorNote && !aiCorrection && (
             <div className="rounded-lg border border-border bg-muted/10 p-4 text-center">
               <p className="text-xs text-muted-foreground">피드백 메시지가 없습니다</p>
+            </div>
+          )}
+
+          {/* Unreview button (instructor only) */}
+          {onUnreview && (
+            <div className="pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                disabled={unreviewLoading}
+                onClick={async () => {
+                  setUnreviewLoading(true);
+                  try {
+                    await onUnreview();
+                  } finally {
+                    setUnreviewLoading(false);
+                  }
+                }}
+              >
+                {unreviewLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
+                검토 취소
+              </Button>
             </div>
           )}
         </div>
