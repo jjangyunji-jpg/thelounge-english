@@ -1357,9 +1357,9 @@ export default function StudentDashboard() {
 
           {/* Weekly Tasks */}
           <WeeklyTasksSection
-            assignments={periodAssignments}
+            assignments={assignments}
             submissions={submissions}
-            sessions={periodSessions}
+            sessions={allSessions}
             studentName={student}
             vocabWords={periodVocabWords}
             testHistory={periodTestHistory}
