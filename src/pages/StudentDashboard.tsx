@@ -1496,7 +1496,7 @@ export default function StudentDashboard() {
                           return `${week}주차`;
                         })()
                       : null;
-                    const isQuickType = a.type === "reading" || a.type === "memorizing" || a.type === "watching" || a.type === "speaking";
+                    const isQuickType = a.type === "memorizing" || a.type === "speaking";
                     const isPending = status === "pending";
                     return (
                       <div key={a.id} className="flex items-center gap-2.5 px-3 py-2.5">
