@@ -40,7 +40,10 @@ Deno.serve(async (req) => {
     });
     if (createError) {
       console.error("User creation error:", createError);
-      return new Response(JSON.stringify({ error: "계정 생성에 실패했습니다. 다시 시도해주세요." }), {
+      const msg = (createError as any)?.code === "email_exists"
+        ? "이미 등록된 이메일입니다. 다른 이메일을 사용해주세요."
+        : "계정 생성에 실패했습니다. 다시 시도해주세요.";
+      return new Response(JSON.stringify({ error: msg }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
