@@ -342,7 +342,7 @@ export default function StudentManagement() {
 
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
-    name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [],
+    name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular",
   });
 
   const filtered = students.filter(
