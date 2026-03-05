@@ -6,7 +6,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked, Paperclip,
-  Loader2, Monitor, Download, History, Maximize2,
+  Loader2, Monitor, Download, History, Maximize2, Trash2,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
@@ -619,6 +619,15 @@ export default function Classroom() {
     finally { setExtracting(false); }
   };
 
+  const handleDeleteExtractedVocab = async () => {
+    if (!session.sessionId) return;
+    if (!confirm("이 수업에서 추출된 단어를 모두 삭제하시겠습니까?")) return;
+    const { error } = await supabase.from("vocabulary_words").delete().eq("session_id", session.sessionId);
+    if (error) { toast({ title: "삭제 실패", variant: "destructive" }); return; }
+    setExtracted(false);
+    toast({ title: "추출된 단어가 삭제되었습니다 ✓" });
+  };
+
   const handleAddHw = async () => {
     if (!newHwTitle.trim()) return;
     setSavingHw(true);
@@ -1071,6 +1080,14 @@ export default function Classroom() {
                       <BookMarked className="w-3 h-3" />
                       {extracting ? "추출 중..." : extracted ? "단어 추출됨 ✓" : "단어 추출"}
                     </Button>
+                    {extracted && (
+                      <Button size="sm" variant="outline" onClick={handleDeleteExtractedVocab}
+                        disabled={isDisabled}
+                        className="h-7 text-xs gap-1.5 transition-all border-destructive/30 text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-3 h-3" />단어 삭제
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => setNotesEditMode((v) => !v)} disabled={isDisabled}
                       className={cn("h-7 text-xs gap-1.5 transition-all",
                         notesEditMode ? "border-gold/50 text-gold hover:bg-gold/10" : "border-muted-foreground/30 text-muted-foreground hover:bg-muted")}
