@@ -216,6 +216,8 @@ export default function StudentManagement() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStudentName, setInviteStudentName] = useState("");
   const [inviting, setInviting] = useState(false);
+  const [reportPreview, setReportPreview] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState<string | null>(null);
 
   const handleInviteStudent = async () => {
     if (!inviteEmail.trim() || !inviteStudentName.trim()) return;
