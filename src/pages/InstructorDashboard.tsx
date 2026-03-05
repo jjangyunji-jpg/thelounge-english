@@ -2185,8 +2185,9 @@ export default function InstructorDashboard() {
                                     const scheduledKst = new Date(s.scheduled_at);
                                     const nowMs = Date.now();
                                     const diffMs = nowMs - scheduledKst.getTime();
+                                    const after30min = diffMs >= 30 * 60 * 1000;
                                     const within12h = diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000;
-                                    if (!isCompleted && within12h) return (
+                                    if (!isCompleted && after30min && within12h) return (
                                     <Button
                                       size="sm"
                                       className="h-7 text-[10px] gap-1 bg-success hover:bg-success/90 text-primary-foreground px-2"
