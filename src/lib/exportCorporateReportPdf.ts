@@ -184,7 +184,7 @@ export async function exportCorporateReportPdf(data: ReportPreviewData) {
       "",
       "",
     ]],
-    styles: { fontSize: 8, cellPadding: 3, font: "SpoqaHanSansNeo", lineHeight: 1.4 },
+    styles: { fontSize: 8, cellPadding: 3, font: "SpoqaHanSansNeo" },
     headStyles: { fillColor: [30, 58, 95], textColor: 255, font: "SpoqaHanSansNeo", fontStyle: "normal" },
     footStyles: { fillColor: [240, 240, 240], textColor: [30, 30, 30], font: "SpoqaHanSansNeo", fontStyle: "normal" },
     columnStyles: {
