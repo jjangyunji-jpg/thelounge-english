@@ -162,7 +162,7 @@ export default function Classroom() {
         const nameFilter = urlStudentName || studentNameFilter;
         let query = supabase
           .from("class_sessions")
-          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
+          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic,group_students")
           .order("scheduled_at", { ascending: false })
           .limit(1);
         if (nameFilter) {
