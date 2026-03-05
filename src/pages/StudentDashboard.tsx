@@ -499,7 +499,7 @@ export default function StudentDashboard() {
         .eq("student_name", student).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
-      supabase.from("instructor_students").select("id,schedules,start_date,level,instructor_name,instructor_id")
+      supabase.from("instructor_students").select("id,schedules,start_date,level,instructor_name,instructor_id,student_type")
         .eq("student_name", student).maybeSingle(),
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
