@@ -101,7 +101,7 @@ serve(async (req) => {
     // 2. Get active students with schedules
     let studentQuery = sb
       .from("instructor_students")
-      .select("id, student_name, schedules, level, instructor_name, meet_link, start_date")
+      .select("id, student_name, schedules, level, instructor_name, meet_link, start_date, group_students")
       .eq("status", "active");
     if (filterStudentName) {
       studentQuery = studentQuery.eq("student_name", filterStudentName);
