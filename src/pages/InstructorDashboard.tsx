@@ -86,6 +86,7 @@ interface HomeworkAssignment {
   type: string;
   student_name: string;
   session_id: string | null;
+  is_preset: boolean;
 }
 
 interface HomeworkSubmission {
@@ -1385,7 +1386,7 @@ export default function InstructorDashboard() {
       studentNames.length > 0
         ? supabase.from("class_sessions").select("*").in("student_name", studentNames).order("scheduled_at", { ascending: false })
         : Promise.resolve({ data: [] }),
-      supabase.from("homework_assignments").select("id,title,type,student_name,session_id"),
+      supabase.from("homework_assignments").select("id,title,type,student_name,session_id,is_preset"),
       supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
@@ -1551,6 +1552,8 @@ export default function InstructorDashboard() {
   const uncheckedHw = myAssignments.filter((a) => {
     const sub = submissions.find((s) => s.assignment_id === a.id);
     if (!sub || sub.status !== "submitted") return false;
+    // Preset homework: always show if submitted
+    if (a.is_preset) return true;
     // Only show if assignment belongs to the session right before the student's next upcoming session
     const nextSess = nextSessionByStudent.get(a.student_name);
     if (!nextSess) {
