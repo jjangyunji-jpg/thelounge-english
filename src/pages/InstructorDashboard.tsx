@@ -1549,25 +1549,28 @@ export default function InstructorDashboard() {
       }
     });
 
-  const uncheckedHw = myAssignments.filter((a) => {
+  const uncheckedHwAll = myAssignments.filter((a) => {
     const sub = submissions.find((s) => s.assignment_id === a.id);
-    if (!sub || sub.status !== "submitted") return false;
-    // Preset homework: always show if submitted
+    return sub && sub.status === "submitted";
+  });
+
+  const uncheckedHw = uncheckedHwAll.filter((a) => {
+    // Preset homework: always show in main
     if (a.is_preset) return true;
-    // Only show if assignment belongs to the session right before the student's next upcoming session
     const nextSess = nextSessionByStudent.get(a.student_name);
     if (!nextSess) {
-      // No next session — fall back to latest past session
       const latestSid = latestSessionByStudent.get(a.student_name);
       return a.session_id && a.session_id === latestSid;
     }
-    // Find the session just before the next session for this student
     const pastSessions = sessions
       .filter(s => s.student_name === a.student_name && new Date(s.scheduled_at) <= nowDate)
       .sort((x, y) => new Date(y.scheduled_at).getTime() - new Date(x.scheduled_at).getTime());
     const latestPast = pastSessions[0];
     return latestPast && a.session_id === latestPast.id;
   });
+
+  const uncheckedHwIds = new Set(uncheckedHw.map(a => a.id));
+  const olderUncheckedHw = uncheckedHwAll.filter(a => !uncheckedHwIds.has(a.id));
 
   // Reviewed homework: show until next session for that student starts
   const checkedHw = myAssignments.filter((a) => {
@@ -2331,6 +2334,76 @@ export default function InstructorDashboard() {
                       <p className="text-xs text-muted-foreground">미확인 숙제가 없습니다 ✓</p>
                     )}
                   </div>
+
+                {/* Older unchecked homework */}
+                {olderUncheckedHw.length > 0 && (
+                  <details className="rounded-xl border border-amber-500/20 bg-amber-500/5 group">
+                    <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2 text-sm font-semibold text-amber-600">
+                      <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+                      <Clock className="w-4 h-4" />
+                      지난 수업 미확인 숙제
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-medium">{olderUncheckedHw.length}</span>
+                    </summary>
+                    <div className="px-4 pb-3 space-y-1.5">
+                      {olderUncheckedHw.map((a) => {
+                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "submitted");
+                        const hwType = a.type as HwType;
+                        const meta = HW_TYPE_META[hwType];
+                        const Icon = meta?.icon || FileText;
+                        const isQuickCheck = hwType === "reading" || hwType === "memorizing";
+                        const assignmentSession = a.session_id ? sessions.find(s => s.id === a.session_id) : null;
+
+                        return (
+                          <div
+                            key={a.id}
+                            onClick={() => {
+                              if (!isQuickCheck && sub) {
+                                setReviewHw({ assignment: a, submission: sub });
+                              }
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border",
+                              !isQuickCheck && "cursor-pointer hover:bg-muted/40 transition-colors"
+                            )}
+                          >
+                            <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground">{a.title}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {fmtName(a.student_name)} · {meta?.label || a.type}
+                                {assignmentSession && (
+                                  <span className="ml-1.5 text-amber-600">
+                                    · {fmt(assignmentSession.scheduled_at)} 수업
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            {isQuickCheck && sub ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] gap-1 border-[hsl(var(--success)/0.4)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.1)]"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await supabase.from("homework_submissions").update({
+                                    status: "reviewed",
+                                    reviewed_at: new Date().toISOString(),
+                                  }).eq("id", sub.id);
+                                  toast({ title: "확인 완료 ✓" });
+                                  setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, status: "reviewed", reviewed_at: new Date().toISOString() } : s));
+                                }}
+                              >
+                                <Check className="w-3 h-3" /> 확인
+                              </Button>
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
+                )}
 
                 {/* Checked homework */}
                 {checkedHw.length > 0 && (
