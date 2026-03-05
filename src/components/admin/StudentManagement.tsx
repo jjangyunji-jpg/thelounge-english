@@ -1110,6 +1110,9 @@ export default function StudentManagement() {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${levelColors[student.level]}`}>
                       {student.level}
                     </span>
+                    {student.studentType === "corporate" && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">기업</span>
+                    )}
                     {student.extraLessons > 0 && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-gold/15 text-gold-dark font-medium">
                         +{student.extraLessons}회
