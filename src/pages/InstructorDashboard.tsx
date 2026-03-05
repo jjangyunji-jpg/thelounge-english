@@ -1404,7 +1404,7 @@ export default function InstructorDashboard() {
       const st = studentsWithPauses.find((s) => s.student_name === session.student_name);
       if (!st) return false;
       const dateStr = session.scheduled_at.slice(0, 10);
-      if (st.start_date && dateStr < st.start_date) return true;
+      if (st.student_type !== "corporate" && st.start_date && dateStr < st.start_date) return true;
       return st.pauses?.some((p) => dateStr >= p.pause_start && (!p.pause_end || dateStr <= p.pause_end)) ?? false;
     };
 
