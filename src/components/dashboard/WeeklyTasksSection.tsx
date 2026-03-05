@@ -93,8 +93,11 @@ export default function WeeklyTasksSection({
   const latestSession = pastSessions[0] ?? null;
   const latestSessionId = latestSession?.id ?? null;
 
-  // Assignments for the latest session + preset homework
-  const weekAssignments = assignments.filter(a => a.is_preset || (a.session_id && a.session_id === latestSessionId));
+  // Assignments for the latest session + preset homework (exclude memorizing presets - vocab test handles it)
+  const weekAssignments = assignments.filter(a => {
+    if (a.is_preset && a.type === "memorizing") return false;
+    return a.is_preset || (a.session_id && a.session_id === latestSessionId);
+  });
 
   const getSub = (aId: string) => submissions.find(s => s.assignment_id === aId);
 
@@ -111,8 +114,8 @@ export default function WeeklyTasksSection({
   const totalTasks = weekAssignments.length + (weekVocabCount > 0 ? 1 : 0);
   const totalDone = completedCount + (weekTestsDone > 0 ? 1 : 0);
 
-  // Handle reading homework quick complete
-  const handleReadingComplete = async (assignment: Assignment) => {
+  // Handle quick complete for memorizing type only
+  const handleQuickComplete = async (assignment: Assignment) => {
     setCompletingId(assignment.id);
     try {
       const existing = getSub(assignment.id);
@@ -138,7 +141,7 @@ export default function WeeklyTasksSection({
         if (error) throw error;
         if (data) onSubmissionUpdate(data);
       }
-      toast({ title: "읽기 숙제 완료 ✓" });
+      toast({ title: "완료 처리됨 ✓" });
     } catch (e: unknown) {
       toast({ title: "완료 처리 실패", variant: "destructive" });
     } finally {
@@ -173,16 +176,15 @@ export default function WeeklyTasksSection({
             const done = sub && (sub.status === "submitted" || sub.status === "reviewed");
             const meta = HW_META[a.type as HwType] ?? HW_META.writing;
             const Icon = meta.icon;
-            const isReading = a.type === "reading" || a.type === "watching";
-            const urls = extractUrls(a.description);
+            const isQuickType = a.type === "memorizing" || a.type === "speaking";
 
             return (
               <div key={a.id} className="px-3 py-2.5 space-y-1.5">
                 <div className="flex items-center gap-2.5">
-                  {/* Check circle / complete button */}
-                  {isReading ? (
+                  {/* Check circle */}
+                  {isQuickType ? (
                     <button
-                      onClick={() => !done && handleReadingComplete(a)}
+                      onClick={() => !done && handleQuickComplete(a)}
                       disabled={!!done || completingId === a.id}
                       className="flex-shrink-0"
                     >
@@ -212,7 +214,7 @@ export default function WeeklyTasksSection({
                   </div>
 
                   {/* Action button */}
-                  {!isReading && !done && (
+                  {!isQuickType && !done && (
                     <button
                       onClick={() => setModalAssignment(a)}
                       className="flex-shrink-0 text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10"
@@ -234,17 +236,21 @@ export default function WeeklyTasksSection({
                   ) : null}
                 </div>
 
-                {/* Reading: show URLs inline */}
-                {isReading && urls.length > 0 && (
-                  <div className="ml-8 space-y-1">
-                    {urls.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-muted/20 hover:bg-muted/40 hover:border-[hsl(var(--gold)/0.5)] transition-all group text-xs">
-                        <Link2 className="w-3.5 h-3.5 text-[hsl(var(--gold-dark))] flex-shrink-0" />
-                        <span className="truncate text-muted-foreground group-hover:text-foreground transition-colors">{getDomain(url)}</span>
-                        <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                      </a>
-                    ))}
+                {/* Description preview for reading/watching */}
+                {(a.type === "reading" || a.type === "watching") && a.description && (
+                  <div className="ml-8">
+                    {extractUrls(a.description).length > 0 && (
+                      <div className="space-y-1">
+                        {extractUrls(a.description).map((url, i) => (
+                          <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-muted/20 hover:bg-muted/40 hover:border-[hsl(var(--gold)/0.5)] transition-all group text-xs">
+                            <Link2 className="w-3.5 h-3.5 text-[hsl(var(--gold-dark))] flex-shrink-0" />
+                            <span className="truncate text-muted-foreground group-hover:text-foreground transition-colors">{getDomain(url)}</span>
+                            <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

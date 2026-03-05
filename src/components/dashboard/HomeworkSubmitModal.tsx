@@ -115,14 +115,17 @@ export default function HomeworkSubmitModal({
   const Icon = meta.icon;
   const recorder = useAudioRecorder();
 
-  const showTextArea = meta.requiresText || assignment.type === "memorizing";
+  const isReadingType = assignment.type === "reading" || assignment.type === "watching";
+  const showTextArea = meta.requiresText || assignment.type === "memorizing" || isReadingType;
   const showAudio = meta.requiresAudio || assignment.type === "memorizing";
   const showFile = !!meta.requiresFile;
 
-  const canSubmit =
-    (!meta.requiresText || text.trim().length > 0) &&
-    (!meta.requiresAudio || recorder.audioBlob !== null) &&
-    (!meta.requiresFile || fileObj !== null);
+  // Reading/watching: text is optional, no other requirements
+  const canSubmit = isReadingType
+    ? true
+    : (!meta.requiresText || text.trim().length > 0) &&
+      (!meta.requiresAudio || recorder.audioBlob !== null) &&
+      (!meta.requiresFile || fileObj !== null);
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -238,7 +241,7 @@ export default function HomeworkSubmitModal({
               value={text}
               onChange={e => setText(e.target.value)}
               spellCheck lang="en"
-              placeholder={meta.requiresText ? "여기에 작성하세요 (필수)" : "메모 또는 자유 작성 (선택)"}
+              placeholder={isReadingType ? "읽은 내용에 대한 감상이나 메모를 남겨주세요 (선택)" : meta.requiresText ? "여기에 작성하세요 (필수)" : "메모 또는 자유 작성 (선택)"}
               className={cn("resize-none text-sm", assignment.type === "writing" ? "min-h-[200px]" : "min-h-[100px]")}
             />
           )}

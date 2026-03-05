@@ -821,9 +821,10 @@ export default function StudentDashboard() {
 
   const periodSessionIds = new Set(periodSessions.map(s => s.id));
 
-  const periodAssignments = selectedPeriod
+  const periodAssignments = (selectedPeriod
     ? assignments.filter(a => a.is_preset || (a.session_id ? periodSessionIds.has(a.session_id) : false))
-    : assignments;
+    : assignments
+  ).filter(a => !(a.is_preset && a.type === "memorizing"));
 
   const periodVocabWords = selectedPeriod
     ? vocabWords.filter(w => {
@@ -910,7 +911,7 @@ export default function StudentDashboard() {
       .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
     const latestSession = pastSess[0];
     if (!latestSession) return { submitted: 0, total: 0, pending: 0 };
-    const sessionHw = assignments.filter(a => a.session_id === latestSession.id || a.is_preset);
+    const sessionHw = assignments.filter(a => (a.session_id === latestSession.id || a.is_preset) && !(a.is_preset && a.type === "memorizing"));
     const submitted = sessionHw.filter(a => {
       const sub = getSubmission(a.id);
       return sub && sub.status !== "pending";
@@ -1496,7 +1497,7 @@ export default function StudentDashboard() {
                           return `${week}주차`;
                         })()
                       : null;
-                    const isQuickType = a.type === "reading" || a.type === "memorizing" || a.type === "watching" || a.type === "speaking";
+                    const isQuickType = a.type === "memorizing" || a.type === "speaking";
                     const isPending = status === "pending";
                     return (
                       <div key={a.id} className="flex items-center gap-2.5 px-3 py-2.5">
