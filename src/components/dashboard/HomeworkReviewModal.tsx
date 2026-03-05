@@ -1,12 +1,13 @@
 import { useState } from "react";
 import {
-  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink, Undo2, Plus, Trash2,
+  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink, Undo2, Plus, Trash2, HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 
 interface CorrectionItem {
@@ -246,18 +247,42 @@ export default function HomeworkReviewModal({
               </Button>
               {aiResult && (
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-[10px] text-muted-foreground">
-                    자연스러움 <span className="font-bold text-[hsl(var(--navy))]">{aiResult.score}/10</span>
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5 cursor-help">
+                        자연스러움 <span className="font-bold text-[hsl(var(--navy))]">{aiResult.score}/10</span>
+                        <HelpCircle className="w-3 h-3 ml-0.5" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                      원어민이 자연스럽게 느끼는 정도를 1~10점으로 평가합니다. 7점 이상이면 자연스러운 영어입니다.
+                    </TooltipContent>
+                  </Tooltip>
                   {aiResult.english_level && (
-                    <span className="text-[10px] text-muted-foreground">
-                      영어 레벨 <span className="font-bold text-[hsl(var(--navy))]">{aiResult.english_level}</span>
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5 cursor-help">
+                          영어 레벨 <span className="font-bold text-[hsl(var(--navy))]">{aiResult.english_level}</span>
+                          <HelpCircle className="w-3 h-3 ml-0.5" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                        CEFR 기준 영어 숙련도입니다. A1(입문)→A2(초급)→B1(중급)→B2(중상급)→C1(상급)→C2(원어민급)
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                   {aiResult.vocab_level && (
-                    <span className="text-[10px] text-muted-foreground">
-                      어휘 레벨 <span className="font-bold text-[hsl(var(--navy))]">{aiResult.vocab_level}</span>
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5 cursor-help">
+                          어휘 레벨 <span className="font-bold text-[hsl(var(--navy))]">{aiResult.vocab_level}</span>
+                          <HelpCircle className="w-3 h-3 ml-0.5" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                        사용된 어휘의 난이도입니다. 초급→중급→중상급→고급 순으로 다양하고 정확한 어휘 사용을 평가합니다.
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               )}

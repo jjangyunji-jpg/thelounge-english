@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor } from "lucide-react";
+import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
@@ -103,10 +104,44 @@ export default function HomeworkFeedbackModal({
             <p className="text-xs text-muted-foreground mt-0.5">
               {meta.label} 숙제 · {reviewedAt ? `${new Date(reviewedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })} 검토됨` : "검토됨"}
               {aiCorrection && (
-                <span className="ml-2 text-[hsl(var(--navy))] font-semibold">
-                  자연스러움 {aiCorrection.score}/10
-                  {aiCorrection.english_level && ` · 영어 ${aiCorrection.english_level}`}
-                  {aiCorrection.vocab_level && ` · 어휘 ${aiCorrection.vocab_level}`}
+                <span className="ml-2 flex items-center gap-1.5 flex-wrap text-[hsl(var(--navy))] font-semibold">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center gap-0.5 cursor-help">
+                        자연스러움 {aiCorrection.score}/10
+                        <HelpCircle className="w-3 h-3 text-muted-foreground" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                      원어민이 자연스럽게 느끼는 정도를 1~10점으로 평가합니다. 7점 이상이면 자연스러운 영어입니다.
+                    </TooltipContent>
+                  </Tooltip>
+                  {aiCorrection.english_level && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center gap-0.5 cursor-help">
+                          · 영어 {aiCorrection.english_level}
+                          <HelpCircle className="w-3 h-3 text-muted-foreground" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                        CEFR 기준 영어 숙련도입니다. A1(입문)→A2(초급)→B1(중급)→B2(중상급)→C1(상급)→C2(원어민급)
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {aiCorrection.vocab_level && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center gap-0.5 cursor-help">
+                          · 어휘 {aiCorrection.vocab_level}
+                          <HelpCircle className="w-3 h-3 text-muted-foreground" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+                        사용된 어휘의 난이도입니다. 초급→중급→중상급→고급 순으로 다양하고 정확한 어휘 사용을 평가합니다.
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </span>
               )}
             </p>
