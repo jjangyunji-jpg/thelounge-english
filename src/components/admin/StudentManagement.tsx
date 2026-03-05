@@ -486,6 +486,7 @@ export default function StudentManagement() {
     setEditEnglishName(s.englishName);
     setEditStartDate(s.startDate ? new Date(s.startDate + "T00:00:00") : undefined);
     setEditSchedules([...s.schedules]);
+    setEditStudentType(s.studentType as "regular" | "corporate");
     setEditSchedDay("월");
     setEditSchedTime("09:00");
   };
