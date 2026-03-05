@@ -480,11 +480,16 @@ export default function StudentDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [sessRes, allSessRes, hwRes, subRes, vocRes, testRes, studentRes, periodsRes, holidaysRes] = await Promise.all([
+    const [sessRes, allSessRes, groupSessRes, groupAllSessRes, hwRes, subRes, vocRes, testRes, studentRes, periodsRes, holidaysRes] = await Promise.all([
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
         .eq("student_name", student).order("scheduled_at", { ascending: false }).limit(20),
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
         .eq("student_name", student).order("scheduled_at", { ascending: true }),
+      // Group sessions: where student is in group_students array
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
+        .contains("group_students", [student]).order("scheduled_at", { ascending: false }).limit(20),
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
+        .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
       supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id")
         .eq("student_name", student).order("created_at", { ascending: false }),
       supabase.from("homework_submissions").select("id,assignment_id,status,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction")
