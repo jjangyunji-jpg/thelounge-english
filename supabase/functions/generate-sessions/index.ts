@@ -236,6 +236,8 @@ serve(async (req) => {
             ).padStart(2, "0")}:00+09:00`
           );
 
+          const groupStudents = Array.isArray((student as any).group_students) ? (student as any).group_students : [];
+
           sessionsToInsert.push({
             student_name: student.student_name,
             instructor_name: student.instructor_name || "Unknown",
@@ -243,6 +245,7 @@ serve(async (req) => {
             scheduled_at: scheduledAt.toISOString(),
             meet_link: student.meet_link || null,
             topic: null,
+            group_students: groupStudents,
           });
 
           existingSet.add(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`);

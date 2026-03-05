@@ -1873,6 +1873,21 @@ export default function InstructorDashboard() {
         role="instructor"
       />
 
+      {showAddSession && instructor && (
+        <AddSessionModal
+          students={students.filter(s => s.status === "active").map(s => ({
+            student_name: s.student_name,
+            level: s.level,
+            meet_link: s.meet_link,
+            instructor_name: s.instructor_name,
+          }))}
+          instructorName={instructor.name}
+          defaultDate={addSessionDefaultDate}
+          onClose={() => setShowAddSession(false)}
+          onAdded={() => loadData(instructor)}
+        />
+      )}
+
       {/* Tab Nav */}
       <div className="border-b border-border bg-card px-5">
         <div className="flex gap-0 max-w-5xl mx-auto">
