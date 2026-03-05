@@ -634,15 +634,20 @@ export default function Classroom() {
     if (!newHwTitle.trim()) return;
     setSavingHw(true);
     try {
-      const { data, error } = await supabase.from("homework_assignments").insert({
-        student_name: session.dbStudentName, title: newHwTitle.trim(),
+      // For group sessions, create homework for each group member individually
+      const targetStudents = groupStudents.length > 0 ? groupStudents : [session.dbStudentName];
+      const inserts = targetStudents.map(sn => ({
+        student_name: sn, title: newHwTitle.trim(),
         description: newHwDesc.trim() || null, type: newHwType, is_preset: newHwPreset,
         session_id: newHwPreset ? null : (session.sessionId || null),
-      }).select().single();
+      }));
+      const { data, error } = await supabase.from("homework_assignments").insert(inserts).select();
       if (error) throw error;
-      if (data) {
-        setHwList((prev) => [...prev, { id: data.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true }]);
-        toast({ title: "숙제가 추가됐습니다 ✓" });
+      if (data && data.length > 0) {
+        // Show the first one in the UI list (for the group/primary student)
+        setHwList((prev) => [...prev, { id: data[0].id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true }]);
+        const msg = groupStudents.length > 0 ? `숙제가 ${groupStudents.length}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
+        toast({ title: msg });
         setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing"); setNewHwPreset(false);
         setAddingHw(false);
       }
