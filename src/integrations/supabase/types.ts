@@ -465,6 +465,7 @@ export type Database = {
           start_date: string | null
           status: string | null
           student_name: string
+          student_type: string
           user_id: string | null
           withdrawal_reason: string | null
         }
@@ -488,6 +489,7 @@ export type Database = {
           start_date?: string | null
           status?: string | null
           student_name: string
+          student_type?: string
           user_id?: string | null
           withdrawal_reason?: string | null
         }
@@ -511,6 +513,7 @@ export type Database = {
           start_date?: string | null
           status?: string | null
           student_name?: string
+          student_type?: string
           user_id?: string | null
           withdrawal_reason?: string | null
         }
