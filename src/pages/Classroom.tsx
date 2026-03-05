@@ -202,10 +202,11 @@ export default function Classroom() {
       } else {
         const { data } = await supabase
           .from("class_sessions")
-          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic")
+          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic,group_students")
           .eq("id", urlSessionId)
           .single();
         sessionData = data;
+        if (data) setGroupStudents(Array.isArray((data as any).group_students) ? (data as any).group_students : []);
       }
       if (sessionData) {
         // If session has no meet_link, fall back to instructor_students meet_link
