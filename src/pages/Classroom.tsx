@@ -512,13 +512,14 @@ export default function Classroom() {
     const loadSidebar = async () => {
       setSidebarLoading(true);
 
-      // Fetch student's start_date to filter out sessions before registration
+      // Fetch student's start_date and type to filter out sessions before registration (regular only)
       const { data: isData } = await supabase
         .from("instructor_students")
-        .select("start_date")
+        .select("start_date, student_type")
         .eq("student_name", session.dbStudentName)
         .maybeSingle();
       const startDate = isData?.start_date;
+      const studentType = (isData as any)?.student_type || "regular";
 
       const isInstructor = role === "instructor";
       let query = supabase
@@ -533,7 +534,7 @@ export default function Classroom() {
         query = query.lte("scheduled_at", new Date().toISOString());
       }
 
-      if (startDate) {
+      if (startDate && studentType !== "corporate") {
         query = query.gte("scheduled_at", startDate + "T00:00:00+09:00");
       }
 

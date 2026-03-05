@@ -584,7 +584,8 @@ export default function StudentDashboard() {
 
       const isSessionVisible = (scheduledAt: string) => {
         const d = scheduledAt.slice(0, 10);
-        if (studentRes.data.start_date && d < studentRes.data.start_date) return false;
+        const isCorporate = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
+        if (!isCorporate && studentRes.data.start_date && d < studentRes.data.start_date) return false;
         if (pauses.some((p) => d >= p.pause_start && (!p.pause_end || d <= p.pause_end))) return false;
         return true;
       };
@@ -767,6 +768,7 @@ export default function StudentDashboard() {
 
   const isBeforeStartDate = (dateStr: string) => {
     if (!studentRecord?.start_date) return false;
+    if (studentRecord.student_type === "corporate") return false;
     const d = dateStr.slice(0, 10);
     return d < studentRecord.start_date;
   };
@@ -808,7 +810,7 @@ export default function StudentDashboard() {
 
   // Period navigation helpers
   const sortedPeriods = [...schedulePeriods]
-    .filter(p => !studentRecord?.start_date || p.end_date >= studentRecord.start_date)
+    .filter(p => studentRecord?.student_type === "corporate" || !studentRecord?.start_date || p.end_date >= studentRecord.start_date)
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
   const currentPeriodIdx = sortedPeriods.findIndex(p => p.id === selectedPeriodId);
   const canGoPrev = currentPeriodIdx > 0;

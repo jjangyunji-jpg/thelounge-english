@@ -106,13 +106,14 @@ export default function ClassNote() {
     const load = async () => {
       setLoadingSessions(true);
 
-      // Fetch student's start_date to filter sessions
+      // Fetch student's start_date and type to filter sessions
       const { data: isData } = await supabase
         .from("instructor_students")
-        .select("start_date")
+        .select("start_date, student_type")
         .eq("student_name", student)
         .maybeSingle();
       const startDate = isData?.start_date;
+      const studentType = (isData as any)?.student_type || "regular";
 
       let query = supabase
         .from("class_sessions")
@@ -121,7 +122,7 @@ export default function ClassNote() {
         .order("scheduled_at", { ascending: false })
         .limit(30);
 
-      if (startDate) {
+      if (startDate && studentType !== "corporate") {
         query = query.gte("scheduled_at", startDate + "T00:00:00+09:00");
       }
 
