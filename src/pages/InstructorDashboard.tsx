@@ -1304,6 +1304,8 @@ export default function InstructorDashboard() {
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
   const [editMeeting, setEditMeeting] = useState<BusinessMeeting | null>(null);
+  const [showAddSession, setShowAddSession] = useState(false);
+  const [addSessionDefaultDate, setAddSessionDefaultDate] = useState("");
   const [showBulkGoalModal, setShowBulkGoalModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reviewHw, setReviewHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
