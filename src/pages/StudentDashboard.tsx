@@ -248,7 +248,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
 
   const isHoliday = (d: Date) =>
     holidayRanges.some(r => d >= r.start && d <= r.end);
-  const isTuesdayOff = (d: Date) => d.getDay() === 2;
+  
 
   // Build cells: from period start's week Sunday to period end's week Saturday
   const periodStart = selectedPeriod
@@ -305,7 +305,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
           {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
             <div key={d} className={cn(
               "text-[10px] font-semibold pb-1",
-              i === 0 ? "text-destructive/70" : i === 2 ? "text-muted-foreground/40" : "text-muted-foreground"
+              i === 0 ? "text-destructive/70" : "text-muted-foreground"
             )}>{d}</div>
           ))}
         </div>
@@ -314,18 +314,16 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
             const date = new Date(cell.year, cell.month, cell.day);
             const isOutsidePeriodMonth = cell.month !== pStartMonth || cell.year !== pStartYear;
             const holiday = isHoliday(date);
-            const tuesdayOff = isTuesdayOff(date);
             const inPeriod = isInPeriod(date);
             const session = inPeriod && allCalendarDates.has(date.toDateString());
             const todayMark = today.getFullYear() === cell.year && today.getMonth() === cell.month && today.getDate() === cell.day;
-            const isOff = holiday || tuesdayOff;
+            const isOff = holiday;
             return (
               <div key={idx} className={cn(
                 "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all",
                 todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
                   : session && !isOff ? "bg-gold/15 text-gold-dark font-semibold"
                   : holiday ? "text-muted-foreground/30"
-                  : tuesdayOff ? "text-muted-foreground/30"
                   : inPeriod ? "text-foreground hover:bg-muted/50"
                   : "text-muted-foreground/40 hover:bg-muted/30",
               )}>
