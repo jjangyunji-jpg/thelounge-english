@@ -1726,22 +1726,6 @@ export default function StudentManagement() {
                     )}
                 </div>
 
-                {/* 수업 유형 */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs">수업 유형</Label>
-                  <Select
-                    value={newStudent.studentType}
-                    onValueChange={(v) => setNewStudent((p) => ({ ...p, studentType: v }))}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="regular">정기 (개인)</SelectItem>
-                      <SelectItem value="corporate">기업 수업 (비정기)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
                   {/* Lesson history preview */}
                   <div>
