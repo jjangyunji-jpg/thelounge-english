@@ -579,6 +579,7 @@ export default function StudentDashboard() {
         instructor_name: studentRes.data.instructor_name,
         instructor_display_name: instrDisplayName,
         pauses,
+        student_type: (studentRes.data as any).student_type || 'regular',
       });
 
       const isSessionVisible = (scheduledAt: string) => {
