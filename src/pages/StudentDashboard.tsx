@@ -1448,8 +1448,8 @@ export default function StudentDashboard() {
             submissions={submissions}
             sessions={allSessions}
             studentName={student}
-            vocabWords={periodVocabWords}
-            testHistory={periodTestHistory}
+            vocabWords={vocabWords}
+            testHistory={testHistory}
             onSubmissionUpdate={(sub) => {
               setSubmissions(prev => {
                 const idx = prev.findIndex(s => s.assignment_id === sub.assignment_id);
