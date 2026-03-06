@@ -496,7 +496,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
           .from("homework_assignments")
           .select("id, type, title, description, is_preset, session_id")
           .eq("student_name", studentName)
-          .eq("session_id", sessionId)
+          .or(`session_id.eq.${sessionId},is_preset.eq.true`)
           .order("created_at", { ascending: true }),
         supabase
           .from("homework_submissions")
