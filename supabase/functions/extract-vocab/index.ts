@@ -61,11 +61,12 @@ serve(async (req) => {
     }
 
     const systemPrompt = `You are an English vocabulary extractor for Korean learners.
-Analyze the class notes and extract English-Korean vocabulary pairs.
+Analyze the class notes (which may contain HTML including tables) and extract English-Korean vocabulary pairs.
 
 RULES:
-- Only extract items where BOTH an English word/phrase AND its Korean meaning appear close together in the notes.
-- Patterns to detect: "word 한국어", "word / word 한국어", "word: 한국어", "word (한국어)", "word — 한국어"
+- The notes are HTML content. Parse tables (<table>, <tr>, <td>, <th>), lists, and inline text thoroughly.
+- Extract items where BOTH an English word/phrase AND its Korean meaning appear together — in the same table row, list item, paragraph, or nearby context.
+- Patterns to detect: "word 한국어", "word / word 한국어", "word: 한국어", "word (한국어)", "word — 한국어", or table columns with English in one cell and Korean in another cell of the same row.
 - Include single words, phrasal verbs, idioms, and short phrases.
 - Do NOT include full sentences as vocabulary items.
 - Do NOT include items where Korean is only a sentence (e.g. grammar explanations).
