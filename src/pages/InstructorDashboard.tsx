@@ -2698,15 +2698,15 @@ export default function InstructorDashboard() {
         {activeTab === "students" && (
           <div className="space-y-4">
             {/* Period navigator */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <Users className="w-4 h-4 text-navy" />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <h2 className="text-base font-bold text-foreground flex items-center gap-2 flex-wrap">
+                <Users className="w-4 h-4 text-primary" />
                 담당 학생 관리
-                <span className="text-xs px-2 py-0.5 rounded-full bg-navy/10 text-navy font-medium">{students.filter(s => { const sp = allPeriods[studentTabPeriodIdx] || period; return !s.start_date || !sp || s.start_date <= sp.end_date; }).length}명</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{students.filter(s => { const sp = allPeriods[studentTabPeriodIdx] || period; return !s.start_date || !sp || s.start_date <= sp.end_date; }).length}명</span>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 text-xs gap-1 ml-2 border-gold/40 text-gold-dark hover:bg-gold/8"
+                  className="h-7 text-xs gap-1 border-gold/40 text-gold-dark hover:bg-gold/8"
                   onClick={() => setShowBulkGoalModal(true)}
                 >
                   <Target className="w-3 h-3" />
@@ -2714,7 +2714,7 @@ export default function InstructorDashboard() {
                 </Button>
               </h2>
               {allPeriods.length > 0 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => setStudentTabPeriodIdx(Math.max(0, studentTabPeriodIdx - 1))}
                     disabled={studentTabPeriodIdx <= 0}
