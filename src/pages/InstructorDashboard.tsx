@@ -2548,7 +2548,7 @@ export default function InstructorDashboard() {
                         return <p className="text-xs text-muted-foreground py-2">과제 데이터가 없습니다</p>;
                       }
 
-                      return studentHwData.map(({ student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount }) => {
+                      return studentHwData.map(({ student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount, hasVocab, vocabDone }) => {
                         const allDone = totalHw > 0 && submittedCount === totalHw;
                         const noneSubmitted = submittedCount === 0 && totalHw > 0;
                         const isExpanded = expandedHwStudent === st.id;
