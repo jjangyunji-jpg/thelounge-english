@@ -186,7 +186,7 @@ function SubmissionCard({
 
     try {
       if (recorder.audioBlob) {
-        const path = `${studentName}/${assignment.id}/${Date.now()}.webm`;
+        const path = `${assignment.id}/${Date.now()}.webm`;
         const { error: upErr } = await supabase.storage
           .from("homework-audio")
           .upload(path, recorder.audioBlob, { contentType: "audio/webm", upsert: true });
