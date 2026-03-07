@@ -1926,7 +1926,7 @@ export default function InstructorDashboard() {
         {activeTab === "dashboard" && (
           <>
             {/* Stats row */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
               {[
                 { label: "담당 학생", value: `${students.filter(s => s.status === "active" && (!s.start_date || !period || s.start_date <= period.end_date)).length}명`, icon: Users, color: "text-navy", bg: "bg-navy/10" },
                 { label: `${currentMonthNum}월 수업`, value: `${monthlyLessonCount}회`, icon: BookOpen, color: "text-gold-dark", bg: "bg-gold/10" },
