@@ -133,7 +133,7 @@ export default function HomeworkSubmitModal({
     let fileStorageUrl: string | null = null;
     try {
       if (recorder.audioBlob) {
-        const path = `${studentName}/${assignment.id}/${Date.now()}.webm`;
+        const path = `${assignment.id}/${Date.now()}.webm`;
         const { error: upErr } = await supabase.storage
           .from("homework-audio")
           .upload(path, recorder.audioBlob, { contentType: "audio/webm", upsert: true });
@@ -144,7 +144,7 @@ export default function HomeworkSubmitModal({
 
       if (fileObj) {
         const ext = fileObj.name.split(".").pop() || "file";
-        const path = `${studentName}/${assignment.id}/${Date.now()}.${ext}`;
+        const path = `${assignment.id}/${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("homework-files")
           .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
