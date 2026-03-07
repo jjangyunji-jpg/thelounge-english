@@ -1962,9 +1962,36 @@ export default function InstructorDashboard() {
                 {/* Selected date detail */}
                 {selectedDate && (
                   <div className="rounded-xl border border-border bg-card p-4">
-                    <h3 className="text-sm font-semibold text-foreground mb-3">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                       {selectedDate.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })} 일정
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{selectedDaySessions.length + selectedDayVirtual.length + selectedDayMeetings.length}건</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{selectedDaySessions.length + selectedDayVirtual.length + selectedDayMeetings.length}건</span>
+                      {(() => {
+                        const withNotes = selectedDaySessions.filter(s => s.notes && s.notes.replace(/<[^>]*>/g, "").trim().length > 0);
+                        if (withNotes.length === 0) return null;
+                        return (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="ml-auto h-6 text-[10px] gap-1 text-muted-foreground hover:text-foreground"
+                            onClick={async () => {
+                              const dateLabel = selectedDate.toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" });
+                              await exportNotesPdf(
+                                withNotes.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()).map(s => {
+                                  const studentSessions = sessions
+                                    .filter(ss => ss.student_name === s.student_name && new Date(ss.scheduled_at) <= new Date(s.scheduled_at))
+                                    .sort((a2, b2) => new Date(a2.scheduled_at).getTime() - new Date(b2.scheduled_at).getTime());
+                                  const lessonNumber = studentSessions.findIndex(ss => ss.id === s.id) + 1;
+                                  return { ...s, remarks: null, student_name: s.student_name, level: s.level, lessonNumber: lessonNumber || null };
+                                }),
+                                `${instructor?.name || "강사"}_${dateLabel}`
+                              );
+                              toast({ title: `${withNotes.length}명의 수업노트를 PDF로 내보냈습니다` });
+                            }}
+                          >
+                            <Download className="w-3 h-3" />노트 PDF
+                          </Button>
+                        );
+                      })()}
                     </h3>
                     {selectedDaySessions.length === 0 && selectedDayVirtual.length === 0 && selectedDayMeetings.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2">예정된 일정이 없습니다</p>

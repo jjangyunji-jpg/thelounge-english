@@ -506,9 +506,13 @@ export default function Classroom() {
     loadData();
   }, [session.sessionId, sessionLoading]);
 
-  // Load sidebar sessions list
+  // Load sidebar sessions list — only when student changes, not on every sessionLoading toggle
+  const sidebarLoadedForRef = useRef<string | null>(null);
   useEffect(() => {
     if (sessionLoading || !session.dbStudentName) return;
+    // Skip if already loaded for this student
+    if (sidebarLoadedForRef.current === session.dbStudentName) return;
+    sidebarLoadedForRef.current = session.dbStudentName;
     const loadSidebar = async () => {
       setSidebarLoading(true);
 
