@@ -297,12 +297,12 @@ export default function InstructorManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">강사 관리</h1>
-          <p className="text-muted-foreground text-sm mt-1">담당 강사 프로필 및 정산 설정</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">강사 관리</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">담당 강사 프로필 및 정산 설정</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap shrink-0">
           <Button
             variant="outline"
             size="sm"
