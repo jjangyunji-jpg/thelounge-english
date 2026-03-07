@@ -197,7 +197,7 @@ function SubmissionCard({
 
       if (fileObj) {
         const ext = fileObj.name.split(".").pop() || "file";
-        const path = `${studentName}/${assignment.id}/${Date.now()}.${ext}`;
+        const path = `${assignment.id}/${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("homework-files")
           .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
