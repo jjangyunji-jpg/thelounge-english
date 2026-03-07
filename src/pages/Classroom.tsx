@@ -1019,7 +1019,7 @@ export default function Classroom() {
             loading={sidebarLoading}
             initialOpen={true}
           />
-          <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto overflow-y-auto">
+          <div className="flex-1 flex flex-col md:flex-row gap-3 sm:gap-5 px-3 sm:px-4 py-3 sm:py-5 max-w-7xl w-full mx-auto overflow-y-auto">
 
           {/* ── LEFT COLUMN ─────────────────────────────────────────────── */}
           {role === "student" ? (
