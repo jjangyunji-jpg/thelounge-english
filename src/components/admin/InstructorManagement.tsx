@@ -132,7 +132,9 @@ export default function InstructorManagement() {
         labels.add(fb.period_label);
       }
       setFeedbackMap(map);
-      setPeriodLabels(Array.from(labels).sort().reverse());
+      const sortedLabels = Array.from(labels).sort().reverse();
+      setPeriodLabels(sortedLabels);
+      if (sortedLabels.length > 0) setSelectedPeriod(sortedLabels[0]);
     }
   };
 
@@ -511,7 +513,18 @@ export default function InstructorManagement() {
                               ))}
                             </div>
                             <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {feedbacks.map(fb => (
+                              {[...feedbacks].sort((a, b) => {
+                                const hasComment = (fb: FeedbackRecord) => fb.comment?.trim() ? 1 : 0;
+                                const commentDiff = hasComment(b) - hasComment(a);
+                                if (commentDiff !== 0) return commentDiff;
+                                const avgScore = (fb: FeedbackRecord) => {
+                                  const r = fb.ratings as Record<string, number> | null;
+                                  if (!r) return 0;
+                                  const vals = Object.values(r).filter(v => typeof v === "number" && v > 0);
+                                  return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+                                };
+                                return avgScore(a) - avgScore(b);
+                              }).map(fb => (
                                 <div key={fb.id} className="p-2.5 rounded-lg border border-border bg-muted/20 space-y-1">
                                   <div className="flex items-center justify-between">
                                     <span className="text-xs font-medium text-foreground">{fb.student_name}</span>
