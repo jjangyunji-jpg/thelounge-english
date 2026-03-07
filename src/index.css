@@ -112,10 +112,27 @@
     @apply bg-background text-foreground;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
+  }
+
+  /* Mobile-friendly touch targets */
+  @media (max-width: 767px) {
+    button, a, [role="button"] {
+      min-height: 36px;
+    }
+
+    /* Better readable font sizes on mobile */
+    .text-\[10px\] {
+      font-size: 11px;
+    }
+
+    .text-\[9px\] {
+      font-size: 10px;
+    }
   }
 }
 
