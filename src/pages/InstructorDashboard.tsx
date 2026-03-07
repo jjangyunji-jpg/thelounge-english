@@ -2642,6 +2642,30 @@ export default function InstructorDashboard() {
                                 }) : (
                                   <p className="text-[10px] text-muted-foreground py-1">직전 수업에 할당된 과제가 없습니다</p>
                                 )}
+                                {/* Vocab test stats */}
+                                {(() => {
+                                  const stVocab = vocabTests.filter(v => v.student_name === st.student_name && v.completed_at);
+                                  if (stVocab.length === 0) return null;
+                                  const sorted = [...stVocab].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+                                  const latest = sorted[0];
+                                  return (
+                                    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-[hsl(var(--success)/0.04)]">
+                                      <GraduationCap className="w-3 h-3 text-[hsl(var(--success))] flex-shrink-0" />
+                                      <span className="text-[11px] flex-1">단어 테스트</span>
+                                      <span className="text-[10px] font-medium text-muted-foreground">{stVocab.length}회</span>
+                                      {latest.score !== null && latest.total !== null && (
+                                        <span className={cn(
+                                          "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                                          latest.score / latest.total >= 0.8 ? "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]" :
+                                          latest.score / latest.total >= 0.5 ? "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]" :
+                                          "bg-destructive/10 text-destructive"
+                                        )}>
+                                          최근 {latest.score}/{latest.total}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                                 {latestPast && (
                                   <a href={`/t/classroom?sessionId=${latestPast.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-navy hover:underline mt-1">
                                     <FileText className="w-3 h-3" /> 수업노트 보기
