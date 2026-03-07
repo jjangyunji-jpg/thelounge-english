@@ -1949,15 +1949,36 @@ export default function StudentManagement() {
                   )}
 
                   {tab === "graduated" && (
-                    <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-2">
                       <p className="text-xs font-medium text-muted-foreground">
                         ℹ️ 퇴원 처리된 수강생입니다. 수업 노트, 단어장 등 기존 데이터는 그대로 보관됩니다.
                       </p>
                       {student.withdrawalReason && (
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground">
                           📝 사유: {student.withdrawalReason}
                         </p>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1.5 text-[hsl(var(--navy))] border-[hsl(var(--navy))]/30 hover:bg-[hsl(var(--navy))]/10"
+                        onClick={async () => {
+                          if (!student.dbId) return;
+                          const { error } = await supabase.from("instructor_students").update({
+                            status: "active",
+                            withdrawal_reason: null,
+                          }).eq("id", student.dbId);
+                          if (error) {
+                            toast({ title: "재등록 실패", description: error.message, variant: "destructive" });
+                          } else {
+                            setStudents((prev) => prev.map((s) => s.id === student.id ? { ...s, status: "active" as StudentStatus, withdrawalReason: "" } : s));
+                            toast({ title: `${student.name} 재등록 완료 ✓`, description: "일정(스케줄)을 다시 설정한 후 세션을 생성해주세요." });
+                          }
+                        }}
+                      >
+                        <Play className="w-3 h-3" />
+                        재등록 (수강 재개)
+                      </Button>
                     </div>
                   )}
                 </div>
