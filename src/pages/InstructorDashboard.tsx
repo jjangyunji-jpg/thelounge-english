@@ -2934,21 +2934,21 @@ export default function InstructorDashboard() {
                     ) : (
                       settlementWithCumulative.map((row, idx) => (
                         <tr key={row.key} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-2.5 text-xs text-foreground">
+                          <td className="px-2 sm:px-4 py-2.5 text-xs text-foreground whitespace-nowrap">
                             {row.date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}
                           </td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-2 sm:px-4 py-2.5">
                             <span className={cn(
-                              "text-[10px] px-2 py-0.5 rounded-full font-medium",
-                              row.type === 'lesson' ? "bg-navy/10 text-navy" : "bg-gold/10 text-gold-dark"
+                              "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                              row.type === 'lesson' ? "bg-primary/10 text-primary" : "bg-gold/10 text-gold-dark"
                             )}>
                               {row.type === 'lesson' ? '수업' : '미팅'}
                             </span>
                           </td>
-                          <td className="px-4 py-2.5 text-xs text-foreground">{row.description}</td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-2 sm:px-4 py-2.5 text-xs text-foreground max-w-[120px] sm:max-w-none truncate">{row.description}</td>
+                          <td className="px-2 sm:px-4 py-2.5">
                             <select
-                              className="text-xs bg-transparent border border-border rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              className="text-xs bg-transparent border border-border rounded px-1 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                               value={row.durationHours}
                               onChange={(e) => setDurationOverrides(prev => ({ ...prev, [row.key]: parseFloat(e.target.value) }))}
                             >
@@ -2957,8 +2957,8 @@ export default function InstructorDashboard() {
                               ))}
                             </select>
                           </td>
-                          <td className="px-4 py-2.5 text-xs text-right font-medium text-foreground">₩{row.pay.toLocaleString()}</td>
-                          <td className="px-4 py-2.5 text-xs text-right font-bold text-success">₩{row.cumulative.toLocaleString()}</td>
+                          <td className="px-2 sm:px-4 py-2.5 text-xs text-right font-medium text-foreground whitespace-nowrap">₩{row.pay.toLocaleString()}</td>
+                          <td className="px-2 sm:px-4 py-2.5 text-xs text-right font-bold text-success hidden sm:table-cell">₩{row.cumulative.toLocaleString()}</td>
                         </tr>
                       ))
                     )}
@@ -2966,9 +2966,9 @@ export default function InstructorDashboard() {
                   {settlementWithCumulative.length > 0 && (
                     <tfoot>
                       <tr className="bg-muted/30 border-t border-border">
-                        <td colSpan={4} className="px-4 py-3 text-xs font-bold text-foreground">합계</td>
-                        <td className="px-4 py-3 text-xs text-right font-bold text-foreground">₩{totalAmount.toLocaleString()}</td>
-                        <td className="px-4 py-3"></td>
+                        <td colSpan={4} className="px-2 sm:px-4 py-3 text-xs font-bold text-foreground">합계</td>
+                        <td className="px-2 sm:px-4 py-3 text-xs text-right font-bold text-foreground">₩{totalAmount.toLocaleString()}</td>
+                        <td className="px-2 sm:px-4 py-3 hidden sm:table-cell"></td>
                       </tr>
                     </tfoot>
                   )}
