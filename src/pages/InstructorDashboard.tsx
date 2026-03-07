@@ -1892,27 +1892,28 @@ export default function InstructorDashboard() {
       )}
 
       {/* Tab Nav */}
-      <div className="border-b border-border bg-card px-3 sm:px-5 overflow-x-auto scrollbar-none">
+      <div className="border-b border-border bg-card px-2 sm:px-5 overflow-x-auto scrollbar-none">
         <div className="flex gap-0 max-w-5xl mx-auto min-w-max">
           {[
             { id: "dashboard" as const, label: "대시보드", icon: CalendarDays },
             { id: "students" as const, label: "학생 관리", icon: Users },
-            { id: "feedback" as const, label: "수업 피드백", icon: MessageSquare },
-            { id: "settlement" as const, label: "정산 관리", icon: Banknote },
-            { id: "guide" as const, label: "이용가이드", icon: BookOpen },
-            { id: "profile" as const, label: "마이페이지", icon: User },
+            { id: "feedback" as const, label: "피드백", icon: MessageSquare },
+            { id: "settlement" as const, label: "정산", icon: Banknote },
+            { id: "guide" as const, label: "가이드", icon: BookOpen },
+            { id: "profile" as const, label: "MY", icon: User },
           ].map((t) => (
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={cn("flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+              className={cn("flex items-center gap-1.5 px-3 sm:px-4 py-3 text-[13px] sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
                 activeTab === t.id
-                  ? "border-navy text-navy"
+                  ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
-              <t.icon className="w-3.5 h-3.5" />
-              {t.label}
+              <t.icon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{t.label}</span>
+              <span className="sm:hidden">{t.label}</span>
             </button>
           ))}
         </div>
