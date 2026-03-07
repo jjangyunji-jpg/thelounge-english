@@ -1195,7 +1195,7 @@ export default function StudentDashboard() {
       )}
 
       {/* ── 2-Column Layout ── */}
-      <div className="max-w-6xl mx-auto px-4 py-5 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-5 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 sm:gap-5">
 
         {/* ══════════════════ LEFT COLUMN ══════════════════ */}
         <div className="space-y-4">
