@@ -3075,6 +3075,9 @@ export default function InstructorDashboard() {
                     개별 피드백
                   </h3>
                   {[...feedbackData].sort((a, b) => {
+                    const hasComment = (fb: any) => fb.comment?.trim() ? 1 : 0;
+                    const commentDiff = hasComment(b) - hasComment(a);
+                    if (commentDiff !== 0) return commentDiff;
                     const avgScore = (fb: any) => {
                       const r = fb.ratings as Record<string, number> | null;
                       if (!r) return 0;
