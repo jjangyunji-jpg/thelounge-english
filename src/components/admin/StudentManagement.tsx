@@ -759,12 +759,12 @@ export default function StudentManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">수강생 관리</h1>
-          <p className="text-muted-foreground text-sm mt-1">수강생 등록 및 학습 이력 관리</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">수강생 관리</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">수강생 등록 및 학습 이력 관리</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Button variant="outline" size="sm" className="gap-2 border-gold text-gold-dark hover:bg-gold/8">
             <Download className="w-4 h-4" />
             이번달 수강생 리스트
