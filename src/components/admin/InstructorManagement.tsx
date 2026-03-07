@@ -132,7 +132,9 @@ export default function InstructorManagement() {
         labels.add(fb.period_label);
       }
       setFeedbackMap(map);
-      setPeriodLabels(Array.from(labels).sort().reverse());
+      const sortedLabels = Array.from(labels).sort().reverse();
+      setPeriodLabels(sortedLabels);
+      if (sortedLabels.length > 0) setSelectedPeriod(sortedLabels[0]);
     }
   };
 
