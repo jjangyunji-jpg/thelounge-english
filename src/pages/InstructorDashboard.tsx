@@ -2525,16 +2525,19 @@ export default function InstructorDashboard() {
                         const futureSessions = sSessions.filter(s => new Date(s.scheduled_at) > nowTs).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
                         const nextSession = futureSessions[0] || null;
                         const sessionAssignments = assignments.filter(a => a.student_name === st.student_name && (a.is_preset || (latestPast && a.session_id === latestPast.id)));
-                        const totalHw = sessionAssignments.length;
+                        const stVocabAll = vocabTests.filter(v => v.student_name === st.student_name);
+                        const hasVocab = stVocabAll.length > 0;
+                        const vocabDone = stVocabAll.some(v => v.completed_at);
+                        const totalHw = sessionAssignments.length + (hasVocab ? 1 : 0);
                         const submittedCount = sessionAssignments.filter(a => {
                           const sub = submissions.find(s => s.assignment_id === a.id);
                           return sub && (sub.status === "submitted" || sub.status === "reviewed");
-                        }).length;
+                        }).length + (vocabDone ? 1 : 0);
                         const reviewedCount = sessionAssignments.filter(a => {
                           const sub = submissions.find(s => s.assignment_id === a.id);
                           return sub && sub.status === "reviewed";
                         }).length;
-                        return { student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount };
+                        return { student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount, hasVocab, vocabDone };
                       }).filter(d => d.totalHw > 0 || d.latestPast).sort((a, b) => {
                         const aTime = a.nextSession ? new Date(a.nextSession.scheduled_at).getTime() : Infinity;
                         const bTime = b.nextSession ? new Date(b.nextSession.scheduled_at).getTime() : Infinity;
