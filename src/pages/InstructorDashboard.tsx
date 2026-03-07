@@ -2223,23 +2223,25 @@ export default function InstructorDashboard() {
 
                             const isCompleted = !!s.ended_at;
                             return (
-                              <div key={s.id} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg border", isCompleted ? "border-success/30 bg-success/5" : "border-border bg-muted/20")}>
-                                <p className="text-xs font-bold text-navy w-12 text-center flex-shrink-0">{fmtTime(s.scheduled_at)}</p>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <p className="text-sm font-medium text-foreground">{fmtName(s.student_name)}</p>
-                                    {isCompleted && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
+                              <div key={s.id} className={cn("rounded-lg border px-3 py-2.5", isCompleted ? "border-success/30 bg-success/5" : "border-border bg-muted/20")}>
+                                <div className="flex items-start gap-3">
+                                  <p className="text-xs font-bold text-primary w-12 text-center flex-shrink-0 pt-0.5">{fmtTime(s.scheduled_at)}</p>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <p className="text-sm font-medium text-foreground truncate">{fmtName(s.student_name)}</p>
+                                      {isCompleted && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground truncate">{s.topic || s.level}</p>
+                                    {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
+                                      <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
+                                        <RefreshCw className="w-2.5 h-2.5" />
+                                        {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨
+                                      </p>
+                                    )}
                                   </div>
-                            <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
-                              {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
-                                <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
-                                  <RefreshCw className="w-2.5 h-2.5" />
-                                  {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              {prevSession && (
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-2 ml-[60px]">
+                                  {prevSession && (
                                     <a href={`/t/classroom?sessionId=${prevSession.id}`} target="_blank" rel="noopener noreferrer">
                                       <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 px-2">
                                         <ChevronLeft className="w-3 h-3" /> 지난 수업
@@ -2247,7 +2249,7 @@ export default function InstructorDashboard() {
                                     </a>
                                   )}
                                   <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
-                                    <Button size="sm" className="h-7 text-[10px] gap-1 bg-navy hover:bg-navy-light text-primary-foreground px-2">
+                                    <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2">
                                       <FileText className="w-3 h-3" /> 이번 수업
                                     </Button>
                                   </a>
@@ -2258,45 +2260,45 @@ export default function InstructorDashboard() {
                                     const after30min = diffMs >= 30 * 60 * 1000;
                                     const within12h = diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000;
                                     if (!isCompleted && after30min && within12h) return (
-                                    <Button
-                                      size="sm"
-                                      className="h-7 text-[10px] gap-1 bg-success hover:bg-success/90 text-primary-foreground px-2"
-                                      onClick={async () => {
-                                        const endedAt = new Date().toISOString();
-                                        const { error } = await supabase.from("class_sessions").update({
-                                          ended_at: endedAt,
-                                          started_at: s.started_at || s.scheduled_at,
-                                        }).eq("id", s.id);
-                                        if (error) {
-                                          toast({ title: "수업 완료 실패", description: error.message, variant: "destructive" });
-                                        } else {
-                                          toast({ title: "수업 완료 처리됨 ✓" });
-                                          setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, ended_at: endedAt, started_at: s.started_at || s.scheduled_at } : sess));
-                                        }
-                                      }}
-                                    >
-                                      <Check className="w-3 h-3" /> 수업 완료
-                                    </Button>
+                                      <Button
+                                        size="sm"
+                                        className="h-7 text-[10px] gap-1 bg-success hover:bg-success/90 text-success-foreground px-2"
+                                        onClick={async () => {
+                                          const endedAt = new Date().toISOString();
+                                          const { error } = await supabase.from("class_sessions").update({
+                                            ended_at: endedAt,
+                                            started_at: s.started_at || s.scheduled_at,
+                                          }).eq("id", s.id);
+                                          if (error) {
+                                            toast({ title: "수업 완료 실패", description: error.message, variant: "destructive" });
+                                          } else {
+                                            toast({ title: "수업 완료 처리됨 ✓" });
+                                            setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, ended_at: endedAt, started_at: s.started_at || s.scheduled_at } : sess));
+                                          }
+                                        }}
+                                      >
+                                        <Check className="w-3 h-3" /> 수업 완료
+                                      </Button>
                                     );
                                     if (isCompleted && within12h) return (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-7 text-[10px] gap-1 border-muted-foreground/30 text-muted-foreground px-2"
-                                      onClick={async () => {
-                                        const { error } = await supabase.from("class_sessions").update({
-                                          ended_at: null,
-                                        }).eq("id", s.id);
-                                        if (error) {
-                                          toast({ title: "취소 실패", description: error.message, variant: "destructive" });
-                                        } else {
-                                          toast({ title: "수업 완료 취소됨" });
-                                          setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, ended_at: null } : sess));
-                                        }
-                                      }}
-                                    >
-                                      <X className="w-3 h-3" /> 완료 취소
-                                    </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-[10px] gap-1 border-muted-foreground/30 text-muted-foreground px-2"
+                                        onClick={async () => {
+                                          const { error } = await supabase.from("class_sessions").update({
+                                            ended_at: null,
+                                          }).eq("id", s.id);
+                                          if (error) {
+                                            toast({ title: "취소 실패", description: error.message, variant: "destructive" });
+                                          } else {
+                                            toast({ title: "수업 완료 취소됨" });
+                                            setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, ended_at: null } : sess));
+                                          }
+                                        }}
+                                      >
+                                        <X className="w-3 h-3" /> 완료 취소
+                                      </Button>
                                     );
                                     return null;
                                   })()}
