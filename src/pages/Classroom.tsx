@@ -692,12 +692,12 @@ export default function Classroom() {
     <>
     <div className="min-h-screen bg-background flex flex-col">
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
-      <header className="sidebar-gradient text-sidebar-foreground px-4 py-3 flex items-center gap-4 shadow-lg">
-        <button onClick={() => navigate(urlRole === "student" ? "/my/dashboard" : "/t/dashboard")} className="flex items-center gap-1.5 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors text-sm">
+      <header className="sidebar-gradient text-sidebar-foreground px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-4 shadow-lg">
+        <button onClick={() => navigate(urlRole === "student" ? "/my/dashboard" : "/t/dashboard")} className="flex items-center gap-1 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors text-sm flex-shrink-0">
           <ArrowLeft className="w-4 h-4" />
           <span className="hidden sm:inline">{urlRole === "student" ? "돌아가기" : "대시보드"}</span>
         </button>
-        <div className="w-px h-5 bg-sidebar-border" />
+        <div className="w-px h-5 bg-sidebar-border flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-sidebar-accent-foreground text-sm">{formatStudentName(session.studentName, session.englishName)}</span>
@@ -880,10 +880,10 @@ export default function Classroom() {
 
       {/* ── MEET STATUS BANNER ───────────────────────────────────────────── */}
       {classState === "ready" && (
-        <div className="bg-gold/5 border-b border-gold/20 px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm">
-            <WifiOff className="w-4 h-4 text-gold-dark" />
-            <span className="text-gold-dark font-medium text-sm">수업 시작 버튼을 누르면 Google Meet가 자동으로 열립니다</span>
+        <div className="bg-gold/5 border-b border-gold/20 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs sm:text-sm">
+            <WifiOff className="w-4 h-4 text-gold-dark flex-shrink-0" />
+            <span className="text-gold-dark font-medium">수업 시작 버튼을 누르면 Google Meet가 자동으로 열립니다</span>
           </div>
           <span className="text-xs text-muted-foreground font-mono hidden md:inline">{session.meetLink}</span>
         </div>
@@ -1019,7 +1019,7 @@ export default function Classroom() {
             loading={sidebarLoading}
             initialOpen={true}
           />
-          <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto overflow-y-auto">
+          <div className="flex-1 flex flex-col md:flex-row gap-3 sm:gap-5 px-3 sm:px-4 py-3 sm:py-5 max-w-7xl w-full mx-auto overflow-y-auto">
 
           {/* ── LEFT COLUMN ─────────────────────────────────────────────── */}
           {role === "student" ? (
@@ -1066,7 +1066,7 @@ export default function Classroom() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => setVersionModalOpen(true)}
                       disabled={!session.sessionId}
                       className="h-7 text-xs gap-1.5 transition-all border-muted-foreground/30 text-muted-foreground hover:bg-muted"

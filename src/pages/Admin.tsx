@@ -108,7 +108,7 @@ export default function Admin() {
           <span className="font-semibold text-sm text-foreground">The Lounge English Admin</span>
         </div>
 
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-3 sm:p-6 overflow-auto">
           <div className="max-w-5xl mx-auto">
             {renderContent()}
           </div>

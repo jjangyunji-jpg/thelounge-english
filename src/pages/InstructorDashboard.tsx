@@ -1837,33 +1837,35 @@ export default function InstructorDashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-5 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg gold-gradient flex items-center justify-center shadow-gold">
-            <BookOpen className="w-4 h-4 text-accent-foreground" />
+      <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-3 sm:px-5 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 rounded-lg gold-gradient flex items-center justify-center shadow-gold">
+              <BookOpen className="w-4 h-4 text-accent-foreground" />
+            </div>
+            <div>
+              <p className="font-bold text-sm text-foreground">The Lounge English</p>
+              <p className="text-[10px] text-muted-foreground">{profileNickname || instructor.name} · {instructor.position || '강사'}</p>
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-sm text-foreground">The Lounge English</p>
-            <p className="text-[10px] text-muted-foreground">{profileNickname || instructor.name} · {instructor.position || '강사'}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <Button size="sm" variant="outline" onClick={() => navigate("/admin")} className="h-8 text-xs gap-1.5 text-muted-foreground">
-              <Shield className="w-3 h-3" /> 관리자
+          <div className="flex items-center gap-1 sm:gap-2">
+            {isAdmin && (
+              <Button size="sm" variant="outline" onClick={() => navigate("/admin")} className="h-8 text-xs gap-1 sm:gap-1.5 text-muted-foreground px-2 sm:px-3">
+                <Shield className="w-3 h-3" /> <span className="hidden sm:inline">관리자</span>
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setShowMeetingModal(true)}
+              className="h-8 text-xs gap-1 sm:gap-1.5 bg-navy hover:bg-navy-light text-primary-foreground px-2 sm:px-3"
+            >
+              <Plus className="w-3 h-3" /> <span className="hidden sm:inline">업무 미팅</span>
             </Button>
-          )}
-          <Button size="sm" onClick={() => setShowMeetingModal(true)}
-            className="h-8 text-xs gap-1.5 bg-navy hover:bg-navy-light text-primary-foreground"
-          >
-            <Plus className="w-3 h-3" /> 업무 미팅
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setShowBugReport(true)} className="h-8 text-xs gap-1.5 text-muted-foreground" title="버그 신고 / 개선 제안">
-            <Bug className="w-3 h-3" /> 제안/신고
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleLogout} className="h-8 text-xs gap-1.5 text-muted-foreground">
-            <LogOut className="w-3 h-3" />
-          </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowBugReport(true)} className="h-8 text-xs gap-1 text-muted-foreground px-2 sm:px-3" title="버그 신고 / 개선 제안">
+              <Bug className="w-3 h-3" /> <span className="hidden sm:inline">제안/신고</span>
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleLogout} className="h-8 text-xs gap-1 text-muted-foreground px-2">
+              <LogOut className="w-3 h-3" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -1890,8 +1892,8 @@ export default function InstructorDashboard() {
       )}
 
       {/* Tab Nav */}
-      <div className="border-b border-border bg-card px-5">
-        <div className="flex gap-0 max-w-5xl mx-auto">
+      <div className="border-b border-border bg-card px-3 sm:px-5 overflow-x-auto scrollbar-none">
+        <div className="flex gap-0 max-w-5xl mx-auto min-w-max">
           {[
             { id: "dashboard" as const, label: "대시보드", icon: CalendarDays },
             { id: "students" as const, label: "학생 관리", icon: Users },
@@ -1903,7 +1905,7 @@ export default function InstructorDashboard() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={cn("flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+              className={cn("flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
                 activeTab === t.id
                   ? "border-navy text-navy"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1916,7 +1918,7 @@ export default function InstructorDashboard() {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
 
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ═══ DASHBOARD TAB ═══════════════════════════════════════════════ */}
@@ -1924,7 +1926,7 @@ export default function InstructorDashboard() {
         {activeTab === "dashboard" && (
           <>
             {/* Stats row */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
               {[
                 { label: "담당 학생", value: `${students.filter(s => s.status === "active" && (!s.start_date || !period || s.start_date <= period.end_date)).length}명`, icon: Users, color: "text-navy", bg: "bg-navy/10" },
                 { label: `${currentMonthNum}월 수업`, value: `${monthlyLessonCount}회`, icon: BookOpen, color: "text-gold-dark", bg: "bg-gold/10" },
