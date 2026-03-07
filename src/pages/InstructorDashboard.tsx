@@ -2698,15 +2698,15 @@ export default function InstructorDashboard() {
         {activeTab === "students" && (
           <div className="space-y-4">
             {/* Period navigator */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <Users className="w-4 h-4 text-navy" />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <h2 className="text-base font-bold text-foreground flex items-center gap-2 flex-wrap">
+                <Users className="w-4 h-4 text-primary" />
                 담당 학생 관리
-                <span className="text-xs px-2 py-0.5 rounded-full bg-navy/10 text-navy font-medium">{students.filter(s => { const sp = allPeriods[studentTabPeriodIdx] || period; return !s.start_date || !sp || s.start_date <= sp.end_date; }).length}명</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{students.filter(s => { const sp = allPeriods[studentTabPeriodIdx] || period; return !s.start_date || !sp || s.start_date <= sp.end_date; }).length}명</span>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 text-xs gap-1 ml-2 border-gold/40 text-gold-dark hover:bg-gold/8"
+                  className="h-7 text-xs gap-1 border-gold/40 text-gold-dark hover:bg-gold/8"
                   onClick={() => setShowBulkGoalModal(true)}
                 >
                   <Target className="w-3 h-3" />
@@ -2714,7 +2714,7 @@ export default function InstructorDashboard() {
                 </Button>
               </h2>
               {allPeriods.length > 0 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => setStudentTabPeriodIdx(Math.max(0, studentTabPeriodIdx - 1))}
                     disabled={studentTabPeriodIdx <= 0}
@@ -2844,12 +2844,12 @@ export default function InstructorDashboard() {
         {/* ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "settlement" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                 <Banknote className="w-4 h-4 text-success" />
                 정산 관리
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => {
                       if (settlementMonth === 0) { setSettlementYear(y => y - 1); setSettlementMonth(11); }
@@ -2916,12 +2916,12 @@ export default function InstructorDashboard() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/40 border-b border-border">
-                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">일자</th>
-                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">구분</th>
-                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">업무내용</th>
-                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">시간</th>
-                      <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">급여</th>
-                      <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">누적 금액</th>
+                      <th className="text-left px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">일자</th>
+                      <th className="text-left px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">구분</th>
+                      <th className="text-left px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">업무내용</th>
+                      <th className="text-left px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">시간</th>
+                      <th className="text-right px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">급여</th>
+                      <th className="text-right px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground hidden sm:table-cell">누적</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2934,21 +2934,21 @@ export default function InstructorDashboard() {
                     ) : (
                       settlementWithCumulative.map((row, idx) => (
                         <tr key={row.key} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-2.5 text-xs text-foreground">
+                          <td className="px-2 sm:px-4 py-2.5 text-xs text-foreground whitespace-nowrap">
                             {row.date.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}
                           </td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-2 sm:px-4 py-2.5">
                             <span className={cn(
-                              "text-[10px] px-2 py-0.5 rounded-full font-medium",
-                              row.type === 'lesson' ? "bg-navy/10 text-navy" : "bg-gold/10 text-gold-dark"
+                              "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                              row.type === 'lesson' ? "bg-primary/10 text-primary" : "bg-gold/10 text-gold-dark"
                             )}>
                               {row.type === 'lesson' ? '수업' : '미팅'}
                             </span>
                           </td>
-                          <td className="px-4 py-2.5 text-xs text-foreground">{row.description}</td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-2 sm:px-4 py-2.5 text-xs text-foreground max-w-[120px] sm:max-w-none truncate">{row.description}</td>
+                          <td className="px-2 sm:px-4 py-2.5">
                             <select
-                              className="text-xs bg-transparent border border-border rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              className="text-xs bg-transparent border border-border rounded px-1 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                               value={row.durationHours}
                               onChange={(e) => setDurationOverrides(prev => ({ ...prev, [row.key]: parseFloat(e.target.value) }))}
                             >
@@ -2957,8 +2957,8 @@ export default function InstructorDashboard() {
                               ))}
                             </select>
                           </td>
-                          <td className="px-4 py-2.5 text-xs text-right font-medium text-foreground">₩{row.pay.toLocaleString()}</td>
-                          <td className="px-4 py-2.5 text-xs text-right font-bold text-success">₩{row.cumulative.toLocaleString()}</td>
+                          <td className="px-2 sm:px-4 py-2.5 text-xs text-right font-medium text-foreground whitespace-nowrap">₩{row.pay.toLocaleString()}</td>
+                          <td className="px-2 sm:px-4 py-2.5 text-xs text-right font-bold text-success hidden sm:table-cell">₩{row.cumulative.toLocaleString()}</td>
                         </tr>
                       ))
                     )}
@@ -2966,9 +2966,9 @@ export default function InstructorDashboard() {
                   {settlementWithCumulative.length > 0 && (
                     <tfoot>
                       <tr className="bg-muted/30 border-t border-border">
-                        <td colSpan={4} className="px-4 py-3 text-xs font-bold text-foreground">합계</td>
-                        <td className="px-4 py-3 text-xs text-right font-bold text-foreground">₩{totalAmount.toLocaleString()}</td>
-                        <td className="px-4 py-3"></td>
+                        <td colSpan={4} className="px-2 sm:px-4 py-3 text-xs font-bold text-foreground">합계</td>
+                        <td className="px-2 sm:px-4 py-3 text-xs text-right font-bold text-foreground">₩{totalAmount.toLocaleString()}</td>
+                        <td className="px-2 sm:px-4 py-3 hidden sm:table-cell"></td>
                       </tr>
                     </tfoot>
                   )}
