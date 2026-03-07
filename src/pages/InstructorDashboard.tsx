@@ -1892,8 +1892,8 @@ export default function InstructorDashboard() {
       )}
 
       {/* Tab Nav */}
-      <div className="border-b border-border bg-card px-5">
-        <div className="flex gap-0 max-w-5xl mx-auto">
+      <div className="border-b border-border bg-card px-3 sm:px-5 overflow-x-auto scrollbar-none">
+        <div className="flex gap-0 max-w-5xl mx-auto min-w-max">
           {[
             { id: "dashboard" as const, label: "대시보드", icon: CalendarDays },
             { id: "students" as const, label: "학생 관리", icon: Users },
