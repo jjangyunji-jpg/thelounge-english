@@ -466,8 +466,25 @@ export default function StudentManagement() {
         withdrawal_reason: withdrawReason.trim() || null,
       }).eq("id", withdrawTarget.dbId);
     }
+
+    // Auto-delete future unstarted sessions with no notes
+    const { data: futureSessions } = await supabase
+      .from("class_sessions")
+      .select("id, started_at, notes")
+      .eq("student_name", withdrawTarget.name)
+      .is("started_at", null)
+      .gte("scheduled_at", new Date().toISOString());
+
+    const deletableIds = (futureSessions || [])
+      .filter(s => !s.notes || s.notes === "")
+      .map(s => s.id);
+
+    if (deletableIds.length > 0) {
+      await supabase.from("class_sessions").delete().in("id", deletableIds);
+    }
+
     setStudents((prev) => prev.map((s) => (s.id === withdrawTarget.id ? { ...s, status: "graduated", withdrawalReason: withdrawReason.trim() } : s)));
-    toast({ title: `${withdrawTarget.name} 퇴원 처리 완료` });
+    toast({ title: `${withdrawTarget.name} 퇴원 처리 완료 (미래 수업 ${deletableIds.length}건 삭제)` });
     setWithdrawing(false);
     setWithdrawTarget(null);
     setWithdrawReason("");
