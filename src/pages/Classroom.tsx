@@ -1066,7 +1066,7 @@ export default function Classroom() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => setVersionModalOpen(true)}
                       disabled={!session.sessionId}
                       className="h-7 text-xs gap-1.5 transition-all border-muted-foreground/30 text-muted-foreground hover:bg-muted"
