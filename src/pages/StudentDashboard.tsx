@@ -1413,7 +1413,7 @@ export default function StudentDashboard() {
                 )}
               >
                 <stat.icon className={cn("w-4 h-4 mb-2", stat.alert ? "text-destructive" : "text-gold")} />
-                <p className={cn("text-xl font-black leading-none", stat.alert ? "text-destructive" : "text-foreground")}>{stat.value}</p>
+                <p className={cn("text-lg sm:text-xl font-black leading-none", stat.alert ? "text-destructive" : "text-foreground")}>{stat.value}</p>
                 <p className="text-[10px] font-semibold text-foreground mt-1">{stat.label}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{stat.sub}</p>
               </div>
