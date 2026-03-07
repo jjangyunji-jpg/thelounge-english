@@ -2916,12 +2916,12 @@ export default function InstructorDashboard() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/40 border-b border-border">
-                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">일자</th>
-                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">구분</th>
-                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">업무내용</th>
-                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">시간</th>
-                      <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">급여</th>
-                      <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">누적 금액</th>
+                      <th className="text-left px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">일자</th>
+                      <th className="text-left px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">구분</th>
+                      <th className="text-left px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">업무내용</th>
+                      <th className="text-left px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">시간</th>
+                      <th className="text-right px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground">급여</th>
+                      <th className="text-right px-2 sm:px-4 py-2.5 text-[11px] font-semibold text-muted-foreground hidden sm:table-cell">누적</th>
                     </tr>
                   </thead>
                   <tbody>
