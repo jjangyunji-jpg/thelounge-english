@@ -2844,12 +2844,12 @@ export default function InstructorDashboard() {
         {/* ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "settlement" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                 <Banknote className="w-4 h-4 text-success" />
                 정산 관리
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => {
                       if (settlementMonth === 0) { setSettlementYear(y => y - 1); setSettlementMonth(11); }
