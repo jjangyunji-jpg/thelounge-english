@@ -2524,7 +2524,7 @@ export default function InstructorDashboard() {
                         const latestPast = pastSessions[0] || null;
                         const futureSessions = sSessions.filter(s => new Date(s.scheduled_at) > nowTs).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
                         const nextSession = futureSessions[0] || null;
-                        const sessionAssignments = latestPast ? assignments.filter(a => a.student_name === st.student_name && a.session_id === latestPast.id) : [];
+                        const sessionAssignments = assignments.filter(a => a.student_name === st.student_name && (a.is_preset || (latestPast && a.session_id === latestPast.id)));
                         const totalHw = sessionAssignments.length;
                         const submittedCount = sessionAssignments.filter(a => {
                           const sub = submissions.find(s => s.assignment_id === a.id);
