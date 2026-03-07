@@ -221,7 +221,7 @@ export default function ClassNote() {
 
       {/* Two-column layout with sidebar */}
       {student && !loadingSessions && selectedSession && (
-        <div className="flex-1 flex min-h-0">
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0">
           {/* Session Sidebar */}
           <SessionSidebar
             sessions={displaySessions}
@@ -247,16 +247,16 @@ export default function ClassNote() {
           />
 
           {/* Main content area */}
-          <div className="flex-1 flex gap-5 px-4 py-5 max-w-7xl w-full mx-auto overflow-y-auto">
+          <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-5 px-3 sm:px-4 py-4 sm:py-5 max-w-7xl w-full mx-auto overflow-y-auto">
             {/* ── LEFT COLUMN: Notes + Homework ────────────────────────────── */}
-            <div className="flex-1 flex flex-col gap-5 min-w-0">
+            <div className="flex-1 flex flex-col gap-4 lg:gap-5 min-w-0">
               {/* 수업 노트 (읽기 전용) */}
               <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
-                  <FileText className="w-4 h-4 text-gold" />
+                <div className="px-3 sm:px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
+                  <FileText className="w-4 h-4 text-gold flex-shrink-0" />
                   <span className="font-semibold text-sm text-foreground">수업 노트</span>
                   <div className="flex items-center gap-2 ml-auto">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
                       {formatDate(selectedSession.scheduled_at)} {formatTime(selectedSession.scheduled_at)}
                     </span>
                     <Button
@@ -278,7 +278,7 @@ export default function ClassNote() {
                 </div>
 
                 {/* Session meta */}
-                <div className="px-4 py-2.5 border-b border-border/50 bg-muted/10 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                <div className="px-3 sm:px-4 py-2.5 border-b border-border/50 bg-muted/10 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <BookOpen className="w-3.5 h-3.5" /> {selectedSession.level}
                   </span>
@@ -291,7 +291,7 @@ export default function ClassNote() {
                 </div>
 
                 <div
-                  className="tiptap h-[600px] overflow-y-auto p-4 text-sm leading-relaxed text-foreground [&_a]:text-[hsl(var(--gold-dark))] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:opacity-80"
+                  className="tiptap h-[400px] sm:h-[600px] overflow-y-auto p-3 sm:p-4 text-sm leading-relaxed text-foreground [&_a]:text-[hsl(var(--gold-dark))] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:opacity-80"
                   dangerouslySetInnerHTML={{ __html: (() => {
                     const raw = selectedSession.notes || "";
                     if (!raw) return "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>";
@@ -313,11 +313,11 @@ export default function ClassNote() {
               {/* 비고 (read-only) */}
               {selectedSession.remarks && (
                 <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
-                  <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
+                  <div className="px-3 sm:px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
                     <FileText className="w-4 h-4 text-gold" />
                     <span className="font-semibold text-sm text-foreground">비고</span>
                   </div>
-                  <div className="px-4 py-3">
+                  <div className="px-3 sm:px-4 py-3">
                     <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{selectedSession.remarks}</p>
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export default function ClassNote() {
             </div>
 
             {/* ── RIGHT COLUMN: Vocabulary + Test ──────────────────────────── */}
-            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
+            <div className="w-full lg:w-80 xl:w-96 lg:flex-shrink-0 flex flex-col">
               <StudentVocabPanel
                 studentName={student}
                 scheduledAt={new Date(selectedSession.scheduled_at)}
