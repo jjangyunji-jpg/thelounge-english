@@ -880,10 +880,10 @@ export default function Classroom() {
 
       {/* ── MEET STATUS BANNER ───────────────────────────────────────────── */}
       {classState === "ready" && (
-        <div className="bg-gold/5 border-b border-gold/20 px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm">
-            <WifiOff className="w-4 h-4 text-gold-dark" />
-            <span className="text-gold-dark font-medium text-sm">수업 시작 버튼을 누르면 Google Meet가 자동으로 열립니다</span>
+        <div className="bg-gold/5 border-b border-gold/20 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs sm:text-sm">
+            <WifiOff className="w-4 h-4 text-gold-dark flex-shrink-0" />
+            <span className="text-gold-dark font-medium">수업 시작 버튼을 누르면 Google Meet가 자동으로 열립니다</span>
           </div>
           <span className="text-xs text-muted-foreground font-mono hidden md:inline">{session.meetLink}</span>
         </div>
