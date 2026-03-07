@@ -1101,19 +1101,19 @@ export default function StudentDashboard() {
       />
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-navy flex items-center justify-center shadow-sm">
+      <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-3 sm:px-5 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm flex-shrink-0">
               <Coffee className="w-4 h-4 text-gold" />
             </div>
-            <div>
-              <p className="font-bold text-foreground text-sm leading-none">더라운지영어</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{authNickname || student} 님</p>
+            <div className="min-w-0">
+              <p className="font-bold text-foreground text-sm leading-none truncate">더라운지영어</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{authNickname || student} 님</p>
             </div>
           </div>
           {authStudent && (
-            <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
+            <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               <button
                 onClick={async () => {
                   try {
@@ -1123,49 +1123,32 @@ export default function StudentDashboard() {
                     console.error("PDF export error:", e);
                   }
                 }}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] sm:text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="px-1.5 sm:px-2 py-1.5 rounded-lg text-[11px] sm:text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
               >
-                이용가이드
+                가이드
               </button>
               <button
                 onClick={() => setShowBugReport(true)}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] sm:text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="px-1.5 sm:px-2 py-1.5 rounded-lg text-[11px] sm:text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
                 title="버그 신고 / 개선 제안"
               >
-                제안/신고
+                제안
               </button>
               <button
                 onClick={() => navigate("/my/profile")}
-                className="hidden sm:flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="px-1.5 sm:px-2 py-1.5 rounded-lg text-[11px] sm:text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
               >
-                마이페이지
+                MY
               </button>
               <button
                 onClick={handleLogout}
-                className="hidden sm:flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="px-1.5 sm:px-2 py-1.5 rounded-lg text-[11px] sm:text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
               >
                 로그아웃
               </button>
             </div>
           )}
         </div>
-        {/* Mobile-only second row for profile/logout */}
-        {authStudent && (
-          <div className="flex sm:hidden items-center justify-end gap-2 mt-1.5 -mb-1">
-            <button
-              onClick={() => navigate("/my/profile")}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              마이페이지
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              로그아웃
-            </button>
-          </div>
-        )}
       </header>
 
       {/* ── Period Navigation ── */}

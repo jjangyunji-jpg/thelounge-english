@@ -350,34 +350,33 @@ export default function Vocabulary() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-5 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+      <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-3 sm:px-5 py-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <button onClick={() => navigate("/my/dashboard")}
-            className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors flex-shrink-0"
           >
             <ChevronLeft className="w-4 h-4 text-foreground" />
           </button>
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-gold" />
-            <span className="font-bold text-foreground text-sm">
-              {displayName || student} 님의 단어장
-            </span>
-            {!loading && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{words.length}개</span>
-            )}
-          </div>
+          <BookOpen className="w-4 h-4 text-gold flex-shrink-0" />
+          <span className="font-bold text-foreground text-sm truncate">
+            {displayName || student} 님의 단어장
+          </span>
+          {!loading && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold flex-shrink-0">{words.length}개</span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {words.length > 0 && (
             <button
               onClick={() => setShowRangePicker(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-navy text-primary-foreground text-xs font-semibold hover:bg-navy-light transition-colors"
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] sm:text-xs font-semibold hover:bg-primary/90 transition-colors whitespace-nowrap"
             >
               <Brain className="w-3.5 h-3.5" />
-              학습 / 테스트
+              <span className="hidden sm:inline">학습 / 테스트</span>
+              <span className="sm:hidden">학습</span>
             </button>
           )}
-          <button onClick={load} className="text-muted-foreground hover:text-foreground transition-colors" title="새로고침">
+          <button onClick={load} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0" title="새로고침">
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           </button>
         </div>
