@@ -1905,7 +1905,7 @@ export default function InstructorDashboard() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={cn("flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+              className={cn("flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
                 activeTab === t.id
                   ? "border-navy text-navy"
                   : "border-transparent text-muted-foreground hover:text-foreground"
