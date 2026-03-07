@@ -3074,7 +3074,15 @@ export default function InstructorDashboard() {
                     <MessageSquare className="w-4 h-4 text-navy" />
                     개별 피드백
                   </h3>
-                  {feedbackData.map((fb: any) => {
+                  {[...feedbackData].sort((a, b) => {
+                    const avgScore = (fb: any) => {
+                      const r = fb.ratings as Record<string, number> | null;
+                      if (!r) return 0;
+                      const vals = Object.values(r).filter(v => typeof v === "number" && v > 0);
+                      return vals.length > 0 ? vals.reduce((s: number, v: number) => s + v, 0) / vals.length : 0;
+                    };
+                    return avgScore(a) - avgScore(b);
+                  }).map((fb: any) => {
                     const ratings = fb.ratings as Record<string, number> | null;
                     return (
                       <div key={fb.id} className="rounded-lg border border-border bg-card p-4 space-y-2.5">
