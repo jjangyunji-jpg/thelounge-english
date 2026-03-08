@@ -134,12 +134,29 @@ export default function ClassFeedbackManagement() {
   const overallAvg = getAvg(filtered);
   const withComments = filtered.filter((f) => f.comment?.trim()).length;
 
-  // Sort: with comments first, then by avg score ascending
+  // Sort: with comments first, then by avg score ascending, then by date ascending
   const sortedInstructors = Object.entries(byInstructor).sort(([, a], [, b]) => {
     const aHasComment = a.some((f) => f.comment?.trim());
     const bHasComment = b.some((f) => f.comment?.trim());
     if (aHasComment !== bHasComment) return aHasComment ? -1 : 1;
-    return getAvg(a) - getAvg(b);
+    const avgDiff = getAvg(a) - getAvg(b);
+    if (avgDiff !== 0) return avgDiff;
+    const aLatest = Math.max(...a.map((f) => new Date(f.created_at).getTime()));
+    const bLatest = Math.max(...b.map((f) => new Date(f.created_at).getTime()));
+    return aLatest - bLatest;
+  });
+
+  // Sort individual feedback records within each instructor group
+  Object.values(byInstructor).forEach((records) => {
+    records.sort((a, b) => {
+      const aHas = !!a.comment?.trim();
+      const bHas = !!b.comment?.trim();
+      if (aHas !== bHas) return aHas ? -1 : 1;
+      const aAvg = a.ratings ? Object.values(a.ratings as Record<string, number>).reduce((s, v) => s + v, 0) / Object.values(a.ratings as Record<string, number>).length : (a.satisfaction + a.teaching_quality + a.communication + a.lesson_preparation) / 4;
+      const bAvg = b.ratings ? Object.values(b.ratings as Record<string, number>).reduce((s, v) => s + v, 0) / Object.values(b.ratings as Record<string, number>).length : (b.satisfaction + b.teaching_quality + b.communication + b.lesson_preparation) / 4;
+      if (aAvg !== bAvg) return aAvg - bAvg;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
   });
 
   return (
