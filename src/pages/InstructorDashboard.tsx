@@ -1893,6 +1893,17 @@ export default function InstructorDashboard() {
         />
       )}
 
+      {studentFeedbackModal && instructor && (
+        <StudentFeedbackModal
+          instructorName={instructor.name}
+          students={studentFeedbackModal.students}
+          periodId={studentFeedbackModal.periodId}
+          periodLabel={studentFeedbackModal.periodLabel}
+          onComplete={() => { setStudentFeedbackModal(null); }}
+          onClose={() => setStudentFeedbackModal(null)}
+        />
+      )}
+
       {/* Tab Nav */}
       <div className="border-b border-border bg-card px-2 sm:px-5 overflow-x-auto scrollbar-none">
         <div className="flex gap-0 max-w-5xl mx-auto min-w-max">
