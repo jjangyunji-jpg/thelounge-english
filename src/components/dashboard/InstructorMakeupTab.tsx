@@ -303,6 +303,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
     setRejectingId(null);
     setRejectReason("");
     await loadData();
+    onSessionChanged?.();
     setProcessingId(null);
   };
 
