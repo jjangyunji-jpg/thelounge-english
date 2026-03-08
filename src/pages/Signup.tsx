@@ -52,7 +52,7 @@ export default function Signup() {
       if (role === "student") {
         body.phone = phone.trim();
         body.desiredLevel = desiredLevel;
-        body.preferredSchedule = preferredSchedule.trim();
+        body.preferredSchedule = preferredSchedule.join(", ");
         body.note = note.trim();
       }
 
