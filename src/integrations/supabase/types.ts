@@ -786,6 +786,36 @@ export type Database = {
           },
         ]
       }
+      payment_confirmations: {
+        Row: {
+          confirmed: boolean
+          confirmed_at: string | null
+          created_at: string
+          id: string
+          month: string
+          note: string | null
+          student_name: string
+        }
+        Insert: {
+          confirmed?: boolean
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          month: string
+          note?: string | null
+          student_name: string
+        }
+        Update: {
+          confirmed?: boolean
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          month?: string
+          note?: string | null
+          student_name?: string
+        }
+        Relationships: []
+      }
       schedule_periods: {
         Row: {
           created_at: string
