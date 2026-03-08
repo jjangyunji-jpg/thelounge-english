@@ -168,16 +168,6 @@ export default function CashReceiptManagement() {
             </div>
           )}
         </td>
-        <td className="px-4 py-3">
-          {receipt ? (
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              {receipt.receipt_type === "phone" ? <Phone className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
-              {receipt.receipt_number}
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground/50">—</span>
-          )}
-        </td>
       </tr>
     );
   };
