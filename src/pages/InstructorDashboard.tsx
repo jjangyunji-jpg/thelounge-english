@@ -1290,7 +1290,7 @@ export default function InstructorDashboard() {
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "profile" | "guide">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "makeup" | "profile" | "guide">("dashboard");
   const [feedbackData, setFeedbackData] = useState<any[]>([]);
   const [feedbackCategories, setFeedbackCategories] = useState<{ key: string; label: string }[]>([]);
   const [feedbackPeriodIdx, setFeedbackPeriodIdx] = useState(-1);
