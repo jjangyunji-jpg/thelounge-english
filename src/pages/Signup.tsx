@@ -34,6 +34,7 @@ export default function Signup() {
   const [phone, setPhone] = useState("");
   const [desiredLevel, setDesiredLevel] = useState("");
   const [preferredSchedule, setPreferredSchedule] = useState<string[]>([]);
+  const [referralSource, setReferralSource] = useState<string[]>([]);
   const [note, setNote] = useState("");
 
   const isNewStudent = role === "student" && studentType === "new";
