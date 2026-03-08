@@ -1000,6 +1000,57 @@ export type Database = {
           },
         ]
       }
+      student_surveys: {
+        Row: {
+          additional_note: string | null
+          completed_at: string | null
+          created_at: string
+          disliked_methods: string | null
+          english_usage_frequency: string | null
+          id: string
+          interest_topics: string[] | null
+          past_methods: string | null
+          preferred_methods: string[] | null
+          student_name: string
+          study_goal: string | null
+          study_reason: string[] | null
+          study_trigger: string | null
+          user_id: string
+        }
+        Insert: {
+          additional_note?: string | null
+          completed_at?: string | null
+          created_at?: string
+          disliked_methods?: string | null
+          english_usage_frequency?: string | null
+          id?: string
+          interest_topics?: string[] | null
+          past_methods?: string | null
+          preferred_methods?: string[] | null
+          student_name: string
+          study_goal?: string | null
+          study_reason?: string[] | null
+          study_trigger?: string | null
+          user_id: string
+        }
+        Update: {
+          additional_note?: string | null
+          completed_at?: string | null
+          created_at?: string
+          disliked_methods?: string | null
+          english_usage_frequency?: string | null
+          id?: string
+          interest_topics?: string[] | null
+          past_methods?: string | null
+          preferred_methods?: string[] | null
+          student_name?: string
+          study_goal?: string | null
+          study_reason?: string[] | null
+          study_trigger?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       support_requests: {
         Row: {
           admin_note: string | null
