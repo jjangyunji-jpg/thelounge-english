@@ -136,6 +136,7 @@ export default function CashReceiptManagement() {
     setConfirmations((confRes.data as any as PaymentConfirmation[]) || []);
     setPrepaidCredits((creditRes.data as any as PrepaidCredit[]) || []);
     setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
+    setAttendanceRequests((attendRes.data as any as AttendanceRequest[]) || []);
 
     const counts = new Map<string, number>();
     (sessRes.data || []).forEach((s: any) => {
