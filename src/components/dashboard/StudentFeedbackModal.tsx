@@ -119,6 +119,7 @@ export default function StudentFeedbackModal({
       const { data, error } = await supabase.functions.invoke("suggest-student-goals", {
         body: {
           student_name: student.student_name,
+          instructor_name: instructorName,
           level: student.level || "B1",
           current_objective: student.learning_objective || "",
           ratings,
