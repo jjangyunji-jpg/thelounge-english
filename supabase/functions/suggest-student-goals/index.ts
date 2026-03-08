@@ -37,19 +37,54 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const body = await req.json();
-    const { student_name, level, current_objective, comment, period_label } = body;
+    const { student_name, level, current_objective, comment, period_label, instructor_name } = body;
 
     // Support both old (checked/unchecked) and new (ratings) format
     let evaluationText: string;
     if (body.ratings && Array.isArray(body.ratings)) {
-      // New star rating format: [{label, score}]
       evaluationText = body.ratings
         .map((r: { label: string; score: number }) => `${r.label}: ${"★".repeat(r.score)}${"☆".repeat(5 - r.score)} (${r.score}/5)`)
         .join("\n");
     } else {
-      // Legacy checklist format
       const { checked = [], unchecked = [] } = body;
       evaluationText = `✅ 달성: ${checked.length > 0 ? checked.join(", ") : "없음"}\n❌ 미달성: ${unchecked.length > 0 ? unchecked.join(", ") : "없음"}`;
+    }
+
+    // Fetch curriculum guide for this level
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    let curriculumGuideText = "";
+    const { data: guideData } = await serviceClient
+      .from("curriculum_guides")
+      .select("content")
+      .eq("level", level || "B1")
+      .single();
+    if (guideData?.content?.trim()) {
+      curriculumGuideText = `\n\n[${level} 커리큘럼 가이드]\n${guideData.content.trim()}`;
+    }
+
+    // Fetch recent session topics (last ~20 sessions) for context
+    let sessionHistoryText = "";
+    if (student_name && instructor_name) {
+      const { data: sessions } = await serviceClient
+        .from("class_sessions")
+        .select("scheduled_at, topic, notes")
+        .eq("student_name", student_name)
+        .eq("instructor_name", instructor_name)
+        .not("ended_at", "is", null)
+        .order("scheduled_at", { ascending: false })
+        .limit(20);
+
+      if (sessions && sessions.length > 0) {
+        const history = sessions.reverse().map((s: any) => {
+          const date = new Date(s.scheduled_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+          return `- ${date}: ${s.topic || "주제 없음"}`;
+        }).join("\n");
+        sessionHistoryText = `\n\n[최근 수업 히스토리 (최근 ${sessions.length}회)]\n${history}`;
+      }
     }
 
     const systemPrompt = `You are an English class curriculum advisor for Korean learners.
@@ -62,6 +97,8 @@ RULES:
 - Lower scores indicate areas needing more attention
 - Consider the instructor's comment
 - Consider the student's current level and existing objectives
+- If a curriculum guide is provided, align goals with the curriculum roadmap
+- If session history is provided, consider what the student has already covered and suggest natural next steps
 - Be specific and actionable
 - Each goal should be a short phrase (15-30 characters)
 
@@ -77,7 +114,7 @@ Return ONLY a valid JSON object:
 
 강사 평가:
 ${evaluationText}
-${comment ? `코멘트: ${comment}` : ""}`;
+${comment ? `코멘트: ${comment}` : ""}${curriculumGuideText}${sessionHistoryText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
