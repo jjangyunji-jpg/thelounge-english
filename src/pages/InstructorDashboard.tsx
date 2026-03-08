@@ -7,7 +7,7 @@ import {
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
   Shield, Paperclip, CheckCircle, ChevronDown, User, Lock, Monitor, Target,
-  Star, MessageSquare, Download, Bug,
+  Star, MessageSquare, Download, Bug, RotateCcw,
 } from "lucide-react";
 import BugReportModal from "@/components/dashboard/BugReportModal";
 import StudentFeedbackModal from "@/components/dashboard/StudentFeedbackModal";
