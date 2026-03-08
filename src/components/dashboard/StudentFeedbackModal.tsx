@@ -3,6 +3,7 @@ import { Loader2, Sparkles, Target, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import StudentPeriodSummary from "./StudentPeriodSummary";
 
 interface StudentInfo {
   student_name: string;
@@ -15,6 +16,8 @@ interface Props {
   students: StudentInfo[];
   periodId: string;
   periodLabel: string;
+  periodStartDate?: string;
+  periodEndDate?: string;
   onComplete: () => void;
   onClose: () => void;
 }
@@ -55,6 +58,8 @@ export default function StudentFeedbackModal({
   students,
   periodId,
   periodLabel,
+  periodStartDate,
+  periodEndDate,
   onComplete,
   onClose,
 }: Props) {
@@ -211,6 +216,16 @@ export default function StudentFeedbackModal({
         <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
           {!showGoals ? (
             <>
+              {/* Period Summary */}
+              {periodStartDate && periodEndDate && (
+                <StudentPeriodSummary
+                  studentName={student.student_name}
+                  instructorName={instructorName}
+                  periodStartDate={periodStartDate}
+                  periodEndDate={periodEndDate}
+                />
+              )}
+
               {/* Star Ratings */}
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground">평가 항목</p>

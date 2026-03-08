@@ -1313,7 +1313,7 @@ export default function InstructorDashboard() {
   const [reviewHw, setReviewHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
   const [viewCheckedHw, setViewCheckedHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
   const [expandedHwStudent, setExpandedHwStudent] = useState<string | null>(null);
-  const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string } | null>(null);
+  const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
 
   useEffect(() => { init(); }, []);
 
@@ -1478,7 +1478,7 @@ export default function InstructorDashboard() {
             const st = studentsWithPauses.find(s2 => s2.student_name === sn);
             return { student_name: sn, level: st?.level || null, learning_objective: st?.learning_objective || null };
           });
-          setStudentFeedbackModal({ students: feedbackStudents, periodId: pp.id, periodLabel: pp.label });
+          setStudentFeedbackModal({ students: feedbackStudents, periodId: pp.id, periodLabel: pp.label, periodStartDate: pp.start_date, periodEndDate: pp.end_date });
           break; // Only show one period at a time
         }
       }
@@ -1934,6 +1934,8 @@ export default function InstructorDashboard() {
           students={studentFeedbackModal.students}
           periodId={studentFeedbackModal.periodId}
           periodLabel={studentFeedbackModal.periodLabel}
+          periodStartDate={studentFeedbackModal.periodStartDate}
+          periodEndDate={studentFeedbackModal.periodEndDate}
           onComplete={() => { setStudentFeedbackModal(null); }}
           onClose={() => setStudentFeedbackModal(null)}
         />
@@ -2350,7 +2352,7 @@ export default function InstructorDashboard() {
                                                     const st = students.find(st2 => st2.student_name === sn);
                                                     return { student_name: sn, level: st?.level || null, learning_objective: st?.learning_objective || null };
                                                   });
-                                                  setStudentFeedbackModal({ students: feedbackStudents, periodId: period.id, periodLabel: period.label });
+                                                  setStudentFeedbackModal({ students: feedbackStudents, periodId: period.id, periodLabel: period.label, periodStartDate: period.start_date, periodEndDate: period.end_date });
                                                 }
                                               }
                                             }
