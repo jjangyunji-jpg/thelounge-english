@@ -28,7 +28,7 @@ export default function Signup() {
   // Waitlist fields (student only)
   const [phone, setPhone] = useState("");
   const [desiredLevel, setDesiredLevel] = useState("");
-  const [preferredSchedule, setPreferredSchedule] = useState("");
+  const [preferredSchedule, setPreferredSchedule] = useState<string[]>([]);
   const [note, setNote] = useState("");
 
   const handleSignup = async (e: React.FormEvent) => {
