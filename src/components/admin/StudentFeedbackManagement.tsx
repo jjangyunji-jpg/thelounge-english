@@ -186,99 +186,127 @@ export default function StudentFeedbackManagement() {
           {selectedPeriod ? `${selectedPeriod.label} 기간에 작성된 피드백이 없습니다` : "기간을 선택해주세요"}
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((fb) => {
-            const cl = fb.checklist || {};
-            const checked = Object.values(cl).filter(Boolean).length;
-            const total = Object.keys(cl).length;
-            const isExpanded = expandedId === fb.id;
+        <div className="space-y-6">
+          {(() => {
+            // Group by instructor
+            const grouped: Record<string, FeedbackRecord[]> = {};
+            filtered.forEach((fb) => {
+              if (!grouped[fb.instructor_name]) grouped[fb.instructor_name] = [];
+              grouped[fb.instructor_name].push(fb);
+            });
+            return Object.entries(grouped)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([instructorName, fbs]) => {
+                const instrChecked = fbs.reduce((s, f) => s + Object.values(f.checklist || {}).filter(Boolean).length, 0);
+                const instrTotal = fbs.reduce((s, f) => s + Object.keys(f.checklist || {}).length, 0);
+                const instrRate = instrTotal > 0 ? Math.round((instrChecked / instrTotal) * 100) : 0;
 
-            return (
-              <Card key={fb.id} className="overflow-hidden">
-                <button
-                  onClick={() => setExpandedId(isExpanded ? null : fb.id)}
-                  className="w-full text-left p-4 flex items-center gap-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-foreground">{fb.student_name}</span>
-                      <Badge variant="outline" className="text-[10px]">{fb.instructor_name}</Badge>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(fb.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })}
+                return (
+                  <div key={instructorName} className="space-y-2">
+                    <div className="flex items-center gap-2 px-1">
+                      <h3 className="text-sm font-bold text-foreground">{instructorName}</h3>
+                      <Badge variant="secondary" className="text-[10px]">{fbs.length}명</Badge>
+                      <span className={`text-[10px] font-medium ${instrRate >= 70 ? "text-success" : instrRate >= 40 ? "text-gold-dark" : "text-destructive"}`}>
+                        평균 달성률 {instrRate}%
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <span className={`text-xs font-medium ${checked === total ? "text-success" : checked >= total / 2 ? "text-gold-dark" : "text-destructive"}`}>
-                        체크 {checked}/{total}
-                      </span>
-                      {fb.comment && (
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">💬 {fb.comment}</span>
-                      )}
-                      {fb.suggested_goals && (
-                        <span className="text-[10px] text-gold-dark flex items-center gap-0.5">
-                          <Sparkles className="w-3 h-3" /> 목표 제안
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                </button>
+                    <div className="space-y-2">
+                      {fbs.map((fb) => {
+                        const cl = fb.checklist || {};
+                        const checked = Object.values(cl).filter(Boolean).length;
+                        const total = Object.keys(cl).length;
+                        const isExpanded = expandedId === fb.id;
 
-                {isExpanded && (
-                  <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
-                    {/* Checklist */}
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-semibold text-muted-foreground">체크리스트</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        {Object.entries(cl).map(([key, val]) => (
-                          <div key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-muted/30">
-                            {val ? (
-                              <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
-                            ) : (
-                              <Circle className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
+                        return (
+                          <Card key={fb.id} className="overflow-hidden">
+                            <button
+                              onClick={() => setExpandedId(isExpanded ? null : fb.id)}
+                              className="w-full text-left p-4 flex items-center gap-3"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-sm text-foreground">{fb.student_name}</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {new Date(fb.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3 mt-1.5">
+                                  <span className={`text-xs font-medium ${checked === total ? "text-success" : checked >= total / 2 ? "text-gold-dark" : "text-destructive"}`}>
+                                    체크 {checked}/{total}
+                                  </span>
+                                  {fb.comment && (
+                                    <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">💬 {fb.comment}</span>
+                                  )}
+                                  {fb.suggested_goals && (
+                                    <span className="text-[10px] text-gold-dark flex items-center gap-0.5">
+                                      <Sparkles className="w-3 h-3" /> 목표 제안
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                            </button>
+
+                            {isExpanded && (
+                              <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
+                                {/* Checklist */}
+                                <div className="space-y-1.5">
+                                  <p className="text-xs font-semibold text-muted-foreground">체크리스트</p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                    {Object.entries(cl).map(([key, val]) => (
+                                      <div key={key} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-muted/30">
+                                        {val ? (
+                                          <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
+                                        ) : (
+                                          <Circle className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
+                                        )}
+                                        <span className="text-xs text-foreground">{CHECKLIST_LABELS[key] || key}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Comment */}
+                                {fb.comment && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-1">코멘트</p>
+                                    <p className="text-sm text-foreground bg-muted/30 rounded-lg px-3 py-2">{fb.comment}</p>
+                                  </div>
+                                )}
+
+                                {/* Suggested Goals */}
+                                {fb.suggested_goals && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                                      <Sparkles className="w-3 h-3 text-gold" /> AI 추천 학습 목표
+                                    </p>
+                                    <p className="text-sm text-foreground bg-gold/5 border border-gold/20 rounded-lg px-3 py-2 whitespace-pre-line">
+                                      {fb.suggested_goals}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Delete */}
+                                <div className="flex justify-end">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:text-destructive text-xs"
+                                    onClick={() => deleteFeedback(fb.id)}
+                                  >
+                                    삭제
+                                  </Button>
+                                </div>
+                              </div>
                             )}
-                            <span className="text-xs text-foreground">{CHECKLIST_LABELS[key] || key}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Comment */}
-                    {fb.comment && (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">코멘트</p>
-                        <p className="text-sm text-foreground bg-muted/30 rounded-lg px-3 py-2">{fb.comment}</p>
-                      </div>
-                    )}
-
-                    {/* Suggested Goals */}
-                    {fb.suggested_goals && (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-gold" /> AI 추천 학습 목표
-                        </p>
-                        <p className="text-sm text-foreground bg-gold/5 border border-gold/20 rounded-lg px-3 py-2 whitespace-pre-line">
-                          {fb.suggested_goals}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Delete */}
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive text-xs"
-                        onClick={() => deleteFeedback(fb.id)}
-                      >
-                        삭제
-                      </Button>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
-                )}
-              </Card>
-            );
-          })}
+                );
+              });
+          })()}
         </div>
       )}
     </div>
