@@ -148,9 +148,9 @@ export default function CashReceiptManagement() {
 
   const toggleConfirm = async (studentName: string) => {
     const existing = confMap.get(studentName);
+    if (existing?.confirmed) return; // Already confirmed — do nothing
     if (existing) {
-      const newVal = !existing.confirmed;
-      await supabase.from("payment_confirmations" as any).update({ confirmed: newVal, confirmed_at: newVal ? new Date().toISOString() : null } as any).eq("id", existing.id);
+      await supabase.from("payment_confirmations" as any).update({ confirmed: true, confirmed_at: new Date().toISOString() } as any).eq("id", existing.id);
     } else {
       await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: true, confirmed_at: new Date().toISOString() } as any);
     }
