@@ -1453,6 +1453,15 @@ export default function InstructorDashboard() {
     if (studentTabPeriodIdx < 0) setStudentTabPeriodIdx(periods.length > 0 ? periods.length - 1 : 0);
     // settlementPeriodIdx removed — settlement uses month-based navigation
     setHolidays(holRes.data || []);
+
+    // Fetch pending makeup request count
+    const { count: makeupCount } = await supabase
+      .from("makeup_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("instructor_name", ins.name)
+      .eq("status", "pending");
+    setPendingMakeupCount(makeupCount || 0);
+
     setLoading(false);
 
     // ── Check for past periods with completed sessions but missing feedback ──
