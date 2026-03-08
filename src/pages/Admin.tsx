@@ -56,6 +56,8 @@ export default function Admin() {
         return <UserApproval onNavigate={(tab) => setActiveTab(tab as AdminTab)} />;
       case "materials":
         return <TeachingMaterials />;
+      case "student-feedback":
+        return <StudentFeedbackManagement />;
       case "guide":
         return <GuideManagement />;
       case "messages":
