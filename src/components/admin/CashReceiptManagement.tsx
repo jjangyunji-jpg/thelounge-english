@@ -62,6 +62,7 @@ export default function CashReceiptManagement() {
   const [receipts, setReceipts] = useState<CashReceipt[]>([]);
   const [confirmations, setConfirmations] = useState<PaymentConfirmation[]>([]);
   const [sessionCounts, setSessionCounts] = useState<Map<string, number>>(new Map());
+  const [corpSessionCounts, setCorpSessionCounts] = useState<Map<string, number>>(new Map());
   const [prepaidCredits, setPrepaidCredits] = useState<PrepaidCredit[]>([]);
   const [deductions, setDeductions] = useState<PrepaidDeduction[]>([]);
   const [creditModal, setCreditModal] = useState<{ name: string; existing?: PrepaidCredit } | null>(null);
