@@ -5,7 +5,7 @@ import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, P
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-const TEST_ACCOUNTS = ["test", "test 2"];
+const TEST_ACCOUNTS = ["test", "test 2", "test2"];
 const LESSON_PRICE = 50000;
 const GROUP_LESSON_PRICE = 70000;
 
