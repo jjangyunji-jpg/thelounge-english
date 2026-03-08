@@ -58,6 +58,8 @@ export default function StudentFeedbackModal({
   students,
   periodId,
   periodLabel,
+  periodStartDate,
+  periodEndDate,
   onComplete,
   onClose,
 }: Props) {
