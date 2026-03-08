@@ -127,7 +127,6 @@ export default function CashReceiptManagement() {
   const renderStudentRow = (s: StudentRecord, isCorporate = false) => {
     const conf = confMap.get(s.student_name);
     const isConfirmed = conf?.confirmed || false;
-    const receipt = receiptMap.get(s.student_name);
     const fee = isCorporate ? null : getFee(s);
     const count = sessionCounts.get(s.student_name) || 0;
 
@@ -166,16 +165,6 @@ export default function CashReceiptManagement() {
                 ({count}회)
               </span>
             </div>
-          )}
-        </td>
-        <td className="px-4 py-3">
-          {receipt ? (
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              {receipt.receipt_type === "phone" ? <Phone className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
-              {receipt.receipt_number}
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground/50">—</span>
           )}
         </td>
       </tr>
@@ -232,7 +221,6 @@ export default function CashReceiptManagement() {
                   <th className="w-12 px-4 py-3"></th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-right px-4 py-3 font-semibold text-foreground">수강료</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">현금영수증</th>
                 </tr>
               </thead>
               <tbody>
@@ -254,11 +242,41 @@ export default function CashReceiptManagement() {
                   <th className="w-12 px-4 py-3"></th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-right px-4 py-3 font-semibold text-foreground">수강료</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">현금영수증</th>
                 </tr>
               </thead>
               <tbody>
                 {corporateStudents.map(s => renderStudentRow(s, true))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Receipts Table */}
+      {receipts.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">현금영수증 정보</p>
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">유형</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">번호</th>
+                </tr>
+              </thead>
+              <tbody>
+                {receipts.map((r, i) => (
+                  <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30">
+                    <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium">
+                        {r.receipt_type === "phone" ? <><Phone className="w-3 h-3 text-primary" /> 휴대폰</> : <><Building2 className="w-3 h-3 text-amber-500" /> 사업자</>}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-foreground">{r.receipt_number}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
