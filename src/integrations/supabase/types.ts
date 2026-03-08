@@ -227,6 +227,30 @@ export type Database = {
         }
         Relationships: []
       }
+      curriculum_guides: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          level: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          level: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          level?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feedback_categories: {
         Row: {
           created_at: string
