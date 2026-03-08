@@ -145,8 +145,8 @@ export default function CashReceiptManagement() {
   const dedMap = new Map(deductions.map(d => [d.student_name, d]));
   const receiptMap = new Map(receipts.map(r => [r.student_name, r]));
 
-  const regularStudents = students.filter(s => s.student_type !== "corporate").sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
-  const corporateStudents = students.filter(s => s.student_type === "corporate").sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+  const regularStudents = students.filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name)).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+  const corporateStudents = students.filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name)).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
   const toggleConfirm = async (studentName: string) => {
     const existing = confMap.get(studentName);
