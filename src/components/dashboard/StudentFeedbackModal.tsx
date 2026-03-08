@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import StudentPeriodSummary from "./StudentPeriodSummary";
+import SessionGoalsSuggestionView from "./SessionGoalsSuggestionView";
 
 interface StudentInfo {
   student_name: string;
@@ -64,7 +65,7 @@ export default function StudentFeedbackModal({
   onClose,
 }: Props) {
   const { toast } = useToast();
-  type FeedbackEntry = { checklist: Record<string, number>; comment: string; suggestedGoals: string; loadingAI: boolean };
+  type FeedbackEntry = { checklist: Record<string, number>; comment: string; suggestedGoals: string; suggestedTopics: string[]; currentTopics: string[]; loadingAI: boolean };
   const [currentIdx, setCurrentIdx] = useState(0);
   const [feedbacks, setFeedbacks] = useState<Record<string, FeedbackEntry>>(() => {
     const init: Record<string, FeedbackEntry> = {};
@@ -73,6 +74,8 @@ export default function StudentFeedbackModal({
         checklist: Object.fromEntries(RATING_ITEMS.map((c) => [c.key, 0])),
         comment: "",
         suggestedGoals: "",
+        suggestedTopics: [],
+        currentTopics: [],
         loadingAI: false,
       };
     });
@@ -111,6 +114,21 @@ export default function StudentFeedbackModal({
     }));
 
     try {
+      // Fetch current period sessions for this student
+      let currentTopics: string[] = [];
+      if (periodStartDate && periodEndDate) {
+        const { data: sessions } = await supabase
+          .from("class_sessions")
+          .select("scheduled_at, topic")
+          .eq("student_name", student.student_name)
+          .eq("instructor_name", instructorName)
+          .gte("scheduled_at", periodStartDate + "T00:00:00+09:00")
+          .lte("scheduled_at", periodEndDate + "T23:59:59+09:00")
+          .order("scheduled_at", { ascending: true });
+
+        currentTopics = (sessions || []).map((s) => s.topic || "");
+      }
+
       const ratings = RATING_ITEMS.map((c) => ({
         label: c.label,
         score: fb.checklist[c.key] || 0,
@@ -125,14 +143,21 @@ export default function StudentFeedbackModal({
           ratings,
           comment: fb.comment,
           period_label: periodLabel,
+          session_count: currentTopics.length || 4,
+          current_session_topics: currentTopics,
         },
       });
 
       if (error) throw error;
-      const goals = data?.goals || "";
       setFeedbacks((prev) => ({
         ...prev,
-        [student.student_name]: { ...prev[student.student_name], suggestedGoals: goals, loadingAI: false },
+        [student.student_name]: {
+          ...prev[student.student_name],
+          suggestedGoals: data?.goals || "",
+          suggestedTopics: data?.session_topics || [],
+          currentTopics,
+          loadingAI: false,
+        },
       }));
       setShowGoals(true);
     } catch (e: any) {
@@ -181,6 +206,22 @@ export default function StudentFeedbackModal({
       toast({ title: "목표 적용 실패", description: error.message, variant: "destructive" });
     } else {
       toast({ title: `${student.student_name} 학습 목표 업데이트됨 ✓` });
+    }
+  };
+
+  const saveTopicsToStudent = async () => {
+    if (!fb.suggestedTopics.length) return;
+    const lessonGoal = fb.suggestedTopics.map((t, i) => `${i + 1}회: ${t}`).join("\n");
+    const { error } = await supabase
+      .from("instructor_students")
+      .update({ lesson_goal: lessonGoal })
+      .eq("student_name", student.student_name)
+      .eq("instructor_name", instructorName);
+
+    if (error) {
+      toast({ title: "수업 목표 저장 실패", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${student.student_name} 수업 목표 저장됨 ✓` });
     }
   };
 
@@ -259,33 +300,28 @@ export default function StudentFeedbackModal({
               </div>
             </>
           ) : (
-            /* AI Suggested Goals view */
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-gold" />
-                <p className="text-sm font-semibold text-foreground">AI 추천 학습 목표</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                <textarea
-                  value={fb.suggestedGoals}
-                  onChange={(e) =>
-                    setFeedbacks((prev) => ({
-                      ...prev,
-                      [student.student_name]: { ...prev[student.student_name], suggestedGoals: e.target.value },
-                    }))
-                  }
-                  className="w-full h-28 bg-transparent text-sm resize-none focus:outline-none"
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground">AI가 제안한 목표를 수정할 수 있습니다. 적용 시 학생의 장기 학습 목표에 반영됩니다.</p>
-              <Button
-                onClick={applyGoalsToStudent}
-                disabled={!fb.suggestedGoals.trim()}
-                className="w-full bg-gold hover:bg-gold/90 text-foreground font-bold"
-              >
-                <Target className="w-4 h-4 mr-2" /> 학습 목표에 적용
-              </Button>
-            </div>
+            <SessionGoalsSuggestionView
+              studentName={student.student_name}
+              level={student.level || "B1"}
+              currentPeriodLabel={periodLabel}
+              currentTopics={fb.currentTopics}
+              suggestedTopics={fb.suggestedTopics}
+              suggestedGoals={fb.suggestedGoals}
+              onTopicsChange={(topics) =>
+                setFeedbacks((prev) => ({
+                  ...prev,
+                  [student.student_name]: { ...prev[student.student_name], suggestedTopics: topics },
+                }))
+              }
+              onGoalsChange={(goals) =>
+                setFeedbacks((prev) => ({
+                  ...prev,
+                  [student.student_name]: { ...prev[student.student_name], suggestedGoals: goals },
+                }))
+              }
+              onSaveTopics={saveTopicsToStudent}
+              onApplyGoals={applyGoalsToStudent}
+            />
           )}
         </div>
 

@@ -37,7 +37,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const body = await req.json();
-    const { student_name, level, current_objective, comment, period_label, instructor_name } = body;
+    const { student_name, level, current_objective, comment, period_label, instructor_name, session_count, current_session_topics } = body;
 
     // Support both old (checked/unchecked) and new (ratings) format
     let evaluationText: string;
@@ -87,34 +87,48 @@ serve(async (req) => {
       }
     }
 
+    const topicCount = session_count || 4;
+
     const systemPrompt = `You are an English class curriculum advisor for Korean learners.
-Based on the instructor's feedback about a student, suggest learning goals for the next month.
+Based on the instructor's feedback about a student, suggest:
+1. Learning goals for the next month (장기 학습 목표)
+2. Per-session topic plan for the next period (exactly ${topicCount} topics)
 
 RULES:
-- Write goals in Korean (한국어)
-- 2~4 concise goals, each on a new line
+- Write in Korean (한국어)
+- 2~4 concise learning goals, each on a new line
+- Generate exactly ${topicCount} session topics for the next period
+- Each session topic should be specific and concise (e.g. "진행형 / 시간 표현", "The Good Place 4-6", "Mock Meeting / 시간 전치사, 접속사")
 - Consider the star ratings (1-5) for each evaluation category
 - Lower scores indicate areas needing more attention
 - Consider the instructor's comment
 - Consider the student's current level and existing objectives
-- If a curriculum guide is provided, align goals with the curriculum roadmap
-- If session history is provided, consider what the student has already covered and suggest natural next steps
+- If a curriculum guide is provided, align goals and topics with the curriculum roadmap
+- If session history is provided, consider what was covered and suggest natural next steps
+- Session topics should build progressively on previous ones
 - Be specific and actionable
 - Each goal should be a short phrase (15-30 characters)
 
 Return ONLY a valid JSON object:
 {
-  "goals": "목표1\\n목표2\\n목표3"
+  "goals": "목표1\\n목표2\\n목표3",
+  "session_topics": ["1회차 주제", "2회차 주제", ...]
 }`;
+
+    let currentTopicsText = "";
+    if (current_session_topics && Array.isArray(current_session_topics) && current_session_topics.length > 0) {
+      currentTopicsText = `\n\n이번 기간 수업 주제:\n${current_session_topics.map((t: string, i: number) => `${i + 1}회: ${t || "(주제 없음)"}`).join("\n")}`;
+    }
 
     const userPrompt = `학생: ${student_name}
 레벨: ${level}
 기간: ${period_label}
 현재 학습 목표: ${current_objective || "없음"}
+다음 기간 세션 수: ${topicCount}
 
 강사 평가:
 ${evaluationText}
-${comment ? `코멘트: ${comment}` : ""}${curriculumGuideText}${sessionHistoryText}`;
+${comment ? `코멘트: ${comment}` : ""}${curriculumGuideText}${sessionHistoryText}${currentTopicsText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -151,9 +165,9 @@ ${comment ? `코멘트: ${comment}` : ""}${curriculumGuideText}${sessionHistoryT
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found in AI response");
 
-    const result = JSON.parse(jsonMatch[0]) as { goals?: string };
+    const result = JSON.parse(jsonMatch[0]) as { goals?: string; session_topics?: string[] };
 
-    return new Response(JSON.stringify({ goals: result.goals ?? "" }), {
+    return new Response(JSON.stringify({ goals: result.goals ?? "", session_topics: result.session_topics ?? [] }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
