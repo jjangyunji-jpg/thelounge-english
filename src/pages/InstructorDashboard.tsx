@@ -1448,6 +1448,41 @@ export default function InstructorDashboard() {
     // settlementPeriodIdx removed — settlement uses month-based navigation
     setHolidays(holRes.data || []);
     setLoading(false);
+
+    // ── Check for past periods with completed sessions but missing feedback ──
+    const pastPeriods = periods.filter(p => p.end_date < todayStr);
+    if (pastPeriods.length > 0 && ins) {
+      // Check the most recent past period first
+      const sortedPast = [...pastPeriods].sort((a, b) => b.end_date.localeCompare(a.end_date));
+      for (const pp of sortedPast) {
+        // Find students who had completed sessions in this period
+        const periodSessions = filteredSessions.filter(s =>
+          s.ended_at &&
+          s.scheduled_at >= pp.start_date &&
+          s.scheduled_at <= pp.end_date + "T23:59:59"
+        );
+        const completedStudentNames = [...new Set(periodSessions.map(s => s.student_name))];
+        if (completedStudentNames.length === 0) continue;
+
+        // Check which students already have feedback for this period
+        const { data: existingFb } = await supabase
+          .from("instructor_student_feedback" as any)
+          .select("student_name")
+          .eq("instructor_name", ins.name)
+          .eq("period_id", pp.id);
+        const alreadyDone = new Set((existingFb || []).map((f: any) => f.student_name));
+        const needFeedback = completedStudentNames.filter(sn => !alreadyDone.has(sn));
+
+        if (needFeedback.length > 0) {
+          const feedbackStudents = needFeedback.map(sn => {
+            const st = studentsWithPauses.find(s2 => s2.student_name === sn);
+            return { student_name: sn, level: st?.level || null, learning_objective: st?.learning_objective || null };
+          });
+          setStudentFeedbackModal({ students: feedbackStudents, periodId: pp.id, periodLabel: pp.label });
+          break; // Only show one period at a time
+        }
+      }
+    }
   }, []);
 
   // ── Load feedback data ──
