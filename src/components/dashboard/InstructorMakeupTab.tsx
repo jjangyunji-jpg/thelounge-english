@@ -800,7 +800,6 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
               <h3 className="text-xs font-semibold text-muted-foreground">최근 처리 내역</h3>
               {recentProcessed.map(req => {
                 const slot = slots.find(s => s.id === req.slot_id);
-                const origSession = req.original_session_id ? sessionById.get(req.original_session_id) : null;
                 return (
                   <div key={req.id} className="rounded-lg border border-border bg-card p-3 space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -821,12 +820,12 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                     </div>
                     {/* Schedule info */}
                     <div className="text-[11px] text-muted-foreground space-y-0.5">
-                      {origSession && (
+                      {req.original_scheduled_at && (
                         <p>
                           <span className="text-muted-foreground/70">기존:</span>{" "}
                           <span className="line-through">
-                            {new Date(origSession.scheduled_at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}{" "}
-                            {new Date(origSession.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })}
+                            {new Date(req.original_scheduled_at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}{" "}
+                            {new Date(req.original_scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })}
                           </span>
                         </p>
                       )}
