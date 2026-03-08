@@ -248,18 +248,19 @@ export default function CashReceiptManagement() {
         <td className="px-4 py-3">
           {credit ? (
             <div className="flex items-center gap-2">
-              <div className="text-xs">
+              <div className="text-xs group/credit relative cursor-default" title={credit.note || undefined}>
                 <span className="font-semibold text-foreground">{credit.total_sessions - credit.used_sessions}</span>
                 <span className="text-muted-foreground">/{credit.total_sessions}회</span>
+                {credit.note && (
+                  <div className="absolute bottom-full left-0 mb-1 hidden group-hover/credit:block z-10 px-2 py-1 rounded bg-popover border border-border shadow-md text-[10px] text-popover-foreground whitespace-nowrap max-w-[200px] truncate">
+                    {credit.note}
+                  </div>
+                )}
               </div>
               {ded ? (
-                <button
-                  onClick={() => undoDeduct(s.student_name)}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-                  title="차감 취소"
-                >
-                  -{ded.deducted_sessions} 취소
-                </button>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium cursor-default" title={`${ded.deducted_sessions}회 차감됨 (클릭하여 취소)`} onClick={() => undoDeduct(s.student_name)}>
+                  -{ded.deducted_sessions} 차감완료
+                </span>
               ) : (
                 <button
                   onClick={() => deductMonth(s.student_name)}
