@@ -184,7 +184,7 @@ export default function CashReceiptManagement() {
                 ₩{fee!.toLocaleString()}
               </span>
               <span className="text-[10px] text-muted-foreground ml-1">
-                ({base}{extra > 0 ? `+${extra}` : ""}회)
+                ({count}회)
               </span>
             </div>
           )}
