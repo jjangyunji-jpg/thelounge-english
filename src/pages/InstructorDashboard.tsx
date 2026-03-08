@@ -2352,7 +2352,7 @@ export default function InstructorDashboard() {
                                                     const st = students.find(st2 => st2.student_name === sn);
                                                     return { student_name: sn, level: st?.level || null, learning_objective: st?.learning_objective || null };
                                                   });
-                                                  setStudentFeedbackModal({ students: feedbackStudents, periodId: period.id, periodLabel: period.label });
+                                                  setStudentFeedbackModal({ students: feedbackStudents, periodId: period.id, periodLabel: period.label, periodStartDate: period.start_date, periodEndDate: period.end_date });
                                                 }
                                               }
                                             }
