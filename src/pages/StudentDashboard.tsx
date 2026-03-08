@@ -658,6 +658,20 @@ export default function StudentDashboard() {
         }
       }
     }
+
+    // ── 읽지 않은 학생 리포트 체크 ──
+    const { data: reportData } = await supabase
+      .from("student_reports" as any)
+      .select("id, period_label, content")
+      .eq("student_name", student)
+      .eq("is_read", false)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (reportData && (reportData as any[]).length > 0) {
+      const r = (reportData as any[])[0];
+      setUnreadReport({ id: r.id, periodLabel: r.period_label, content: r.content });
+    }
   };
 
   const getSubmission = (aId: string) => submissions.find(s => s.assignment_id === aId);
