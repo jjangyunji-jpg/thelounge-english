@@ -444,6 +444,53 @@ export type Database = {
           },
         ]
       }
+      instructor_student_feedback: {
+        Row: {
+          applied_goals: boolean
+          checklist: Json
+          comment: string | null
+          created_at: string
+          id: string
+          instructor_name: string
+          period_id: string | null
+          period_label: string
+          student_name: string
+          suggested_goals: string | null
+        }
+        Insert: {
+          applied_goals?: boolean
+          checklist?: Json
+          comment?: string | null
+          created_at?: string
+          id?: string
+          instructor_name: string
+          period_id?: string | null
+          period_label: string
+          student_name: string
+          suggested_goals?: string | null
+        }
+        Update: {
+          applied_goals?: boolean
+          checklist?: Json
+          comment?: string | null
+          created_at?: string
+          id?: string
+          instructor_name?: string
+          period_id?: string | null
+          period_label?: string
+          student_name?: string
+          suggested_goals?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_student_feedback_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instructor_students: {
         Row: {
           created_at: string
