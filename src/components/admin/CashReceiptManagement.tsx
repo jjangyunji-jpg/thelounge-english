@@ -298,11 +298,11 @@ export default function CashReceiptManagement() {
           <h2 className="text-lg font-bold text-foreground">결제확인</h2>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={prevMonth} className="p-1.5 rounded-md hover:bg-muted transition-colors">
+          <button onClick={prevPeriod} disabled={periodIdx >= periods.length - 1} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
             <ChevronLeft className="w-4 h-4 text-muted-foreground" />
           </button>
-          <span className="text-sm font-semibold text-foreground min-w-[100px] text-center">{year}년 {month}월</span>
-          <button onClick={nextMonth} className="p-1.5 rounded-md hover:bg-muted transition-colors">
+          <span className="text-sm font-semibold text-foreground min-w-[140px] text-center">{periodLabel || "—"}</span>
+          <button onClick={nextPeriod} disabled={periodIdx <= 0} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
