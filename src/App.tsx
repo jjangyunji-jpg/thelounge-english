@@ -34,6 +34,7 @@ const App = () => (
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/waitlist" element={<Waitlist />} />
           <Route path="/set-password" element={<SetPassword />} />
 
           {/* Admin only (admin role can access everything) */}

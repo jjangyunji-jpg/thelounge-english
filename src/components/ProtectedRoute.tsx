@@ -12,7 +12,8 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) {
-  const [status, setStatus] = useState<"loading" | "authorized" | "unauthorized" | "unauthenticated">("loading");
+  const [status, setStatus] = useState<"loading" | "authorized" | "unauthorized" | "unauthenticated" | "waitlist">("loading");
+  const location = useLocation();
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +37,13 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
         return;
       }
 
+      // Check if unapproved student → redirect to waitlist
+      const studentRole = roles.find((r) => r.role === "student");
+      if (studentRole && !studentRole.approved && allowedRoles.includes("student")) {
+        setStatus("waitlist");
+        return;
+      }
+
       // Check if user has any of the allowed roles (must be approved)
       const hasAccess = roles.some(
         (r) => r.approved && allowedRoles.includes(r.role as AppRole)
@@ -50,7 +58,7 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
     check();
 
     return () => { cancelled = true; };
-  }, [allowedRoles]);
+  }, [allowedRoles, location.pathname]);
 
   if (status === "loading") {
     return (
