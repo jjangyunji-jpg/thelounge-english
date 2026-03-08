@@ -403,6 +403,9 @@ export default function StudentDashboard() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [showMakeup, setShowMakeup] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<"select" | "receipt">("select");
+  const [receiptType, setReceiptType] = useState<"phone" | "business">("phone");
+  const [receiptNumber, setReceiptNumber] = useState("");
   const [vocabStudyOpen] = useState(false); // kept for potential future use
   const [hwModalAssignment, setHwModalAssignment] = useState<Assignment | null>(null);
   const [hwCompletingId, setHwCompletingId] = useState<string | null>(null);
