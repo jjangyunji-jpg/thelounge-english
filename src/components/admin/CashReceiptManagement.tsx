@@ -151,7 +151,7 @@ export default function CashReceiptManagement() {
     if (existingDed) {
       toast({ title: "이미 차감됨", description: `${periodLabel} 이미 ${existingDed.deducted_sessions}회 차감됨` }); return;
     }
-    await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: monthKey, deducted_sessions: toDeduct } as any);
+    await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: periodKey, deducted_sessions: toDeduct } as any);
     await supabase.from("prepaid_credits" as any).update({ used_sessions: credit.used_sessions + toDeduct, updated_at: new Date().toISOString() } as any).eq("id", credit.id);
     toast({ title: `${toDeduct}회 차감 완료` });
     loadData();
