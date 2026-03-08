@@ -48,6 +48,7 @@ export interface ReportPreviewData {
   sessions: Session[];
   info: ReportInfo;
   period: PeriodInfo;
+  totalFee?: number;
 }
 
 export async function prepareReportData(
@@ -182,7 +183,7 @@ export async function exportCorporateReportPdf(data: ReportPreviewData) {
       "",
       `총 ${completedSessions.length}회 수업`,
       "",
-      "",
+      data.totalFee != null ? `₩${data.totalFee.toLocaleString()}` : "",
     ]],
     styles: { fontSize: 8, cellPadding: 3, font: "SpoqaHanSansNeo" },
     headStyles: { fillColor: [30, 58, 95], textColor: 255, font: "SpoqaHanSansNeo", fontStyle: "normal" },

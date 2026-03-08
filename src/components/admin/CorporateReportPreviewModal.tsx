@@ -47,7 +47,7 @@ export default function CorporateReportPreviewModal({ data, onClose, onDownload 
           <div className="text-xs space-y-1 text-muted-foreground bg-muted/30 rounded-lg p-3 border border-border/50">
             <p><span className="font-semibold text-foreground">학생명:</span> {data.info.groupStudents?.length > 0 ? data.info.groupStudents.join(", ") : data.info.studentName}</p>
             <p><span className="font-semibold text-foreground">수업 기간:</span> {data.period.label} ({data.period.start_date} ~ {data.period.end_date})</p>
-            <p><span className="font-semibold text-foreground">총 수업:</span> {data.sessions.length}회</p>
+            <p><span className="font-semibold text-foreground">총 수업:</span> {data.sessions.length}회{data.totalFee != null && <> · <span className="font-semibold text-foreground">수강료:</span> ₩{data.totalFee.toLocaleString()}</>}</p>
           </div>
 
           {/* Summaries */}
