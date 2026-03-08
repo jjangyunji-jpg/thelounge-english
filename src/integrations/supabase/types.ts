@@ -468,6 +468,44 @@ export type Database = {
           },
         ]
       }
+      instructor_available_slots: {
+        Row: {
+          created_at: string
+          id: string
+          instructor_id: string
+          instructor_name: string
+          slot_date: string
+          slot_time: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instructor_id: string
+          instructor_name: string
+          slot_date: string
+          slot_time: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instructor_id?: string
+          instructor_name?: string
+          slot_date?: string
+          slot_time?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_available_slots_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instructor_student_feedback: {
         Row: {
           applied_goals: boolean
@@ -660,6 +698,63 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      makeup_requests: {
+        Row: {
+          created_at: string
+          group_students: string[]
+          id: string
+          instructor_name: string
+          original_session_id: string | null
+          reject_reason: string | null
+          request_type: string
+          resolved_at: string | null
+          slot_id: string
+          status: string
+          student_name: string
+        }
+        Insert: {
+          created_at?: string
+          group_students?: string[]
+          id?: string
+          instructor_name: string
+          original_session_id?: string | null
+          reject_reason?: string | null
+          request_type?: string
+          resolved_at?: string | null
+          slot_id: string
+          status?: string
+          student_name: string
+        }
+        Update: {
+          created_at?: string
+          group_students?: string[]
+          id?: string
+          instructor_name?: string
+          original_session_id?: string | null
+          reject_reason?: string | null
+          request_type?: string
+          resolved_at?: string | null
+          slot_id?: string
+          status?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "makeup_requests_original_session_id_fkey"
+            columns: ["original_session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "makeup_requests_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_available_slots"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schedule_periods: {
         Row: {

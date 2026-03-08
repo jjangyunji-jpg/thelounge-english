@@ -1287,10 +1287,8 @@ export default function StudentDashboard() {
                 </button>
               </div>
               ) : (
-              <a
-                href="https://naver.me/57QYErVk"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => navigate("/my/makeup")}
                 className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
@@ -1300,7 +1298,7 @@ export default function StudentDashboard() {
                   <p className="text-xs font-bold leading-none text-foreground">보강 신청하기</p>
                   <p className="text-[10px] mt-0.5 text-muted-foreground">수업 48시간 전까지 가능</p>
                 </div>
-              </a>
+              </button>
               )}
               {/* 수업료 결제하기 — corporate 학생은 비활성화 */}
               {studentRecord?.student_type === 'corporate' ? (

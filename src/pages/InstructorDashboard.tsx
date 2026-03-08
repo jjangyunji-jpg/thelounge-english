@@ -7,7 +7,7 @@ import {
   GraduationCap, ClipboardCheck, Settings2, CalendarDays,
   PenLine, Mic, Brain, Edit2, Trash2, RefreshCw, ArrowRight,
   Shield, Paperclip, CheckCircle, ChevronDown, User, Lock, Monitor, Target,
-  Star, MessageSquare, Download, Bug,
+  Star, MessageSquare, Download, Bug, RotateCcw,
 } from "lucide-react";
 import BugReportModal from "@/components/dashboard/BugReportModal";
 import StudentFeedbackModal from "@/components/dashboard/StudentFeedbackModal";
@@ -16,6 +16,7 @@ import InstructorGuide from "@/components/dashboard/InstructorGuide";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import AddSessionModal from "@/components/dashboard/AddSessionModal";
+import InstructorMakeupTab from "@/components/dashboard/InstructorMakeupTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1289,7 +1290,7 @@ export default function InstructorDashboard() {
   const [loading, setLoading] = useState(true);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "profile" | "guide">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "makeup" | "profile" | "guide">("dashboard");
   const [feedbackData, setFeedbackData] = useState<any[]>([]);
   const [feedbackCategories, setFeedbackCategories] = useState<{ key: string; label: string }[]>([]);
   const [feedbackPeriodIdx, setFeedbackPeriodIdx] = useState(-1);
@@ -1952,6 +1953,7 @@ export default function InstructorDashboard() {
             { id: "dashboard" as const, label: "대시보드", icon: CalendarDays },
             { id: "students" as const, label: "학생 관리", icon: Users },
             { id: "feedback" as const, label: "피드백", icon: MessageSquare },
+            { id: "makeup" as const, label: "보강", icon: RotateCcw },
             { id: "settlement" as const, label: "정산", icon: Banknote },
             { id: "guide" as const, label: "가이드", icon: BookOpen },
             { id: "profile" as const, label: "MY", icon: User },
@@ -3214,6 +3216,13 @@ export default function InstructorDashboard() {
               </>
             )}
           </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* ═══ MAKEUP TAB ═════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "makeup" && instructor && (
+          <InstructorMakeupTab instructorId={instructor.id} instructorName={instructor.name} />
         )}
 
         {/* ══════════════════════════════════════════════════════════════════ */}
