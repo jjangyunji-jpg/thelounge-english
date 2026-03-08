@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import StudentPeriodSummary from "./StudentPeriodSummary";
 import SessionGoalsSuggestionView from "./SessionGoalsSuggestionView";
+import StudentReportPreviewModal from "./StudentReportPreviewModal";
 
 interface StudentInfo {
   student_name: string;
@@ -83,6 +84,7 @@ export default function StudentFeedbackModal({
   });
   const [saving, setSaving] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
+  const [showReportPreview, setShowReportPreview] = useState(false);
 
   const student = students[currentIdx];
   const fb = feedbacks[student.student_name];
@@ -203,35 +205,13 @@ export default function StudentFeedbackModal({
     }
   };
 
-  const generateStudentReport = async (studentName: string) => {
-    try {
-      await supabase.functions.invoke("generate-student-report", {
-        body: {
-          student_name: studentName,
-          instructor_name: instructorName,
-          period_id: periodId,
-          period_label: periodLabel,
-          period_start: periodStartDate,
-          period_end: periodEndDate,
-        },
-      });
-    } catch (e) {
-      console.error("Report generation failed for", studentName, e);
-    }
-  };
-
   const handleFinish = async () => {
     setSaving(true);
     const saved = await saveStudentFeedback(student.student_name);
-    if (saved) {
-      // Generate reports for all students in background
-      toast({ title: "학생 리포트 생성 중...", description: "AI가 학습 리포트를 작성하고 있습니다." });
-      Promise.all(students.map((s) => generateStudentReport(s.student_name)))
-        .then(() => toast({ title: "학생 리포트 생성 완료 ✓" }))
-        .catch(() => toast({ title: "일부 리포트 생성 실패", variant: "destructive" }));
-      onComplete();
-    }
     setSaving(false);
+    if (saved) {
+      setShowReportPreview(true);
+    }
   };
 
   const applyGoalsToStudent = async () => {
@@ -266,6 +246,21 @@ export default function StudentFeedbackModal({
   };
 
   const totalSteps = students.length;
+
+  if (showReportPreview) {
+    return (
+      <StudentReportPreviewModal
+        instructorName={instructorName}
+        students={students}
+        periodId={periodId}
+        periodLabel={periodLabel}
+        periodStartDate={periodStartDate}
+        periodEndDate={periodEndDate}
+        onComplete={onComplete}
+        onClose={onComplete}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
