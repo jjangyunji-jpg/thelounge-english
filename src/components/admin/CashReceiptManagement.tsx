@@ -306,7 +306,7 @@ export default function CashReceiptManagement() {
         <td className="px-4 py-3 text-right">
           {isCorporate ? (
             <div>
-              <span className="text-xs text-muted-foreground">회당 정산</span>
+              <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{getCorpFee(s).toLocaleString()}</span>
               <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
             </div>
           ) : (
