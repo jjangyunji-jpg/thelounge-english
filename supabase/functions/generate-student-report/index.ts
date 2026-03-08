@@ -125,24 +125,26 @@ ${sessionSummary || "수업 기록 없음"}
     const args = JSON.parse(toolCall?.function?.arguments || "{}");
     const report = args.report || "";
 
-    // Save to student_reports table
-    const { error: upsertError } = await sb
-      .from("student_reports")
-      .upsert(
-        {
-          instructor_name,
-          student_name,
-          period_id,
-          period_label,
-          content: report,
-          is_read: false,
-        },
-        { onConflict: "instructor_name,student_name,period_id" }
-      );
+    // Only save if requested
+    if (save) {
+      const { error: upsertError } = await sb
+        .from("student_reports")
+        .upsert(
+          {
+            instructor_name,
+            student_name,
+            period_id,
+            period_label,
+            content: report,
+            is_read: false,
+          },
+          { onConflict: "instructor_name,student_name,period_id" }
+        );
 
-    if (upsertError) {
-      console.error("Upsert error:", upsertError);
-      throw new Error(upsertError.message);
+      if (upsertError) {
+        console.error("Upsert error:", upsertError);
+        throw new Error(upsertError.message);
+      }
     }
 
     return new Response(JSON.stringify({ report }), {
