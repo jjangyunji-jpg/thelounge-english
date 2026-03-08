@@ -10,6 +10,7 @@ import {
   Star, MessageSquare, Download, Bug,
 } from "lucide-react";
 import BugReportModal from "@/components/dashboard/BugReportModal";
+import StudentFeedbackModal from "@/components/dashboard/StudentFeedbackModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
 import InstructorGuide from "@/components/dashboard/InstructorGuide";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
