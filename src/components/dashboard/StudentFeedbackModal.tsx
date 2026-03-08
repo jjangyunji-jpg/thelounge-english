@@ -358,20 +358,21 @@ export default function StudentFeedbackModal({
               {/* Comment */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground mb-1.5">비고 (선택)</p>
-                <div className="mb-2 space-y-1">
-                  <p className="text-[10px] text-muted-foreground/70 font-medium">💡 이런 관찰을 적어주시면 좋아요:</p>
-                  <ul className="text-[10px] text-muted-foreground/60 space-y-0.5 pl-3">
-                    {COMMENT_EXAMPLES.map((ex, i) => (
-                      <li key={i} className="list-disc">{ex}</li>
-                    ))}
-                  </ul>
+                <div className="relative">
+                  <textarea
+                    value={fb.comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="w-full h-32 rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  {!fb.comment && (
+                    <div className="absolute inset-0 px-3 py-2 pointer-events-none text-muted-foreground/40 text-sm leading-relaxed">
+                      <p className="mb-1">💡 이런 관찰을 적어주시면 좋아요:</p>
+                      {COMMENT_EXAMPLES.map((ex, i) => (
+                        <p key={i} className="text-[11px] leading-relaxed">• {ex}</p>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <textarea
-                  value={fb.comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="학생의 수업 성과나 개선점을 자유롭게 작성해주세요..."
-                  className="w-full h-20 rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                />
               </div>
             </>
           ) : (
