@@ -114,6 +114,21 @@ export default function StudentFeedbackModal({
     }));
 
     try {
+      // Fetch current period sessions for this student
+      let currentTopics: string[] = [];
+      if (periodStartDate && periodEndDate) {
+        const { data: sessions } = await supabase
+          .from("class_sessions")
+          .select("scheduled_at, topic")
+          .eq("student_name", student.student_name)
+          .eq("instructor_name", instructorName)
+          .gte("scheduled_at", periodStartDate + "T00:00:00+09:00")
+          .lte("scheduled_at", periodEndDate + "T23:59:59+09:00")
+          .order("scheduled_at", { ascending: true });
+
+        currentTopics = (sessions || []).map((s) => s.topic || "");
+      }
+
       const ratings = RATING_ITEMS.map((c) => ({
         label: c.label,
         score: fb.checklist[c.key] || 0,
@@ -128,14 +143,21 @@ export default function StudentFeedbackModal({
           ratings,
           comment: fb.comment,
           period_label: periodLabel,
+          session_count: currentTopics.length || 4,
+          current_session_topics: currentTopics,
         },
       });
 
       if (error) throw error;
-      const goals = data?.goals || "";
       setFeedbacks((prev) => ({
         ...prev,
-        [student.student_name]: { ...prev[student.student_name], suggestedGoals: goals, loadingAI: false },
+        [student.student_name]: {
+          ...prev[student.student_name],
+          suggestedGoals: data?.goals || "",
+          suggestedTopics: data?.session_topics || [],
+          currentTopics,
+          loadingAI: false,
+        },
       }));
       setShowGoals(true);
     } catch (e: any) {
