@@ -312,8 +312,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "checklist" && (() => {
                 const CHECKLIST_ITEMS = [
                   "수업 48시간 이내의 일정은 변경이 어려울 수 있습니다.",
-                  "잦은 일정 변경은 학습 흐름에 영향을 줄 수 있습니다.",
-                  "일정 변경이 반복될 경우, 수업이 중단될 수 있습니다.",
+                  "잦은 일정 변경은 학습 흐름에 영향을 줄 수 있습니다. 또한 일정 변경이 반복될 경우, 수업이 중단될 수 있습니다.",
                   "장기 부재(출장, 여행 등)가 예정된 경우, 한 달 전에 미리 알려주세요.",
                   "변경된 수업은 강사 승인 후 확정됩니다.",
                 ];
