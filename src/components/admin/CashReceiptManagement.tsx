@@ -80,6 +80,7 @@ export default function CashReceiptManagement() {
   const [creditInput, setCreditInput] = useState({ sessions: "", note: "" });
   const [reportPreview, setReportPreview] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState<string | null>(null);
+  const [attendanceRequests, setAttendanceRequests] = useState<AttendanceRequest[]>([]);
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
