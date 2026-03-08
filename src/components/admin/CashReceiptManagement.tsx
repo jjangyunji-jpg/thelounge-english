@@ -119,7 +119,7 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     if (!currentPeriod) return;
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes] = await Promise.all([
+    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
@@ -129,6 +129,7 @@ export default function CashReceiptManagement() {
       supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", corpMonthStart).lt("scheduled_at", corpMonthEnd),
       supabase.from("prepaid_credits" as any).select("*"),
       supabase.from("prepaid_deductions" as any).select("*").eq("month", periodKey),
+      supabase.from("support_requests").select("id, user_name, description, status, created_at").eq("category", "attendance").order("created_at", { ascending: false }),
     ]);
     setStudents((studRes.data || []) as StudentRecord[]);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
