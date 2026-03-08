@@ -1288,6 +1288,7 @@ export default function InstructorDashboard() {
   const [allPeriods, setAllPeriods] = useState<SchedulePeriod[]>([]);
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingMakeupCount, setPendingMakeupCount] = useState(0);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "makeup" | "profile" | "guide">("dashboard");
@@ -1452,6 +1453,15 @@ export default function InstructorDashboard() {
     if (studentTabPeriodIdx < 0) setStudentTabPeriodIdx(periods.length > 0 ? periods.length - 1 : 0);
     // settlementPeriodIdx removed — settlement uses month-based navigation
     setHolidays(holRes.data || []);
+
+    // Fetch pending makeup request count
+    const { count: makeupCount } = await supabase
+      .from("makeup_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("instructor_name", ins.name)
+      .eq("status", "pending");
+    setPendingMakeupCount(makeupCount || 0);
+
     setLoading(false);
 
     // ── Check for past periods with completed sessions but missing feedback ──
@@ -1953,7 +1963,7 @@ export default function InstructorDashboard() {
             { id: "dashboard" as const, label: "대시보드", icon: CalendarDays },
             { id: "students" as const, label: "학생 관리", icon: Users },
             { id: "feedback" as const, label: "피드백", icon: MessageSquare },
-            { id: "makeup" as const, label: "보강", icon: RotateCcw },
+            { id: "makeup" as const, label: "보강", icon: RotateCcw, badge: pendingMakeupCount },
             { id: "settlement" as const, label: "정산", icon: Banknote },
             { id: "guide" as const, label: "가이드", icon: BookOpen },
             { id: "profile" as const, label: "MY", icon: User },
@@ -1961,7 +1971,7 @@ export default function InstructorDashboard() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={cn("flex items-center gap-1.5 px-3 sm:px-4 py-3 text-[13px] sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+              className={cn("flex items-center gap-1.5 px-3 sm:px-4 py-3 text-[13px] sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap relative",
                 activeTab === t.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1970,6 +1980,11 @@ export default function InstructorDashboard() {
               <t.icon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
               <span className="hidden sm:inline">{t.label}</span>
               <span className="sm:hidden">{t.label}</span>
+              {"badge" in t && (t as any).badge > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[11px] font-semibold">
+                  {(t as any).badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
