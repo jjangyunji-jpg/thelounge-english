@@ -93,6 +93,7 @@ type TabView = "register" | "calendar" | "requests";
 export default function InstructorMakeupTab({ instructorId, instructorName }: { instructorId: string; instructorName: string }) {
   const { toast } = useToast();
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
   const [requests, setRequests] = useState<MakeupReq[]>([]);
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<SchedulePeriod | null>(null);
