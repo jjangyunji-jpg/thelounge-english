@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import FeedbackSurveyModal from "@/components/classroom/FeedbackSurveyModal";
-import StudentReportModal from "@/components/dashboard/StudentReportModal";
+
 import WeeklyTasksSection from "@/components/dashboard/WeeklyTasksSection";
 import HomeworkSubmitModal from "@/components/dashboard/HomeworkSubmitModal";
 import { useNavigate } from "react-router-dom";
