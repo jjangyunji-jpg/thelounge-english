@@ -284,6 +284,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
       toast({ title: "승인 실패", description: data?.error || error?.message, variant: "destructive" });
     } else {
       toast({ title: "보강 신청이 승인되었습니다 ✓" });
+      onSessionChanged?.();
     }
     await loadData();
     setProcessingId(null);
