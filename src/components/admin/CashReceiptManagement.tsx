@@ -127,7 +127,6 @@ export default function CashReceiptManagement() {
   const renderStudentRow = (s: StudentRecord, isCorporate = false) => {
     const conf = confMap.get(s.student_name);
     const isConfirmed = conf?.confirmed || false;
-    const receipt = receiptMap.get(s.student_name);
     const fee = isCorporate ? null : getFee(s);
     const count = sessionCounts.get(s.student_name) || 0;
 
