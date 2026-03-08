@@ -105,11 +105,14 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     if (!currentPeriod) return;
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes, creditRes, dedRes] = await Promise.all([
+    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
+      // Regular: period-based
       supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
+      // Corporate: calendar month-based
+      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", corpMonthStart).lt("scheduled_at", corpMonthEnd),
       supabase.from("prepaid_credits" as any).select("*"),
       supabase.from("prepaid_deductions" as any).select("*").eq("month", periodKey),
     ]);
@@ -124,8 +127,14 @@ export default function CashReceiptManagement() {
       counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
     });
     setSessionCounts(counts);
+
+    const corpCounts = new Map<string, number>();
+    (corpSessRes.data || []).forEach((s: any) => {
+      corpCounts.set(s.student_name, (corpCounts.get(s.student_name) || 0) + 1);
+    });
+    setCorpSessionCounts(corpCounts);
     setLoading(false);
-  }, [currentPeriod, periodKey, periodStart, periodEnd]);
+  }, [currentPeriod, periodKey, periodStart, periodEnd, corpMonthStart, corpMonthEnd]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
