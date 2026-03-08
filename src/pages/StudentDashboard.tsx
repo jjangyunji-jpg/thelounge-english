@@ -399,6 +399,7 @@ export default function StudentDashboard() {
   const [hwOpen, setHwOpen] = useState(false);
   const [vocabListOpen, setVocabListOpen] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const [showMakeup, setShowMakeup] = useState(false);
   const [vocabStudyOpen] = useState(false); // kept for potential future use
   const [hwModalAssignment, setHwModalAssignment] = useState<Assignment | null>(null);
   const [hwCompletingId, setHwCompletingId] = useState<string | null>(null);
