@@ -216,6 +216,16 @@ export default function StudentFeedbackModal({
         <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
           {!showGoals ? (
             <>
+              {/* Period Summary */}
+              {periodStartDate && periodEndDate && (
+                <StudentPeriodSummary
+                  studentName={student.student_name}
+                  instructorName={instructorName}
+                  periodStartDate={periodStartDate}
+                  periodEndDate={periodEndDate}
+                />
+              )}
+
               {/* Star Ratings */}
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground">평가 항목</p>
