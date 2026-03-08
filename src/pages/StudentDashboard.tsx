@@ -78,6 +78,7 @@ interface StudentRecord {
   instructor_display_name: string | null;
   pauses: PauseRecord[];
   student_type: string;
+  group_students: string[];
 }
 
 interface SchedulePeriod {
