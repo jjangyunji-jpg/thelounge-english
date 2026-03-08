@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import StudentPeriodSummary from "./StudentPeriodSummary";
 import SessionGoalsSuggestionView from "./SessionGoalsSuggestionView";
+import StudentReportPreviewModal from "./StudentReportPreviewModal";
 
 interface StudentInfo {
   student_name: string;
