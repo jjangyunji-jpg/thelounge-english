@@ -219,7 +219,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 if (step === "confirm") setStep("calendar");
                 else if (step === "calendar") setStep(requestType === "reschedule" ? "session" : "type");
                 else if (step === "session") setStep("checklist");
-                else if (step === "checklist") { setCheckedItems([false, false, false, false, false]); setStep("type"); }
+                else if (step === "checklist") { setCheckedItems([false, false, false, false]); setStep("type"); }
               }} className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="w-4 h-4" />
               </button>
