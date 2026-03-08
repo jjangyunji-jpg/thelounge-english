@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, Library, ArrowLeft, FileQuestion, Target } from "lucide-react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, Library, ArrowLeft, FileQuestion, Target, MapIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "student-feedback" | "guide" | "messages" | "settings";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "student-feedback" | "guide" | "messages" | "settings";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -17,6 +17,7 @@ const navItems = [
   { id: "students" as AdminTab, label: "수강생 관리", icon: GraduationCap },
   { id: "approval" as AdminTab, label: "가입 승인", icon: UserCheck },
   { id: "materials" as AdminTab, label: "수업 자료", icon: Library },
+  { id: "curriculum" as AdminTab, label: "커리큘럼 가이드", icon: MapIcon },
   { id: "student-feedback" as AdminTab, label: "학생 피드백", icon: Target },
   { id: "guide" as AdminTab, label: "이용가이드 관리", icon: FileQuestion },
   { id: "messages" as AdminTab, label: "메시지 관리", icon: MessageSquare },

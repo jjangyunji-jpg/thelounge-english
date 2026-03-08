@@ -12,6 +12,7 @@ import MessageCenter from "@/components/admin/MessageCenter";
 import SystemSettings from "@/components/admin/SystemSettings";
 import TeachingMaterials from "@/components/admin/TeachingMaterials";
 import StudentFeedbackManagement from "@/components/admin/StudentFeedbackManagement";
+import CurriculumGuideEditor from "@/components/admin/CurriculumGuideEditor";
 import { Menu, X, Loader2 } from "lucide-react";
 
 export default function Admin() {
@@ -56,6 +57,8 @@ export default function Admin() {
         return <UserApproval onNavigate={(tab) => setActiveTab(tab as AdminTab)} />;
       case "materials":
         return <TeachingMaterials />;
+      case "curriculum":
+        return <CurriculumGuideEditor />;
       case "student-feedback":
         return <StudentFeedbackManagement />;
       case "guide":
