@@ -1312,29 +1312,16 @@ export default function StudentDashboard() {
                     ))}
                   </div>
 
-                  {attendancePeriodType === "month" ? (
+                  {attendancePeriodType === "month" && (
                     <input
                       type="month"
                       value={attendanceMonth}
                       onChange={e => setAttendanceMonth(e.target.value)}
                       className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="date"
-                        value={attendanceCustomStart}
-                        onChange={e => setAttendanceCustomStart(e.target.value)}
-                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                      <span className="text-xs text-muted-foreground">~</span>
-                      <input
-                        type="date"
-                        value={attendanceCustomEnd}
-                        onChange={e => setAttendanceCustomEnd(e.target.value)}
-                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
+                  )}
+                  {attendancePeriodType === "custom" && (
+                    <p className="text-[11px] text-muted-foreground px-1">등록된 수업 시작일과 종료일 기준으로 발급됩니다.</p>
                   )}
                 </div>
 
@@ -1346,7 +1333,6 @@ export default function StudentDashboard() {
                     이전
                   </button>
                   <button
-                    disabled={attendancePeriodType === "custom" && (!attendanceCustomStart || !attendanceCustomEnd)}
                     onClick={async () => {
                       let periodStr = "";
                       if (attendancePeriodType === "month") {
@@ -1354,11 +1340,7 @@ export default function StudentDashboard() {
                         const lastDay = new Date(y, m, 0).getDate();
                         periodStr = `${y}년 ${m}월 1일 ~ ${y}년 ${m}월 ${lastDay}일`;
                       } else {
-                        const fmt = (d: string) => {
-                          const dt = new Date(d + "T00:00:00");
-                          return `${dt.getFullYear()}년 ${dt.getMonth() + 1}월 ${dt.getDate()}일`;
-                        };
-                        periodStr = `${fmt(attendanceCustomStart)} ~ ${fmt(attendanceCustomEnd)}`;
+                        periodStr = "수업 시작일 ~ 수업 종료일";
                       }
                       const { data: { user } } = await supabase.auth.getUser();
                       if (!user) {
