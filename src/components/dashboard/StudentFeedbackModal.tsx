@@ -169,29 +169,47 @@ export default function StudentFeedbackModal({
     }
   };
 
-  const handleSubmitAll = async () => {
-    setSaving(true);
-    const rows = students.map((s) => ({
+  const saveStudentFeedback = async (studentName: string) => {
+    const fb = feedbacks[studentName];
+    const row = {
       instructor_name: instructorName,
-      student_name: s.student_name,
+      student_name: studentName,
       period_id: periodId,
       period_label: periodLabel,
-      checklist: feedbacks[s.student_name].checklist,
-      comment: feedbacks[s.student_name].comment.trim() || null,
-      suggested_goals: feedbacks[s.student_name].suggestedGoals.trim() || null,
-    }));
+      checklist: fb.checklist,
+      comment: fb.comment.trim() || null,
+      suggested_goals: fb.suggestedGoals.trim() || null,
+    };
 
-    const { error } = await supabase.from("instructor_student_feedback" as any).upsert(rows as any, {
+    const { error } = await supabase.from("instructor_student_feedback" as any).upsert(row as any, {
       onConflict: "instructor_name,student_name,period_id",
     });
 
     if (error) {
       toast({ title: "저장 실패", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `${students.length}명의 학생 피드백이 저장되었습니다 ✓` });
+      return false;
+    }
+    toast({ title: `${studentName} 피드백 저장됨 ✓` });
+    return true;
+  };
+
+  const handleNextStudent = async () => {
+    setSaving(true);
+    const saved = await saveStudentFeedback(student.student_name);
+    setSaving(false);
+    if (saved) {
+      setCurrentIdx((i) => i + 1);
+      setShowGoals(false);
+    }
+  };
+
+  const handleFinish = async () => {
+    setSaving(true);
+    const saved = await saveStudentFeedback(student.student_name);
+    setSaving(false);
+    if (saved) {
       onComplete();
     }
-    setSaving(false);
   };
 
   const applyGoalsToStudent = async () => {
@@ -355,19 +373,21 @@ export default function StudentFeedbackModal({
           )}
           {currentIdx < totalSteps - 1 && !showGoals ? (
             <Button
-              onClick={() => { setCurrentIdx((i) => i + 1); setShowGoals(false); }}
+              onClick={handleNextStudent}
+              disabled={saving}
               className="bg-navy hover:bg-navy-light text-primary-foreground"
             >
-              다음 학생
+              {saving && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+              저장 & 다음 학생
             </Button>
           ) : !showGoals ? (
             <Button
-              onClick={handleSubmitAll}
+              onClick={handleFinish}
               disabled={saving}
               className="bg-gold hover:bg-gold/90 text-foreground font-bold"
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              전체 저장
+              저장 완료
             </Button>
           ) : null}
         </div>
