@@ -2268,7 +2268,49 @@ export default function InstructorDashboard() {
                                             toast({ title: "수업 완료 실패", description: error.message, variant: "destructive" });
                                           } else {
                                             toast({ title: "수업 완료 처리됨 ✓" });
-                                            setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, ended_at: endedAt, started_at: s.started_at || s.scheduled_at } : sess));
+                                            const updatedSessions = sessions.map(sess => sess.id === s.id ? { ...sess, ended_at: endedAt, started_at: s.started_at || s.scheduled_at } : sess);
+                                            setSessions(updatedSessions);
+
+                                            // Check if last week of the month → trigger student feedback
+                                            if (period) {
+                                              const today = new Date();
+                                              const kstDate = new Date(today.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+                                              const lastDayOfMonth = new Date(kstDate.getFullYear(), kstDate.getMonth() + 1, 0).getDate();
+                                              const dayOfMonth = kstDate.getDate();
+                                              const isLastWeek = dayOfMonth > lastDayOfMonth - 7;
+
+                                              if (isLastWeek) {
+                                                // Get today's completed sessions (after this update)
+                                                const todayCompletedStudents = updatedSessions
+                                                  .filter(sess => isToday(sess.scheduled_at) && sess.ended_at && sess.instructor_name === instructor?.name)
+                                                  .map(sess => sess.student_name);
+                                                const uniqueStudents = [...new Set(todayCompletedStudents)];
+
+                                                // Check which students haven't gotten feedback yet this period
+                                                const { data: existingFeedback } = await supabase
+                                                  .from("instructor_student_feedback" as any)
+                                                  .select("student_name")
+                                                  .eq("instructor_name", instructor?.name || "")
+                                                  .eq("period_id", period.id);
+                                                const alreadyDone = new Set((existingFeedback || []).map((f: any) => f.student_name));
+                                                const needFeedback = uniqueStudents.filter(sn => !alreadyDone.has(sn));
+
+                                                // Check if all today's sessions are now completed
+                                                const todayAllCompleted = updatedSessions
+                                                  .filter(sess => isToday(sess.scheduled_at) && sess.instructor_name === instructor?.name)
+                                                  .every(sess => !!sess.ended_at);
+
+                                                if (todayAllCompleted && needFeedback.length > 0) {
+                                                  const feedbackStudents = needFeedback.map(sn => {
+                                                    const st = students.find(st2 => st2.student_name === sn);
+                                                    return { student_name: sn, level: st?.level || null, learning_objective: st?.learning_objective || null };
+                                                  });
+                                                  setStudentFeedbackModal({ students: feedbackStudents, periodId: period.id, periodLabel: period.label });
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }}
                                           }
                                         }}
                                       >
