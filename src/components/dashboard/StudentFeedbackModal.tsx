@@ -373,19 +373,21 @@ export default function StudentFeedbackModal({
           )}
           {currentIdx < totalSteps - 1 && !showGoals ? (
             <Button
-              onClick={() => { setCurrentIdx((i) => i + 1); setShowGoals(false); }}
+              onClick={handleNextStudent}
+              disabled={saving}
               className="bg-navy hover:bg-navy-light text-primary-foreground"
             >
-              다음 학생
+              {saving && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+              저장 & 다음 학생
             </Button>
           ) : !showGoals ? (
             <Button
-              onClick={handleSubmitAll}
+              onClick={handleFinish}
               disabled={saving}
               className="bg-gold hover:bg-gold/90 text-foreground font-bold"
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              전체 저장
+              저장 완료
             </Button>
           ) : null}
         </div>
