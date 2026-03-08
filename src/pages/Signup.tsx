@@ -3,6 +3,8 @@ import { BookOpen, Loader2, Eye, EyeOff, GraduationCap, Users } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
@@ -23,6 +25,12 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
+  // Waitlist fields (student only)
+  const [phone, setPhone] = useState("");
+  const [desiredLevel, setDesiredLevel] = useState("");
+  const [preferredSchedule, setPreferredSchedule] = useState("");
+  const [note, setNote] = useState("");
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 8) {
@@ -35,9 +43,20 @@ export default function Signup() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("register", {
-        body: { email: email.trim(), password, name: name.trim(), role },
-      });
+      const body: Record<string, string> = {
+        email: email.trim(),
+        password,
+        name: name.trim(),
+        role,
+      };
+      if (role === "student") {
+        body.phone = phone.trim();
+        body.desiredLevel = desiredLevel;
+        body.preferredSchedule = preferredSchedule.trim();
+        body.note = note.trim();
+      }
+
+      const { data, error } = await supabase.functions.invoke("register", { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
@@ -54,7 +73,7 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3 mb-8">
@@ -73,10 +92,21 @@ export default function Signup() {
               <div className="w-12 h-12 rounded-full bg-[hsl(var(--success)/0.1)] flex items-center justify-center">
                 <BookOpen className="w-6 h-6 text-[hsl(var(--success))]" />
               </div>
-              <p className="font-bold text-foreground">가입 신청 완료!</p>
+              <p className="font-bold text-foreground">
+                {role === "student" ? "대기자 등록 완료!" : "가입 신청 완료!"}
+              </p>
               <p className="text-sm text-muted-foreground">
-                관리자 승인 후 로그인할 수 있습니다.<br />
-                승인이 완료되면 로그인해주세요.
+                {role === "student" ? (
+                  <>
+                    대기자 등록이 완료되었습니다.<br />
+                    로그인 후 대기 현황을 확인할 수 있습니다.
+                  </>
+                ) : (
+                  <>
+                    관리자 승인 후 로그인할 수 있습니다.<br />
+                    승인이 완료되면 로그인해주세요.
+                  </>
+                )}
               </p>
               <Button
                 onClick={() => navigate("/login")}
@@ -181,13 +211,63 @@ export default function Signup() {
                 </div>
               </div>
 
+              {/* Student-only waitlist fields */}
+              {role === "student" && (
+                <>
+                  <div className="border-t border-border pt-4 mt-4">
+                    <p className="text-xs font-semibold text-foreground mb-3">📋 수업 희망 정보</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">연락처</Label>
+                    <Input
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="010-0000-0000"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">희망 레벨</Label>
+                    <Select value={desiredLevel} onValueChange={setDesiredLevel}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="레벨을 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="beginner">초급 (Beginner)</SelectItem>
+                        <SelectItem value="elementary">초중급 (Elementary)</SelectItem>
+                        <SelectItem value="intermediate">중급 (Intermediate)</SelectItem>
+                        <SelectItem value="upper-intermediate">중상급 (Upper-Intermediate)</SelectItem>
+                        <SelectItem value="advanced">고급 (Advanced)</SelectItem>
+                        <SelectItem value="unsure">잘 모르겠어요</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">희망 수업 시간대</Label>
+                    <Input
+                      value={preferredSchedule}
+                      onChange={(e) => setPreferredSchedule(e.target.value)}
+                      placeholder="예: 평일 오전 10시, 주말 오후 2시"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">기타 메모</Label>
+                    <Textarea
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder="추가로 전달하고 싶은 내용이 있으면 적어주세요"
+                      rows={2}
+                    />
+                  </div>
+                </>
+              )}
+
               <Button
                 type="submit"
                 disabled={loading}
                 className="w-full gold-gradient text-accent-foreground font-bold gap-2 shadow-gold"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                회원가입
+                {role === "student" ? "대기자 등록" : "회원가입"}
               </Button>
             </form>
           )}

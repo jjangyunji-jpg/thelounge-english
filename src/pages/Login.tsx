@@ -43,6 +43,11 @@ export default function Login() {
       }
 
       if (!roleData.approved) {
+        // Students go to waitlist page; instructors just see a message
+        if (roleData.role === "student") {
+          navigate("/waitlist");
+          return;
+        }
         await supabase.auth.signOut();
         toast({
           title: "승인 대기 중",
