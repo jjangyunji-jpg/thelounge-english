@@ -35,6 +35,12 @@ interface MakeupReq {
   resolved_at: string | null;
 }
 
+interface ClassSession {
+  id: string;
+  scheduled_at: string;
+  student_name: string;
+}
+
 interface SchedulePeriod {
   id: string;
   label: string;
@@ -87,6 +93,7 @@ type TabView = "register" | "calendar" | "requests";
 export default function InstructorMakeupTab({ instructorId, instructorName }: { instructorId: string; instructorName: string }) {
   const { toast } = useToast();
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
   const [requests, setRequests] = useState<MakeupReq[]>([]);
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<SchedulePeriod | null>(null);
@@ -107,7 +114,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [slotsRes, reqsRes, periodsRes] = await Promise.all([
+    const [slotsRes, reqsRes, periodsRes, sessionsRes] = await Promise.all([
       supabase.from("instructor_available_slots")
         .select("*")
         .eq("instructor_id", instructorId)
@@ -120,9 +127,14 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
       supabase.from("schedule_periods")
         .select("*")
         .order("start_date", { ascending: false }),
+      supabase.from("class_sessions")
+        .select("id, scheduled_at, student_name")
+        .eq("instructor_name", instructorName)
+        .gte("scheduled_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
     ]);
     setSlots((slotsRes.data || []) as AvailableSlot[]);
     setRequests((reqsRes.data || []) as MakeupReq[]);
+    setClassSessions((sessionsRes.data || []) as ClassSession[]);
     const allPeriods = (periodsRes.data || []) as SchedulePeriod[];
     setPeriods(allPeriods);
     if (!selectedPeriod && allPeriods.length > 0) {
@@ -155,6 +167,27 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
 
   const getSlot = (date: string, hour: number) => slotMap.get(date)?.get(hour);
 
+  // Build class session lookup: "date|hour" -> true (for blocking slot registration)
+  const classSessionTimeSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of classSessions) {
+      const d = new Date(s.scheduled_at);
+      const dateStr = d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      const hour = parseInt(d.toLocaleTimeString("en-GB", { hour: "2-digit", timeZone: "Asia/Seoul" }));
+      set.add(`${dateStr}|${hour}`);
+    }
+    return set;
+  }, [classSessions]);
+
+  const hasClassAt = (date: string, hour: number) => classSessionTimeSet.has(`${date}|${hour}`);
+
+  // Build session map by ID for processed requests
+  const sessionById = useMemo(() => {
+    const map = new Map<string, ClassSession>();
+    for (const s of classSessions) map.set(s.id, s);
+    return map;
+  }, [classSessions]);
+
   const periodIdx = periods.findIndex(p => p.id === selectedPeriod?.id);
 
   // Toggle a pending slot
@@ -170,7 +203,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
   // Toggle entire hour row (all days in the week)
   const toggleHourRow = (hour: number) => {
     const keys = currentWeek
-      .filter(d => d && d >= todayStr && !getSlot(d, hour))
+      .filter(d => d && d >= todayStr && !getSlot(d, hour) && !hasClassAt(d, hour))
       .map(d => `${d}|${hour}`);
     if (keys.length === 0) return;
     setPendingSlots(prev => {
@@ -190,7 +223,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
     const date = currentWeek[dayIdx];
     if (!date || date < todayStr) return;
     const keys = SLOT_HOURS
-      .filter(h => !getSlot(date, h))
+      .filter(h => !getSlot(date, h) && !hasClassAt(date, h))
       .map(h => `${date}|${h}`);
     if (keys.length === 0) return;
     setPendingSlots(prev => {
@@ -469,25 +502,27 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                         const isPast = date < todayStr;
                         const isOpen = slot?.status === "open";
                         const isBooked = slot?.status === "booked";
+                        const hasClass = hasClassAt(date, hour);
 
                         return (
                           <td key={di} className="p-0.5">
                             <button
-                              disabled={isBooked || isPast}
+                              disabled={isBooked || isPast || hasClass}
                               onClick={() => {
                                 if (isOpen && slot) handleDeleteSlot(slot.id);
-                                else if (!slot) togglePending(date, hour);
+                                else if (!slot && !hasClass) togglePending(date, hour);
                               }}
                               className={cn(
                                 "w-full h-9 rounded-md text-[11px] font-semibold transition-all border",
                                 isPast && "opacity-20 cursor-not-allowed border-transparent bg-muted/30",
+                                !isPast && hasClass && !slot && "bg-muted/50 border-border text-muted-foreground/50 cursor-not-allowed",
                                 !isPast && isBooked && "bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] cursor-not-allowed",
                                 !isPast && isOpen && "bg-[hsl(var(--success))] border-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/80",
-                                !isPast && !slot && isPending && "bg-primary border-primary text-primary-foreground",
-                                !isPast && !slot && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
+                                !isPast && !slot && !hasClass && isPending && "bg-primary border-primary text-primary-foreground",
+                                !isPast && !slot && !hasClass && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
                               )}
                             >
-                              {isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
+                              {hasClass && !slot ? "수업" : isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
                             </button>
                           </td>
                         );
@@ -518,25 +553,27 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                         const isPast = date < todayStr;
                         const isOpen = slot?.status === "open";
                         const isBooked = slot?.status === "booked";
+                        const hasClass = hasClassAt(date, hour);
 
                         return (
                           <td key={di} className="p-0.5">
                             <button
-                              disabled={isBooked || isPast}
+                              disabled={isBooked || isPast || hasClass}
                               onClick={() => {
                                 if (isOpen && slot) handleDeleteSlot(slot.id);
-                                else if (!slot) togglePending(date, hour);
+                                else if (!slot && !hasClass) togglePending(date, hour);
                               }}
                               className={cn(
                                 "w-full h-9 rounded-md text-[11px] font-semibold transition-all border",
                                 isPast && "opacity-20 cursor-not-allowed border-transparent bg-muted/30",
+                                !isPast && hasClass && !slot && "bg-muted/50 border-border text-muted-foreground/50 cursor-not-allowed",
                                 !isPast && isBooked && "bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] cursor-not-allowed",
                                 !isPast && isOpen && "bg-[hsl(var(--success))] border-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/80",
-                                !isPast && !slot && isPending && "bg-primary border-primary text-primary-foreground",
-                                !isPast && !slot && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
+                                !isPast && !slot && !hasClass && isPending && "bg-primary border-primary text-primary-foreground",
+                                !isPast && !slot && !hasClass && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
                               )}
                             >
-                              {isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
+                              {hasClass && !slot ? "수업" : isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
                             </button>
                           </td>
                         );
@@ -559,6 +596,10 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-sm bg-[hsl(var(--warning))]/40" />
                   <span className="text-[10px] text-muted-foreground">예약됨</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-muted/50 border border-border" />
+                  <span className="text-[10px] text-muted-foreground">수업 있음</span>
                 </div>
               </div>
             </div>
@@ -756,24 +797,51 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
           {recentProcessed.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-xs font-semibold text-muted-foreground">최근 처리 내역</h3>
-              {recentProcessed.map(req => (
-                <div key={req.id} className="rounded-lg border border-border bg-card p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">{req.student_name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {req.request_type === "reschedule" ? "일정 변경" : "추가 보강"} ·{" "}
-                      {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })}
-                    </p>
+              {recentProcessed.map(req => {
+                const slot = slots.find(s => s.id === req.slot_id);
+                const origSession = req.original_session_id ? sessionById.get(req.original_session_id) : null;
+                return (
+                  <div key={req.id} className="rounded-lg border border-border bg-card p-3 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">{req.student_name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {req.request_type === "reschedule" ? "일정 변경" : "추가 보강"} ·{" "}
+                          {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })}
+                        </p>
+                      </div>
+                      <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
+                        req.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
+                        req.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                        "bg-muted text-muted-foreground"
+                      )}>
+                        {req.status === "approved" ? "승인" : req.status === "rejected" ? "거절" : "취소"}
+                      </span>
+                    </div>
+                    {/* Schedule info */}
+                    <div className="text-[11px] text-muted-foreground space-y-0.5">
+                      {origSession && (
+                        <p>
+                          <span className="text-muted-foreground/70">기존:</span>{" "}
+                          <span className="line-through">
+                            {new Date(origSession.scheduled_at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}{" "}
+                            {new Date(origSession.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })}
+                          </span>
+                        </p>
+                      )}
+                      {slot && (
+                        <p>
+                          <span className="text-muted-foreground/70">{req.request_type === "reschedule" ? "변경:" : "보강:"}</span>{" "}
+                          <span className="font-medium text-foreground">{fmtDateKo(slot.slot_date)} {fmtTimeKo(slot.slot_time)}</span>
+                        </p>
+                      )}
+                      {req.reject_reason && (
+                        <p className="text-destructive/80">사유: {req.reject_reason}</p>
+                      )}
+                    </div>
                   </div>
-                  <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
-                    req.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
-                    req.status === "rejected" ? "bg-destructive/10 text-destructive" :
-                    "bg-muted text-muted-foreground"
-                  )}>
-                    {req.status === "approved" ? "승인" : req.status === "rejected" ? "거절" : "취소"}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
