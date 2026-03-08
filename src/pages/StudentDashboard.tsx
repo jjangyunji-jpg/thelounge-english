@@ -403,9 +403,16 @@ export default function StudentDashboard() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [showMakeup, setShowMakeup] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentStep, setPaymentStep] = useState<"select" | "receipt">("select");
+  const [paymentStep, setPaymentStep] = useState<"select" | "receipt" | "attendance">("select");
   const [receiptType, setReceiptType] = useState<"phone" | "business">("phone");
   const [receiptNumber, setReceiptNumber] = useState("");
+  const [attendancePeriodType, setAttendancePeriodType] = useState<"month" | "custom">("month");
+  const [attendanceMonth, setAttendanceMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [attendanceCustomStart, setAttendanceCustomStart] = useState("");
+  const [attendanceCustomEnd, setAttendanceCustomEnd] = useState("");
   const [vocabStudyOpen] = useState(false); // kept for potential future use
   const [hwModalAssignment, setHwModalAssignment] = useState<Assignment | null>(null);
   const [hwCompletingId, setHwCompletingId] = useState<string | null>(null);
