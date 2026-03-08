@@ -495,6 +495,59 @@ export default function CashReceiptManagement() {
         </div>
       )}
 
+      {/* Attendance Certificate Requests */}
+      {attendanceRequests.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">출석증 요청</p>
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">출석 기간</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">요청일</th>
+                  <th className="text-center px-4 py-3 font-semibold text-foreground">상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attendanceRequests.map((req) => {
+                  const periodLine = req.description.split("\n").find(l => l.startsWith("출석 기간:"));
+                  const periodText = periodLine ? periodLine.replace("출석 기간: ", "") : "-";
+                  const isResolved = req.status === "resolved";
+                  return (
+                    <tr key={req.id} className={cn("border-b border-border last:border-0 transition-colors", isResolved ? "bg-primary/5" : "hover:bg-muted/30")}>
+                      <td className="px-4 py-3 font-medium text-foreground">{req.user_name}</td>
+                      <td className="px-4 py-3 text-foreground">{periodText}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {isResolved ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                            <CheckCircle className="w-3 h-3" /> 발급완료
+                          </span>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              await supabase.from("support_requests").update({ status: "resolved", resolved_at: new Date().toISOString() }).eq("id", req.id);
+                              toast({ title: "출석증 발급 완료 처리됨" });
+                              loadData();
+                            }}
+                            className="text-[10px] px-2 py-1 rounded bg-accent text-accent-foreground hover:bg-accent/80 transition-colors font-medium"
+                          >
+                            발급 완료
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Prepaid Credit Modal */}
       {creditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setCreditModal(null)}>
