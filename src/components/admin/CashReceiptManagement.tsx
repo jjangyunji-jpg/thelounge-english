@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 const LESSON_PRICE = 50000;
-  schedules: string | null;
-  extra_lessons: number | null;
+
+interface StudentRecord {
+  student_name: string;
   student_type: string;
   status: string | null;
   group_students: string[];
@@ -24,19 +25,6 @@ interface PaymentConfirmation {
   month: string;
   confirmed: boolean;
 }
-
-const calcBaseLessons = (schedules: ScheduleSlot[]): number => {
-  if (schedules.length === 0) return 4;
-  return schedules.reduce((sum, slot) => {
-    const freq = slot.frequency || "weekly";
-    return sum + (freq === "weekly" ? 4 : 2);
-  }, 0);
-};
-
-const parseSchedules = (raw: string | null): ScheduleSlot[] => {
-  if (!raw) return [];
-  try { return JSON.parse(raw); } catch { return []; }
-};
 
 export default function CashReceiptManagement() {
   const { toast } = useToast();
