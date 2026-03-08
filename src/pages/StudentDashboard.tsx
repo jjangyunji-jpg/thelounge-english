@@ -1292,7 +1292,7 @@ export default function StudentDashboard() {
               </div>
               ) : (
               <button
-                onClick={() => navigate("/my/makeup")}
+                onClick={() => setShowMakeup(true)}
                 className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
