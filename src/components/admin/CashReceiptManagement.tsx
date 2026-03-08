@@ -150,9 +150,7 @@ export default function CashReceiptManagement() {
     const isConfirmed = conf?.confirmed || false;
     const receipt = receiptMap.get(s.student_name);
     const fee = isCorporate ? null : getFee(s);
-    const slots = parseSchedules(s.schedules);
-    const base = calcBaseLessons(slots);
-    const extra = s.extra_lessons || 0;
+    const count = sessionCounts.get(s.student_name) || 0;
 
     return (
       <tr key={s.student_name} className={cn("border-b border-border last:border-0 transition-colors", isConfirmed ? "bg-primary/5" : "hover:bg-muted/30")}>
