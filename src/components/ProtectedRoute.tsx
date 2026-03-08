@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
@@ -12,7 +12,8 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) {
-  const [status, setStatus] = useState<"loading" | "authorized" | "unauthorized" | "unauthenticated">("loading");
+  const [status, setStatus] = useState<"loading" | "authorized" | "unauthorized" | "unauthenticated" | "waitlist">("loading");
+  const location = useLocation();
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +37,13 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
         return;
       }
 
+      // Check if unapproved student → redirect to waitlist
+      const studentRole = roles.find((r) => r.role === "student");
+      if (studentRole && !studentRole.approved && allowedRoles.includes("student")) {
+        setStatus("waitlist");
+        return;
+      }
+
       // Check if user has any of the allowed roles (must be approved)
       const hasAccess = roles.some(
         (r) => r.approved && allowedRoles.includes(r.role as AppRole)
@@ -50,7 +58,7 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
     check();
 
     return () => { cancelled = true; };
-  }, [allowedRoles]);
+  }, [allowedRoles, location.pathname]);
 
   if (status === "loading") {
     return (
@@ -62,6 +70,10 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
 
   if (status === "unauthenticated") {
     return <Navigate to="/login" replace />;
+  }
+
+  if (status === "waitlist") {
+    return <Navigate to="/waitlist" replace />;
   }
 
   if (status === "unauthorized") {

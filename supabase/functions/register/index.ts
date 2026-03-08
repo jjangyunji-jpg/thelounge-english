@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { email, password, name, role } = await req.json();
+    const { email, password, name, role, phone, desiredLevel, preferredSchedule, note } = await req.json();
 
     if (!email || !password || !name || !role) {
       return new Response(JSON.stringify({ error: "이메일, 비밀번호, 이름, 역할을 입력해주세요." }), {
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. If student, create student_profiles
+    // 3. If student, create student_profiles + waitlist entry
     if (role === "student") {
       const { error: profileError } = await adminClient.from("student_profiles").insert({
         user_id: userId,
@@ -77,6 +77,20 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "계정 생성에 실패했습니다. 다시 시도해주세요." }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // Create waitlist entry
+      const { error: waitlistError } = await adminClient.from("waitlist_entries").insert({
+        user_id: userId,
+        student_name: name,
+        phone: phone || null,
+        desired_level: desiredLevel || null,
+        preferred_schedule: preferredSchedule || null,
+        note: note || null,
+      });
+      if (waitlistError) {
+        console.error("Waitlist insert error:", waitlistError);
+        // Non-fatal — don't delete user for waitlist failure
       }
     }
 

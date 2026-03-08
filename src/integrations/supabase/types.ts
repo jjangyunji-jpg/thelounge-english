@@ -1248,6 +1248,45 @@ export type Database = {
           },
         ]
       }
+      waitlist_entries: {
+        Row: {
+          created_at: string
+          desired_level: string | null
+          id: string
+          note: string | null
+          phone: string | null
+          preferred_schedule: string | null
+          queue_number: number
+          status: string
+          student_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          desired_level?: string | null
+          id?: string
+          note?: string | null
+          phone?: string | null
+          preferred_schedule?: string | null
+          queue_number?: number
+          status?: string
+          student_name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          desired_level?: string | null
+          id?: string
+          note?: string | null
+          phone?: string | null
+          preferred_schedule?: string | null
+          queue_number?: number
+          status?: string
+          student_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       word_lookup_cache: {
         Row: {
           created_at: string
