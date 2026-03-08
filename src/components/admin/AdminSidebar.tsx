@@ -20,7 +20,7 @@ const navItems = [
   { id: "curriculum" as AdminTab, label: "커리큘럼 가이드", icon: MapIcon },
   { id: "class-feedback" as AdminTab, label: "강사 피드백", icon: MessageSquareHeart },
   { id: "student-feedback" as AdminTab, label: "학생 피드백", icon: Target },
-  { id: "cash-receipts" as AdminTab, label: "현금영수증", icon: Receipt },
+  { id: "cash-receipts" as AdminTab, label: "결제확인", icon: Receipt },
   
   { id: "guide" as AdminTab, label: "이용가이드 관리", icon: FileQuestion },
   { id: "messages" as AdminTab, label: "메시지 관리", icon: MessageSquare },
