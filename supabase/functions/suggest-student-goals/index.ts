@@ -74,25 +74,21 @@ serve(async (req) => {
       .eq("is_active", true)
       .order("sort_order");
 
+    let catMap: Record<string, string> = {};
+    let grouped: Record<string, string[]> = {};
+
     if (materials && materials.length > 0) {
       const { data: categories } = await serviceClient
         .from("teaching_material_categories")
         .select("slug, name")
         .order("sort_order");
 
-      const catMap: Record<string, string> = {};
       (categories || []).forEach((c: any) => { catMap[c.slug] = c.name; });
 
-      const grouped: Record<string, string[]> = {};
       materials.forEach((m: any) => {
         if (!grouped[m.category]) grouped[m.category] = [];
         grouped[m.category].push(m.title);
       });
-
-      materialsText = "\n\n[사용 가능한 수업 자료 (카테고리별 순서대로)]\n" +
-        Object.entries(grouped).map(([cat, titles]) =>
-          `[${catMap[cat] || cat}]\n${titles.map((t, i) => `${i + 1}. ${t}`).join("\n")}`
-        ).join("\n\n");
     }
 
     // Fetch recent session topics (last ~20 sessions) for context
