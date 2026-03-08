@@ -16,6 +16,7 @@ import InstructorGuide from "@/components/dashboard/InstructorGuide";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import AddSessionModal from "@/components/dashboard/AddSessionModal";
+import InstructorMakeupTab from "@/components/dashboard/InstructorMakeupTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
