@@ -403,9 +403,16 @@ export default function StudentDashboard() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [showMakeup, setShowMakeup] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentStep, setPaymentStep] = useState<"select" | "receipt">("select");
+  const [paymentStep, setPaymentStep] = useState<"select" | "receipt" | "attendance">("select");
   const [receiptType, setReceiptType] = useState<"phone" | "business">("phone");
   const [receiptNumber, setReceiptNumber] = useState("");
+  const [attendancePeriodType, setAttendancePeriodType] = useState<"month" | "custom">("month");
+  const [attendanceMonth, setAttendanceMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [attendanceCustomStart, setAttendanceCustomStart] = useState("");
+  const [attendanceCustomEnd, setAttendanceCustomEnd] = useState("");
   const [vocabStudyOpen] = useState(false); // kept for potential future use
   const [hwModalAssignment, setHwModalAssignment] = useState<Assignment | null>(null);
   const [hwCompletingId, setHwCompletingId] = useState<string | null>(null);
@@ -1130,7 +1137,7 @@ export default function StudentDashboard() {
           <div className="bg-card rounded-xl shadow-xl border border-border w-[360px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="text-sm font-bold text-foreground">
-                {paymentStep === "select" ? "결제 방법 선택" : "현금영수증 정보"}
+                {paymentStep === "select" ? "결제 방법 선택" : paymentStep === "receipt" ? "현금영수증 정보" : "출석증 요청"}
               </h3>
               <button onClick={() => { setShowPaymentModal(false); setPaymentStep("select"); setReceiptNumber(""); }} className="text-muted-foreground hover:text-foreground">
                 <X className="w-4 h-4" />
@@ -1167,8 +1174,20 @@ export default function StudentDashboard() {
                     <p className="text-[11px] text-muted-foreground mt-0.5">네이버 스마트스토어에서 결제</p>
                   </div>
                 </a>
+                <button
+                  onClick={() => setPaymentStep("attendance")}
+                  className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-navy/10 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-navy" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">기업제출용 출석증 요청하기</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">기업에 제출할 출석증을 요청합니다</p>
+                  </div>
+                </button>
               </div>
-            ) : (
+            ) : paymentStep === "receipt" ? (
               <div className="p-5 space-y-4">
                 <div className="p-3 rounded-lg bg-muted/50 border border-border flex items-center justify-between gap-2">
                   <div>
@@ -1217,12 +1236,10 @@ export default function StudentDashboard() {
                       const raw = e.target.value.replace(/[^0-9]/g, "");
                       let formatted = raw;
                       if (receiptType === "phone") {
-                        // 010-0000-0000
                         if (raw.length <= 3) formatted = raw;
                         else if (raw.length <= 7) formatted = raw.slice(0, 3) + "-" + raw.slice(3);
                         else formatted = raw.slice(0, 3) + "-" + raw.slice(3, 7) + "-" + raw.slice(7, 11);
                       } else {
-                        // 000-00-00000
                         if (raw.length <= 3) formatted = raw;
                         else if (raw.length <= 5) formatted = raw.slice(0, 3) + "-" + raw.slice(3);
                         else formatted = raw.slice(0, 3) + "-" + raw.slice(3, 5) + "-" + raw.slice(5, 10);
@@ -1261,6 +1278,112 @@ export default function StudentDashboard() {
                     className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40"
                   >
                     저장하기
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Attendance Certificate Request */
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-foreground">학생명</label>
+                  <input
+                    type="text"
+                    value={student}
+                    disabled
+                    className="mt-1 w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-2">출석 기간</p>
+                  <div className="flex gap-2 mb-3">
+                    {([["month", "월 1일 ~ 말일"], ["custom", "수업 시작일 ~ 종료일"]] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => setAttendancePeriodType(val)}
+                        className={cn("flex-1 py-2 text-[11px] font-medium rounded-lg border transition-colors",
+                          attendancePeriodType === val
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {attendancePeriodType === "month" ? (
+                    <input
+                      type="month"
+                      value={attendanceMonth}
+                      onChange={e => setAttendanceMonth(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={attendanceCustomStart}
+                        onChange={e => setAttendanceCustomStart(e.target.value)}
+                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      <span className="text-xs text-muted-foreground">~</span>
+                      <input
+                        type="date"
+                        value={attendanceCustomEnd}
+                        onChange={e => setAttendanceCustomEnd(e.target.value)}
+                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => setPaymentStep("select")}
+                    className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    이전
+                  </button>
+                  <button
+                    disabled={attendancePeriodType === "custom" && (!attendanceCustomStart || !attendanceCustomEnd)}
+                    onClick={async () => {
+                      let periodStr = "";
+                      if (attendancePeriodType === "month") {
+                        const [y, m] = attendanceMonth.split("-").map(Number);
+                        const lastDay = new Date(y, m, 0).getDate();
+                        periodStr = `${y}년 ${m}월 1일 ~ ${y}년 ${m}월 ${lastDay}일`;
+                      } else {
+                        const fmt = (d: string) => {
+                          const dt = new Date(d + "T00:00:00");
+                          return `${dt.getFullYear()}년 ${dt.getMonth() + 1}월 ${dt.getDate()}일`;
+                        };
+                        periodStr = `${fmt(attendanceCustomStart)} ~ ${fmt(attendanceCustomEnd)}`;
+                      }
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user) {
+                        toast({ title: "로그인이 필요합니다", variant: "destructive" });
+                        return;
+                      }
+                      const { error } = await supabase.from("support_requests").insert({
+                        user_id: user.id,
+                        user_name: student,
+                        role: "student",
+                        category: "attendance",
+                        title: "출석증 요청",
+                        description: `학생명: ${student}\n출석 기간: ${periodStr}`,
+                      });
+                      if (error) {
+                        toast({ title: "요청 실패", description: error.message, variant: "destructive" });
+                      } else {
+                        toast({ title: "출석증 요청이 접수되었습니다", description: "관리자 확인 후 발급됩니다." });
+                        setShowPaymentModal(false);
+                        setPaymentStep("select");
+                      }
+                    }}
+                    className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40"
+                  >
+                    요청하기
                   </button>
                 </div>
               </div>
