@@ -816,6 +816,60 @@ export type Database = {
         }
         Relationships: []
       }
+      prepaid_credits: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          student_name: string
+          total_sessions: number
+          updated_at: string
+          used_sessions: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          student_name: string
+          total_sessions?: number
+          updated_at?: string
+          used_sessions?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          student_name?: string
+          total_sessions?: number
+          updated_at?: string
+          used_sessions?: number
+        }
+        Relationships: []
+      }
+      prepaid_deductions: {
+        Row: {
+          created_at: string
+          deducted_sessions: number
+          id: string
+          month: string
+          student_name: string
+        }
+        Insert: {
+          created_at?: string
+          deducted_sessions?: number
+          id?: string
+          month: string
+          student_name: string
+        }
+        Update: {
+          created_at?: string
+          deducted_sessions?: number
+          id?: string
+          month?: string
+          student_name?: string
+        }
+        Relationships: []
+      }
       schedule_periods: {
         Row: {
           created_at: string
