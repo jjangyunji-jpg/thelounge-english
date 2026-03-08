@@ -58,7 +58,7 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     setLoading(true);
     const [studRes, receiptRes, confRes, sessRes] = await Promise.all([
-      supabase.from("instructor_students").select("student_name, schedules, extra_lessons, student_type, status, group_students").eq("status", "active"),
+      supabase.from("instructor_students").select("student_name, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", monthKey),
       supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", monthStart).lt("scheduled_at", monthEnd),
