@@ -53,6 +53,7 @@ export default function CashReceiptManagement() {
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [receipts, setReceipts] = useState<CashReceipt[]>([]);
   const [confirmations, setConfirmations] = useState<PaymentConfirmation[]>([]);
+  const [sessionCounts, setSessionCounts] = useState<Map<string, number>>(new Map());
 
   // Month navigation
   const now = new Date();
@@ -69,18 +70,32 @@ export default function CashReceiptManagement() {
     else setMonth(m => m + 1);
   };
 
+  // Month date range in KST
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01T00:00:00+09:00`;
+  const nextM = month === 12 ? 1 : month + 1;
+  const nextY = month === 12 ? year + 1 : year;
+  const monthEnd = `${nextY}-${String(nextM).padStart(2, "0")}-01T00:00:00+09:00`;
+
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [studRes, receiptRes, confRes] = await Promise.all([
+    const [studRes, receiptRes, confRes, sessRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, extra_lessons, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", monthKey),
+      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", monthStart).lt("scheduled_at", monthEnd),
     ]);
     setStudents((studRes.data || []) as StudentRecord[]);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
     setConfirmations((confRes.data as any as PaymentConfirmation[]) || []);
+
+    // Count sessions per student
+    const counts = new Map<string, number>();
+    (sessRes.data || []).forEach((s: any) => {
+      counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
+    });
+    setSessionCounts(counts);
     setLoading(false);
-  }, [monthKey]);
+  }, [monthKey, monthStart, monthEnd]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
