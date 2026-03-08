@@ -1108,6 +1108,16 @@ export default function StudentDashboard() {
         role="student"
       />
 
+      {/* Makeup Request Modal */}
+      {showMakeup && studentRecord?.instructor_name && (
+        <MakeupRequestModal
+          studentName={student}
+          instructorName={studentRecord.instructor_name}
+          groupStudents={studentRecord.group_students}
+          onClose={() => setShowMakeup(false)}
+        />
+      )}
+
       {/* ── Header ── */}
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-3 sm:px-5 py-3">
         <div className="flex items-center justify-between gap-2">
