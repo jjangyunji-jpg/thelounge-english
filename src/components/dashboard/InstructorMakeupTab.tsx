@@ -422,7 +422,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                 <thead>
                   <tr>
                     <th className="w-12" />
-                    {WEEKDAY_LABELS.map((label, i) => {
+                    {DAY_LABELS.map((label, i) => {
                       const date = currentWeek[i] || "";
                       const dayNum = date ? new Date(date + "T00:00:00").getDate() : "";
                       return (
