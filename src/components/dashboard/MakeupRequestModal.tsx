@@ -69,7 +69,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
 
-  const [step, setStep] = useState<"type" | "session" | "calendar" | "confirm">("type");
+  const [step, setStep] = useState<"type" | "checklist" | "session" | "calendar" | "confirm">("type");
+  const [checkedItems, setCheckedItems] = useState<boolean[]>([false, false, false, false, false]);
   const [requestType, setRequestType] = useState<"reschedule" | "extra">("reschedule");
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
