@@ -224,6 +224,24 @@ export default function CashReceiptManagement() {
     return count * LESSON_PRICE;
   };
 
+  const getCorpFee = (s: StudentRecord) => {
+    const count = corpSessionCounts.get(s.student_name) || 0;
+    const price = s.group_students?.length > 0 ? GROUP_LESSON_PRICE : LESSON_PRICE;
+    return count * price;
+  };
+
+  const openCorpReport = async (studentName: string) => {
+    setReportLoading(studentName);
+    try {
+      const { prepareReportData } = await import("@/lib/exportCorporateReportPdf");
+      const data = await prepareReportData(studentName, corpYear, corpMon);
+      setReportPreview(data);
+    } catch (e) {
+      console.error(e);
+    }
+    setReportLoading(null);
+  };
+
   const confirmedCount = regularStudents.filter(s => confMap.get(s.student_name)?.confirmed).length;
   const totalFee = regularStudents.reduce((sum, s) => sum + getFee(s), 0);
 
