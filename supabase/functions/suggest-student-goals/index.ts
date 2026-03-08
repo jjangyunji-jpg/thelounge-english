@@ -165,9 +165,9 @@ ${comment ? `코멘트: ${comment}` : ""}${curriculumGuideText}${sessionHistoryT
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found in AI response");
 
-    const result = JSON.parse(jsonMatch[0]) as { goals?: string };
+    const result = JSON.parse(jsonMatch[0]) as { goals?: string; session_topics?: string[] };
 
-    return new Response(JSON.stringify({ goals: result.goals ?? "" }), {
+    return new Response(JSON.stringify({ goals: result.goals ?? "", session_topics: result.session_topics ?? [] }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

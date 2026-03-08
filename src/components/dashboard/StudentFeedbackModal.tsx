@@ -300,33 +300,28 @@ export default function StudentFeedbackModal({
               </div>
             </>
           ) : (
-            /* AI Suggested Goals view */
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-gold" />
-                <p className="text-sm font-semibold text-foreground">AI 추천 학습 목표</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                <textarea
-                  value={fb.suggestedGoals}
-                  onChange={(e) =>
-                    setFeedbacks((prev) => ({
-                      ...prev,
-                      [student.student_name]: { ...prev[student.student_name], suggestedGoals: e.target.value },
-                    }))
-                  }
-                  className="w-full h-28 bg-transparent text-sm resize-none focus:outline-none"
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground">AI가 제안한 목표를 수정할 수 있습니다. 적용 시 학생의 장기 학습 목표에 반영됩니다.</p>
-              <Button
-                onClick={applyGoalsToStudent}
-                disabled={!fb.suggestedGoals.trim()}
-                className="w-full bg-gold hover:bg-gold/90 text-foreground font-bold"
-              >
-                <Target className="w-4 h-4 mr-2" /> 학습 목표에 적용
-              </Button>
-            </div>
+            <SessionGoalsSuggestionView
+              studentName={student.student_name}
+              level={student.level || "B1"}
+              currentPeriodLabel={periodLabel}
+              currentTopics={fb.currentTopics}
+              suggestedTopics={fb.suggestedTopics}
+              suggestedGoals={fb.suggestedGoals}
+              onTopicsChange={(topics) =>
+                setFeedbacks((prev) => ({
+                  ...prev,
+                  [student.student_name]: { ...prev[student.student_name], suggestedTopics: topics },
+                }))
+              }
+              onGoalsChange={(goals) =>
+                setFeedbacks((prev) => ({
+                  ...prev,
+                  [student.student_name]: { ...prev[student.student_name], suggestedGoals: goals },
+                }))
+              }
+              onSaveTopics={saveTopicsToStudent}
+              onApplyGoals={applyGoalsToStudent}
+            />
           )}
         </div>
 
