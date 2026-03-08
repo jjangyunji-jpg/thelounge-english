@@ -750,6 +750,47 @@ export type Database = {
         }
         Relationships: []
       }
+      student_reports: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          instructor_name: string
+          is_read: boolean
+          period_id: string | null
+          period_label: string
+          student_name: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          instructor_name: string
+          is_read?: boolean
+          period_id?: string | null
+          period_label: string
+          student_name: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          instructor_name?: string
+          is_read?: boolean
+          period_id?: string | null
+          period_label?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_reports_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_requests: {
         Row: {
           admin_note: string | null

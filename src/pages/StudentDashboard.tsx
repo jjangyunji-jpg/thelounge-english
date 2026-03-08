@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import FeedbackSurveyModal from "@/components/classroom/FeedbackSurveyModal";
+import StudentReportModal from "@/components/dashboard/StudentReportModal";
 import WeeklyTasksSection from "@/components/dashboard/WeeklyTasksSection";
 import HomeworkSubmitModal from "@/components/dashboard/HomeworkSubmitModal";
 import { useNavigate } from "react-router-dom";
@@ -407,6 +408,13 @@ export default function StudentDashboard() {
     instructorName: string;
   } | null>(null);
 
+  // Student report state
+  const [unreadReport, setUnreadReport] = useState<{
+    id: string;
+    periodLabel: string;
+    content: string;
+  } | null>(null);
+
   // ── 인증: auth 세션 → student_name 로드, 없으면 URL 파라미터 폴백 ──
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [authNickname, setAuthNickname] = useState<string | null>(null);
@@ -649,6 +657,20 @@ export default function StudentDashboard() {
           }
         }
       }
+    }
+
+    // ── 읽지 않은 학생 리포트 체크 ──
+    const { data: reportData } = await supabase
+      .from("student_reports" as any)
+      .select("id, period_label, content")
+      .eq("student_name", student)
+      .eq("is_read", false)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (reportData && (reportData as any[]).length > 0) {
+      const r = (reportData as any[])[0];
+      setUnreadReport({ id: r.id, periodLabel: r.period_label, content: r.content });
     }
   };
 
@@ -1089,6 +1111,25 @@ export default function StudentDashboard() {
           periodId={feedbackNeeded.periodId}
           periodLabel={feedbackNeeded.periodLabel}
           onComplete={() => setFeedbackNeeded(null)}
+        />
+      )}
+
+      {/* ── Student Report Popup ── */}
+      {unreadReport && !feedbackNeeded && (
+        <StudentReportModal
+          periodLabel={(() => {
+            const m = unreadReport.periodLabel.match(/(\d{4})-(\d{2})/);
+            return m ? `${m[1]}년 ${parseInt(m[2])}월` : unreadReport.periodLabel;
+          })()}
+          content={unreadReport.content}
+          onClose={() => setUnreadReport(null)}
+          onMarkRead={async () => {
+            await supabase
+              .from("student_reports" as any)
+              .update({ is_read: true } as any)
+              .eq("id", unreadReport.id);
+            setUnreadReport(null);
+          }}
         />
       )}
 
