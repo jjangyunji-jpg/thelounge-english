@@ -6,16 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const LESSON_PRICE = 50000;
 
-interface ScheduleSlot {
-  day: string;
-  time: string;
-  frequency?: string;
-}
-
 interface StudentRecord {
   student_name: string;
-  schedules: string | null;
-  extra_lessons: number | null;
   student_type: string;
   status: string | null;
   group_students: string[];
@@ -34,25 +26,13 @@ interface PaymentConfirmation {
   confirmed: boolean;
 }
 
-const calcBaseLessons = (schedules: ScheduleSlot[]): number => {
-  if (schedules.length === 0) return 4;
-  return schedules.reduce((sum, slot) => {
-    const freq = slot.frequency || "weekly";
-    return sum + (freq === "weekly" ? 4 : 2);
-  }, 0);
-};
-
-const parseSchedules = (raw: string | null): ScheduleSlot[] => {
-  if (!raw) return [];
-  try { return JSON.parse(raw); } catch { return []; }
-};
-
 export default function CashReceiptManagement() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [receipts, setReceipts] = useState<CashReceipt[]>([]);
   const [confirmations, setConfirmations] = useState<PaymentConfirmation[]>([]);
+  const [sessionCounts, setSessionCounts] = useState<Map<string, number>>(new Map());
 
   // Month navigation
   const now = new Date();
@@ -69,18 +49,32 @@ export default function CashReceiptManagement() {
     else setMonth(m => m + 1);
   };
 
+  // Month date range in KST
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01T00:00:00+09:00`;
+  const nextM = month === 12 ? 1 : month + 1;
+  const nextY = month === 12 ? year + 1 : year;
+  const monthEnd = `${nextY}-${String(nextM).padStart(2, "0")}-01T00:00:00+09:00`;
+
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [studRes, receiptRes, confRes] = await Promise.all([
-      supabase.from("instructor_students").select("student_name, schedules, extra_lessons, student_type, status, group_students").eq("status", "active"),
+    const [studRes, receiptRes, confRes, sessRes] = await Promise.all([
+      supabase.from("instructor_students").select("student_name, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", monthKey),
+      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", monthStart).lt("scheduled_at", monthEnd),
     ]);
     setStudents((studRes.data || []) as StudentRecord[]);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
     setConfirmations((confRes.data as any as PaymentConfirmation[]) || []);
+
+    // Count sessions per student
+    const counts = new Map<string, number>();
+    (sessRes.data || []).forEach((s: any) => {
+      counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
+    });
+    setSessionCounts(counts);
     setLoading(false);
-  }, [monthKey]);
+  }, [monthKey, monthStart, monthEnd]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -116,10 +110,8 @@ export default function CashReceiptManagement() {
   };
 
   const getFee = (s: StudentRecord) => {
-    const slots = parseSchedules(s.schedules);
-    const base = calcBaseLessons(slots);
-    const extra = s.extra_lessons || 0;
-    return (base + extra) * LESSON_PRICE;
+    const count = sessionCounts.get(s.student_name) || 0;
+    return count * LESSON_PRICE;
   };
 
   const confirmedCount = regularStudents.filter(s => confMap.get(s.student_name)?.confirmed).length;
@@ -137,9 +129,7 @@ export default function CashReceiptManagement() {
     const isConfirmed = conf?.confirmed || false;
     const receipt = receiptMap.get(s.student_name);
     const fee = isCorporate ? null : getFee(s);
-    const slots = parseSchedules(s.schedules);
-    const base = calcBaseLessons(slots);
-    const extra = s.extra_lessons || 0;
+    const count = sessionCounts.get(s.student_name) || 0;
 
     return (
       <tr key={s.student_name} className={cn("border-b border-border last:border-0 transition-colors", isConfirmed ? "bg-primary/5" : "hover:bg-muted/30")}>
@@ -173,7 +163,7 @@ export default function CashReceiptManagement() {
                 ₩{fee!.toLocaleString()}
               </span>
               <span className="text-[10px] text-muted-foreground ml-1">
-                ({base}{extra > 0 ? `+${extra}` : ""}회)
+                ({count}회)
               </span>
             </div>
           )}
