@@ -80,15 +80,27 @@ export default function CashReceiptManagement() {
   const periodStart = currentPeriod ? `${currentPeriod.start_date}T00:00:00+09:00` : "";
   const periodEnd = currentPeriod ? `${currentPeriod.end_date}T23:59:59+09:00` : "";
 
+  // Load periods first, then data
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("schedule_periods").select("*").order("start_date", { ascending: false });
+      const all = (data || []) as SchedulePeriod[];
+      setPeriods(all);
+      const activeIdx = all.findIndex(p => p.is_active);
+      setPeriodIdx(activeIdx >= 0 ? activeIdx : 0);
+    })();
+  }, []);
+
   const loadData = useCallback(async () => {
+    if (!currentPeriod) return;
     setLoading(true);
     const [studRes, receiptRes, confRes, sessRes, creditRes, dedRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
-      supabase.from("payment_confirmations" as any).select("*").eq("month", monthKey),
-      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", monthStart).lt("scheduled_at", monthEnd),
+      supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
+      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
       supabase.from("prepaid_credits" as any).select("*"),
-      supabase.from("prepaid_deductions" as any).select("*").eq("month", monthKey),
+      supabase.from("prepaid_deductions" as any).select("*").eq("month", periodKey),
     ]);
     setStudents((studRes.data || []) as StudentRecord[]);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
@@ -102,7 +114,7 @@ export default function CashReceiptManagement() {
     });
     setSessionCounts(counts);
     setLoading(false);
-  }, [monthKey, monthStart, monthEnd]);
+  }, [currentPeriod, periodKey, periodStart, periodEnd]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
