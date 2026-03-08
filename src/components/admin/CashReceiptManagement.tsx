@@ -46,6 +46,14 @@ interface PrepaidDeduction {
   deducted_sessions: number;
 }
 
+interface AttendanceRequest {
+  id: string;
+  user_name: string;
+  description: string;
+  status: string;
+  created_at: string;
+}
+
 const calcBaseLessons = (raw: string | null): number => {
   if (!raw) return 4;
   try {
