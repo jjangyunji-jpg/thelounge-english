@@ -11,6 +11,7 @@ import GuideManagement from "@/components/admin/GuideManagement";
 import MessageCenter from "@/components/admin/MessageCenter";
 import SystemSettings from "@/components/admin/SystemSettings";
 import TeachingMaterials from "@/components/admin/TeachingMaterials";
+import StudentFeedbackManagement from "@/components/admin/StudentFeedbackManagement";
 import { Menu, X, Loader2 } from "lucide-react";
 
 export default function Admin() {
