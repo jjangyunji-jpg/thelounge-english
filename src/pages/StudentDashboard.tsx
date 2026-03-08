@@ -1126,43 +1126,116 @@ export default function StudentDashboard() {
 
       {/* Payment Method Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPaymentModal(false)}>
-          <div className="bg-card rounded-xl shadow-xl border border-border w-[340px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { setShowPaymentModal(false); setPaymentStep("select"); setReceiptNumber(""); }}>
+          <div className="bg-card rounded-xl shadow-xl border border-border w-[360px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h3 className="text-sm font-bold text-foreground">결제 방법 선택</h3>
-              <button onClick={() => setShowPaymentModal(false)} className="text-muted-foreground hover:text-foreground">
+              <h3 className="text-sm font-bold text-foreground">
+                {paymentStep === "select" ? "결제 방법 선택" : "현금영수증 정보"}
+              </h3>
+              <button onClick={() => { setShowPaymentModal(false); setPaymentStep("select"); setReceiptNumber(""); }} className="text-muted-foreground hover:text-foreground">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-5 space-y-3">
-              <button
-                onClick={() => { setShowPaymentModal(false); navigator.clipboard.writeText("카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)"); toast({ title: "계좌번호가 복사되었습니다", description: "카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)" }); }}
-                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <CreditCard className="w-5 h-5 text-primary" />
+
+            {paymentStep === "select" ? (
+              <div className="p-5 space-y-3">
+                <button
+                  onClick={() => setPaymentStep("receipt")}
+                  className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">계좌이체</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">카카오뱅크 3333-08-1365286</p>
+                    <p className="text-[11px] text-muted-foreground">더라운지영어원격학원 (장리원)</p>
+                  </div>
+                </button>
+                <a
+                  href="https://smartstore.naver.com/thelounge_english/products/11688767366"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => { setShowPaymentModal(false); setPaymentStep("select"); }}
+                  className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+                    <Monitor className="w-5 h-5 text-gold" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">스토어 결제</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">네이버 스마트스토어에서 결제</p>
+                  </div>
+                </a>
+              </div>
+            ) : (
+              <div className="p-5 space-y-4">
+                <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                  <p className="text-[11px] text-muted-foreground">입금 계좌</p>
+                  <p className="text-sm font-semibold text-foreground mt-0.5">카카오뱅크 3333-08-1365286</p>
+                  <p className="text-[11px] text-muted-foreground">더라운지영어원격학원 (장리원)</p>
                 </div>
+
                 <div>
-                  <p className="text-sm font-semibold text-foreground">계좌이체</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)</p>
+                  <p className="text-xs font-semibold text-foreground mb-2">현금영수증 발급 유형</p>
+                  <div className="flex gap-2">
+                    {([["phone", "휴대폰번호"], ["business", "사업자번호"]] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => setReceiptType(val)}
+                        className={cn("flex-1 py-2 text-xs font-medium rounded-lg border transition-colors",
+                          receiptType === val
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </button>
-              <a
-                href="https://smartstore.naver.com/thelounge_english/products/11688767366"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setShowPaymentModal(false)}
-                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
-              >
-                <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
-                  <Monitor className="w-5 h-5 text-gold" />
-                </div>
+
                 <div>
-                  <p className="text-sm font-semibold text-foreground">스토어 결제</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">네이버 스마트스토어에서 결제</p>
+                  <label className="text-xs font-semibold text-foreground">
+                    {receiptType === "phone" ? "휴대폰번호" : "사업자등록번호"}
+                  </label>
+                  <input
+                    type="text"
+                    value={receiptNumber}
+                    onChange={e => setReceiptNumber(e.target.value)}
+                    placeholder={receiptType === "phone" ? "010-0000-0000" : "000-00-00000"}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
                 </div>
-              </a>
-            </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => { setPaymentStep("select"); setReceiptNumber(""); }}
+                    className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    이전
+                  </button>
+                  <button
+                    onClick={() => {
+                      const info = `카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)`;
+                      navigator.clipboard.writeText(info);
+                      toast({
+                        title: "계좌번호가 복사되었습니다",
+                        description: receiptNumber
+                          ? `현금영수증: ${receiptType === "phone" ? "휴대폰" : "사업자"} ${receiptNumber}`
+                          : info,
+                      });
+                      setShowPaymentModal(false);
+                      setPaymentStep("select");
+                      setReceiptNumber("");
+                    }}
+                    className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    계좌번호 복사
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
