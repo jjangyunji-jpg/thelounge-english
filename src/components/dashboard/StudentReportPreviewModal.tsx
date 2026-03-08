@@ -52,6 +52,7 @@ export default function StudentReportPreviewModal({
           period_label: periodLabel,
           period_start: periodStartDate,
           period_end: periodEndDate,
+          save: false,
         },
       });
       if (error) throw error;
