@@ -242,12 +242,37 @@ export default function Signup() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">희망 수업 시간대</Label>
-                    <Input
-                      value={preferredSchedule}
-                      onChange={(e) => setPreferredSchedule(e.target.value)}
-                      placeholder="예: 평일 오전 10시, 주말 오후 2시"
-                    />
+                    <Label className="text-xs text-muted-foreground">희망 수업 시간대 (복수 선택 가능)</Label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        { value: "평일 오전 10시~2시", label: "평일 오전 10시~2시" },
+                        { value: "평일 오후 6시~10시", label: "평일 오후 6시~10시" },
+                        { value: "주말 오전 10시~2시", label: "주말 오전 10시~2시" },
+                        { value: "주말 오후 6시~10시", label: "주말 오후 6시~10시" },
+                      ].map((opt) => (
+                        <label
+                          key={opt.value}
+                          className={cn(
+                            "flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm cursor-pointer transition-all",
+                            preferredSchedule.includes(opt.value)
+                              ? "border-gold bg-gold/10 text-foreground font-medium"
+                              : "border-border text-muted-foreground hover:bg-muted/50"
+                          )}
+                        >
+                          <Checkbox
+                            checked={preferredSchedule.includes(opt.value)}
+                            onCheckedChange={(checked) => {
+                              setPreferredSchedule((prev) =>
+                                checked
+                                  ? [...prev, opt.value]
+                                  : prev.filter((v) => v !== opt.value)
+                              );
+                            }}
+                          />
+                          {opt.label}
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">기타 메모</Label>
