@@ -373,7 +373,7 @@ export default function CashReceiptManagement() {
       {/* Corporate Students Table */}
       {corporateStudents.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">기업 수강생</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">기업 수강생 <span className="font-normal">({corpMonthLabel} 기준)</span></p>
           <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
