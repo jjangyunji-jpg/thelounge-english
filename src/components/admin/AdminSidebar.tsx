@@ -3,7 +3,7 @@ import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpe
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "student-feedback" | "guide" | "messages" | "settings";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "guide" | "messages" | "settings";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
