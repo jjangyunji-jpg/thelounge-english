@@ -74,6 +74,8 @@ export default function StudentFeedbackModal({
         checklist: Object.fromEntries(RATING_ITEMS.map((c) => [c.key, 0])),
         comment: "",
         suggestedGoals: "",
+        suggestedTopics: [],
+        currentTopics: [],
         loadingAI: false,
       };
     });
