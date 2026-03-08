@@ -2347,6 +2347,7 @@ export default function InstructorDashboard() {
                                     );
                                     return null;
                                   })()}
+                                  </div>
                                 </div>
                               </div>
                             );
