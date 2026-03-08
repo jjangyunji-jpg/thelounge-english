@@ -1213,7 +1213,22 @@ export default function StudentDashboard() {
                   <input
                     type="text"
                     value={receiptNumber}
-                    onChange={e => setReceiptNumber(e.target.value)}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "");
+                      let formatted = raw;
+                      if (receiptType === "phone") {
+                        // 010-0000-0000
+                        if (raw.length <= 3) formatted = raw;
+                        else if (raw.length <= 7) formatted = raw.slice(0, 3) + "-" + raw.slice(3);
+                        else formatted = raw.slice(0, 3) + "-" + raw.slice(3, 7) + "-" + raw.slice(7, 11);
+                      } else {
+                        // 000-00-00000
+                        if (raw.length <= 3) formatted = raw;
+                        else if (raw.length <= 5) formatted = raw.slice(0, 3) + "-" + raw.slice(3);
+                        else formatted = raw.slice(0, 3) + "-" + raw.slice(3, 5) + "-" + raw.slice(5, 10);
+                      }
+                      setReceiptNumber(formatted);
+                    }}
                     placeholder={receiptType === "phone" ? "010-0000-0000" : "000-00-00000"}
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
