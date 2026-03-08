@@ -1133,7 +1133,7 @@ export default function StudentDashboard() {
             </div>
             <div className="p-5 space-y-3">
               <button
-                onClick={() => { setShowPaymentModal(false); navigator.clipboard.writeText("카카오뱅크 3333-02-9585052 (더라운지)"); toast({ title: "계좌번호가 복사되었습니다", description: "카카오뱅크 3333-02-9585052 (더라운지)" }); }}
+                onClick={() => { setShowPaymentModal(false); navigator.clipboard.writeText("카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)"); toast({ title: "계좌번호가 복사되었습니다", description: "카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)" }); }}
                 className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
               >
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -1141,7 +1141,7 @@ export default function StudentDashboard() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">계좌이체</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">카카오뱅크 3333-02-9585052</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)</p>
                 </div>
               </button>
               <a
