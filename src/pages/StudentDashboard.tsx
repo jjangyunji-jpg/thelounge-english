@@ -381,6 +381,7 @@ function RSection({ title, icon: Icon, children, badge }: {
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function StudentDashboard() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [allSessions, setAllSessions] = useState<ClassSession[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
