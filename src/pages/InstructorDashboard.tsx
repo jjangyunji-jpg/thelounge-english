@@ -331,6 +331,10 @@ function BigCalendar({
     if (!sessionsByDate.has(key)) sessionsByDate.set(key, []);
     sessionsByDate.get(key)!.push(s);
   });
+  // Sort each day's sessions by time ascending (morning first)
+  sessionsByDate.forEach((list, key) => {
+    list.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+  });
   const meetingsByDate = new Map<string, BusinessMeeting[]>();
   meetings.forEach((m) => {
     const d = new Date(m.scheduled_at);
