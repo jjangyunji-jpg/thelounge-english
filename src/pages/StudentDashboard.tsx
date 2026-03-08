@@ -1141,7 +1141,7 @@ export default function StudentDashboard() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">계좌이체</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">카카오뱅크 3333-02-9585052</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)</p>
                 </div>
               </button>
               <a
