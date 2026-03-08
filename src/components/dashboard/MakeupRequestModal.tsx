@@ -320,7 +320,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 const allChecked = checkedItems.every(Boolean);
                 return (
                   <div className="space-y-4">
-                    <p className="text-sm font-bold text-foreground">일정 변경 전 확인해주세요</p>
+                    <p className="text-sm font-bold text-foreground">일정 변경 전 확인해주세요 <span className="text-xs font-normal text-muted-foreground">(모두 체크해주세요)</span></p>
                     <div className="space-y-3">
                       {CHECKLIST_ITEMS.map((text, i) => (
                         <label key={i} className="flex items-start gap-3 cursor-pointer group">
