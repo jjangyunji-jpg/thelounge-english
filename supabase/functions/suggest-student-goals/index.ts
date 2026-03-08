@@ -36,7 +36,21 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { student_name, level, current_objective, checked, unchecked, comment, period_label } = await req.json();
+    const body = await req.json();
+    const { student_name, level, current_objective, comment, period_label } = body;
+
+    // Support both old (checked/unchecked) and new (ratings) format
+    let evaluationText: string;
+    if (body.ratings && Array.isArray(body.ratings)) {
+      // New star rating format: [{label, score}]
+      evaluationText = body.ratings
+        .map((r: { label: string; score: number }) => `${r.label}: ${"★".repeat(r.score)}${"☆".repeat(5 - r.score)} (${r.score}/5)`)
+        .join("\n");
+    } else {
+      // Legacy checklist format
+      const { checked = [], unchecked = [] } = body;
+      evaluationText = `✅ 달성: ${checked.length > 0 ? checked.join(", ") : "없음"}\n❌ 미달성: ${unchecked.length > 0 ? unchecked.join(", ") : "없음"}`;
+    }
 
     const systemPrompt = `You are an English class curriculum advisor for Korean learners.
 Based on the instructor's feedback about a student, suggest learning goals for the next month.
@@ -44,7 +58,8 @@ Based on the instructor's feedback about a student, suggest learning goals for t
 RULES:
 - Write goals in Korean (한국어)
 - 2~4 concise goals, each on a new line
-- Consider what the student did well (checked items) and needs improvement (unchecked items)
+- Consider the star ratings (1-5) for each evaluation category
+- Lower scores indicate areas needing more attention
 - Consider the instructor's comment
 - Consider the student's current level and existing objectives
 - Be specific and actionable
@@ -61,8 +76,7 @@ Return ONLY a valid JSON object:
 현재 학습 목표: ${current_objective || "없음"}
 
 강사 평가:
-✅ 달성: ${checked.length > 0 ? checked.join(", ") : "없음"}
-❌ 미달성: ${unchecked.length > 0 ? unchecked.join(", ") : "없음"}
+${evaluationText}
 ${comment ? `코멘트: ${comment}` : ""}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
