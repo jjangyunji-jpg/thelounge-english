@@ -84,6 +84,7 @@ export default function StudentFeedbackModal({
   });
   const [saving, setSaving] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
+  const [showReportPreview, setShowReportPreview] = useState(false);
 
   const student = students[currentIdx];
   const fb = feedbacks[student.student_name];
