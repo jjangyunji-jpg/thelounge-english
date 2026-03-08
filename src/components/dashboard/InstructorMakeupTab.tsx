@@ -86,9 +86,10 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<TabView>("register");
 
-  // Registration state
-  const [selectedDateIdx, setSelectedDateIdx] = useState(0);
-  const [pendingTimes, setPendingTimes] = useState<Set<number>>(new Set());
+  // Registration state - week based
+  const [selectedWeekIdx, setSelectedWeekIdx] = useState(0);
+  // pendingSlots: Set of "date|hour" keys
+  const [pendingSlots, setPendingSlots] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
 
   // Approval state
