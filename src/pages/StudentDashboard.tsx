@@ -1119,6 +1119,49 @@ export default function StudentDashboard() {
         />
       )}
 
+      {/* Payment Method Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPaymentModal(false)}>
+          <div className="bg-card rounded-xl shadow-xl border border-border w-[340px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-sm font-bold text-foreground">결제 방법 선택</h3>
+              <button onClick={() => setShowPaymentModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-3">
+              <button
+                onClick={() => { setShowPaymentModal(false); navigator.clipboard.writeText("카카오뱅크 3333-02-9585052 (더라운지)"); toast({ title: "계좌번호가 복사되었습니다", description: "카카오뱅크 3333-02-9585052 (더라운지)" }); }}
+                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <CreditCard className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">계좌이체</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">카카오뱅크 3333-02-9585052</p>
+                </div>
+              </button>
+              <a
+                href="https://smartstore.naver.com/thelounge_english/products/11688767366"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowPaymentModal(false)}
+                className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+                  <Monitor className="w-5 h-5 text-gold" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">스토어 결제</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">네이버 스마트스토어에서 결제</p>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ── */}
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-3 sm:px-5 py-3">
         <div className="flex items-center justify-between gap-2">
