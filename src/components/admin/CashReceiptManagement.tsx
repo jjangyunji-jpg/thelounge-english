@@ -230,12 +230,36 @@ export default function CashReceiptManagement() {
     return count * price;
   };
 
-  const openCorpReport = async (studentName: string) => {
-    setReportLoading(studentName);
+  const openCorpReport = async (s: StudentRecord) => {
+    setReportLoading(s.student_name);
     try {
       const { prepareReportData } = await import("@/lib/exportCorporateReportPdf");
-      const data = await prepareReportData(studentName, corpYear, corpMon);
-      setReportPreview(data);
+      const startDate = `${corpYear}-${String(corpMon).padStart(2, "0")}-01`;
+      const lastDay = new Date(corpYear, corpMon, 0).getDate();
+      const endDate = `${corpYear}-${String(corpMon).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const label = corpMonthLabel;
+      const { data: sessData } = await supabase
+        .from("class_sessions")
+        .select("scheduled_at,student_name,topic,notes,level,ended_at,group_students")
+        .eq("student_name", s.student_name)
+        .gte("scheduled_at", startDate + "T00:00:00+09:00")
+        .lte("scheduled_at", endDate + "T23:59:59+09:00")
+        .order("scheduled_at");
+      // Get instructor info
+      const { data: studentInfo } = await supabase
+        .from("instructor_students")
+        .select("instructor_name, learning_objective")
+        .eq("student_name", s.student_name)
+        .single();
+      let objs: string[] = [];
+      try { objs = JSON.parse(studentInfo?.learning_objective || "[]"); } catch { objs = studentInfo?.learning_objective ? [studentInfo.learning_objective] : []; }
+      const groupStudents = (sessData || []).find(sess => sess.group_students?.length > 0)?.group_students || [];
+      const previewData = await prepareReportData(
+        sessData || [],
+        { studentName: s.student_name, instructorName: studentInfo?.instructor_name || "", learningObjective: objs.join(", "), groupStudents },
+        { label, start_date: startDate, end_date: endDate },
+      );
+      setReportPreview(previewData);
     } catch (e) {
       console.error(e);
     }
