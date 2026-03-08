@@ -381,6 +381,7 @@ export default function Signup() {
                             </label>
                           ))}
                         </div>
+                      </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">기타 메모</Label>
                         <Textarea
