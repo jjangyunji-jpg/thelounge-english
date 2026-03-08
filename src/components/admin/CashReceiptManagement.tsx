@@ -5,15 +5,6 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 const LESSON_PRICE = 50000;
-
-interface ScheduleSlot {
-  day: string;
-  time: string;
-  frequency?: string;
-}
-
-interface StudentRecord {
-  student_name: string;
   schedules: string | null;
   extra_lessons: number | null;
   student_type: string;
