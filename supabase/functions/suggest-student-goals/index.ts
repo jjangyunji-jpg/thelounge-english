@@ -37,7 +37,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const body = await req.json();
-    const { student_name, level, current_objective, comment, period_label, instructor_name } = body;
+    const { student_name, level, current_objective, comment, period_label, instructor_name, session_count, current_session_topics } = body;
 
     // Support both old (checked/unchecked) and new (ratings) format
     let evaluationText: string;
