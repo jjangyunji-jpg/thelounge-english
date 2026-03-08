@@ -259,6 +259,7 @@ export default function CashReceiptManagement() {
         { studentName: s.student_name, instructorName: studentInfo?.instructor_name || "", learningObjective: objs.join(", "), groupStudents },
         { label, start_date: startDate, end_date: endDate },
       );
+      previewData.totalFee = getCorpFee(s);
       setReportPreview(previewData);
     } catch (e) {
       console.error(e);
