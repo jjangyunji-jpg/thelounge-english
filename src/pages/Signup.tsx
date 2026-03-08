@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
@@ -28,7 +29,7 @@ export default function Signup() {
   // Waitlist fields (student only)
   const [phone, setPhone] = useState("");
   const [desiredLevel, setDesiredLevel] = useState("");
-  const [preferredSchedule, setPreferredSchedule] = useState("");
+  const [preferredSchedule, setPreferredSchedule] = useState<string[]>([]);
   const [note, setNote] = useState("");
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -52,7 +53,7 @@ export default function Signup() {
       if (role === "student") {
         body.phone = phone.trim();
         body.desiredLevel = desiredLevel;
-        body.preferredSchedule = preferredSchedule.trim();
+        body.preferredSchedule = preferredSchedule.join(", ");
         body.note = note.trim();
       }
 
@@ -242,12 +243,37 @@ export default function Signup() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">희망 수업 시간대</Label>
-                    <Input
-                      value={preferredSchedule}
-                      onChange={(e) => setPreferredSchedule(e.target.value)}
-                      placeholder="예: 평일 오전 10시, 주말 오후 2시"
-                    />
+                    <Label className="text-xs text-muted-foreground">희망 수업 시간대 (복수 선택 가능)</Label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        { value: "평일 오전 10시~2시", label: "평일 오전 10시~2시" },
+                        { value: "평일 오후 6시~10시", label: "평일 오후 6시~10시" },
+                        { value: "주말 오전 10시~2시", label: "주말 오전 10시~2시" },
+                        { value: "주말 오후 6시~10시", label: "주말 오후 6시~10시" },
+                      ].map((opt) => (
+                        <label
+                          key={opt.value}
+                          className={cn(
+                            "flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm cursor-pointer transition-all",
+                            preferredSchedule.includes(opt.value)
+                              ? "border-gold bg-gold/10 text-foreground font-medium"
+                              : "border-border text-muted-foreground hover:bg-muted/50"
+                          )}
+                        >
+                          <Checkbox
+                            checked={preferredSchedule.includes(opt.value)}
+                            onCheckedChange={(checked) => {
+                              setPreferredSchedule((prev) =>
+                                checked
+                                  ? [...prev, opt.value]
+                                  : prev.filter((v) => v !== opt.value)
+                              );
+                            }}
+                          />
+                          {opt.label}
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">기타 메모</Label>
