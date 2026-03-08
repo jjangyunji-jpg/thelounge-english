@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import BugReportModal from "@/components/dashboard/BugReportModal";
+import MakeupRequestModal from "@/components/dashboard/MakeupRequestModal";
 import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
