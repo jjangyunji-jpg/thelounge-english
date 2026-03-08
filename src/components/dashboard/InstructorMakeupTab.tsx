@@ -597,6 +597,10 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                   <span className="w-3 h-3 rounded-sm bg-[hsl(var(--warning))]/40" />
                   <span className="text-[10px] text-muted-foreground">예약됨</span>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-muted/50 border border-border" />
+                  <span className="text-[10px] text-muted-foreground">수업 있음</span>
+                </div>
               </div>
             </div>
 
