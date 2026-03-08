@@ -288,7 +288,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">보강 유형을 선택해주세요</p>
                   <button
-                    onClick={() => { setRequestType("reschedule"); setCheckedItems([false, false, false, false, false]); setStep("checklist"); }}
+                    onClick={() => { setRequestType("reschedule"); setCheckedItems([false, false, false, false]); setStep("checklist"); }}
                     className="w-full rounded-xl border border-border p-4 text-left hover:border-primary/50 transition-colors space-y-1"
                   >
                     <p className="text-sm font-bold text-foreground flex items-center gap-2">
