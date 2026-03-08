@@ -111,6 +111,11 @@ serve(async (req) => {
         });
       }
 
+      // Close the booked slot
+      await sb.from("instructor_available_slots")
+        .update({ status: "booked" })
+        .eq("id", makeupReq.slot_id);
+
       // Update request status
       await sb.from("makeup_requests").update({
         status: "approved",
