@@ -74,25 +74,21 @@ serve(async (req) => {
       .eq("is_active", true)
       .order("sort_order");
 
+    let catMap: Record<string, string> = {};
+    let grouped: Record<string, string[]> = {};
+
     if (materials && materials.length > 0) {
       const { data: categories } = await serviceClient
         .from("teaching_material_categories")
         .select("slug, name")
         .order("sort_order");
 
-      const catMap: Record<string, string> = {};
       (categories || []).forEach((c: any) => { catMap[c.slug] = c.name; });
 
-      const grouped: Record<string, string[]> = {};
       materials.forEach((m: any) => {
         if (!grouped[m.category]) grouped[m.category] = [];
         grouped[m.category].push(m.title);
       });
-
-      materialsText = "\n\n[사용 가능한 수업 자료 (카테고리별 순서대로)]\n" +
-        Object.entries(grouped).map(([cat, titles]) =>
-          `[${catMap[cat] || cat}]\n${titles.map((t, i) => `${i + 1}. ${t}`).join("\n")}`
-        ).join("\n\n");
     }
 
     // Fetch recent session topics (last ~20 sessions) for context
@@ -114,6 +110,48 @@ serve(async (req) => {
         }).join("\n");
         sessionHistoryText = `\n\n[최근 수업 히스토리 (최근 ${sessions.length}회)]\n${history}`;
       }
+    }
+
+    // Build materialsText with progress markers by cross-referencing session history
+    if (Object.keys(grouped).length > 0) {
+      // Collect all covered topics from session history + current period
+      const coveredTopics: string[] = [];
+      if (student_name && instructor_name) {
+        const { data: allSessions } = await serviceClient
+          .from("class_sessions")
+          .select("topic")
+          .eq("student_name", student_name)
+          .eq("instructor_name", instructor_name)
+          .not("topic", "is", null);
+        (allSessions || []).forEach((s: any) => {
+          if (s.topic) coveredTopics.push(s.topic.toLowerCase().trim());
+        });
+      }
+      if (current_session_topics && Array.isArray(current_session_topics)) {
+        current_session_topics.forEach((t: string) => {
+          if (t) coveredTopics.push(t.toLowerCase().trim());
+        });
+      }
+
+      materialsText = "\n\n[수업 자료 진행 현황]\n" +
+        Object.entries(grouped).map(([cat, titles]) => {
+          let lastCoveredIdx = -1;
+          const annotated = titles.map((t, i) => {
+            const titleLower = t.toLowerCase().trim();
+            const isCovered = coveredTopics.some(ct =>
+              ct.includes(titleLower) || titleLower.includes(ct.split("/")[0].trim()) || ct.split("/")[0].trim().includes(titleLower)
+            );
+            if (isCovered) lastCoveredIdx = i;
+            return `${i + 1}. ${isCovered ? "✅ " : ""}${t}`;
+          });
+
+          const nextIdx = lastCoveredIdx + 1;
+          const nextMaterials = titles.slice(nextIdx, nextIdx + 6);
+
+          return `[${catMap[cat] || cat}] (${lastCoveredIdx + 1}/${titles.length} 완료)\n${annotated.join("\n")}${
+            nextMaterials.length > 0 ? `\n→ 다음 자료: ${nextMaterials.join(", ")}` : "\n→ 모든 자료 완료"
+          }`;
+        }).join("\n\n");
     }
 
     const topicCount = session_count || 4;
