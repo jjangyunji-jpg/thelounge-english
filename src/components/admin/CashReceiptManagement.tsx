@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
