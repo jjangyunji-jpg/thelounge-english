@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, Library, ArrowLeft, FileQuestion, Target, MapIcon, MessageSquareHeart } from "lucide-react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, Library, ArrowLeft, FileQuestion, Target, MapIcon, MessageSquareHeart, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "guide" | "messages" | "settings";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "student-reports" | "guide" | "messages" | "settings";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
