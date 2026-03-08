@@ -63,6 +63,11 @@ serve(async (req) => {
           .from("class_sessions").select("*").eq("id", makeupReq.original_session_id).single();
         if (!origSession) throw new Error("원래 세션을 찾을 수 없습니다.");
 
+        // Save original_scheduled_at to makeup_requests for history
+        await sb.from("makeup_requests").update({
+          original_scheduled_at: origSession.scheduled_at,
+        }).eq("id", request_id);
+
         // Extract original session's date and time for re-opening as available slot
         const origDate = new Date(origSession.scheduled_at);
         const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });

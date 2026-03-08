@@ -3222,7 +3222,7 @@ export default function InstructorDashboard() {
         {/* ═══ MAKEUP TAB ═════════════════════════════════════════════════ */}
         {/* ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "makeup" && instructor && (
-          <InstructorMakeupTab instructorId={instructor.id} instructorName={instructor.name} />
+          <InstructorMakeupTab instructorId={instructor.id} instructorName={instructor.name} onSessionChanged={() => loadData(instructor)} />
         )}
 
         {/* ══════════════════════════════════════════════════════════════════ */}
