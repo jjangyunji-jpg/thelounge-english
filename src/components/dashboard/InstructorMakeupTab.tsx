@@ -114,7 +114,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [slotsRes, reqsRes, periodsRes] = await Promise.all([
+    const [slotsRes, reqsRes, periodsRes, sessionsRes] = await Promise.all([
       supabase.from("instructor_available_slots")
         .select("*")
         .eq("instructor_id", instructorId)
@@ -127,9 +127,14 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
       supabase.from("schedule_periods")
         .select("*")
         .order("start_date", { ascending: false }),
+      supabase.from("class_sessions")
+        .select("id, scheduled_at, student_name")
+        .eq("instructor_name", instructorName)
+        .gte("scheduled_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
     ]);
     setSlots((slotsRes.data || []) as AvailableSlot[]);
     setRequests((reqsRes.data || []) as MakeupReq[]);
+    setClassSessions((sessionsRes.data || []) as ClassSession[]);
     const allPeriods = (periodsRes.data || []) as SchedulePeriod[];
     setPeriods(allPeriods);
     if (!selectedPeriod && allPeriods.length > 0) {
