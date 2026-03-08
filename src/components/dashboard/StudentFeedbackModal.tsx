@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Loader2, Sparkles, Target, Star } from "lucide-react";
+import { Loader2, Sparkles, Target, Star, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import StudentPeriodSummary from "./StudentPeriodSummary";
 import SessionGoalsSuggestionView from "./SessionGoalsSuggestionView";
-import StudentReportPreviewModal from "./StudentReportPreviewModal";
 
 interface StudentInfo {
   student_name: string;
@@ -30,6 +29,13 @@ const RATING_ITEMS = [
   { key: "learning_attitude", label: "학습 태도", description: "수업에 집중하고 성실한 태도를 보였는가" },
   { key: "review_preparation", label: "복습/예습", description: "이전 수업 내용을 복습하고 왔는가" },
   { key: "progress_speed", label: "발전 속도", description: "기대 수준만큼 실력이 향상되었는가" },
+];
+
+const COMMENT_EXAMPLES = [
+  "수업 중 발화량이나 자발적 발언의 변화가 있었나요?",
+  "이전에 틀리던 문법이나 표현이 개선되었나요?",
+  "수업 외 학습(복습, 영상 시청 등)에 변화가 보이나요?",
+  "학생의 동기부여 수준이나 흥미도에 변화가 있나요?",
 ];
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -66,7 +72,15 @@ export default function StudentFeedbackModal({
   onClose,
 }: Props) {
   const { toast } = useToast();
-  type FeedbackEntry = { checklist: Record<string, number>; comment: string; suggestedGoals: string; suggestedTopics: string[]; currentTopics: string[]; loadingAI: boolean };
+  type FeedbackEntry = {
+    checklist: Record<string, number>;
+    comment: string;
+    needsConsultation: boolean;
+    suggestedGoals: string;
+    suggestedTopics: string[];
+    currentTopics: string[];
+    loadingAI: boolean;
+  };
   const [currentIdx, setCurrentIdx] = useState(0);
   const [feedbacks, setFeedbacks] = useState<Record<string, FeedbackEntry>>(() => {
     const init: Record<string, FeedbackEntry> = {};
@@ -74,6 +88,7 @@ export default function StudentFeedbackModal({
       init[s.student_name] = {
         checklist: Object.fromEntries(RATING_ITEMS.map((c) => [c.key, 0])),
         comment: "",
+        needsConsultation: false,
         suggestedGoals: "",
         suggestedTopics: [],
         currentTopics: [],
@@ -84,7 +99,6 @@ export default function StudentFeedbackModal({
   });
   const [saving, setSaving] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
-  const [showReportPreview, setShowReportPreview] = useState(false);
 
   const student = students[currentIdx];
   const fb = feedbacks[student.student_name];
@@ -109,6 +123,13 @@ export default function StudentFeedbackModal({
     }));
   };
 
+  const setNeedsConsultation = (v: boolean) => {
+    setFeedbacks((prev) => ({
+      ...prev,
+      [student.student_name]: { ...prev[student.student_name], needsConsultation: v },
+    }));
+  };
+
   const requestAIGoals = async () => {
     setFeedbacks((prev) => ({
       ...prev,
@@ -116,7 +137,6 @@ export default function StudentFeedbackModal({
     }));
 
     try {
-      // Fetch current period sessions for this student
       let currentTopics: string[] = [];
       if (periodStartDate && periodEndDate) {
         const { data: sessions } = await supabase
@@ -173,12 +193,16 @@ export default function StudentFeedbackModal({
 
   const saveStudentFeedback = async (studentName: string) => {
     const fb = feedbacks[studentName];
+    const checklist = {
+      ...fb.checklist,
+      needs_consultation: fb.needsConsultation,
+    };
     const row = {
       instructor_name: instructorName,
       student_name: studentName,
       period_id: periodId,
       period_label: periodLabel,
-      checklist: fb.checklist,
+      checklist,
       comment: fb.comment.trim() || null,
       suggested_goals: fb.suggestedGoals.trim() || null,
     };
@@ -210,7 +234,7 @@ export default function StudentFeedbackModal({
     const saved = await saveStudentFeedback(student.student_name);
     setSaving(false);
     if (saved) {
-      setShowReportPreview(true);
+      onComplete();
     }
   };
 
@@ -246,21 +270,6 @@ export default function StudentFeedbackModal({
   };
 
   const totalSteps = students.length;
-
-  if (showReportPreview) {
-    return (
-      <StudentReportPreviewModal
-        instructorName={instructorName}
-        students={students}
-        periodId={periodId}
-        periodLabel={periodLabel}
-        periodStartDate={periodStartDate}
-        periodEndDate={periodEndDate}
-        onComplete={onComplete}
-        onClose={onComplete}
-      />
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -323,9 +332,40 @@ export default function StudentFeedbackModal({
                 ))}
               </div>
 
+              {/* Consultation Needed Checkbox */}
+              <button
+                type="button"
+                onClick={() => setNeedsConsultation(!fb.needsConsultation)}
+                className={`w-full flex items-start gap-3 px-3 py-3 rounded-lg border cursor-pointer transition-colors text-left ${
+                  fb.needsConsultation
+                    ? "border-destructive/50 bg-destructive/5"
+                    : "border-border hover:bg-muted/30"
+                }`}
+              >
+                <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                  fb.needsConsultation
+                    ? "bg-destructive border-destructive"
+                    : "border-muted-foreground/40"
+                }`}>
+                  {fb.needsConsultation && <Check className="w-3 h-3 text-destructive-foreground" />}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">다음 수업 전 학생과의 상담이 필요해보입니까?</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">학습 동기, 진도, 태도 등에 관한 개별 상담이 필요한 경우 체크해주세요.</p>
+                </div>
+              </button>
+
               {/* Comment */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground mb-1.5">코멘트 (선택)</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-1.5">비고 (선택)</p>
+                <div className="mb-2 space-y-1">
+                  <p className="text-[10px] text-muted-foreground/70 font-medium">💡 이런 관찰을 적어주시면 좋아요:</p>
+                  <ul className="text-[10px] text-muted-foreground/60 space-y-0.5 pl-3">
+                    {COMMENT_EXAMPLES.map((ex, i) => (
+                      <li key={i} className="list-disc">{ex}</li>
+                    ))}
+                  </ul>
+                </div>
                 <textarea
                   value={fb.comment}
                   onChange={(e) => setComment(e.target.value)}
