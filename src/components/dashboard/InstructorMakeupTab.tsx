@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
-const WEEKDAY_LABELS = ["월", "화", "수", "목", "금"];
+const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 const SLOT_HOURS_AM = [10, 11, 12, 13];
 const SLOT_HOURS_PM = [18, 19, 20, 21];
 const SLOT_HOURS = [...SLOT_HOURS_AM, ...SLOT_HOURS_PM];
@@ -55,26 +55,26 @@ function fmtTimeKo(timeStr: string) {
   return `${period} ${displayH}:${String(m).padStart(2, "0")}`;
 }
 
-// Build weeks (Mon-Fri) from period
+// Build weeks (Mon-Sun) from period
 function buildWeeks(startDate: string, endDate: string): string[][] {
   const start = new Date(startDate + "T00:00:00");
   const end = new Date(endDate + "T00:00:00");
   // Find the Monday of start week
   const firstMon = new Date(start);
   const dayOfWeek = firstMon.getDay();
-  const diffToMon = dayOfWeek === 0 ? 1 : (dayOfWeek === 1 ? 0 : -(dayOfWeek - 1));
+  const diffToMon = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1);
   firstMon.setDate(firstMon.getDate() + diffToMon);
 
   const weeks: string[][] = [];
   for (let mon = new Date(firstMon); mon <= end; mon.setDate(mon.getDate() + 7)) {
     const week: string[] = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 7; i++) {
       const d = new Date(mon);
       d.setDate(d.getDate() + i);
       if (d >= start && d <= end) {
         week.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
       } else {
-        week.push(""); // out of period
+        week.push("");
       }
     }
     if (week.some(d => d !== "")) weeks.push(week);
@@ -422,7 +422,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                 <thead>
                   <tr>
                     <th className="w-12" />
-                    {WEEKDAY_LABELS.map((label, i) => {
+                    {DAY_LABELS.map((label, i) => {
                       const date = currentWeek[i] || "";
                       const dayNum = date ? new Date(date + "T00:00:00").getDate() : "";
                       return (
