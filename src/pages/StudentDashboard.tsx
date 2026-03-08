@@ -1114,6 +1114,25 @@ export default function StudentDashboard() {
         />
       )}
 
+      {/* ── Student Report Popup ── */}
+      {unreadReport && !feedbackNeeded && (
+        <StudentReportModal
+          periodLabel={(() => {
+            const m = unreadReport.periodLabel.match(/(\d{4})-(\d{2})/);
+            return m ? `${m[1]}년 ${parseInt(m[2])}월` : unreadReport.periodLabel;
+          })()}
+          content={unreadReport.content}
+          onClose={() => setUnreadReport(null)}
+          onMarkRead={async () => {
+            await supabase
+              .from("student_reports" as any)
+              .update({ is_read: true } as any)
+              .eq("id", unreadReport.id);
+            setUnreadReport(null);
+          }}
+        />
+      )}
+
       {/* Bug Report Modal */}
       <BugReportModal
         open={showBugReport}
