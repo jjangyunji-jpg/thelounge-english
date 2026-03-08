@@ -705,6 +705,7 @@ export type Database = {
           group_students: string[]
           id: string
           instructor_name: string
+          original_scheduled_at: string | null
           original_session_id: string | null
           reject_reason: string | null
           request_type: string
@@ -718,6 +719,7 @@ export type Database = {
           group_students?: string[]
           id?: string
           instructor_name: string
+          original_scheduled_at?: string | null
           original_session_id?: string | null
           reject_reason?: string | null
           request_type?: string
@@ -731,6 +733,7 @@ export type Database = {
           group_students?: string[]
           id?: string
           instructor_name?: string
+          original_scheduled_at?: string | null
           original_session_id?: string | null
           reject_reason?: string | null
           request_type?: string

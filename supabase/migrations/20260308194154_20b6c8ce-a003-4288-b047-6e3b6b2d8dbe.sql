@@ -1,0 +1,1 @@
+ALTER TABLE public.makeup_requests ADD COLUMN original_scheduled_at timestamptz;
