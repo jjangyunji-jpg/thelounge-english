@@ -287,7 +287,12 @@ export default function Signup() {
                         <Label className="text-xs text-muted-foreground">연락처</Label>
                         <Input
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+                            if (v.length <= 3) setPhone(v);
+                            else if (v.length <= 7) setPhone(`${v.slice(0, 3)}-${v.slice(3)}`);
+                            else setPhone(`${v.slice(0, 3)}-${v.slice(3, 7)}-${v.slice(7)}`);
+                          }}
                           placeholder="010-0000-0000"
                         />
                       </div>
