@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import BugReportModal from "@/components/dashboard/BugReportModal";
+import MakeupRequestModal from "@/components/dashboard/MakeupRequestModal";
 import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ interface StudentRecord {
   instructor_display_name: string | null;
   pauses: PauseRecord[];
   student_type: string;
+  group_students: string[];
 }
 
 interface SchedulePeriod {
@@ -397,6 +399,7 @@ export default function StudentDashboard() {
   const [hwOpen, setHwOpen] = useState(false);
   const [vocabListOpen, setVocabListOpen] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const [showMakeup, setShowMakeup] = useState(false);
   const [vocabStudyOpen] = useState(false); // kept for potential future use
   const [hwModalAssignment, setHwModalAssignment] = useState<Assignment | null>(null);
   const [hwCompletingId, setHwCompletingId] = useState<string | null>(null);
@@ -499,7 +502,7 @@ export default function StudentDashboard() {
         .eq("student_name", student).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
-      supabase.from("instructor_students").select("id,schedules,start_date,level,instructor_name,instructor_id,student_type")
+      supabase.from("instructor_students").select("id,schedules,start_date,level,instructor_name,instructor_id,student_type,group_students")
         .eq("student_name", student).maybeSingle(),
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
@@ -587,6 +590,7 @@ export default function StudentDashboard() {
         instructor_display_name: instrDisplayName,
         pauses,
         student_type: (studentRes.data as any).student_type || 'regular',
+        group_students: Array.isArray((studentRes.data as any).group_students) ? (studentRes.data as any).group_students : [],
       });
 
       const isSessionVisible = (scheduledAt: string) => {
@@ -1104,6 +1108,16 @@ export default function StudentDashboard() {
         role="student"
       />
 
+      {/* Makeup Request Modal */}
+      {showMakeup && studentRecord?.instructor_name && (
+        <MakeupRequestModal
+          studentName={student}
+          instructorName={studentRecord.instructor_name}
+          groupStudents={studentRecord.group_students}
+          onClose={() => setShowMakeup(false)}
+        />
+      )}
+
       {/* ── Header ── */}
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-3 sm:px-5 py-3">
         <div className="flex items-center justify-between gap-2">
@@ -1288,7 +1302,7 @@ export default function StudentDashboard() {
               </div>
               ) : (
               <button
-                onClick={() => navigate("/my/makeup")}
+                onClick={() => setShowMakeup(true)}
                 className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-muted/50 border border-border hover:bg-muted"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
