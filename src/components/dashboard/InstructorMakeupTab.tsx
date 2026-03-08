@@ -167,6 +167,27 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
 
   const getSlot = (date: string, hour: number) => slotMap.get(date)?.get(hour);
 
+  // Build class session lookup: "date|hour" -> true (for blocking slot registration)
+  const classSessionTimeSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of classSessions) {
+      const d = new Date(s.scheduled_at);
+      const dateStr = d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      const hour = parseInt(d.toLocaleTimeString("en-GB", { hour: "2-digit", timeZone: "Asia/Seoul" }));
+      set.add(`${dateStr}|${hour}`);
+    }
+    return set;
+  }, [classSessions]);
+
+  const hasClassAt = (date: string, hour: number) => classSessionTimeSet.has(`${date}|${hour}`);
+
+  // Build session map by ID for processed requests
+  const sessionById = useMemo(() => {
+    const map = new Map<string, ClassSession>();
+    for (const s of classSessions) map.set(s.id, s);
+    return map;
+  }, [classSessions]);
+
   const periodIdx = periods.findIndex(p => p.id === selectedPeriod?.id);
 
   // Toggle a pending slot
