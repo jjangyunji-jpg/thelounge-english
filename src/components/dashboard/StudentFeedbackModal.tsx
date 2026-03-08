@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, CheckCircle, Circle, Sparkles, Target } from "lucide-react";
+import { Loader2, Sparkles, Target, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -19,13 +19,36 @@ interface Props {
   onClose: () => void;
 }
 
-const CHECKLIST_ITEMS = [
+const RATING_ITEMS = [
   { key: "homework_completion", label: "숙제 완료도", description: "숙제를 성실히 제출했는가" },
   { key: "class_participation", label: "수업 참여도", description: "수업 중 적극적으로 참여했는가" },
   { key: "learning_attitude", label: "학습 태도", description: "수업에 집중하고 성실한 태도를 보였는가" },
   { key: "review_preparation", label: "복습/예습", description: "이전 수업 내용을 복습하고 왔는가" },
   { key: "progress_speed", label: "발전 속도", description: "기대 수준만큼 실력이 향상되었는가" },
 ];
+
+function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange(star === value ? 0 : star)}
+          className="p-0.5 transition-transform hover:scale-110"
+        >
+          <Star
+            className={`w-5 h-5 transition-colors ${
+              star <= value
+                ? "text-gold fill-gold"
+                : "text-muted-foreground/30"
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function StudentFeedbackModal({
   instructorName,
@@ -36,13 +59,13 @@ export default function StudentFeedbackModal({
   onClose,
 }: Props) {
   const { toast } = useToast();
-  type FeedbackEntry = { checklist: Record<string, boolean>; comment: string; suggestedGoals: string; loadingAI: boolean };
+  type FeedbackEntry = { checklist: Record<string, number>; comment: string; suggestedGoals: string; loadingAI: boolean };
   const [currentIdx, setCurrentIdx] = useState(0);
   const [feedbacks, setFeedbacks] = useState<Record<string, FeedbackEntry>>(() => {
     const init: Record<string, FeedbackEntry> = {};
     students.forEach((s) => {
       init[s.student_name] = {
-        checklist: Object.fromEntries(CHECKLIST_ITEMS.map((c) => [c.key, false])),
+        checklist: Object.fromEntries(RATING_ITEMS.map((c) => [c.key, 0])),
         comment: "",
         suggestedGoals: "",
         loadingAI: false,
@@ -56,14 +79,14 @@ export default function StudentFeedbackModal({
   const student = students[currentIdx];
   const fb = feedbacks[student.student_name];
 
-  const toggleCheck = (key: string) => {
+  const setRating = (key: string, value: number) => {
     setFeedbacks((prev) => ({
       ...prev,
       [student.student_name]: {
         ...prev[student.student_name],
         checklist: {
           ...prev[student.student_name].checklist,
-          [key]: !prev[student.student_name].checklist[key],
+          [key]: value,
         },
       },
     }));
@@ -83,16 +106,17 @@ export default function StudentFeedbackModal({
     }));
 
     try {
-      const checkedItems = CHECKLIST_ITEMS.filter((c) => fb.checklist[c.key]).map((c) => c.label);
-      const uncheckedItems = CHECKLIST_ITEMS.filter((c) => !fb.checklist[c.key]).map((c) => c.label);
+      const ratings = RATING_ITEMS.map((c) => ({
+        label: c.label,
+        score: fb.checklist[c.key] || 0,
+      }));
 
       const { data, error } = await supabase.functions.invoke("suggest-student-goals", {
         body: {
           student_name: student.student_name,
           level: student.level || "B1",
           current_objective: student.learning_objective || "",
-          checked: checkedItems,
-          unchecked: uncheckedItems,
+          ratings,
           comment: fb.comment,
           period_label: periodLabel,
         },
@@ -187,26 +211,23 @@ export default function StudentFeedbackModal({
         <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
           {!showGoals ? (
             <>
-              {/* Checklist */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground">체크리스트</p>
-                {CHECKLIST_ITEMS.map((item) => (
-                  <button
+              {/* Star Ratings */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground">평가 항목</p>
+                {RATING_ITEMS.map((item) => (
+                  <div
                     key={item.key}
-                    type="button"
-                    onClick={() => toggleCheck(item.key)}
-                    className="w-full flex items-start gap-3 px-3 py-2.5 rounded-lg border border-border hover:bg-muted/50 transition-colors text-left"
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-border"
                   >
-                    {fb.checklist[item.key] ? (
-                      <CheckCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-muted-foreground/40 flex-shrink-0 mt-0.5" />
-                    )}
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">{item.label}</p>
                       <p className="text-[11px] text-muted-foreground">{item.description}</p>
                     </div>
-                  </button>
+                    <StarRating
+                      value={fb.checklist[item.key] as number}
+                      onChange={(v) => setRating(item.key, v)}
+                    />
+                  </div>
                 ))}
               </div>
 
