@@ -223,7 +223,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
     const date = currentWeek[dayIdx];
     if (!date || date < todayStr) return;
     const keys = SLOT_HOURS
-      .filter(h => !getSlot(date, h))
+      .filter(h => !getSlot(date, h) && !hasClassAt(date, h))
       .map(h => `${date}|${h}`);
     if (keys.length === 0) return;
     setPendingSlots(prev => {
