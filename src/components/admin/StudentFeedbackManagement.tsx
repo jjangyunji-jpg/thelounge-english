@@ -125,30 +125,49 @@ export default function StudentFeedbackManagement() {
         <p className="text-sm text-muted-foreground mt-1">강사가 학생에 대해 작성한 월말 피드백을 확인합니다</p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-end">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">수업 기간</label>
-          <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
-            <SelectTrigger className="w-40 h-9 text-sm"><SelectValue placeholder="기간 선택" /></SelectTrigger>
-            <SelectContent>
-              {periods.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.label} {p.is_active ? "(현재)" : ""}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Period Navigation + Instructor Filter */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Period Nav */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            disabled={currentPeriodIdx >= periods.length - 1}
+            onClick={() => goToPeriod(1)}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-sm font-semibold text-foreground min-w-[120px] text-center">
+            {selectedPeriod ? selectedPeriod.label : "—"}
+            {selectedPeriod?.is_active && (
+              <Badge variant="secondary" className="ml-1.5 text-[10px] py-0">현재</Badge>
+            )}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            disabled={currentPeriodIdx <= 0}
+            onClick={() => goToPeriod(-1)}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">강사</label>
-          <Select value={instructorFilter} onValueChange={setInstructorFilter}>
-            <SelectTrigger className="w-32 h-9 text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체</SelectItem>
-              {instructorNames.map((name) => (
-                <SelectItem key={name} value={name}>{name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        {/* Instructor filter */}
+        <div className="flex items-center gap-1.5">
+          {["all", ...instructorNames].map((name) => (
+            <Button
+              key={name}
+              variant={instructorFilter === name ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setInstructorFilter(name)}
+            >
+              {name === "all" ? "전체" : name}
+            </Button>
+          ))}
         </div>
       </div>
 
