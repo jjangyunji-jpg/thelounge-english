@@ -81,6 +81,16 @@ export default function CashReceiptManagement() {
   const periodStart = currentPeriod ? `${currentPeriod.start_date}T00:00:00+09:00` : "";
   const periodEnd = currentPeriod ? `${currentPeriod.end_date}T23:59:59+09:00` : "";
 
+  // Calendar month range for corporate students (derived from period start_date's month)
+  const corpMonth = currentPeriod ? new Date(currentPeriod.start_date) : new Date();
+  const corpYear = corpMonth.getFullYear();
+  const corpMon = corpMonth.getMonth() + 1;
+  const corpMonthStart = `${corpYear}-${String(corpMon).padStart(2, "0")}-01T00:00:00+09:00`;
+  const corpNextMon = corpMon === 12 ? 1 : corpMon + 1;
+  const corpNextYear = corpMon === 12 ? corpYear + 1 : corpYear;
+  const corpMonthEnd = `${corpNextYear}-${String(corpNextMon).padStart(2, "0")}-01T00:00:00+09:00`;
+  const corpMonthLabel = `${corpYear}년 ${corpMon}월`;
+
   // Load periods first, then data
   useEffect(() => {
     (async () => {
