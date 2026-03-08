@@ -1478,7 +1478,7 @@ export default function InstructorDashboard() {
             const st = studentsWithPauses.find(s2 => s2.student_name === sn);
             return { student_name: sn, level: st?.level || null, learning_objective: st?.learning_objective || null };
           });
-          setStudentFeedbackModal({ students: feedbackStudents, periodId: pp.id, periodLabel: pp.label });
+          setStudentFeedbackModal({ students: feedbackStudents, periodId: pp.id, periodLabel: pp.label, periodStartDate: pp.start_date, periodEndDate: pp.end_date });
           break; // Only show one period at a time
         }
       }
