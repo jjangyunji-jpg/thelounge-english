@@ -1934,6 +1934,8 @@ export default function InstructorDashboard() {
           students={studentFeedbackModal.students}
           periodId={studentFeedbackModal.periodId}
           periodLabel={studentFeedbackModal.periodLabel}
+          periodStartDate={studentFeedbackModal.periodStartDate}
+          periodEndDate={studentFeedbackModal.periodEndDate}
           onComplete={() => { setStudentFeedbackModal(null); }}
           onClose={() => setStudentFeedbackModal(null)}
         />
