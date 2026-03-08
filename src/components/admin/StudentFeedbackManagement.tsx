@@ -58,7 +58,15 @@ export default function StudentFeedbackManagement() {
   const [instructorFilter, setInstructorFilter] = useState<string>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const currentPeriodIdx = periods.findIndex((p) => p.id === selectedPeriodId);
   const instructorNames = [...new Set(feedbacks.map((f) => f.instructor_name))].sort();
+
+  const goToPeriod = (dir: -1 | 1) => {
+    const nextIdx = currentPeriodIdx + dir;
+    if (nextIdx >= 0 && nextIdx < periods.length) {
+      setSelectedPeriodId(periods[nextIdx].id);
+    }
+  };
 
   useEffect(() => { loadPeriods(); }, []);
   useEffect(() => { if (selectedPeriodId) loadFeedbacks(); }, [selectedPeriodId]);
