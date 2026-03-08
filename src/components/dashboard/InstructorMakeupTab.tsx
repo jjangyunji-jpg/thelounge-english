@@ -35,6 +35,12 @@ interface MakeupReq {
   resolved_at: string | null;
 }
 
+interface ClassSession {
+  id: string;
+  scheduled_at: string;
+  student_name: string;
+}
+
 interface SchedulePeriod {
   id: string;
   label: string;
