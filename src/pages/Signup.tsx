@@ -64,6 +64,7 @@ export default function Signup() {
         body.phone = phone.trim();
         body.desiredLevel = desiredLevel;
         body.preferredSchedule = preferredSchedule.join(", ");
+        body.referralSource = referralSource.join(", ");
         body.note = note.trim();
       } else if (isExistingStudent) {
         body.studentType = "existing";
