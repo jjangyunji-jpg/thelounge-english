@@ -88,6 +88,33 @@ export type Database = {
           },
         ]
       }
+      cash_receipts: {
+        Row: {
+          created_at: string
+          id: string
+          receipt_number: string
+          receipt_type: string
+          student_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          receipt_number: string
+          receipt_type?: string
+          student_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          receipt_number?: string
+          receipt_type?: string
+          student_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       class_feedback: {
         Row: {
           comment: string | null
