@@ -67,18 +67,18 @@ export default function CashReceiptManagement() {
   const [creditModal, setCreditModal] = useState<{ name: string; existing?: PrepaidCredit } | null>(null);
   const [creditInput, setCreditInput] = useState({ sessions: "", note: "" });
 
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+  interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
+  const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
+  const [periodIdx, setPeriodIdx] = useState(0);
+  const currentPeriod = periods[periodIdx] || null;
+  const periodKey = currentPeriod?.id || "";
+  const periodLabel = currentPeriod?.label || "";
 
-  const prevMonth = () => { if (month === 1) { setYear(y => y - 1); setMonth(12); } else setMonth(m => m - 1); };
-  const nextMonth = () => { if (month === 12) { setYear(y => y + 1); setMonth(1); } else setMonth(m => m + 1); };
+  const prevPeriod = () => setPeriodIdx(i => Math.min(i + 1, periods.length - 1));
+  const nextPeriod = () => setPeriodIdx(i => Math.max(i - 1, 0));
 
-  const monthStart = `${year}-${String(month).padStart(2, "0")}-01T00:00:00+09:00`;
-  const nextM = month === 12 ? 1 : month + 1;
-  const nextY = month === 12 ? year + 1 : year;
-  const monthEnd = `${nextY}-${String(nextM).padStart(2, "0")}-01T00:00:00+09:00`;
+  const periodStart = currentPeriod ? `${currentPeriod.start_date}T00:00:00+09:00` : "";
+  const periodEnd = currentPeriod ? `${currentPeriod.end_date}T23:59:59+09:00` : "";
 
   const loadData = useCallback(async () => {
     setLoading(true);
