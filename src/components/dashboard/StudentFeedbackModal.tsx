@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import StudentPeriodSummary from "./StudentPeriodSummary";
+import SessionGoalsSuggestionView from "./SessionGoalsSuggestionView";
 
 interface StudentInfo {
   student_name: string;
