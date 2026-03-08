@@ -65,6 +65,8 @@ export default function Admin() {
         return <ClassFeedbackManagement />;
       case "student-feedback":
         return <StudentFeedbackManagement />;
+      case "student-reports":
+        return <StudentReportManagement />;
       case "guide":
         return <GuideManagement />;
       case "messages":
