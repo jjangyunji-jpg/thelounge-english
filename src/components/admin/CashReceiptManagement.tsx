@@ -162,7 +162,7 @@ export default function CashReceiptManagement() {
     const ded = dedMap.get(studentName);
     const credit = creditMap.get(studentName);
     if (!ded || !credit) return;
-    await supabase.from("prepaid_deductions" as any).delete().eq("student_name", studentName).eq("month", monthKey);
+    await supabase.from("prepaid_deductions" as any).delete().eq("student_name", studentName).eq("month", periodKey);
     await supabase.from("prepaid_credits" as any).update({ used_sessions: Math.max(0, credit.used_sessions - ded.deducted_sessions), updated_at: new Date().toISOString() } as any).eq("id", credit.id);
     toast({ title: "차감 취소 완료" });
     loadData();
