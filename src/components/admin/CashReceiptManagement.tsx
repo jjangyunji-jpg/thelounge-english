@@ -131,10 +131,8 @@ export default function CashReceiptManagement() {
   };
 
   const getFee = (s: StudentRecord) => {
-    const slots = parseSchedules(s.schedules);
-    const base = calcBaseLessons(slots);
-    const extra = s.extra_lessons || 0;
-    return (base + extra) * LESSON_PRICE;
+    const count = sessionCounts.get(s.student_name) || 0;
+    return count * LESSON_PRICE;
   };
 
   const confirmedCount = regularStudents.filter(s => confMap.get(s.student_name)?.confirmed).length;
