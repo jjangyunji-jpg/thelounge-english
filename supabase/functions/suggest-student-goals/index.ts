@@ -87,24 +87,32 @@ serve(async (req) => {
       }
     }
 
+    const topicCount = session_count || 4;
+
     const systemPrompt = `You are an English class curriculum advisor for Korean learners.
-Based on the instructor's feedback about a student, suggest learning goals for the next month.
+Based on the instructor's feedback about a student, suggest:
+1. Learning goals for the next month (장기 학습 목표)
+2. Per-session topic plan for the next period (exactly ${topicCount} topics)
 
 RULES:
-- Write goals in Korean (한국어)
-- 2~4 concise goals, each on a new line
+- Write in Korean (한국어)
+- 2~4 concise learning goals, each on a new line
+- Generate exactly ${topicCount} session topics for the next period
+- Each session topic should be specific and concise (e.g. "진행형 / 시간 표현", "The Good Place 4-6", "Mock Meeting / 시간 전치사, 접속사")
 - Consider the star ratings (1-5) for each evaluation category
 - Lower scores indicate areas needing more attention
 - Consider the instructor's comment
 - Consider the student's current level and existing objectives
-- If a curriculum guide is provided, align goals with the curriculum roadmap
-- If session history is provided, consider what the student has already covered and suggest natural next steps
+- If a curriculum guide is provided, align goals and topics with the curriculum roadmap
+- If session history is provided, consider what was covered and suggest natural next steps
+- Session topics should build progressively on previous ones
 - Be specific and actionable
 - Each goal should be a short phrase (15-30 characters)
 
 Return ONLY a valid JSON object:
 {
-  "goals": "목표1\\n목표2\\n목표3"
+  "goals": "목표1\\n목표2\\n목표3",
+  "session_topics": ["1회차 주제", "2회차 주제", ...]
 }`;
 
     const userPrompt = `학생: ${student_name}
