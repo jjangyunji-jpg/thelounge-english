@@ -1182,8 +1182,8 @@ export default function StudentDashboard() {
                     <FileText className="w-5 h-5 text-navy" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">기업제출용 출석증 요청하기</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">기업에 제출할 출석증을 요청합니다</p>
+                    <p className="text-sm font-semibold text-foreground">기업제출용 증빙자료 요청하기</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">기업에 제출할 출석증/수강증을 요청합니다</p>
                   </div>
                 </button>
               </div>
