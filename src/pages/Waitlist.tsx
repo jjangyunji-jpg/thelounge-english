@@ -3,6 +3,7 @@ import { BookOpen, Loader2, LogOut, Clock, Hash, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import StudentSurvey from "@/components/waitlist/StudentSurvey";
 
 interface WaitlistEntry {
   id: string;
@@ -32,25 +33,21 @@ export default function Waitlist() {
   const [entry, setEntry] = useState<WaitlistEntry | null>(null);
   const [position, setPosition] = useState<number | null>(null);
   const [totalWaiting, setTotalWaiting] = useState(0);
+  const [surveyCompleted, setSurveyCompleted] = useState<boolean | null>(null);
 
   useEffect(() => {
     loadWaitlistData();
 
-    // Realtime subscription for queue updates
     const channel = supabase
       .channel("waitlist-updates")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "waitlist_entries" },
-        () => {
-          loadWaitlistData();
-        }
+        () => { loadWaitlistData(); }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const loadWaitlistData = async () => {
@@ -60,22 +57,30 @@ export default function Waitlist() {
       return;
     }
 
-    // Get my entry
-    const { data: myEntry } = await supabase
-      .from("waitlist_entries")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .eq("status", "waiting")
-      .maybeSingle();
-
-    if (!myEntry) {
-      // No waitlist entry — check if approved
-      const { data: roles } = await supabase
+    // Fetch waitlist entry + survey status in parallel
+    const [entryRes, surveyRes, rolesRes] = await Promise.all([
+      supabase
+        .from("waitlist_entries")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("status", "waiting")
+        .maybeSingle(),
+      supabase
+        .from("student_surveys")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .maybeSingle(),
+      supabase
         .from("user_roles")
         .select("role, approved")
-        .eq("user_id", session.user.id);
+        .eq("user_id", session.user.id),
+    ]);
 
-      const studentRole = roles?.find((r) => r.role === "student");
+    setSurveyCompleted(!!surveyRes.data);
+
+    const myEntry = entryRes.data;
+    if (!myEntry) {
+      const studentRole = rolesRes.data?.find((r) => r.role === "student");
       if (studentRole?.approved) {
         navigate("/my/dashboard");
       }
@@ -85,7 +90,6 @@ export default function Waitlist() {
 
     setEntry(myEntry as WaitlistEntry);
 
-    // Get all waiting entries to calculate position
     const { data: allWaiting } = await supabase
       .from("waitlist_entries")
       .select("queue_number")
@@ -110,6 +114,37 @@ export default function Waitlist() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Show survey if not completed
+  if (surveyCompleted === false && entry) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card">
+          <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl gold-gradient flex items-center justify-center shadow-gold">
+                <BookOpen className="w-5 h-5 text-accent-foreground" />
+              </div>
+              <div>
+                <p className="font-bold text-sm text-foreground">The Lounge English</p>
+                <p className="text-xs text-muted-foreground">학습 성향 설문</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground text-xs gap-1.5">
+              <LogOut className="w-3.5 h-3.5" />
+              로그아웃
+            </Button>
+          </div>
+        </header>
+        <main className="px-4 py-8">
+          <StudentSurvey
+            studentName={entry.student_name}
+            onComplete={() => setSurveyCompleted(true)}
+          />
+        </main>
       </div>
     );
   }
