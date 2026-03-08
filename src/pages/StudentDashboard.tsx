@@ -408,12 +408,6 @@ export default function StudentDashboard() {
     instructorName: string;
   } | null>(null);
 
-  // Student report state
-  const [unreadReport, setUnreadReport] = useState<{
-    id: string;
-    periodLabel: string;
-    content: string;
-  } | null>(null);
 
   // ── 인증: auth 세션 → student_name 로드, 없으면 URL 파라미터 폴백 ──
   const [authStudent, setAuthStudent] = useState<string | null>(null);
