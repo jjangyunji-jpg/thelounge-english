@@ -72,6 +72,10 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
     return <Navigate to="/login" replace />;
   }
 
+  if (status === "waitlist") {
+    return <Navigate to="/waitlist" replace />;
+  }
+
   if (status === "unauthorized") {
     return <Navigate to="/login" replace />;
   }
