@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
-const SLOT_HOURS = Array.from({ length: 12 }, (_, i) => i + 9); // 9~20
+const SLOT_HOURS = [10, 11, 12, 13, 18, 19, 20, 21]; // 오전 10~14시, 오후 18~22시
 
 interface AvailableSlot {
   id: string;
