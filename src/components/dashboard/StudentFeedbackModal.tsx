@@ -65,7 +65,7 @@ export default function StudentFeedbackModal({
   onClose,
 }: Props) {
   const { toast } = useToast();
-  type FeedbackEntry = { checklist: Record<string, number>; comment: string; suggestedGoals: string; loadingAI: boolean };
+  type FeedbackEntry = { checklist: Record<string, number>; comment: string; suggestedGoals: string; suggestedTopics: string[]; currentTopics: string[]; loadingAI: boolean };
   const [currentIdx, setCurrentIdx] = useState(0);
   const [feedbacks, setFeedbacks] = useState<Record<string, FeedbackEntry>>(() => {
     const init: Record<string, FeedbackEntry> = {};
