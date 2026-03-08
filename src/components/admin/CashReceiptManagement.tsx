@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
-import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText } from "lucide-react";
+import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -46,6 +46,14 @@ interface PrepaidDeduction {
   deducted_sessions: number;
 }
 
+interface AttendanceRequest {
+  id: string;
+  user_name: string;
+  description: string;
+  status: string;
+  created_at: string;
+}
+
 const calcBaseLessons = (raw: string | null): number => {
   if (!raw) return 4;
   try {
@@ -72,6 +80,7 @@ export default function CashReceiptManagement() {
   const [creditInput, setCreditInput] = useState({ sessions: "", note: "" });
   const [reportPreview, setReportPreview] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState<string | null>(null);
+  const [attendanceRequests, setAttendanceRequests] = useState<AttendanceRequest[]>([]);
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
@@ -110,7 +119,7 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     if (!currentPeriod) return;
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes] = await Promise.all([
+    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
@@ -120,12 +129,14 @@ export default function CashReceiptManagement() {
       supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", corpMonthStart).lt("scheduled_at", corpMonthEnd),
       supabase.from("prepaid_credits" as any).select("*"),
       supabase.from("prepaid_deductions" as any).select("*").eq("month", periodKey),
+      supabase.from("support_requests").select("id, user_name, description, status, created_at").eq("category", "attendance").order("created_at", { ascending: false }),
     ]);
     setStudents((studRes.data || []) as StudentRecord[]);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
     setConfirmations((confRes.data as any as PaymentConfirmation[]) || []);
     setPrepaidCredits((creditRes.data as any as PrepaidCredit[]) || []);
     setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
+    setAttendanceRequests((attendRes.data as any as AttendanceRequest[]) || []);
 
     const counts = new Map<string, number>();
     (sessRes.data || []).forEach((s: any) => {
@@ -478,6 +489,59 @@ export default function CashReceiptManagement() {
                     <td className="px-4 py-3 text-foreground">{r.receipt_number}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance Certificate Requests */}
+      {attendanceRequests.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">출석증 요청</p>
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">출석 기간</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">요청일</th>
+                  <th className="text-center px-4 py-3 font-semibold text-foreground">상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attendanceRequests.map((req) => {
+                  const periodLine = req.description.split("\n").find(l => l.startsWith("출석 기간:"));
+                  const periodText = periodLine ? periodLine.replace("출석 기간: ", "") : "-";
+                  const isResolved = req.status === "resolved";
+                  return (
+                    <tr key={req.id} className={cn("border-b border-border last:border-0 transition-colors", isResolved ? "bg-primary/5" : "hover:bg-muted/30")}>
+                      <td className="px-4 py-3 font-medium text-foreground">{req.user_name}</td>
+                      <td className="px-4 py-3 text-foreground">{periodText}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {isResolved ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                            <CheckCircle className="w-3 h-3" /> 발급완료
+                          </span>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              await supabase.from("support_requests").update({ status: "resolved", resolved_at: new Date().toISOString() }).eq("id", req.id);
+                              toast({ title: "출석증 발급 완료 처리됨" });
+                              loadData();
+                            }}
+                            className="text-[10px] px-2 py-1 rounded bg-accent text-accent-foreground hover:bg-accent/80 transition-colors font-medium"
+                          >
+                            발급 완료
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
