@@ -48,6 +48,7 @@ export interface ReportPreviewData {
   sessions: Session[];
   info: ReportInfo;
   period: PeriodInfo;
+  totalFee?: number;
 }
 
 export async function prepareReportData(
