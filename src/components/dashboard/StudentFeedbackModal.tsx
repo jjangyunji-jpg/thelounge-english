@@ -16,6 +16,8 @@ interface Props {
   students: StudentInfo[];
   periodId: string;
   periodLabel: string;
+  periodStartDate?: string;
+  periodEndDate?: string;
   onComplete: () => void;
   onClose: () => void;
 }
