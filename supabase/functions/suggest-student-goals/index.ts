@@ -127,14 +127,16 @@ RULES:
 - Write in Korean (한국어)
 - 2~4 concise learning goals, each on a new line
 - Generate exactly ${topicCount} session topics for the next period
-- Each session topic should be specific and concise (e.g. "진행형 / 시간 표현", "The Good Place 4-6", "Mock Meeting / 시간 전치사, 접속사")
+- CRITICAL: Session topics MUST use actual material titles from the [사용 가능한 수업 자료] list when available
+- Match session history to the material list to determine where the student left off, then continue from the next material in sequence
+- Each session topic format: "자료제목" or "자료제목 / 부가활동" (e.g. "현재형 2 / 빈도부사", "The Good Place 4-6")
 - Consider the star ratings (1-5) for each evaluation category
 - Lower scores indicate areas needing more attention
 - Consider the instructor's comment
 - Consider the student's current level and existing objectives
 - If a curriculum guide is provided, align goals and topics with the curriculum roadmap
-- If session history is provided, consider what was covered and suggest natural next steps
-- Session topics should build progressively on previous ones
+- If session history is provided, identify where the student stopped in the material sequence and continue from there
+- Session topics should build progressively following the material order
 - Be specific and actionable
 - Each goal should be a short phrase (15-30 characters)
 
