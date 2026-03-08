@@ -553,25 +553,27 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                         const isPast = date < todayStr;
                         const isOpen = slot?.status === "open";
                         const isBooked = slot?.status === "booked";
+                        const hasClass = hasClassAt(date, hour);
 
                         return (
                           <td key={di} className="p-0.5">
                             <button
-                              disabled={isBooked || isPast}
+                              disabled={isBooked || isPast || hasClass}
                               onClick={() => {
                                 if (isOpen && slot) handleDeleteSlot(slot.id);
-                                else if (!slot) togglePending(date, hour);
+                                else if (!slot && !hasClass) togglePending(date, hour);
                               }}
                               className={cn(
                                 "w-full h-9 rounded-md text-[11px] font-semibold transition-all border",
                                 isPast && "opacity-20 cursor-not-allowed border-transparent bg-muted/30",
+                                !isPast && hasClass && !slot && "bg-muted/50 border-border text-muted-foreground/50 cursor-not-allowed",
                                 !isPast && isBooked && "bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] cursor-not-allowed",
                                 !isPast && isOpen && "bg-[hsl(var(--success))] border-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/80",
-                                !isPast && !slot && isPending && "bg-primary border-primary text-primary-foreground",
-                                !isPast && !slot && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
+                                !isPast && !slot && !hasClass && isPending && "bg-primary border-primary text-primary-foreground",
+                                !isPast && !slot && !hasClass && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
                               )}
                             >
-                              {isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
+                              {hasClass && !slot ? "수업" : isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
                             </button>
                           </td>
                         );
