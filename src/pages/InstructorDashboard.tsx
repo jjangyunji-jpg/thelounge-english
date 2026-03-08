@@ -3219,6 +3219,13 @@ export default function InstructorDashboard() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* ═══ MAKEUP TAB ═════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === "makeup" && instructor && (
+          <InstructorMakeupTab instructorId={instructor.id} instructorName={instructor.name} />
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ═══ GUIDE TAB ══════════════════════════════════════════════════ */}
         {activeTab === "guide" && <InstructorGuide />}
 
