@@ -36,7 +36,7 @@ export default function StudentPeriodSummary({ studentName, instructorName, peri
       const [sessionsRes, hwRes, submissionsRes, vocabRes] = await Promise.all([
         supabase
           .from("class_sessions")
-          .select("scheduled_at, topic, notes, ended_at")
+          .select("id, scheduled_at, topic, notes, ended_at")
           .eq("student_name", studentName)
           .eq("instructor_name", instructorName)
           .gte("scheduled_at", startISO)
