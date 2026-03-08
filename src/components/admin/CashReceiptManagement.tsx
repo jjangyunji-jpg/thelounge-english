@@ -67,28 +67,40 @@ export default function CashReceiptManagement() {
   const [creditModal, setCreditModal] = useState<{ name: string; existing?: PrepaidCredit } | null>(null);
   const [creditInput, setCreditInput] = useState({ sessions: "", note: "" });
 
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+  interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
+  const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
+  const [periodIdx, setPeriodIdx] = useState(0);
+  const currentPeriod = periods[periodIdx] || null;
+  const periodKey = currentPeriod?.id || "";
+  const periodLabel = currentPeriod?.label || "";
 
-  const prevMonth = () => { if (month === 1) { setYear(y => y - 1); setMonth(12); } else setMonth(m => m - 1); };
-  const nextMonth = () => { if (month === 12) { setYear(y => y + 1); setMonth(1); } else setMonth(m => m + 1); };
+  const prevPeriod = () => setPeriodIdx(i => Math.min(i + 1, periods.length - 1));
+  const nextPeriod = () => setPeriodIdx(i => Math.max(i - 1, 0));
 
-  const monthStart = `${year}-${String(month).padStart(2, "0")}-01T00:00:00+09:00`;
-  const nextM = month === 12 ? 1 : month + 1;
-  const nextY = month === 12 ? year + 1 : year;
-  const monthEnd = `${nextY}-${String(nextM).padStart(2, "0")}-01T00:00:00+09:00`;
+  const periodStart = currentPeriod ? `${currentPeriod.start_date}T00:00:00+09:00` : "";
+  const periodEnd = currentPeriod ? `${currentPeriod.end_date}T23:59:59+09:00` : "";
+
+  // Load periods first, then data
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("schedule_periods").select("*").order("start_date", { ascending: false });
+      const all = (data || []) as SchedulePeriod[];
+      setPeriods(all);
+      const activeIdx = all.findIndex(p => p.is_active);
+      setPeriodIdx(activeIdx >= 0 ? activeIdx : 0);
+    })();
+  }, []);
 
   const loadData = useCallback(async () => {
+    if (!currentPeriod) return;
     setLoading(true);
     const [studRes, receiptRes, confRes, sessRes, creditRes, dedRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
-      supabase.from("payment_confirmations" as any).select("*").eq("month", monthKey),
-      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", monthStart).lt("scheduled_at", monthEnd),
+      supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
+      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
       supabase.from("prepaid_credits" as any).select("*"),
-      supabase.from("prepaid_deductions" as any).select("*").eq("month", monthKey),
+      supabase.from("prepaid_deductions" as any).select("*").eq("month", periodKey),
     ]);
     setStudents((studRes.data || []) as StudentRecord[]);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
@@ -102,7 +114,7 @@ export default function CashReceiptManagement() {
     });
     setSessionCounts(counts);
     setLoading(false);
-  }, [monthKey, monthStart, monthEnd]);
+  }, [currentPeriod, periodKey, periodStart, periodEnd]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -120,7 +132,7 @@ export default function CashReceiptManagement() {
       const newVal = !existing.confirmed;
       await supabase.from("payment_confirmations" as any).update({ confirmed: newVal, confirmed_at: newVal ? new Date().toISOString() : null } as any).eq("id", existing.id);
     } else {
-      await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: monthKey, confirmed: true, confirmed_at: new Date().toISOString() } as any);
+      await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: true, confirmed_at: new Date().toISOString() } as any);
     }
     loadData();
   };
@@ -137,9 +149,9 @@ export default function CashReceiptManagement() {
     // Upsert deduction record
     const existingDed = dedMap.get(studentName);
     if (existingDed) {
-      toast({ title: "이미 차감됨", description: `${monthKey} 이미 ${existingDed.deducted_sessions}회 차감됨` }); return;
+      toast({ title: "이미 차감됨", description: `${periodLabel} 이미 ${existingDed.deducted_sessions}회 차감됨` }); return;
     }
-    await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: monthKey, deducted_sessions: toDeduct } as any);
+    await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: periodKey, deducted_sessions: toDeduct } as any);
     await supabase.from("prepaid_credits" as any).update({ used_sessions: credit.used_sessions + toDeduct, updated_at: new Date().toISOString() } as any).eq("id", credit.id);
     toast({ title: `${toDeduct}회 차감 완료` });
     loadData();
@@ -150,7 +162,7 @@ export default function CashReceiptManagement() {
     const ded = dedMap.get(studentName);
     const credit = creditMap.get(studentName);
     if (!ded || !credit) return;
-    await supabase.from("prepaid_deductions" as any).delete().eq("student_name", studentName).eq("month", monthKey);
+    await supabase.from("prepaid_deductions" as any).delete().eq("student_name", studentName).eq("month", periodKey);
     await supabase.from("prepaid_credits" as any).update({ used_sessions: Math.max(0, credit.used_sessions - ded.deducted_sessions), updated_at: new Date().toISOString() } as any).eq("id", credit.id);
     toast({ title: "차감 취소 완료" });
     loadData();
@@ -286,11 +298,11 @@ export default function CashReceiptManagement() {
           <h2 className="text-lg font-bold text-foreground">결제확인</h2>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={prevMonth} className="p-1.5 rounded-md hover:bg-muted transition-colors">
+          <button onClick={prevPeriod} disabled={periodIdx >= periods.length - 1} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
             <ChevronLeft className="w-4 h-4 text-muted-foreground" />
           </button>
-          <span className="text-sm font-semibold text-foreground min-w-[100px] text-center">{year}년 {month}월</span>
-          <button onClick={nextMonth} className="p-1.5 rounded-md hover:bg-muted transition-colors">
+          <span className="text-sm font-semibold text-foreground min-w-[140px] text-center">{periodLabel || "—"}</span>
+          <button onClick={nextPeriod} disabled={periodIdx <= 0} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
