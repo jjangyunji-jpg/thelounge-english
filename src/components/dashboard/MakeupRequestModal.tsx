@@ -70,7 +70,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
 
   const [step, setStep] = useState<"type" | "checklist" | "session" | "calendar" | "confirm">("type");
-  const [checkedItems, setCheckedItems] = useState<boolean[]>([false, false, false, false, false]);
+  const [checkedItems, setCheckedItems] = useState<boolean[]>([false, false, false, false]);
   const [requestType, setRequestType] = useState<"reschedule" | "extra">("reschedule");
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -219,7 +219,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 if (step === "confirm") setStep("calendar");
                 else if (step === "calendar") setStep(requestType === "reschedule" ? "session" : "type");
                 else if (step === "session") setStep("checklist");
-                else if (step === "checklist") { setCheckedItems([false, false, false, false, false]); setStep("type"); }
+                else if (step === "checklist") { setCheckedItems([false, false, false, false]); setStep("type"); }
               }} className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="w-4 h-4" />
               </button>
@@ -288,7 +288,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">보강 유형을 선택해주세요</p>
                   <button
-                    onClick={() => { setRequestType("reschedule"); setCheckedItems([false, false, false, false, false]); setStep("checklist"); }}
+                    onClick={() => { setRequestType("reschedule"); setCheckedItems([false, false, false, false]); setStep("checklist"); }}
                     className="w-full rounded-xl border border-border p-4 text-left hover:border-primary/50 transition-colors space-y-1"
                   >
                     <p className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -312,8 +312,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "checklist" && (() => {
                 const CHECKLIST_ITEMS = [
                   "수업 48시간 이내의 일정은 변경이 어려울 수 있습니다.",
-                  "잦은 일정 변경은 학습 흐름에 영향을 줄 수 있습니다.",
-                  "일정 변경이 반복될 경우, 수업이 중단될 수 있습니다.",
+                  "잦은 일정 변경은 학습 흐름에 영향을 줄 수 있습니다. 또한 일정 변경이 반복될 경우, 수업이 중단될 수 있습니다.",
                   "장기 부재(출장, 여행 등)가 예정된 경우, 한 달 전에 미리 알려주세요.",
                   "변경된 수업은 강사 승인 후 확정됩니다.",
                 ];
