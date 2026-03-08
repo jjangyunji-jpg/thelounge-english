@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Calendar, Clock, Loader2, Check, X, AlertCircle, RotateCcw, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Calendar, Clock, Loader2, Check, X, AlertCircle, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
-const SLOT_HOURS = [10, 11, 12, 13, 18, 19, 20, 21]; // 오전 10~14시, 오후 18~22시
+const WEEKDAY_LABELS = ["월", "화", "수", "목", "금"];
+const SLOT_HOURS_AM = [10, 11, 12, 13];
+const SLOT_HOURS_PM = [18, 19, 20, 21];
+const SLOT_HOURS = [...SLOT_HOURS_AM, ...SLOT_HOURS_PM];
 
 interface AvailableSlot {
   id: string;
@@ -52,24 +55,31 @@ function fmtTimeKo(timeStr: string) {
   return `${period} ${displayH}:${String(m).padStart(2, "0")}`;
 }
 
-function fmtDateFull(dateStr: string) {
-  const d = new Date(dateStr + "T00:00:00");
-  return `${d.getMonth() + 1}월 ${d.getDate()}일(${DAYS_KO[d.getDay()]})`;
-}
-
-// Get weekdays (Mon-Fri) within a period
-function getWeekdaysInPeriod(startDate: string, endDate: string): string[] {
-  const dates: string[] = [];
+// Build weeks (Mon-Fri) from period
+function buildWeeks(startDate: string, endDate: string): string[][] {
   const start = new Date(startDate + "T00:00:00");
   const end = new Date(endDate + "T00:00:00");
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const day = d.getDay();
-    if (day >= 1 && day <= 5) { // Mon-Fri
-      const str = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      dates.push(str);
+  // Find the Monday of start week
+  const firstMon = new Date(start);
+  const dayOfWeek = firstMon.getDay();
+  const diffToMon = dayOfWeek === 0 ? 1 : (dayOfWeek === 1 ? 0 : -(dayOfWeek - 1));
+  firstMon.setDate(firstMon.getDate() + diffToMon);
+
+  const weeks: string[][] = [];
+  for (let mon = new Date(firstMon); mon <= end; mon.setDate(mon.getDate() + 7)) {
+    const week: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(mon);
+      d.setDate(d.getDate() + i);
+      if (d >= start && d <= end) {
+        week.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+      } else {
+        week.push(""); // out of period
+      }
     }
+    if (week.some(d => d !== "")) weeks.push(week);
   }
-  return dates;
+  return weeks;
 }
 
 type TabView = "register" | "calendar" | "requests";
@@ -83,9 +93,9 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<TabView>("register");
 
-  // Registration state
-  const [selectedDateIdx, setSelectedDateIdx] = useState(0);
-  const [pendingTimes, setPendingTimes] = useState<Set<number>>(new Set());
+  // Week-based registration
+  const [selectedWeekIdx, setSelectedWeekIdx] = useState(0);
+  const [pendingSlots, setPendingSlots] = useState<Set<string>>(new Set()); // "date|hour"
   const [adding, setAdding] = useState(false);
 
   // Approval state
@@ -124,13 +134,13 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Weekdays in selected period
-  const weekdays = useMemo(() => {
+  // Weeks in selected period
+  const weeks = useMemo(() => {
     if (!selectedPeriod) return [];
-    return getWeekdaysInPeriod(selectedPeriod.start_date, selectedPeriod.end_date);
+    return buildWeeks(selectedPeriod.start_date, selectedPeriod.end_date);
   }, [selectedPeriod]);
 
-  const currentDate = weekdays[selectedDateIdx] || "";
+  const currentWeek = weeks[selectedWeekIdx] || [];
 
   // Build slot lookup: date -> hour -> slot
   const slotMap = useMemo(() => {
@@ -143,41 +153,71 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
     return map;
   }, [slots]);
 
-  // Get slot for current date and hour
   const getSlot = (date: string, hour: number) => slotMap.get(date)?.get(hour);
 
-  // Period navigation
   const periodIdx = periods.findIndex(p => p.id === selectedPeriod?.id);
 
-  // Handle date navigation within period
-  const goDate = (delta: number) => {
-    setSelectedDateIdx(i => {
-      const next = i + delta;
-      if (next < 0 || next >= weekdays.length) return i;
-      return next;
-    });
-    setPendingTimes(new Set());
-  };
-
-  // Toggle a pending time
-  const togglePending = (hour: number) => {
-    setPendingTimes(prev => {
+  // Toggle a pending slot
+  const togglePending = (date: string, hour: number) => {
+    const key = `${date}|${hour}`;
+    setPendingSlots(prev => {
       const next = new Set(prev);
-      if (next.has(hour)) next.delete(hour); else next.add(hour);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   };
 
-  // Register selected times
+  // Toggle entire hour row (all days in the week)
+  const toggleHourRow = (hour: number) => {
+    const keys = currentWeek
+      .filter(d => d && d >= todayStr && !getSlot(d, hour))
+      .map(d => `${d}|${hour}`);
+    if (keys.length === 0) return;
+    setPendingSlots(prev => {
+      const next = new Set(prev);
+      const allSelected = keys.every(k => next.has(k));
+      if (allSelected) {
+        keys.forEach(k => next.delete(k));
+      } else {
+        keys.forEach(k => next.add(k));
+      }
+      return next;
+    });
+  };
+
+  // Toggle entire day column (all hours)
+  const toggleDayCol = (dayIdx: number) => {
+    const date = currentWeek[dayIdx];
+    if (!date || date < todayStr) return;
+    const keys = SLOT_HOURS
+      .filter(h => !getSlot(date, h))
+      .map(h => `${date}|${h}`);
+    if (keys.length === 0) return;
+    setPendingSlots(prev => {
+      const next = new Set(prev);
+      const allSelected = keys.every(k => next.has(k));
+      if (allSelected) {
+        keys.forEach(k => next.delete(k));
+      } else {
+        keys.forEach(k => next.add(k));
+      }
+      return next;
+    });
+  };
+
+  // Register all pending slots
   const handleRegister = async () => {
-    if (pendingTimes.size === 0 || !currentDate) return;
+    if (pendingSlots.size === 0) return;
     setAdding(true);
-    const toInsert = Array.from(pendingTimes).map(h => ({
-      instructor_id: instructorId,
-      instructor_name: instructorName,
-      slot_date: currentDate,
-      slot_time: `${String(h).padStart(2, "0")}:00:00`,
-    }));
+    const toInsert = Array.from(pendingSlots).map(key => {
+      const [date, hourStr] = key.split("|");
+      return {
+        instructor_id: instructorId,
+        instructor_name: instructorName,
+        slot_date: date,
+        slot_time: `${String(parseInt(hourStr)).padStart(2, "0")}:00:00`,
+      };
+    });
     const { error } = await supabase.from("instructor_available_slots").insert(toInsert as any);
     if (error) {
       if (error.message.includes("duplicate")) {
@@ -186,14 +226,13 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
         toast({ title: "등록 실패", description: error.message, variant: "destructive" });
       }
     } else {
-      toast({ title: `${pendingTimes.size}개 시간 등록 완료 ✓` });
-      setPendingTimes(new Set());
+      toast({ title: `${pendingSlots.size}개 시간 등록 완료 ✓` });
+      setPendingSlots(new Set());
     }
     await loadData();
     setAdding(false);
   };
 
-  // Delete a slot
   const handleDeleteSlot = async (slotId: string) => {
     const { error } = await supabase.from("instructor_available_slots").delete().eq("id", slotId).eq("status", "open");
     if (!error) {
@@ -202,7 +241,6 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
     }
   };
 
-  // Approve/reject
   const handleApprove = async (reqId: string) => {
     setProcessingId(reqId);
     const { data, error } = await supabase.functions.invoke("handle-makeup-request", {
@@ -236,44 +274,48 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
   const pendingRequests = requests.filter(r => r.status === "pending");
   const recentProcessed = requests.filter(r => r.status !== "pending").slice(0, 10);
 
-  // Calendar view: group slots by week within period
+  // Calendar view weeks
   const calendarWeeks = useMemo(() => {
     if (!selectedPeriod) return [];
     const start = new Date(selectedPeriod.start_date + "T00:00:00");
     const end = new Date(selectedPeriod.end_date + "T00:00:00");
-    // Grid from Sunday of start week to Saturday of end week
     const gridStart = new Date(start);
     gridStart.setDate(gridStart.getDate() - gridStart.getDay());
     const gridEnd = new Date(end);
     gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
 
-    const weeks: { dates: { date: string; day: number; month: number; inPeriod: boolean }[] }[] = [];
-    let currentWeek: { date: string; day: number; month: number; inPeriod: boolean }[] = [];
-
+    const wks: { dates: { date: string; day: number; month: number; inPeriod: boolean }[] }[] = [];
+    let currentWk: { date: string; day: number; month: number; inPeriod: boolean }[] = [];
     for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const inPeriod = d >= start && d <= end;
-      currentWeek.push({ date: dateStr, day: d.getDate(), month: d.getMonth(), inPeriod });
-      if (currentWeek.length === 7) {
-        weeks.push({ dates: currentWeek });
-        currentWeek = [];
-      }
+      currentWk.push({ date: dateStr, day: d.getDate(), month: d.getMonth(), inPeriod: d >= start && d <= end });
+      if (currentWk.length === 7) { wks.push({ dates: currentWk }); currentWk = []; }
     }
-    if (currentWeek.length > 0) weeks.push({ dates: currentWeek });
-    return weeks;
+    if (currentWk.length > 0) wks.push({ dates: currentWk });
+    return wks;
   }, [selectedPeriod]);
 
-  // Slot count per date for calendar
   const slotCountByDate = useMemo(() => {
     const map = new Map<string, { open: number; booked: number }>();
     for (const s of slots) {
       if (!map.has(s.slot_date)) map.set(s.slot_date, { open: 0, booked: 0 });
       const entry = map.get(s.slot_date)!;
-      if (s.status === "open") entry.open++;
-      else entry.booked++;
+      if (s.status === "open") entry.open++; else entry.booked++;
     }
     return map;
   }, [slots]);
+
+  // Week label for register view
+  const weekLabel = useMemo(() => {
+    if (currentWeek.length === 0) return "";
+    const validDates = currentWeek.filter(d => d);
+    if (validDates.length === 0) return "";
+    const first = validDates[0];
+    const last = validDates[validDates.length - 1];
+    const fd = new Date(first + "T00:00:00");
+    const ld = new Date(last + "T00:00:00");
+    return `${fd.getMonth() + 1}/${fd.getDate()} ~ ${ld.getMonth() + 1}/${ld.getDate()}`;
+  }, [currentWeek]);
 
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
@@ -307,9 +349,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
             onClick={() => setActiveView(t.key)}
             className={cn(
               "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-all",
-              activeView === t.key
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+              activeView === t.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
           >
             <t.icon className="w-3.5 h-3.5" />
@@ -356,84 +396,175 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
       {/* ═══ REGISTER VIEW ═══ */}
       {activeView === "register" && selectedPeriod && (
         <div className="space-y-4">
-          {/* Date navigator */}
           <div className="rounded-xl border border-border bg-card overflow-hidden">
+            {/* Week navigator */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
               <button
-                onClick={() => goDate(-1)}
-                disabled={selectedDateIdx <= 0}
+                onClick={() => { setSelectedWeekIdx(i => Math.max(0, i - 1)); setPendingSlots(new Set()); }}
+                disabled={selectedWeekIdx <= 0}
                 className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30"
               >
                 <ChevronLeft className="w-4 h-4 text-muted-foreground" />
               </button>
-              <span className="text-sm font-bold text-foreground">{currentDate ? fmtDateFull(currentDate) : "날짜 없음"}</span>
+              <span className="text-sm font-bold text-foreground">{weekLabel}</span>
               <button
-                onClick={() => goDate(1)}
-                disabled={selectedDateIdx >= weekdays.length - 1}
+                onClick={() => { setSelectedWeekIdx(i => Math.min(weeks.length - 1, i + 1)); setPendingSlots(new Set()); }}
+                disabled={selectedWeekIdx >= weeks.length - 1}
                 className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30"
               >
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
 
-            {/* Time grid */}
-            <div className="p-3">
-              <div className="grid grid-cols-4 gap-2">
-                {SLOT_HOURS.map(hour => {
-                  const existing = getSlot(currentDate, hour);
-                  const isPending = pendingTimes.has(hour);
-                  const isOpen = existing?.status === "open";
-                  const isBooked = existing?.status === "booked";
-                  const isPast = currentDate < todayStr;
+            {/* Weekly grid: columns = days, rows = hours */}
+            <div className="p-3 overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="w-12" />
+                    {WEEKDAY_LABELS.map((label, i) => {
+                      const date = currentWeek[i] || "";
+                      const dayNum = date ? new Date(date + "T00:00:00").getDate() : "";
+                      return (
+                        <th key={i} className="text-center pb-2 px-0.5">
+                          <button
+                            onClick={() => toggleDayCol(i)}
+                            disabled={!date || date < todayStr}
+                            className={cn(
+                              "text-[10px] font-semibold leading-tight disabled:opacity-30",
+                              date === todayStr ? "text-primary" : "text-muted-foreground",
+                              date && date >= todayStr && "hover:text-foreground cursor-pointer"
+                            )}
+                          >
+                            <div>{label}</div>
+                            <div className="text-[11px] font-bold text-foreground">{dayNum}</div>
+                          </button>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* AM section */}
+                  <tr>
+                    <td colSpan={6} className="pt-1 pb-1">
+                      <span className="text-[9px] font-semibold text-muted-foreground/60 uppercase tracking-wider">오전</span>
+                    </td>
+                  </tr>
+                  {SLOT_HOURS_AM.map(hour => (
+                    <tr key={hour}>
+                      <td className="pr-1 py-0.5">
+                        <button
+                          onClick={() => toggleHourRow(hour)}
+                          className="text-[11px] font-medium text-muted-foreground hover:text-foreground w-full text-right pr-1"
+                        >
+                          {hour}시
+                        </button>
+                      </td>
+                      {currentWeek.map((date, di) => {
+                        if (!date) return <td key={di} className="p-0.5"><div className="h-9 rounded-md bg-muted/20" /></td>;
+                        const slot = getSlot(date, hour);
+                        const key = `${date}|${hour}`;
+                        const isPending = pendingSlots.has(key);
+                        const isPast = date < todayStr;
+                        const isOpen = slot?.status === "open";
+                        const isBooked = slot?.status === "booked";
 
-                  return (
-                    <button
-                      key={hour}
-                      disabled={isBooked || isPast}
-                      onClick={() => {
-                        if (isOpen && existing) {
-                          handleDeleteSlot(existing.id);
-                        } else if (!existing) {
-                          togglePending(hour);
-                        }
-                      }}
-                      className={cn(
-                        "relative h-11 rounded-lg text-sm font-semibold transition-all border",
-                        isPast && "opacity-30 cursor-not-allowed border-transparent bg-muted/30 text-muted-foreground",
-                        !isPast && isBooked && "bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] cursor-not-allowed",
-                        !isPast && isOpen && "bg-[hsl(var(--success))] border-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/80",
-                        !isPast && !existing && isPending && "bg-primary border-primary text-primary-foreground",
-                        !isPast && !existing && !isPending && "bg-card border-border text-foreground hover:border-primary/40 hover:bg-muted/50",
-                      )}
-                    >
-                      {hour}:00
-                      {isOpen && (
-                        <X className="absolute top-1 right-1 w-3 h-3 opacity-60" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                        return (
+                          <td key={di} className="p-0.5">
+                            <button
+                              disabled={isBooked || isPast}
+                              onClick={() => {
+                                if (isOpen && slot) handleDeleteSlot(slot.id);
+                                else if (!slot) togglePending(date, hour);
+                              }}
+                              className={cn(
+                                "w-full h-9 rounded-md text-[11px] font-semibold transition-all border",
+                                isPast && "opacity-20 cursor-not-allowed border-transparent bg-muted/30",
+                                !isPast && isBooked && "bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] cursor-not-allowed",
+                                !isPast && isOpen && "bg-[hsl(var(--success))] border-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/80",
+                                !isPast && !slot && isPending && "bg-primary border-primary text-primary-foreground",
+                                !isPast && !slot && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
+                              )}
+                            >
+                              {isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  {/* PM section */}
+                  <tr>
+                    <td colSpan={6} className="pt-3 pb-1">
+                      <span className="text-[9px] font-semibold text-muted-foreground/60 uppercase tracking-wider">오후</span>
+                    </td>
+                  </tr>
+                  {SLOT_HOURS_PM.map(hour => (
+                    <tr key={hour}>
+                      <td className="pr-1 py-0.5">
+                        <button
+                          onClick={() => toggleHourRow(hour)}
+                          className="text-[11px] font-medium text-muted-foreground hover:text-foreground w-full text-right pr-1"
+                        >
+                          {hour}시
+                        </button>
+                      </td>
+                      {currentWeek.map((date, di) => {
+                        if (!date) return <td key={di} className="p-0.5"><div className="h-9 rounded-md bg-muted/20" /></td>;
+                        const slot = getSlot(date, hour);
+                        const key = `${date}|${hour}`;
+                        const isPending = pendingSlots.has(key);
+                        const isPast = date < todayStr;
+                        const isOpen = slot?.status === "open";
+                        const isBooked = slot?.status === "booked";
+
+                        return (
+                          <td key={di} className="p-0.5">
+                            <button
+                              disabled={isBooked || isPast}
+                              onClick={() => {
+                                if (isOpen && slot) handleDeleteSlot(slot.id);
+                                else if (!slot) togglePending(date, hour);
+                              }}
+                              className={cn(
+                                "w-full h-9 rounded-md text-[11px] font-semibold transition-all border",
+                                isPast && "opacity-20 cursor-not-allowed border-transparent bg-muted/30",
+                                !isPast && isBooked && "bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] cursor-not-allowed",
+                                !isPast && isOpen && "bg-[hsl(var(--success))] border-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/80",
+                                !isPast && !slot && isPending && "bg-primary border-primary text-primary-foreground",
+                                !isPast && !slot && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
+                              )}
+                            >
+                              {isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
               {/* Legend */}
-              <div className="flex items-center gap-4 mt-3 px-1">
+              <div className="flex flex-wrap items-center gap-3 mt-3 px-1">
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-sm bg-primary" />
                   <span className="text-[10px] text-muted-foreground">선택됨</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-sm bg-[hsl(var(--success))]" />
-                  <span className="text-[10px] text-muted-foreground">등록됨 (클릭 시 삭제)</span>
+                  <span className="text-[10px] text-muted-foreground">등록됨 (클릭 삭제)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm bg-[hsl(var(--warning))]/30" />
+                  <span className="w-3 h-3 rounded-sm bg-[hsl(var(--warning))]/40" />
                   <span className="text-[10px] text-muted-foreground">예약됨</span>
                 </div>
               </div>
             </div>
 
             {/* Register button */}
-            {pendingTimes.size > 0 && (
+            {pendingSlots.size > 0 && (
               <div className="px-3 pb-3">
                 <Button
                   onClick={handleRegister}
@@ -441,44 +572,26 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                   className="w-full h-10 text-sm bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
                 >
                   {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  {pendingTimes.size}개 시간 등록
+                  {pendingSlots.size}개 시간 일괄 등록
                 </Button>
               </div>
             )}
           </div>
-
-          {/* Quick stats for current date */}
-          {currentDate && (
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground px-1">
-              <span>
-                이 날: 등록 <span className="font-bold text-[hsl(var(--success))]">{slotCountByDate.get(currentDate)?.open || 0}</span>
-                {(slotCountByDate.get(currentDate)?.booked || 0) > 0 && (
-                  <> · 예약 <span className="font-bold text-[hsl(var(--warning))]">{slotCountByDate.get(currentDate)?.booked}</span></>
-                )}
-              </span>
-              <span className="text-border">|</span>
-              <span>전체 기간: 등록 <span className="font-bold text-foreground">
-                {Array.from(slotCountByDate.values()).reduce((s, v) => s + v.open, 0)}
-              </span></span>
-            </div>
-          )}
         </div>
       )}
 
       {/* ═══ CALENDAR VIEW ═══ */}
       {activeView === "calendar" && selectedPeriod && (
         <div className="space-y-3">
-          {/* Weekday headers */}
           <div className="grid grid-cols-7 text-center">
             {DAYS_KO.map((d, i) => (
               <div key={d} className={cn(
                 "text-[11px] font-semibold py-1.5",
-                i === 0 ? "text-destructive/70" : i === 6 ? "text-blue-400" : "text-muted-foreground"
+                i === 0 ? "text-destructive/70" : i === 6 ? "text-muted-foreground" : "text-muted-foreground"
               )}>{d}</div>
             ))}
           </div>
 
-          {/* Weeks */}
           <div className="space-y-1">
             {calendarWeeks.map((week, wi) => (
               <div key={wi} className="grid grid-cols-7 gap-1">
@@ -492,35 +605,31 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                       key={cell.date}
                       onClick={() => {
                         if (!cell.inPeriod || isWeekend) return;
-                        const idx = weekdays.indexOf(cell.date);
-                        if (idx >= 0) {
-                          setSelectedDateIdx(idx);
-                          setActiveView("register");
-                          setPendingTimes(new Set());
+                        // Find the week index and switch to register
+                        for (let wi2 = 0; wi2 < weeks.length; wi2++) {
+                          if (weeks[wi2].includes(cell.date)) {
+                            setSelectedWeekIdx(wi2);
+                            setActiveView("register");
+                            setPendingSlots(new Set());
+                            break;
+                          }
                         }
                       }}
                       className={cn(
-                        "aspect-square rounded-lg flex flex-col items-center justify-center gap-0.5 text-xs transition-all relative",
+                        "aspect-square rounded-lg flex flex-col items-center justify-center gap-0.5 text-xs transition-all",
                         !cell.inPeriod && "opacity-30",
                         isWeekend && "opacity-40",
                         cell.inPeriod && !isWeekend && "hover:bg-muted cursor-pointer",
                         isToday && "ring-1 ring-primary",
                       )}
                     >
-                      <span className={cn(
-                        "text-[11px] font-medium",
-                        isToday ? "text-primary font-bold" : "text-foreground"
-                      )}>
+                      <span className={cn("text-[11px] font-medium", isToday ? "text-primary font-bold" : "text-foreground")}>
                         {cell.day}
                       </span>
                       {counts && (counts.open > 0 || counts.booked > 0) && (
                         <div className="flex items-center gap-0.5">
-                          {counts.open > 0 && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))]" />
-                          )}
-                          {counts.booked > 0 && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--warning))]" />
-                          )}
+                          {counts.open > 0 && <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))]" />}
+                          {counts.booked > 0 && <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--warning))]" />}
                         </div>
                       )}
                     </button>
@@ -530,14 +639,11 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
             ))}
           </div>
 
-          {/* Slot list below calendar */}
+          {/* Slot list */}
           <div className="space-y-2 pt-2">
             <p className="text-xs font-semibold text-muted-foreground">등록된 가용 시간</p>
             {Array.from(slotMap.entries())
-              .filter(([date]) => {
-                if (!selectedPeriod) return false;
-                return date >= selectedPeriod.start_date && date <= selectedPeriod.end_date;
-              })
+              .filter(([date]) => selectedPeriod && date >= selectedPeriod.start_date && date <= selectedPeriod.end_date)
               .sort(([a], [b]) => a.localeCompare(b))
               .map(([date, hourMap]) => (
                 <div key={date} className="rounded-lg border border-border bg-card overflow-hidden">
@@ -545,25 +651,23 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                     <p className="text-[11px] font-semibold text-foreground">{fmtDateKo(date)}</p>
                   </div>
                   <div className="p-2 flex flex-wrap gap-1.5">
-                    {Array.from(hourMap.entries())
-                      .sort(([a], [b]) => a - b)
-                      .map(([hour, slot]) => (
-                        <div key={slot.id} className={cn(
-                          "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium border",
-                          slot.status === "open"
-                            ? "bg-[hsl(var(--success))]/5 border-[hsl(var(--success))]/20 text-[hsl(var(--success))]"
-                            : "bg-[hsl(var(--warning))]/5 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))]",
-                        )}>
-                          <span>{hour}:00</span>
-                          {slot.status === "booked" ? (
-                            <span className="text-[9px]">예약</span>
-                          ) : (
-                            <button onClick={() => handleDeleteSlot(slot.id)} className="hover:text-destructive transition-colors">
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                    {Array.from(hourMap.entries()).sort(([a], [b]) => a - b).map(([hour, slot]) => (
+                      <div key={slot.id} className={cn(
+                        "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium border",
+                        slot.status === "open"
+                          ? "bg-[hsl(var(--success))]/5 border-[hsl(var(--success))]/20 text-[hsl(var(--success))]"
+                          : "bg-[hsl(var(--warning))]/5 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))]",
+                      )}>
+                        <span>{hour}:00</span>
+                        {slot.status === "booked" ? (
+                          <span className="text-[9px]">예약</span>
+                        ) : (
+                          <button onClick={() => handleDeleteSlot(slot.id)} className="hover:text-destructive transition-colors">
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -580,7 +684,6 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
       {/* ═══ REQUESTS VIEW ═══ */}
       {activeView === "requests" && (
         <div className="space-y-4">
-          {/* Pending */}
           {pendingRequests.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -610,25 +713,17 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
                         {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })}
                       </p>
                     </div>
-
                     {slot && (
                       <p className="text-xs text-foreground">
                         → <span className="font-semibold text-primary">{fmtDateKo(slot.slot_date)} {fmtTimeKo(slot.slot_time)}</span>
                       </p>
                     )}
-
                     {rejectingId === req.id ? (
                       <div className="space-y-2">
-                        <Input
-                          value={rejectReason}
-                          onChange={(e) => setRejectReason(e.target.value)}
-                          placeholder="거절 사유 (선택)"
-                          className="h-8 text-xs"
-                        />
+                        <Input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="거절 사유 (선택)" className="h-8 text-xs" />
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" onClick={() => setRejectingId(null)} className="h-7 text-xs flex-1">취소</Button>
-                          <Button size="sm" onClick={() => handleReject(req.id)}
-                            disabled={processingId === req.id}
+                          <Button size="sm" onClick={() => handleReject(req.id)} disabled={processingId === req.id}
                             className="h-7 text-xs flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground">
                             {processingId === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "거절 확인"}
                           </Button>
@@ -658,7 +753,6 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
             </div>
           )}
 
-          {/* Recent processed */}
           {recentProcessed.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-xs font-semibold text-muted-foreground">최근 처리 내역</h3>
