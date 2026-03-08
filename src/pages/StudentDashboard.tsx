@@ -1170,10 +1170,21 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="p-5 space-y-4">
-                <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                  <p className="text-[11px] text-muted-foreground">입금 계좌</p>
-                  <p className="text-sm font-semibold text-foreground mt-0.5">카카오뱅크 3333-08-1365286</p>
-                  <p className="text-[11px] text-muted-foreground">더라운지영어원격학원 (장리원)</p>
+                <div className="p-3 rounded-lg bg-muted/50 border border-border flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">입금 계좌</p>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">카카오뱅크 3333-08-1365286</p>
+                    <p className="text-[11px] text-muted-foreground">더라운지영어원격학원 (장리원)</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText("카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)");
+                      toast({ title: "계좌번호가 복사되었습니다" });
+                    }}
+                    className="shrink-0 px-2.5 py-1.5 text-[11px] font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                  >
+                    복사
+                  </button>
                 </div>
 
                 <div>
@@ -1216,22 +1227,25 @@ export default function StudentDashboard() {
                     이전
                   </button>
                   <button
-                    onClick={() => {
-                      const info = `카카오뱅크 3333-08-1365286 더라운지영어원격학원 (장리원)`;
-                      navigator.clipboard.writeText(info);
-                      toast({
-                        title: "계좌번호가 복사되었습니다",
-                        description: receiptNumber
-                          ? `현금영수증: ${receiptType === "phone" ? "휴대폰" : "사업자"} ${receiptNumber}`
-                          : info,
-                      });
-                      setShowPaymentModal(false);
-                      setPaymentStep("select");
-                      setReceiptNumber("");
+                    disabled={!receiptNumber.trim()}
+                    onClick={async () => {
+                      if (!receiptNumber.trim()) return;
+                      const { error } = await supabase.from("cash_receipts" as any).upsert(
+                        { student_name: student, receipt_type: receiptType, receipt_number: receiptNumber.trim(), updated_at: new Date().toISOString() } as any,
+                        { onConflict: "student_name" } as any
+                      );
+                      if (error) {
+                        toast({ title: "저장 실패", description: error.message, variant: "destructive" });
+                      } else {
+                        toast({ title: "현금영수증 정보가 저장되었습니다" });
+                        setShowPaymentModal(false);
+                        setPaymentStep("select");
+                        setReceiptNumber("");
+                      }
                     }}
-                    className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40"
                   >
-                    계좌번호 복사
+                    저장하기
                   </button>
                 </div>
               </div>

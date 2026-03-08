@@ -14,6 +14,7 @@ import TeachingMaterials from "@/components/admin/TeachingMaterials";
 import StudentFeedbackManagement from "@/components/admin/StudentFeedbackManagement";
 import ClassFeedbackManagement from "@/components/admin/ClassFeedbackManagement";
 import CurriculumGuideEditor from "@/components/admin/CurriculumGuideEditor";
+import CashReceiptManagement from "@/components/admin/CashReceiptManagement";
 
 import { Menu, X, Loader2 } from "lucide-react";
 
@@ -65,6 +66,8 @@ export default function Admin() {
         return <ClassFeedbackManagement />;
       case "student-feedback":
         return <StudentFeedbackManagement />;
+      case "cash-receipts":
+        return <CashReceiptManagement />;
       case "guide":
         return <GuideManagement />;
       case "messages":
