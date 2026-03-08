@@ -247,6 +247,21 @@ export default function StudentFeedbackModal({
 
   const totalSteps = students.length;
 
+  if (showReportPreview) {
+    return (
+      <StudentReportPreviewModal
+        instructorName={instructorName}
+        students={students}
+        periodId={periodId}
+        periodLabel={periodLabel}
+        periodStartDate={periodStartDate}
+        periodEndDate={periodEndDate}
+        onComplete={onComplete}
+        onClose={onComplete}
+      />
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
