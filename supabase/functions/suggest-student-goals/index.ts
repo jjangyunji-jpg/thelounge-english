@@ -115,14 +115,20 @@ Return ONLY a valid JSON object:
   "session_topics": ["1회차 주제", "2회차 주제", ...]
 }`;
 
+    let currentTopicsText = "";
+    if (current_session_topics && Array.isArray(current_session_topics) && current_session_topics.length > 0) {
+      currentTopicsText = `\n\n이번 기간 수업 주제:\n${current_session_topics.map((t: string, i: number) => `${i + 1}회: ${t || "(주제 없음)"}`).join("\n")}`;
+    }
+
     const userPrompt = `학생: ${student_name}
 레벨: ${level}
 기간: ${period_label}
 현재 학습 목표: ${current_objective || "없음"}
+다음 기간 세션 수: ${topicCount}
 
 강사 평가:
 ${evaluationText}
-${comment ? `코멘트: ${comment}` : ""}${curriculumGuideText}${sessionHistoryText}`;
+${comment ? `코멘트: ${comment}` : ""}${curriculumGuideText}${sessionHistoryText}${currentTopicsText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
