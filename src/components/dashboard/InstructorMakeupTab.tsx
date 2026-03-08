@@ -26,6 +26,7 @@ interface MakeupReq {
   student_name: string;
   instructor_name: string;
   original_session_id: string | null;
+  original_scheduled_at: string | null;
   slot_id: string;
   request_type: string;
   status: string;
