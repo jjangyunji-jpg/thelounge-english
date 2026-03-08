@@ -34,6 +34,7 @@ export default function Signup() {
   const [phone, setPhone] = useState("");
   const [desiredLevel, setDesiredLevel] = useState("");
   const [preferredSchedule, setPreferredSchedule] = useState<string[]>([]);
+  const [referralSource, setReferralSource] = useState<string[]>([]);
   const [note, setNote] = useState("");
 
   const isNewStudent = role === "student" && studentType === "new";
@@ -63,6 +64,7 @@ export default function Signup() {
         body.phone = phone.trim();
         body.desiredLevel = desiredLevel;
         body.preferredSchedule = preferredSchedule.join(", ");
+        body.referralSource = referralSource.join(", ");
         body.note = note.trim();
       } else if (isExistingStudent) {
         body.studentType = "existing";
@@ -341,6 +343,41 @@ export default function Signup() {
                                 }}
                               />
                               {opt.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">가입 경로 (복수 선택 가능)</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            "지인 추천",
+                            "인스타그램",
+                            "블로그/카페",
+                            "검색(네이버/구글)",
+                            "유튜브",
+                            "기타",
+                          ].map((src) => (
+                            <label
+                              key={src}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm cursor-pointer transition-all",
+                                referralSource.includes(src)
+                                  ? "border-gold bg-gold/10 text-foreground font-medium"
+                                  : "border-border text-muted-foreground hover:bg-muted/50"
+                              )}
+                            >
+                              <Checkbox
+                                checked={referralSource.includes(src)}
+                                onCheckedChange={(checked) => {
+                                  setReferralSource((prev) =>
+                                    checked
+                                      ? [...prev, src]
+                                      : prev.filter((v) => v !== src)
+                                  );
+                                }}
+                              />
+                              {src}
                             </label>
                           ))}
                         </div>
