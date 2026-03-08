@@ -91,7 +91,7 @@ function buildWeeks(startDate: string, endDate: string): string[][] {
 
 type TabView = "register" | "calendar" | "requests";
 
-export default function InstructorMakeupTab({ instructorId, instructorName }: { instructorId: string; instructorName: string }) {
+export default function InstructorMakeupTab({ instructorId, instructorName, onSessionChanged }: { instructorId: string; instructorName: string; onSessionChanged?: () => void }) {
   const { toast } = useToast();
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
