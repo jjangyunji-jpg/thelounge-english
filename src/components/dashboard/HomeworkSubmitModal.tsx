@@ -326,7 +326,7 @@ export default function HomeworkSubmitModal({
             className="w-full h-9 text-sm gap-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground">
             {submitting
               ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />제출 중...</>
-              : <><Send className="w-3.5 h-3.5" />숙제 제출하기</>}
+              : <><Send className="w-3.5 h-3.5" />{submission ? "숙제 수정하기" : "숙제 제출하기"}</>}
           </Button>
         </div>
       </div>
