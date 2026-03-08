@@ -60,6 +60,8 @@ export default function Admin() {
         return <TeachingMaterials />;
       case "curriculum":
         return <CurriculumGuideEditor />;
+      case "class-feedback":
+        return <ClassFeedbackManagement />;
       case "student-feedback":
         return <StudentFeedbackManagement />;
       case "guide":
