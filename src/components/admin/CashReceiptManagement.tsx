@@ -69,6 +69,8 @@ export default function CashReceiptManagement() {
   const [deductions, setDeductions] = useState<PrepaidDeduction[]>([]);
   const [creditModal, setCreditModal] = useState<{ name: string; existing?: PrepaidCredit } | null>(null);
   const [creditInput, setCreditInput] = useState({ sessions: "", note: "" });
+  const [reportPreview, setReportPreview] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState<string | null>(null);
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
