@@ -203,7 +203,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName }: { 
   // Toggle entire hour row (all days in the week)
   const toggleHourRow = (hour: number) => {
     const keys = currentWeek
-      .filter(d => d && d >= todayStr && !getSlot(d, hour))
+      .filter(d => d && d >= todayStr && !getSlot(d, hour) && !hasClassAt(d, hour))
       .map(d => `${d}|${hour}`);
     if (keys.length === 0) return;
     setPendingSlots(prev => {
