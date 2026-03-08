@@ -159,7 +159,7 @@ Return ONLY a valid JSON object:
 
 강사 평가:
 ${evaluationText}
-${comment ? `코멘트: ${comment}` : ""}${curriculumGuideText}${sessionHistoryText}${currentTopicsText}`;
+${comment ? `코멘트: ${comment}` : ""}${curriculumGuideText}${materialsText}${sessionHistoryText}${currentTopicsText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
