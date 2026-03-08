@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
-const WEEKDAY_LABELS = ["월", "화", "수", "목", "금"];
+const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 const SLOT_HOURS_AM = [10, 11, 12, 13];
 const SLOT_HOURS_PM = [18, 19, 20, 21];
 const SLOT_HOURS = [...SLOT_HOURS_AM, ...SLOT_HOURS_PM];
