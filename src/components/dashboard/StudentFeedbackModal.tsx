@@ -365,10 +365,9 @@ export default function StudentFeedbackModal({
                     className="w-full h-32 rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   {!fb.comment && (
-                    <div className="absolute inset-0 px-3 py-2 pointer-events-none text-muted-foreground/40 text-sm leading-relaxed">
-                      <p className="mb-1">💡 이런 관찰을 적어주시면 좋아요:</p>
+                    <div className="absolute inset-0 px-3 py-2 pointer-events-none text-muted-foreground/60 text-sm leading-loose">
                       {COMMENT_EXAMPLES.map((ex, i) => (
-                        <p key={i} className="text-[11px] leading-relaxed">• {ex}</p>
+                        <p key={i}>• {ex}</p>
                       ))}
                     </div>
                   )}
