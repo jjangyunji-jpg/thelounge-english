@@ -1288,6 +1288,7 @@ export default function InstructorDashboard() {
   const [allPeriods, setAllPeriods] = useState<SchedulePeriod[]>([]);
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingMakeupCount, setPendingMakeupCount] = useState(0);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "makeup" | "profile" | "guide">("dashboard");
