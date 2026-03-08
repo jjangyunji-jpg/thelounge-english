@@ -2310,6 +2310,7 @@ export default function InstructorDashboard() {
                                               }
                                             }
                                           }
+                                        }}
                                       >
                                         <Check className="w-3 h-3" /> 수업 완료
                                       </Button>
