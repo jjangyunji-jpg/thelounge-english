@@ -589,6 +589,7 @@ export default function StudentDashboard() {
         instructor_display_name: instrDisplayName,
         pauses,
         student_type: (studentRes.data as any).student_type || 'regular',
+        group_students: Array.isArray((studentRes.data as any).group_students) ? (studentRes.data as any).group_students : [],
       });
 
       const isSessionVisible = (scheduledAt: string) => {
