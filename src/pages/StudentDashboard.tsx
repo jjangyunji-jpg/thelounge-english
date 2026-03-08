@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import BugReportModal from "@/components/dashboard/BugReportModal";
 import MakeupRequestModal from "@/components/dashboard/MakeupRequestModal";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
