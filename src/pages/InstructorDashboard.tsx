@@ -1963,7 +1963,7 @@ export default function InstructorDashboard() {
             { id: "dashboard" as const, label: "대시보드", icon: CalendarDays },
             { id: "students" as const, label: "학생 관리", icon: Users },
             { id: "feedback" as const, label: "피드백", icon: MessageSquare },
-            { id: "makeup" as const, label: "보강", icon: RotateCcw },
+            { id: "makeup" as const, label: "보강", icon: RotateCcw, badge: pendingMakeupCount },
             { id: "settlement" as const, label: "정산", icon: Banknote },
             { id: "guide" as const, label: "가이드", icon: BookOpen },
             { id: "profile" as const, label: "MY", icon: User },
