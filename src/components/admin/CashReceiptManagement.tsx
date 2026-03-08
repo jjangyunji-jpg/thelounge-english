@@ -62,6 +62,7 @@ export default function CashReceiptManagement() {
   const [receipts, setReceipts] = useState<CashReceipt[]>([]);
   const [confirmations, setConfirmations] = useState<PaymentConfirmation[]>([]);
   const [sessionCounts, setSessionCounts] = useState<Map<string, number>>(new Map());
+  const [corpSessionCounts, setCorpSessionCounts] = useState<Map<string, number>>(new Map());
   const [prepaidCredits, setPrepaidCredits] = useState<PrepaidCredit[]>([]);
   const [deductions, setDeductions] = useState<PrepaidDeduction[]>([]);
   const [creditModal, setCreditModal] = useState<{ name: string; existing?: PrepaidCredit } | null>(null);
@@ -80,6 +81,16 @@ export default function CashReceiptManagement() {
   const periodStart = currentPeriod ? `${currentPeriod.start_date}T00:00:00+09:00` : "";
   const periodEnd = currentPeriod ? `${currentPeriod.end_date}T23:59:59+09:00` : "";
 
+  // Calendar month range for corporate students (derived from period start_date's month)
+  const corpMonth = currentPeriod ? new Date(currentPeriod.start_date) : new Date();
+  const corpYear = corpMonth.getFullYear();
+  const corpMon = corpMonth.getMonth() + 1;
+  const corpMonthStart = `${corpYear}-${String(corpMon).padStart(2, "0")}-01T00:00:00+09:00`;
+  const corpNextMon = corpMon === 12 ? 1 : corpMon + 1;
+  const corpNextYear = corpMon === 12 ? corpYear + 1 : corpYear;
+  const corpMonthEnd = `${corpNextYear}-${String(corpNextMon).padStart(2, "0")}-01T00:00:00+09:00`;
+  const corpMonthLabel = `${corpYear}년 ${corpMon}월`;
+
   // Load periods first, then data
   useEffect(() => {
     (async () => {
@@ -94,11 +105,14 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     if (!currentPeriod) return;
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes, creditRes, dedRes] = await Promise.all([
+    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
+      // Regular: period-based
       supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
+      // Corporate: calendar month-based
+      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", corpMonthStart).lt("scheduled_at", corpMonthEnd),
       supabase.from("prepaid_credits" as any).select("*"),
       supabase.from("prepaid_deductions" as any).select("*").eq("month", periodKey),
     ]);
@@ -113,8 +127,14 @@ export default function CashReceiptManagement() {
       counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
     });
     setSessionCounts(counts);
+
+    const corpCounts = new Map<string, number>();
+    (corpSessRes.data || []).forEach((s: any) => {
+      corpCounts.set(s.student_name, (corpCounts.get(s.student_name) || 0) + 1);
+    });
+    setCorpSessionCounts(corpCounts);
     setLoading(false);
-  }, [currentPeriod, periodKey, periodStart, periodEnd]);
+  }, [currentPeriod, periodKey, periodStart, periodEnd, corpMonthStart, corpMonthEnd]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -209,8 +229,8 @@ export default function CashReceiptManagement() {
   const renderStudentRow = (s: StudentRecord, isCorporate = false) => {
     const conf = confMap.get(s.student_name);
     const isConfirmed = conf?.confirmed || false;
+    const count = isCorporate ? (corpSessionCounts.get(s.student_name) || 0) : (sessionCounts.get(s.student_name) || 0);
     const fee = isCorporate ? null : getFee(s);
-    const count = sessionCounts.get(s.student_name) || 0;
     const credit = creditMap.get(s.student_name);
     const ded = dedMap.get(s.student_name);
     const hasPrepaid = !!credit && (credit.total_sessions - credit.used_sessions) > 0;
@@ -237,7 +257,10 @@ export default function CashReceiptManagement() {
         </td>
         <td className="px-4 py-3 text-right">
           {isCorporate ? (
-            <span className="text-xs text-muted-foreground">회당 정산</span>
+            <div>
+              <span className="text-xs text-muted-foreground">회당 정산</span>
+              <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
+            </div>
           ) : (
             <div>
               <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{fee!.toLocaleString()}</span>
@@ -350,7 +373,7 @@ export default function CashReceiptManagement() {
       {/* Corporate Students Table */}
       {corporateStudents.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">기업 수강생</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">기업 수강생 <span className="font-normal">({corpMonthLabel} 기준)</span></p>
           <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
