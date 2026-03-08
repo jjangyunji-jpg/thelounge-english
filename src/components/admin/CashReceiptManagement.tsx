@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X } from "lucide-react";
+import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
+import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
+const TEST_ACCOUNTS = ["test", "test 2"];
 const LESSON_PRICE = 50000;
+const GROUP_LESSON_PRICE = 70000;
 
 interface StudentRecord {
   student_name: string;
@@ -67,6 +70,8 @@ export default function CashReceiptManagement() {
   const [deductions, setDeductions] = useState<PrepaidDeduction[]>([]);
   const [creditModal, setCreditModal] = useState<{ name: string; existing?: PrepaidCredit } | null>(null);
   const [creditInput, setCreditInput] = useState({ sessions: "", note: "" });
+  const [reportPreview, setReportPreview] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState<string | null>(null);
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
@@ -143,8 +148,8 @@ export default function CashReceiptManagement() {
   const dedMap = new Map(deductions.map(d => [d.student_name, d]));
   const receiptMap = new Map(receipts.map(r => [r.student_name, r]));
 
-  const regularStudents = students.filter(s => s.student_type !== "corporate").sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
-  const corporateStudents = students.filter(s => s.student_type === "corporate").sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+  const regularStudents = students.filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name)).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+  const corporateStudents = students.filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name)).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
   const toggleConfirm = async (studentName: string) => {
     const existing = confMap.get(studentName);
@@ -219,6 +224,48 @@ export default function CashReceiptManagement() {
     return count * LESSON_PRICE;
   };
 
+  const getCorpFee = (s: StudentRecord) => {
+    const count = corpSessionCounts.get(s.student_name) || 0;
+    const price = s.group_students?.length > 0 ? GROUP_LESSON_PRICE : LESSON_PRICE;
+    return count * price;
+  };
+
+  const openCorpReport = async (s: StudentRecord) => {
+    setReportLoading(s.student_name);
+    try {
+      const { prepareReportData } = await import("@/lib/exportCorporateReportPdf");
+      const startDate = `${corpYear}-${String(corpMon).padStart(2, "0")}-01`;
+      const lastDay = new Date(corpYear, corpMon, 0).getDate();
+      const endDate = `${corpYear}-${String(corpMon).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const label = corpMonthLabel;
+      const { data: sessData } = await supabase
+        .from("class_sessions")
+        .select("scheduled_at,student_name,topic,notes,level,ended_at,group_students")
+        .eq("student_name", s.student_name)
+        .gte("scheduled_at", startDate + "T00:00:00+09:00")
+        .lte("scheduled_at", endDate + "T23:59:59+09:00")
+        .order("scheduled_at");
+      // Get instructor info
+      const { data: studentInfo } = await supabase
+        .from("instructor_students")
+        .select("instructor_name, learning_objective")
+        .eq("student_name", s.student_name)
+        .single();
+      let objs: string[] = [];
+      try { objs = JSON.parse(studentInfo?.learning_objective || "[]"); } catch { objs = studentInfo?.learning_objective ? [studentInfo.learning_objective] : []; }
+      const groupStudents = (sessData || []).find(sess => sess.group_students?.length > 0)?.group_students || [];
+      const previewData = await prepareReportData(
+        sessData || [],
+        { studentName: s.student_name, instructorName: studentInfo?.instructor_name || "", learningObjective: objs.join(", "), groupStudents },
+        { label, start_date: startDate, end_date: endDate },
+      );
+      setReportPreview(previewData);
+    } catch (e) {
+      console.error(e);
+    }
+    setReportLoading(null);
+  };
+
   const confirmedCount = regularStudents.filter(s => confMap.get(s.student_name)?.confirmed).length;
   const totalFee = regularStudents.reduce((sum, s) => sum + getFee(s), 0);
 
@@ -259,7 +306,7 @@ export default function CashReceiptManagement() {
         <td className="px-4 py-3 text-right">
           {isCorporate ? (
             <div>
-              <span className="text-xs text-muted-foreground">회당 정산</span>
+              <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{getCorpFee(s).toLocaleString()}</span>
               <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
             </div>
           ) : (
@@ -270,45 +317,57 @@ export default function CashReceiptManagement() {
           )}
         </td>
         <td className="px-4 py-3">
-          {credit ? (
-            <div className="flex items-center gap-2">
-              <div className="text-xs group/credit relative cursor-default" title={credit.note || undefined}>
-                <span className="font-semibold text-foreground">{credit.total_sessions - credit.used_sessions}</span>
-                <span className="text-muted-foreground">/{credit.total_sessions}회</span>
-                {credit.note && (
-                  <div className="absolute bottom-full left-0 mb-1 hidden group-hover/credit:block z-10 px-2 py-1 rounded bg-popover border border-border shadow-md text-[10px] text-popover-foreground whitespace-nowrap max-w-[200px] truncate">
-                    {credit.note}
-                  </div>
+          <div className="flex items-center gap-2">
+            {credit ? (
+              <>
+                <div className="text-xs group/credit relative cursor-default" title={credit.note || undefined}>
+                  <span className="font-semibold text-foreground">{credit.total_sessions - credit.used_sessions}</span>
+                  <span className="text-muted-foreground">/{credit.total_sessions}회</span>
+                  {credit.note && (
+                    <div className="absolute bottom-full left-0 mb-1 hidden group-hover/credit:block z-10 px-2 py-1 rounded bg-popover border border-border shadow-md text-[10px] text-popover-foreground whitespace-nowrap max-w-[200px] truncate">
+                      {credit.note}
+                    </div>
+                  )}
+                </div>
+                {ded ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium cursor-default" title={`${ded.deducted_sessions}회 차감됨 (클릭하여 취소)`} onClick={() => undoDeduct(s.student_name)}>
+                    -{ded.deducted_sessions} 차감완료
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => deductMonth(s.student_name)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    차감
+                  </button>
                 )}
-              </div>
-              {ded ? (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium cursor-default" title={`${ded.deducted_sessions}회 차감됨 (클릭하여 취소)`} onClick={() => undoDeduct(s.student_name)}>
-                  -{ded.deducted_sessions} 차감완료
-                </span>
-              ) : (
                 <button
-                  onClick={() => deductMonth(s.student_name)}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  onClick={() => { setCreditModal({ name: s.student_name, existing: credit }); setCreditInput({ sessions: "", note: credit.note || "" }); }}
+                  className="text-muted-foreground hover:text-foreground"
+                  title="충전"
                 >
-                  차감
+                  <Plus className="w-3.5 h-3.5" />
                 </button>
-              )}
+              </>
+            ) : (
               <button
-                onClick={() => { setCreditModal({ name: s.student_name, existing: credit }); setCreditInput({ sessions: "", note: credit.note || "" }); }}
-                className="text-muted-foreground hover:text-foreground"
-                title="충전"
+                onClick={() => { setCreditModal({ name: s.student_name }); setCreditInput({ sessions: "", note: "" }); }}
+                className="text-[10px] px-2 py-1 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" />
+                선결제 등록
               </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => { setCreditModal({ name: s.student_name }); setCreditInput({ sessions: "", note: "" }); }}
-              className="text-[10px] px-2 py-1 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
-            >
-              선결제 등록
-            </button>
-          )}
+            )}
+            {isCorporate && (
+              <button
+                onClick={() => openCorpReport(s)}
+                disabled={reportLoading === s.student_name}
+                className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground hover:bg-accent/80 transition-colors flex items-center gap-0.5"
+                title="기업 보고서"
+              >
+                {reportLoading === s.student_name ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+              </button>
+            )}
+          </div>
         </td>
       </tr>
     );
@@ -484,6 +543,20 @@ export default function CashReceiptManagement() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Corporate Report Preview Modal */}
+      {reportPreview && (
+        <CorporateReportPreviewModal
+          data={reportPreview}
+          onClose={() => setReportPreview(null)}
+          onDownload={async (finalData) => {
+            const { exportCorporateReportPdf } = await import("@/lib/exportCorporateReportPdf");
+            await exportCorporateReportPdf(finalData);
+            toast({ title: "수업 보고서 다운로드 완료 ✓" });
+            setReportPreview(null);
+          }}
+        />
       )}
     </div>
   );
