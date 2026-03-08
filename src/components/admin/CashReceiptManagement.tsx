@@ -148,9 +148,9 @@ export default function CashReceiptManagement() {
 
   const toggleConfirm = async (studentName: string) => {
     const existing = confMap.get(studentName);
+    if (existing?.confirmed) return; // Already confirmed — do nothing
     if (existing) {
-      const newVal = !existing.confirmed;
-      await supabase.from("payment_confirmations" as any).update({ confirmed: newVal, confirmed_at: newVal ? new Date().toISOString() : null } as any).eq("id", existing.id);
+      await supabase.from("payment_confirmations" as any).update({ confirmed: true, confirmed_at: new Date().toISOString() } as any).eq("id", existing.id);
     } else {
       await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: true, confirmed_at: new Date().toISOString() } as any);
     }
@@ -239,9 +239,10 @@ export default function CashReceiptManagement() {
       <tr key={s.student_name} className={cn("border-b border-border last:border-0 transition-colors", isConfirmed ? "bg-primary/5" : "hover:bg-muted/30")}>
         <td className="px-4 py-3 text-center">
           <button
-            onClick={() => toggleConfirm(s.student_name)}
+            onClick={() => !isConfirmed && toggleConfirm(s.student_name)}
+            disabled={isConfirmed}
             className={cn("w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all",
-              isConfirmed ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30 hover:border-primary/50"
+              isConfirmed ? "bg-primary border-primary text-primary-foreground cursor-default opacity-70" : "border-muted-foreground/30 hover:border-primary/50 cursor-pointer"
             )}
           >
             {isConfirmed && <Check className="w-3.5 h-3.5" />}
