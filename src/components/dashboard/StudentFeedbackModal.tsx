@@ -209,6 +209,22 @@ export default function StudentFeedbackModal({
     }
   };
 
+  const saveTopicsToStudent = async () => {
+    if (!fb.suggestedTopics.length) return;
+    const lessonGoal = fb.suggestedTopics.map((t, i) => `${i + 1}회: ${t}`).join("\n");
+    const { error } = await supabase
+      .from("instructor_students")
+      .update({ lesson_goal: lessonGoal })
+      .eq("student_name", student.student_name)
+      .eq("instructor_name", instructorName);
+
+    if (error) {
+      toast({ title: "수업 목표 저장 실패", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${student.student_name} 수업 목표 저장됨 ✓` });
+    }
+  };
+
   const totalSteps = students.length;
 
   return (
