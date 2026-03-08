@@ -1334,11 +1334,9 @@ export default function StudentDashboard() {
               ) : (
               <>
               {paymentAvailable ? (
-                <a
-                  href="https://smartstore.naver.com/thelounge_english/products/11688767366"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-gold/10 border border-gold/30 hover:bg-gold/20"
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="w-full rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-gold/10 border border-gold/30 hover:bg-gold/20"
                 >
                   <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
                     <CreditCard className="w-4 h-4 text-gold" />
@@ -1347,7 +1345,7 @@ export default function StudentDashboard() {
                     <p className="text-xs font-bold leading-none text-foreground">수업료 결제하기</p>
                     <p className="text-[10px] mt-0.5 text-gold font-medium">결제 가능</p>
                   </div>
-                </a>
+                </button>
               ) : (
                 <div className="relative group">
                   <button
