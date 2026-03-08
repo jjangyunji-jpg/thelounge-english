@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2 } from "lucide-react";
+import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -8,10 +8,13 @@ const LESSON_PRICE = 50000;
 
 interface StudentRecord {
   student_name: string;
+  schedules: string | null;
   student_type: string;
   status: string | null;
   group_students: string[];
 }
+
+interface ScheduleSlot { day: string; time: string; frequency?: string; }
 
 interface CashReceipt {
   student_name: string;
@@ -26,6 +29,32 @@ interface PaymentConfirmation {
   confirmed: boolean;
 }
 
+interface PrepaidCredit {
+  id: string;
+  student_name: string;
+  total_sessions: number;
+  used_sessions: number;
+  note: string | null;
+}
+
+interface PrepaidDeduction {
+  student_name: string;
+  month: string;
+  deducted_sessions: number;
+}
+
+const calcBaseLessons = (raw: string | null): number => {
+  if (!raw) return 4;
+  try {
+    const slots: ScheduleSlot[] = JSON.parse(raw);
+    if (slots.length === 0) return 4;
+    return slots.reduce((sum, slot) => {
+      const freq = slot.frequency || "weekly";
+      return sum + (freq === "weekly" ? 4 : 2);
+    }, 0);
+  } catch { return 4; }
+};
+
 export default function CashReceiptManagement() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -33,23 +62,19 @@ export default function CashReceiptManagement() {
   const [receipts, setReceipts] = useState<CashReceipt[]>([]);
   const [confirmations, setConfirmations] = useState<PaymentConfirmation[]>([]);
   const [sessionCounts, setSessionCounts] = useState<Map<string, number>>(new Map());
+  const [prepaidCredits, setPrepaidCredits] = useState<PrepaidCredit[]>([]);
+  const [deductions, setDeductions] = useState<PrepaidDeduction[]>([]);
+  const [creditModal, setCreditModal] = useState<{ name: string; existing?: PrepaidCredit } | null>(null);
+  const [creditInput, setCreditInput] = useState({ sessions: "", note: "" });
 
-  // Month navigation
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const monthKey = `${year}-${String(month).padStart(2, "0")}`;
 
-  const prevMonth = () => {
-    if (month === 1) { setYear(y => y - 1); setMonth(12); }
-    else setMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (month === 12) { setYear(y => y + 1); setMonth(1); }
-    else setMonth(m => m + 1);
-  };
+  const prevMonth = () => { if (month === 1) { setYear(y => y - 1); setMonth(12); } else setMonth(m => m - 1); };
+  const nextMonth = () => { if (month === 12) { setYear(y => y + 1); setMonth(1); } else setMonth(m => m + 1); };
 
-  // Month date range in KST
   const monthStart = `${year}-${String(month).padStart(2, "0")}-01T00:00:00+09:00`;
   const nextM = month === 12 ? 1 : month + 1;
   const nextY = month === 12 ? year + 1 : year;
@@ -57,17 +82,20 @@ export default function CashReceiptManagement() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes] = await Promise.all([
-      supabase.from("instructor_students").select("student_name, student_type, status, group_students").eq("status", "active"),
+    const [studRes, receiptRes, confRes, sessRes, creditRes, dedRes] = await Promise.all([
+      supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", monthKey),
       supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", monthStart).lt("scheduled_at", monthEnd),
+      supabase.from("prepaid_credits" as any).select("*"),
+      supabase.from("prepaid_deductions" as any).select("*").eq("month", monthKey),
     ]);
     setStudents((studRes.data || []) as StudentRecord[]);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
     setConfirmations((confRes.data as any as PaymentConfirmation[]) || []);
+    setPrepaidCredits((creditRes.data as any as PrepaidCredit[]) || []);
+    setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
 
-    // Count sessions per student
     const counts = new Map<string, number>();
     (sessRes.data || []).forEach((s: any) => {
       counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
@@ -78,34 +106,79 @@ export default function CashReceiptManagement() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const receiptMap = new Map(receipts.map(r => [r.student_name, r]));
   const confMap = new Map(confirmations.map(c => [c.student_name, c]));
+  const creditMap = new Map(prepaidCredits.map(c => [c.student_name, c]));
+  const dedMap = new Map(deductions.map(d => [d.student_name, d]));
+  const receiptMap = new Map(receipts.map(r => [r.student_name, r]));
 
-  // Sort students by name (가나다순), exclude corporate
-  const regularStudents = students
-    .filter(s => s.student_type !== "corporate")
-    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
-
-  const corporateStudents = students
-    .filter(s => s.student_type === "corporate")
-    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+  const regularStudents = students.filter(s => s.student_type !== "corporate").sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+  const corporateStudents = students.filter(s => s.student_type === "corporate").sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
   const toggleConfirm = async (studentName: string) => {
     const existing = confMap.get(studentName);
     if (existing) {
       const newVal = !existing.confirmed;
-      await supabase.from("payment_confirmations" as any).update({
-        confirmed: newVal,
-        confirmed_at: newVal ? new Date().toISOString() : null,
-      } as any).eq("id", existing.id);
+      await supabase.from("payment_confirmations" as any).update({ confirmed: newVal, confirmed_at: newVal ? new Date().toISOString() : null } as any).eq("id", existing.id);
     } else {
-      await supabase.from("payment_confirmations" as any).insert({
-        student_name: studentName,
-        month: monthKey,
-        confirmed: true,
-        confirmed_at: new Date().toISOString(),
+      await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: monthKey, confirmed: true, confirmed_at: new Date().toISOString() } as any);
+    }
+    loadData();
+  };
+
+  // Deduct this month's sessions from prepaid balance
+  const deductMonth = async (studentName: string) => {
+    const credit = creditMap.get(studentName);
+    if (!credit) return;
+    const scheduleBased = calcBaseLessons(students.find(s => s.student_name === studentName)?.schedules || null);
+    const remaining = credit.total_sessions - credit.used_sessions;
+    const toDeduct = Math.min(scheduleBased, remaining);
+    if (toDeduct <= 0) { toast({ title: "차감 불가", description: "잔여 횟수가 없습니다.", variant: "destructive" }); return; }
+
+    // Upsert deduction record
+    const existingDed = dedMap.get(studentName);
+    if (existingDed) {
+      toast({ title: "이미 차감됨", description: `${monthKey} 이미 ${existingDed.deducted_sessions}회 차감됨` }); return;
+    }
+    await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: monthKey, deducted_sessions: toDeduct } as any);
+    await supabase.from("prepaid_credits" as any).update({ used_sessions: credit.used_sessions + toDeduct, updated_at: new Date().toISOString() } as any).eq("id", credit.id);
+    toast({ title: `${toDeduct}회 차감 완료` });
+    loadData();
+  };
+
+  // Undo deduction
+  const undoDeduct = async (studentName: string) => {
+    const ded = dedMap.get(studentName);
+    const credit = creditMap.get(studentName);
+    if (!ded || !credit) return;
+    await supabase.from("prepaid_deductions" as any).delete().eq("student_name", studentName).eq("month", monthKey);
+    await supabase.from("prepaid_credits" as any).update({ used_sessions: Math.max(0, credit.used_sessions - ded.deducted_sessions), updated_at: new Date().toISOString() } as any).eq("id", credit.id);
+    toast({ title: "차감 취소 완료" });
+    loadData();
+  };
+
+  const savePrepaidCredit = async () => {
+    if (!creditModal) return;
+    const sessions = parseInt(creditInput.sessions);
+    if (isNaN(sessions) || sessions <= 0) { toast({ title: "유효한 횟수를 입력하세요", variant: "destructive" }); return; }
+
+    if (creditModal.existing) {
+      // Add to existing
+      await supabase.from("prepaid_credits" as any).update({
+        total_sessions: creditModal.existing.total_sessions + sessions,
+        note: creditInput.note || creditModal.existing.note,
+        updated_at: new Date().toISOString(),
+      } as any).eq("id", creditModal.existing.id);
+    } else {
+      await supabase.from("prepaid_credits" as any).insert({
+        student_name: creditModal.name,
+        total_sessions: sessions,
+        used_sessions: 0,
+        note: creditInput.note || null,
       } as any);
     }
+    toast({ title: `선결제 ${sessions}회 등록 완료` });
+    setCreditModal(null);
+    setCreditInput({ sessions: "", note: "" });
     loadData();
   };
 
@@ -115,13 +188,10 @@ export default function CashReceiptManagement() {
   };
 
   const confirmedCount = regularStudents.filter(s => confMap.get(s.student_name)?.confirmed).length;
+  const totalFee = regularStudents.reduce((sum, s) => sum + getFee(s), 0);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
   }
 
   const renderStudentRow = (s: StudentRecord, isCorporate = false) => {
@@ -129,17 +199,17 @@ export default function CashReceiptManagement() {
     const isConfirmed = conf?.confirmed || false;
     const fee = isCorporate ? null : getFee(s);
     const count = sessionCounts.get(s.student_name) || 0;
+    const credit = creditMap.get(s.student_name);
+    const ded = dedMap.get(s.student_name);
+    const hasPrepaid = !!credit && (credit.total_sessions - credit.used_sessions) > 0;
 
     return (
       <tr key={s.student_name} className={cn("border-b border-border last:border-0 transition-colors", isConfirmed ? "bg-primary/5" : "hover:bg-muted/30")}>
         <td className="px-4 py-3 text-center">
           <button
             onClick={() => toggleConfirm(s.student_name)}
-            className={cn(
-              "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all",
-              isConfirmed
-                ? "bg-primary border-primary text-primary-foreground"
-                : "border-muted-foreground/30 hover:border-primary/50"
+            className={cn("w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all",
+              isConfirmed ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30 hover:border-primary/50"
             )}
           >
             {isConfirmed && <Check className="w-3.5 h-3.5" />}
@@ -149,7 +219,7 @@ export default function CashReceiptManagement() {
           <span className={cn("font-medium", isConfirmed ? "text-muted-foreground line-through" : "text-foreground")}>
             {s.student_name}
           </span>
-          {s.group_students && s.group_students.length > 0 && (
+          {s.group_students?.length > 0 && (
             <span className="ml-1.5 text-[10px] text-muted-foreground">(그룹 {s.group_students.length + 1}인)</span>
           )}
         </td>
@@ -158,20 +228,54 @@ export default function CashReceiptManagement() {
             <span className="text-xs text-muted-foreground">회당 정산</span>
           ) : (
             <div>
-              <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>
-                ₩{fee!.toLocaleString()}
-              </span>
-              <span className="text-[10px] text-muted-foreground ml-1">
-                ({count}회)
-              </span>
+              <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{fee!.toLocaleString()}</span>
+              <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
             </div>
+          )}
+        </td>
+        <td className="px-4 py-3">
+          {credit ? (
+            <div className="flex items-center gap-2">
+              <div className="text-xs">
+                <span className="font-semibold text-foreground">{credit.total_sessions - credit.used_sessions}</span>
+                <span className="text-muted-foreground">/{credit.total_sessions}회</span>
+              </div>
+              {ded ? (
+                <button
+                  onClick={() => undoDeduct(s.student_name)}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                  title="차감 취소"
+                >
+                  -{ded.deducted_sessions} 취소
+                </button>
+              ) : (
+                <button
+                  onClick={() => deductMonth(s.student_name)}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                >
+                  차감
+                </button>
+              )}
+              <button
+                onClick={() => { setCreditModal({ name: s.student_name, existing: credit }); setCreditInput({ sessions: "", note: credit.note || "" }); }}
+                className="text-muted-foreground hover:text-foreground"
+                title="충전"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setCreditModal({ name: s.student_name }); setCreditInput({ sessions: "", note: "" }); }}
+              className="text-[10px] px-2 py-1 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+            >
+              선결제 등록
+            </button>
           )}
         </td>
       </tr>
     );
   };
-
-  const totalFee = regularStudents.reduce((sum, s) => sum + getFee(s), 0);
 
   return (
     <div className="space-y-4">
@@ -185,9 +289,7 @@ export default function CashReceiptManagement() {
           <button onClick={prevMonth} className="p-1.5 rounded-md hover:bg-muted transition-colors">
             <ChevronLeft className="w-4 h-4 text-muted-foreground" />
           </button>
-          <span className="text-sm font-semibold text-foreground min-w-[100px] text-center">
-            {year}년 {month}월
-          </span>
+          <span className="text-sm font-semibold text-foreground min-w-[100px] text-center">{year}년 {month}월</span>
           <button onClick={nextMonth} className="p-1.5 rounded-md hover:bg-muted transition-colors">
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -221,6 +323,7 @@ export default function CashReceiptManagement() {
                   <th className="w-12 px-4 py-3"></th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-right px-4 py-3 font-semibold text-foreground">수강료</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">선결제</th>
                 </tr>
               </thead>
               <tbody>
@@ -242,6 +345,7 @@ export default function CashReceiptManagement() {
                   <th className="w-12 px-4 py-3"></th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-right px-4 py-3 font-semibold text-foreground">수강료</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">선결제</th>
                 </tr>
               </thead>
               <tbody>
@@ -279,6 +383,68 @@ export default function CashReceiptManagement() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Prepaid Credit Modal */}
+      {creditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setCreditModal(null)}>
+          <div className="bg-card rounded-xl shadow-xl border border-border w-[340px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-sm font-bold text-foreground">
+                선결제 {creditModal.existing ? "추가 충전" : "등록"} — {creditModal.name}
+              </h3>
+              <button onClick={() => setCreditModal(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {creditModal.existing && (
+                <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">기존 총 횟수</span>
+                    <span className="font-semibold text-foreground">{creditModal.existing.total_sessions}회</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-muted-foreground">사용 횟수</span>
+                    <span className="font-semibold text-foreground">{creditModal.existing.used_sessions}회</span>
+                  </div>
+                  <div className="flex justify-between mt-1 pt-1 border-t border-border">
+                    <span className="text-muted-foreground">잔여 횟수</span>
+                    <span className="font-bold text-primary">{creditModal.existing.total_sessions - creditModal.existing.used_sessions}회</span>
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-semibold text-foreground">{creditModal.existing ? "추가 충전 횟수" : "선결제 횟수"}</label>
+                <input
+                  type="number"
+                  value={creditInput.sessions}
+                  onChange={e => setCreditInput(prev => ({ ...prev, sessions: e.target.value }))}
+                  placeholder="예: 20"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-foreground">메모 (선택)</label>
+                <input
+                  type="text"
+                  value={creditInput.note}
+                  onChange={e => setCreditInput(prev => ({ ...prev, note: e.target.value }))}
+                  placeholder="예: 3개월치 선결제"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setCreditModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
+                  취소
+                </button>
+                <button onClick={savePrepaidCredit} className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                  {creditModal.existing ? "추가 충전" : "등록"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
