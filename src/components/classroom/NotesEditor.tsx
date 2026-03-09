@@ -487,7 +487,20 @@ export default function NotesEditor({
     { type: "callout", icon: MessageSquareQuote, label: "콜아웃", isActive: editor?.isActive("callout") },
   ];
 
-  const isInTable = editor?.isActive("table");
+  const [isInTable, setIsInTable] = useState(false);
+
+  useEffect(() => {
+    if (!editor) return;
+    const updateTableState = () => {
+      setIsInTable(editor.isActive("table"));
+    };
+    editor.on("selectionUpdate", updateTableState);
+    editor.on("transaction", updateTableState);
+    return () => {
+      editor.off("selectionUpdate", updateTableState);
+      editor.off("transaction", updateTableState);
+    };
+  }, [editor]);
 
   const selectAllCells = useCallback(() => {
     if (!editor) return;
