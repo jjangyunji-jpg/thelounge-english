@@ -284,6 +284,7 @@ export default function StudentManagement() {
       withdrawalReason: row.withdrawal_reason || "",
       pauses: [],
       studentType: row.student_type || "regular",
+      groupStudents: row.group_students || [],
     }));
     setStudents(dbStudents);
 
