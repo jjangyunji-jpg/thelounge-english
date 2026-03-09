@@ -11,6 +11,7 @@ import Image from "@tiptap/extension-image";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Youtube from "@tiptap/extension-youtube";
+import { Callout } from "./CalloutExtension";
 import TableHoverControls from "./TableHoverControls";
 import { Suggestion, SuggestionDelete } from "./SuggestionExtension";
 
