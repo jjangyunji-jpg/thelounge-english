@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils";
 import {
   Bold, Underline as UnderlineIcon, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
   MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon,
-  Plus, Trash2, Columns, Rows, TableProperties, Grid3X3,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
