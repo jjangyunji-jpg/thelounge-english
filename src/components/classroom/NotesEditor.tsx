@@ -1,6 +1,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Table } from "@tiptap/extension-table";
+import { CellSelection } from "@tiptap/pm/tables";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
@@ -18,7 +19,7 @@ import { cn } from "@/lib/utils";
 import {
   Bold, Underline as UnderlineIcon, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
   MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon,
-  Plus, Trash2, Columns, Rows, TableProperties,
+  Plus, Trash2, Columns, Rows, TableProperties, Grid3X3,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -487,7 +488,39 @@ export default function NotesEditor({
 
   const isInTable = editor?.isActive("table");
 
+  const selectAllCells = useCallback(() => {
+    if (!editor) return;
+    const { doc, tr } = editor.state;
+    // Find the table node the cursor is in
+    const $anchor = editor.state.selection.$anchor;
+    for (let d = $anchor.depth; d > 0; d--) {
+      if ($anchor.node(d).type.name === "table") {
+        const tableStart = $anchor.start(d);
+        const table = $anchor.node(d);
+        const map = table.content;
+        // Get first and last cell positions
+        let firstCellPos: number | null = null;
+        let lastCellPos: number | null = null;
+        table.descendants((node, pos) => {
+          if (node.type.name === "tableCell" || node.type.name === "tableHeader") {
+            const absolutePos = tableStart + pos;
+            if (firstCellPos === null) firstCellPos = absolutePos;
+            lastCellPos = absolutePos;
+          }
+        });
+        if (firstCellPos !== null && lastCellPos !== null) {
+          const $first = doc.resolve(firstCellPos + 1);
+          const $last = doc.resolve(lastCellPos + 1);
+          const cellSelection = CellSelection.create(doc, $first.before(), $last.before());
+          editor.view.dispatch(editor.state.tr.setSelection(cellSelection));
+        }
+        break;
+      }
+    }
+  }, [editor]);
+
   const tableActions = [
+    { label: "전체 선택", icon: <Grid3X3 className="w-3 h-3" />, action: selectAllCells },
     { label: "열 앞에 추가", icon: <Columns className="w-3 h-3" />, action: () => editor?.chain().focus().addColumnBefore().run() },
     { label: "열 뒤에 추가", icon: <Plus className="w-3 h-3" />, action: () => editor?.chain().focus().addColumnAfter().run() },
     { label: "열 삭제", icon: <Trash2 className="w-3 h-3" />, action: () => editor?.chain().focus().deleteColumn().run() },
