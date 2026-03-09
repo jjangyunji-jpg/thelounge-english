@@ -620,7 +620,7 @@ export default function NotesEditor({
         }}
       >
         <EditorContent editor={editor} />
-
+        {editable && !disabled && <TableHoverControls editor={editor} containerRef={editorContainerRef as React.RefObject<HTMLDivElement>} />}
         {/* Slash command menu */}
         {slashMenuOpen && slashMenuPos && filteredSlashItems.length > 0 && (
           <div
