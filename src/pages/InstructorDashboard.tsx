@@ -3436,7 +3436,17 @@ export default function InstructorDashboard() {
           audioUrl={reviewHw.submission.audio_url}
           fileUrl={reviewHw.submission.file_url}
           onClose={() => setReviewHw(null)}
-          onReviewed={() => setSubmissions(prev => prev.map(s => s.id === reviewHw?.submission.id ? { ...s, status: "reviewed", reviewed_at: new Date().toISOString() } : s))}
+          onReviewed={async () => {
+            // Refetch the submission to get updated ai_correction and instructor_note
+            const { data: updatedSub } = await supabase
+              .from("homework_submissions")
+              .select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction")
+              .eq("id", reviewHw?.submission.id)
+              .single();
+            if (updatedSub) {
+              setSubmissions(prev => prev.map(s => s.id === updatedSub.id ? updatedSub : s));
+            }
+          }}
         />
       )}
       {viewCheckedHw && (() => {
