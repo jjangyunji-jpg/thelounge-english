@@ -12,7 +12,6 @@ import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Youtube from "@tiptap/extension-youtube";
 import { Callout } from "./CalloutExtension";
-import TableHoverControls from "./TableHoverControls";
 import { Suggestion, SuggestionDelete } from "./SuggestionExtension";
 
 import { useEffect, useCallback, useRef, useState } from "react";
@@ -621,7 +620,7 @@ export default function NotesEditor({
         }}
       >
         <EditorContent editor={editor} />
-        {editable && !disabled && <TableHoverControls editor={editor} containerRef={editorContainerRef as React.RefObject<HTMLDivElement>} />}
+
         {/* Slash command menu */}
         {slashMenuOpen && slashMenuPos && filteredSlashItems.length > 0 && (
           <div
