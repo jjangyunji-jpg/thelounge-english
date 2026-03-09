@@ -259,8 +259,19 @@
   cursor: col-resize;
   z-index: 20;
 }
+.tiptap .selectedCell {
+  background-color: hsl(var(--accent) / 0.15);
+}
 .tiptap.resize-cursor {
   cursor: col-resize;
+}
+.tiptap img {
+  @apply rounded-lg my-3 max-w-full h-auto;
+  display: block;
+}
+.tiptap img.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 2px;
 }
 .tiptap p.is-editor-empty:first-child::before {
   @apply text-muted-foreground/50;

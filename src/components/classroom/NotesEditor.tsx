@@ -5,6 +5,7 @@ import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
+import Image from "@tiptap/extension-image";
 
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
@@ -15,8 +16,9 @@ import { Suggestion, SuggestionDelete } from "./SuggestionExtension";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
-  Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
-  MessageSquareQuote, PenLine, Sparkles,
+  Bold, Underline as UnderlineIcon, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
+  MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon,
+  Plus, Trash2, Columns, Rows, TableProperties,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -75,13 +77,20 @@ export default function NotesEditor({
         blockquote: {},
       }),
       Underline,
-      Table.configure({ resizable: true }),
+      Table.configure({ resizable: true, allowTableNodeSelection: true }),
       TableRow,
       TableCell,
       TableHeader,
       Callout,
       Suggestion,
       SuggestionDelete,
+      Image.configure({
+        inline: false,
+        allowBase64: true,
+        HTMLAttributes: {
+          class: "rounded-lg my-3 max-w-full h-auto",
+        },
+      }),
       Link.configure({
         openOnClick: true,
         autolink: true,
@@ -141,6 +150,26 @@ export default function NotesEditor({
         lang: "en",
       },
       handlePaste: (view, event) => {
+        // Handle image paste
+        const items = event.clipboardData?.items;
+        if (items) {
+          for (const item of Array.from(items)) {
+            if (item.type.startsWith("image/")) {
+              event.preventDefault();
+              const file = item.getAsFile();
+              if (file && editor) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const base64 = e.target?.result as string;
+                  editor.chain().focus().setImage({ src: base64 }).run();
+                };
+                reader.readAsDataURL(file);
+              }
+              return true;
+            }
+          }
+        }
+        // Handle YouTube paste
         const text = event.clipboardData?.getData("text/plain") ?? "";
         const ytMatch = text.match(
           /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]+)/
@@ -322,6 +351,7 @@ export default function NotesEditor({
     if (!editor) return;
     switch (type) {
       case "bold": editor.chain().focus().toggleBold().run(); break;
+      case "underline": editor.chain().focus().toggleUnderline().run(); break;
       case "h1": editor.chain().focus().toggleHeading({ level: 1 }).run(); break;
       case "h2": editor.chain().focus().toggleHeading({ level: 2 }).run(); break;
       case "h3": editor.chain().focus().toggleHeading({ level: 3 }).run(); break;
@@ -446,64 +476,99 @@ export default function NotesEditor({
 
   const toolbarItems = [
     { type: "bold", icon: Bold, label: "굵게 (Ctrl+B)", isActive: editor?.isActive("bold") },
+    { type: "underline", icon: UnderlineIcon, label: "밑줄 (Ctrl+U)", isActive: editor?.isActive("underline") },
     { type: "h1", icon: Heading1, label: "제목 1", isActive: editor?.isActive("heading", { level: 1 }) },
     { type: "h2", icon: Heading2, label: "제목 2", isActive: editor?.isActive("heading", { level: 2 }) },
     { type: "h3", icon: Heading3, label: "제목 3", isActive: editor?.isActive("heading", { level: 3 }) },
     { type: "hr", icon: Minus, label: "구분선" },
     { type: "table", icon: Table2, label: "표 삽입" },
     { type: "callout", icon: MessageSquareQuote, label: "콜아웃", isActive: editor?.isActive("callout") },
-    
+  ];
+
+  const isInTable = editor?.isActive("table");
+
+  const tableActions = [
+    { label: "열 앞에 추가", icon: <Columns className="w-3 h-3" />, action: () => editor?.chain().focus().addColumnBefore().run() },
+    { label: "열 뒤에 추가", icon: <Plus className="w-3 h-3" />, action: () => editor?.chain().focus().addColumnAfter().run() },
+    { label: "열 삭제", icon: <Trash2 className="w-3 h-3" />, action: () => editor?.chain().focus().deleteColumn().run() },
+    { label: "행 위에 추가", icon: <Rows className="w-3 h-3" />, action: () => editor?.chain().focus().addRowBefore().run() },
+    { label: "행 아래에 추가", icon: <Plus className="w-3 h-3" />, action: () => editor?.chain().focus().addRowAfter().run() },
+    { label: "행 삭제", icon: <Trash2 className="w-3 h-3" />, action: () => editor?.chain().focus().deleteRow().run() },
+    { label: "셀 병합", icon: <TableProperties className="w-3 h-3" />, action: () => editor?.chain().focus().mergeCells().run() },
+    { label: "셀 분할", icon: <TableProperties className="w-3 h-3" />, action: () => editor?.chain().focus().splitCell().run() },
+    { label: "헤더 행 토글", icon: <TableProperties className="w-3 h-3" />, action: () => editor?.chain().focus().toggleHeaderRow().run() },
+    { label: "표 삭제", icon: <Trash2 className="w-3 h-3 text-destructive" />, action: () => editor?.chain().focus().deleteTable().run() },
   ];
 
   return (
     <div className={cn("flex flex-col", className)}>
       {/* Toolbar */}
       {editable && !disabled && (
-        <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border bg-muted/20 flex-wrap">
-          {toolbarItems.map(({ type, icon: Icon, label, isActive }) => (
+        <>
+          <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border bg-muted/20 flex-wrap">
+            {toolbarItems.map(({ type, icon: Icon, label, isActive }) => (
+              <button
+                key={type}
+                title={label}
+                onMouseDown={(e) => { e.preventDefault(); applyFormat(type); }}
+                className={cn(
+                  "p-1.5 rounded hover:bg-muted transition-colors",
+                  isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </button>
+            ))}
+
+            {/* AI Correction button */}
             <button
-              key={type}
-              title={label}
-              onMouseDown={(e) => { e.preventDefault(); applyFormat(type); }}
+              title="AI 교정 (텍스트 선택 후 클릭)"
+              onMouseDown={(e) => { e.preventDefault(); runAiCorrection(); }}
+              disabled={aiCorrecting}
               className={cn(
-                "p-1.5 rounded hover:bg-muted transition-colors",
-                isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                "p-1.5 rounded transition-colors",
+                aiCorrecting
+                  ? "text-[hsl(var(--navy))] animate-pulse"
+                  : "text-muted-foreground hover:text-[hsl(var(--navy))] hover:bg-muted"
               )}
             >
-              <Icon className="w-3.5 h-3.5" />
+              {aiCorrecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
             </button>
-          ))}
 
-          {/* AI Correction button */}
-          <button
-            title="AI 교정 (텍스트 선택 후 클릭)"
-            onMouseDown={(e) => { e.preventDefault(); runAiCorrection(); }}
-            disabled={aiCorrecting}
-            className={cn(
-              "p-1.5 rounded transition-colors",
-              aiCorrecting
-                ? "text-[hsl(var(--navy))] animate-pulse"
-                : "text-muted-foreground hover:text-[hsl(var(--navy))] hover:bg-muted"
+            <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">/ 슬래시 명령</span>
+            {onAutoCorrectToggle && (
+              <button
+                onClick={onAutoCorrectToggle}
+                className={cn("ml-2 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all border",
+                  autoCorrectEnabled
+                    ? "border-success/40 bg-success/10 text-success"
+                    : "border-muted-foreground/20 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {isAutoCorrecting && <Loader2 className="w-3 h-3 animate-spin" />}
+                {autoCorrectEnabled ? "자동교정 ON" : "자동교정 OFF"}
+              </button>
             )}
-          >
-            {aiCorrecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-          </button>
+          </div>
 
-          <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">/ 슬래시 명령</span>
-          {onAutoCorrectToggle && (
-            <button
-              onClick={onAutoCorrectToggle}
-              className={cn("ml-2 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all border",
-                autoCorrectEnabled
-                  ? "border-success/40 bg-success/10 text-success"
-                  : "border-muted-foreground/20 text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {isAutoCorrecting && <Loader2 className="w-3 h-3 animate-spin" />}
-              {autoCorrectEnabled ? "자동교정 ON" : "자동교정 OFF"}
-            </button>
+          {/* Table context toolbar */}
+          {isInTable && (
+            <div className="flex items-center gap-0.5 px-3 py-1 border-b border-border bg-accent/5 flex-wrap">
+              <span className="text-[10px] text-muted-foreground font-medium mr-1.5">표:</span>
+              {tableActions.map((item, i) => (
+                <button
+                  key={i}
+                  title={item.label}
+                  onMouseDown={(e) => { e.preventDefault(); item.action(); }}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  {item.icon}
+                  <span className="hidden sm:inline">{item.label}</span>
+                </button>
+              ))}
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Editor with slash menu */}
