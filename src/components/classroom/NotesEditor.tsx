@@ -476,13 +476,28 @@ export default function NotesEditor({
 
   const toolbarItems = [
     { type: "bold", icon: Bold, label: "굵게 (Ctrl+B)", isActive: editor?.isActive("bold") },
+    { type: "underline", icon: UnderlineIcon, label: "밑줄 (Ctrl+U)", isActive: editor?.isActive("underline") },
     { type: "h1", icon: Heading1, label: "제목 1", isActive: editor?.isActive("heading", { level: 1 }) },
     { type: "h2", icon: Heading2, label: "제목 2", isActive: editor?.isActive("heading", { level: 2 }) },
     { type: "h3", icon: Heading3, label: "제목 3", isActive: editor?.isActive("heading", { level: 3 }) },
     { type: "hr", icon: Minus, label: "구분선" },
     { type: "table", icon: Table2, label: "표 삽입" },
     { type: "callout", icon: MessageSquareQuote, label: "콜아웃", isActive: editor?.isActive("callout") },
-    
+  ];
+
+  const isInTable = editor?.isActive("table");
+
+  const tableActions = [
+    { label: "열 앞에 추가", icon: <Columns className="w-3 h-3" />, action: () => editor?.chain().focus().addColumnBefore().run() },
+    { label: "열 뒤에 추가", icon: <Plus className="w-3 h-3" />, action: () => editor?.chain().focus().addColumnAfter().run() },
+    { label: "열 삭제", icon: <Trash2 className="w-3 h-3" />, action: () => editor?.chain().focus().deleteColumn().run() },
+    { label: "행 위에 추가", icon: <Rows className="w-3 h-3" />, action: () => editor?.chain().focus().addRowBefore().run() },
+    { label: "행 아래에 추가", icon: <Plus className="w-3 h-3" />, action: () => editor?.chain().focus().addRowAfter().run() },
+    { label: "행 삭제", icon: <Trash2 className="w-3 h-3" />, action: () => editor?.chain().focus().deleteRow().run() },
+    { label: "셀 병합", icon: <TableProperties className="w-3 h-3" />, action: () => editor?.chain().focus().mergeCells().run() },
+    { label: "셀 분할", icon: <TableProperties className="w-3 h-3" />, action: () => editor?.chain().focus().splitCell().run() },
+    { label: "헤더 행 토글", icon: <TableProperties className="w-3 h-3" />, action: () => editor?.chain().focus().toggleHeaderRow().run() },
+    { label: "표 삭제", icon: <Trash2 className="w-3 h-3 text-destructive" />, action: () => editor?.chain().focus().deleteTable().run() },
   ];
 
   return (
