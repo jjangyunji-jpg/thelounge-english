@@ -518,6 +518,12 @@ export default function Classroom() {
   const [newHwPreset, setNewHwPreset] = useState(false);
   const [savingHw, setSavingHw] = useState(false);
   const [selectedHwStudents, setSelectedHwStudents] = useState<string[]>([]);
+  // All group members including the primary student
+  const allGroupMembers = useMemo(() => {
+    if (groupStudents.length === 0) return [];
+    const primary = session.dbStudentName;
+    return primary && !groupStudents.includes(primary) ? [primary, ...groupStudents] : groupStudents;
+  }, [groupStudents, session.dbStudentName]);
 
   const [editingHwId, setEditingHwId] = useState<string | null>(null);
   const [editHwType, setEditHwType] = useState<HwType>("writing");
