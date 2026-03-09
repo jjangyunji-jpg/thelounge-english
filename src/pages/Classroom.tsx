@@ -718,8 +718,10 @@ export default function Classroom() {
     if (!newHwTitle.trim()) return;
     setSavingHw(true);
     try {
-      // For group sessions, create homework for each group member individually
-      const targetStudents = groupStudents.length > 0 ? groupStudents : [session.dbStudentName];
+      // For group sessions, create homework for selected members (or all if none selected)
+      const targetStudents = groupStudents.length > 0
+        ? (selectedHwStudents.length > 0 ? selectedHwStudents : groupStudents)
+        : [session.dbStudentName];
       const inserts = targetStudents.map(sn => ({
         student_name: sn, title: newHwTitle.trim(),
         description: newHwDesc.trim() || null, type: newHwType, is_preset: newHwPreset,
