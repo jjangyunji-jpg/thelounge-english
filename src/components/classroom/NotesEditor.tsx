@@ -549,9 +549,24 @@ export default function NotesEditor({
             </button>
           )}
         </div>
-      )}
 
-      {/* Editor with slash menu */}
+        {/* Table context toolbar */}
+        {isInTable && (
+          <div className="flex items-center gap-0.5 px-3 py-1 border-b border-border bg-accent/5 flex-wrap">
+            <span className="text-[10px] text-muted-foreground font-medium mr-1.5">표:</span>
+            {tableActions.map((item, i) => (
+              <button
+                key={i}
+                title={item.label}
+                onMouseDown={(e) => { e.preventDefault(); item.action(); }}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                {item.icon}
+                <span className="hidden sm:inline">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       <div
         ref={editorContainerRef}
         className={cn(
