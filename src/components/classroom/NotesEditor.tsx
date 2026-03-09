@@ -567,6 +567,9 @@ export default function NotesEditor({
             ))}
           </div>
         )}
+      )}
+
+      {/* Editor with slash menu */}
       <div
         ref={editorContainerRef}
         className={cn(
