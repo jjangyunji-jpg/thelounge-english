@@ -77,7 +77,7 @@ export default function NotesEditor({
         blockquote: {},
       }),
       Underline,
-      Table.configure({ resizable: true }),
+      Table.configure({ resizable: true, allowTableNodeSelection: true }),
       TableRow,
       TableCell,
       TableHeader,
