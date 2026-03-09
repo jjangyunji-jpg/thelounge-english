@@ -351,6 +351,7 @@ export default function NotesEditor({
     if (!editor) return;
     switch (type) {
       case "bold": editor.chain().focus().toggleBold().run(); break;
+      case "underline": editor.chain().focus().toggleUnderline().run(); break;
       case "h1": editor.chain().focus().toggleHeading({ level: 1 }).run(); break;
       case "h2": editor.chain().focus().toggleHeading({ level: 2 }).run(); break;
       case "h3": editor.chain().focus().toggleHeading({ level: 3 }).run(); break;
