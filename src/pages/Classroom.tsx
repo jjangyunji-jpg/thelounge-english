@@ -732,9 +732,10 @@ export default function Classroom() {
       if (data && data.length > 0) {
         // Show the first one in the UI list (for the group/primary student)
         setHwList((prev) => [...prev, { id: data[0].id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true }]);
-        const msg = groupStudents.length > 0 ? `숙제가 ${groupStudents.length}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
+        const count = groupStudents.length > 0 ? targetStudents.length : 0;
+        const msg = count > 0 ? `숙제가 ${count}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
         toast({ title: msg });
-        setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing"); setNewHwPreset(false);
+        setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing"); setNewHwPreset(false); setSelectedHwStudents([]);
         setAddingHw(false);
       }
     } catch (e: unknown) {
