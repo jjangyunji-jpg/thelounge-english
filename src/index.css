@@ -259,6 +259,12 @@
   cursor: col-resize;
   z-index: 20;
 }
+
+/* Row height visual hint on bottom cell border */
+.tiptap td,
+.tiptap th {
+  transition: height 0.05s ease;
+}
 .tiptap .selectedCell {
   background-color: hsl(var(--accent) / 0.15);
 }
