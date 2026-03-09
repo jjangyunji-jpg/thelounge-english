@@ -542,6 +542,7 @@ export default function StudentManagement() {
         start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
         schedules: editSchedules.length > 0 ? JSON.stringify(editSchedules) : null,
         student_type: editStudentType,
+        group_students: editGroupStudents,
       };
       if (newInstructorId) {
         updatePayload.instructor_id = newInstructorId;
