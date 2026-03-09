@@ -233,9 +233,9 @@ export default function UserApproval({ onNavigate }: Props) {
     setActing(null);
 
     if (user.role === "student") {
-      // Show linking dialog with all active students
+      // Show linking dialog with unlinked students
       setIsRelink(false);
-      await Promise.all([loadUnlinkedStudents(), loadAllStudents()]);
+      await loadUnlinkedStudents();
       setLinkUser(user);
       setSelectedStudentId("");
       setLinkDialogOpen(true);
@@ -291,7 +291,7 @@ export default function UserApproval({ onNavigate }: Props) {
     }
 
     // Also update student_profiles.student_name to match the linked record
-    const linked = allStudents.find(s => s.id === selectedStudentId) || unlinkedStudents.find(s => s.id === selectedStudentId);
+    const linked = (isRelink ? allStudents : unlinkedStudents).find(s => s.id === selectedStudentId);
     if (linked) {
       await supabase
         .from("student_profiles")
@@ -708,7 +708,7 @@ export default function UserApproval({ onNavigate }: Props) {
           </p>
           <div className="space-y-4 pt-2">
             {(() => {
-              const studentList = allStudents.length > 0 ? allStudents : unlinkedStudents;
+              const studentList = isRelink ? allStudents : unlinkedStudents;
               return studentList.length > 0 ? (
                 <>
                   <div className="space-y-1.5">
