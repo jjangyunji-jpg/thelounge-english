@@ -503,7 +503,7 @@ export default function Classroom() {
           setNotes(html);
           // Also auto-save
           if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-          autoSaveTimer.current = setTimeout(() => autoSaveNotes(html), 00);
+          autoSaveTimer.current = setTimeout(() => autoSaveNotes(html), 500);
         }
       })
       .subscribe();
