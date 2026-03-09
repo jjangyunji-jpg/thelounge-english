@@ -84,6 +84,13 @@ export default function NotesEditor({
       Callout,
       Suggestion,
       SuggestionDelete,
+      Image.configure({
+        inline: false,
+        allowBase64: true,
+        HTMLAttributes: {
+          class: "rounded-lg my-3 max-w-full h-auto",
+        },
+      }),
       Link.configure({
         openOnClick: true,
         autolink: true,
