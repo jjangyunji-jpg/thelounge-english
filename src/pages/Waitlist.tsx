@@ -176,29 +176,25 @@ export default function Waitlist() {
           <div className="w-16 h-16 rounded-2xl gold-gradient flex items-center justify-center shadow-gold mx-auto">
             <Clock className="w-8 h-8 text-accent-foreground" />
           </div>
-          <div>
-            <p className="text-lg font-bold text-foreground">
-              {entry?.student_name}님, 대기 중입니다
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              승인이 완료되면 수업을 시작할 수 있습니다
-            </p>
-          </div>
-
-          {position !== null && (
-            <div className="bg-muted/50 rounded-xl p-5 space-y-3">
-              <div className="flex items-center justify-center gap-2">
-                <Hash className="w-5 h-5 text-gold" />
-                <span className="text-3xl font-black text-foreground">{position}</span>
-                <span className="text-sm text-muted-foreground">/ {totalWaiting}명</span>
+          {position !== null && (() => {
+            const now = new Date();
+            const monthsToWait = Math.ceil(position / 10);
+            const estimatedDate = new Date(now.getFullYear(), now.getMonth() + monthsToWait, 1);
+            const estimatedMonth = estimatedDate.getMonth() + 1;
+            return (
+              <div className="space-y-4">
+                <p className="text-lg font-bold text-foreground">
+                  {entry?.student_name}님은 현재 <span className="text-gold">{position}</span>번째 대기중입니다.
+                </p>
+                <div className="bg-muted/50 rounded-xl p-5 space-y-2 text-sm text-muted-foreground leading-relaxed">
+                  <p>매달 말, 다음달 등록을 위해 순차적으로 연락을 드리고 있습니다.</p>
+                  <p>
+                    예상 등록 시기는 <span className="font-bold text-foreground">{estimatedMonth}월</span>이며, 보다 빨라지거나 늦어질 수 있습니다.
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">현재 대기 순번</p>
-            </div>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            대기번호: #{entry?.queue_number}
-          </p>
+            );
+          })()}
         </div>
 
         {/* Videos Section */}
