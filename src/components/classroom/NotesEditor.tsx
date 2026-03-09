@@ -622,10 +622,6 @@ export default function NotesEditor({
       >
         <EditorContent editor={editor} />
 
-        {/* Table hover controls */}
-        {editable && !disabled && (
-          <TableHoverControls editor={editor} containerRef={editorContainerRef as React.RefObject<HTMLDivElement>} />
-        )}
 
         {/* Slash command menu */}
         {slashMenuOpen && slashMenuPos && filteredSlashItems.length > 0 && (
