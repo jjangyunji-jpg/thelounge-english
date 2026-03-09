@@ -504,69 +504,71 @@ export default function NotesEditor({
     <div className={cn("flex flex-col", className)}>
       {/* Toolbar */}
       {editable && !disabled && (
-        <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border bg-muted/20 flex-wrap">
-          {toolbarItems.map(({ type, icon: Icon, label, isActive }) => (
-            <button
-              key={type}
-              title={label}
-              onMouseDown={(e) => { e.preventDefault(); applyFormat(type); }}
-              className={cn(
-                "p-1.5 rounded hover:bg-muted transition-colors",
-                isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Icon className="w-3.5 h-3.5" />
-            </button>
-          ))}
-
-          {/* AI Correction button */}
-          <button
-            title="AI 교정 (텍스트 선택 후 클릭)"
-            onMouseDown={(e) => { e.preventDefault(); runAiCorrection(); }}
-            disabled={aiCorrecting}
-            className={cn(
-              "p-1.5 rounded transition-colors",
-              aiCorrecting
-                ? "text-[hsl(var(--navy))] animate-pulse"
-                : "text-muted-foreground hover:text-[hsl(var(--navy))] hover:bg-muted"
-            )}
-          >
-            {aiCorrecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-          </button>
-
-          <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">/ 슬래시 명령</span>
-          {onAutoCorrectToggle && (
-            <button
-              onClick={onAutoCorrectToggle}
-              className={cn("ml-2 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all border",
-                autoCorrectEnabled
-                  ? "border-success/40 bg-success/10 text-success"
-                  : "border-muted-foreground/20 text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {isAutoCorrecting && <Loader2 className="w-3 h-3 animate-spin" />}
-              {autoCorrectEnabled ? "자동교정 ON" : "자동교정 OFF"}
-            </button>
-          )}
-        </div>
-
-        {/* Table context toolbar */}
-        {isInTable && (
-          <div className="flex items-center gap-0.5 px-3 py-1 border-b border-border bg-accent/5 flex-wrap">
-            <span className="text-[10px] text-muted-foreground font-medium mr-1.5">표:</span>
-            {tableActions.map((item, i) => (
+        <>
+          <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border bg-muted/20 flex-wrap">
+            {toolbarItems.map(({ type, icon: Icon, label, isActive }) => (
               <button
-                key={i}
-                title={item.label}
-                onMouseDown={(e) => { e.preventDefault(); item.action(); }}
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                key={type}
+                title={label}
+                onMouseDown={(e) => { e.preventDefault(); applyFormat(type); }}
+                className={cn(
+                  "p-1.5 rounded hover:bg-muted transition-colors",
+                  isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                {item.icon}
-                <span className="hidden sm:inline">{item.label}</span>
+                <Icon className="w-3.5 h-3.5" />
               </button>
             ))}
+
+            {/* AI Correction button */}
+            <button
+              title="AI 교정 (텍스트 선택 후 클릭)"
+              onMouseDown={(e) => { e.preventDefault(); runAiCorrection(); }}
+              disabled={aiCorrecting}
+              className={cn(
+                "p-1.5 rounded transition-colors",
+                aiCorrecting
+                  ? "text-[hsl(var(--navy))] animate-pulse"
+                  : "text-muted-foreground hover:text-[hsl(var(--navy))] hover:bg-muted"
+              )}
+            >
+              {aiCorrecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+            </button>
+
+            <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">/ 슬래시 명령</span>
+            {onAutoCorrectToggle && (
+              <button
+                onClick={onAutoCorrectToggle}
+                className={cn("ml-2 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all border",
+                  autoCorrectEnabled
+                    ? "border-success/40 bg-success/10 text-success"
+                    : "border-muted-foreground/20 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {isAutoCorrecting && <Loader2 className="w-3 h-3 animate-spin" />}
+                {autoCorrectEnabled ? "자동교정 ON" : "자동교정 OFF"}
+              </button>
+            )}
           </div>
-        )}
+
+          {/* Table context toolbar */}
+          {isInTable && (
+            <div className="flex items-center gap-0.5 px-3 py-1 border-b border-border bg-accent/5 flex-wrap">
+              <span className="text-[10px] text-muted-foreground font-medium mr-1.5">표:</span>
+              {tableActions.map((item, i) => (
+                <button
+                  key={i}
+                  title={item.label}
+                  onMouseDown={(e) => { e.preventDefault(); item.action(); }}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  {item.icon}
+                  <span className="hidden sm:inline">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Editor with slash menu */}
