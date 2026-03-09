@@ -233,9 +233,9 @@ export default function UserApproval({ onNavigate }: Props) {
     setActing(null);
 
     if (user.role === "student") {
-      // Show linking dialog with all active students
+      // Show linking dialog with unlinked students
       setIsRelink(false);
-      await Promise.all([loadUnlinkedStudents(), loadAllStudents()]);
+      await loadUnlinkedStudents();
       setLinkUser(user);
       setSelectedStudentId("");
       setLinkDialogOpen(true);
