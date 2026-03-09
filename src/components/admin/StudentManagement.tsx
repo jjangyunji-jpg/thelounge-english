@@ -739,6 +739,7 @@ export default function StudentManagement() {
       meetLink: "",
       schedules: newStudent.schedules,
       studentType: newStudent.studentType,
+      groupStudents: [],
     };
     setStudents((prev) => [s, ...prev]);
     setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular" });
