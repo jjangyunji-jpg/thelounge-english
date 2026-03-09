@@ -141,7 +141,7 @@ export default function ClassroomEditorFullscreen() {
     });
 
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 1500);
+    autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 500);
   };
 
   // Class control handlers

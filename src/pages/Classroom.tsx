@@ -503,7 +503,7 @@ export default function Classroom() {
           setNotes(html);
           // Also auto-save
           if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-          autoSaveTimer.current = setTimeout(() => autoSaveNotes(html), 500);
+          autoSaveTimer.current = setTimeout(() => autoSaveNotes(html), 00);
         }
       })
       .subscribe();
@@ -1206,7 +1206,7 @@ export default function Classroom() {
                   onChange={(newVal) => {
                     setNotes(newVal);
                     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-                    autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 1500);
+                    autoSaveTimer.current = setTimeout(() => autoSaveNotes(newVal), 100);
                     // Broadcast to fullscreen editor
                     fullscreenChannelRef.current?.send({
                       type: "broadcast",
