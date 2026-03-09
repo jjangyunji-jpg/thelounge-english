@@ -708,7 +708,7 @@ export default function UserApproval({ onNavigate }: Props) {
           </p>
           <div className="space-y-4 pt-2">
             {(() => {
-              const studentList = allStudents.length > 0 ? allStudents : unlinkedStudents;
+              const studentList = isRelink ? allStudents : unlinkedStudents;
               return studentList.length > 0 ? (
                 <>
                   <div className="space-y-1.5">
