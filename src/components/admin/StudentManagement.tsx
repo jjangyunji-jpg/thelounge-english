@@ -590,6 +590,7 @@ export default function StudentManagement() {
           startDate: editStartDate ? format(editStartDate, "yyyy-MM-dd") : "",
           schedules: [...editSchedules],
           studentType: editStudentType,
+          groupStudents: [...editGroupStudents],
         };
       })
     );
