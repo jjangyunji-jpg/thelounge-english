@@ -291,7 +291,7 @@ export default function UserApproval({ onNavigate }: Props) {
     }
 
     // Also update student_profiles.student_name to match the linked record
-    const linked = allStudents.find(s => s.id === selectedStudentId) || unlinkedStudents.find(s => s.id === selectedStudentId);
+    const linked = (isRelink ? allStudents : unlinkedStudents).find(s => s.id === selectedStudentId);
     if (linked) {
       await supabase
         .from("student_profiles")
