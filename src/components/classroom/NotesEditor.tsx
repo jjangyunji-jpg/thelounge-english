@@ -5,6 +5,7 @@ import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
+import Image from "@tiptap/extension-image";
 
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
@@ -15,8 +16,9 @@ import { Suggestion, SuggestionDelete } from "./SuggestionExtension";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
-  Bold, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
-  MessageSquareQuote, PenLine, Sparkles,
+  Bold, Underline as UnderlineIcon, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
+  MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon,
+  Plus, Trash2, Columns, Rows, TableProperties,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
