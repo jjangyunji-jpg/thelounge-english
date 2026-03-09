@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, ChevronRight, ChevronLeft, Check, Loader2 } from "lucide-react";
+import { BookOpen, ChevronRight, ChevronLeft, Check, Loader2, Info, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,45 +9,40 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+interface ExistingSurvey {
+  id: string;
+  study_reason: string[] | null;
+  study_goal: string | null;
+  study_trigger: string | null;
+  preferred_methods: string[] | null;
+  past_methods: string | null;
+  disliked_methods: string | null;
+  interest_topics: string[] | null;
+  english_usage_frequency: string | null;
+  additional_note: string | null;
+}
+
 interface StudentSurveyProps {
   studentName: string;
   onComplete: () => void;
+  existingSurvey?: ExistingSurvey | null;
 }
 
+const SURVEY_BANNER = "더라운지영어는 맞춤형 수업을 목표로 합니다. 개인의 평소 영어에 대한 니즈, 학습방법, 취향 등을 고려하여 수업을 설계합니다. 자세하게 답변해주실 수록 더 나은 수업을 제공하는 데 도움이 됩니다.";
+
 const STUDY_REASONS = [
-  "업무/비즈니스",
-  "해외 여행",
-  "유학/이민 준비",
-  "자기 개발",
-  "시험 준비 (토익, 토플 등)",
-  "외국인 친구/연인과 소통",
-  "영화/드라마/콘텐츠 이해",
-  "기타",
+  "업무/비즈니스", "해외 여행", "유학/이민 준비", "자기 개발",
+  "시험 준비 (토익, 토플 등)", "외국인 친구/연인과 소통", "영화/드라마/콘텐츠 이해", "기타",
 ];
 
 const PREFERRED_METHODS = [
-  "자유로운 프리토킹",
-  "교재/커리큘럼 기반 수업",
-  "뉴스/기사 토론",
-  "롤플레이/상황극",
-  "문법 중심 학습",
-  "어휘/표현 확장",
-  "발음/억양 교정",
-  "쓰기(에세이/일기) 첨삭",
-  "영상/팟캐스트 활용",
+  "자유로운 프리토킹", "교재/커리큘럼 기반 수업", "뉴스/기사 토론", "롤플레이/상황극",
+  "문법 중심 학습", "어휘/표현 확장", "발음/억양 교정", "쓰기(에세이/일기) 첨삭", "영상/팟캐스트 활용",
 ];
 
 const INTEREST_TOPICS = [
-  "일상 생활/소소한 대화",
-  "비즈니스/경제",
-  "여행/문화",
-  "엔터테인먼트 (영화/음악/드라마)",
-  "기술/IT",
-  "건강/운동",
-  "음식/요리",
-  "시사/사회 이슈",
-  "예술/디자인",
-  "스포츠",
+  "일상 생활/소소한 대화", "비즈니스/경제", "여행/문화", "엔터테인먼트 (영화/음악/드라마)",
+  "기술/IT", "건강/운동", "음식/요리", "시사/사회 이슈", "예술/디자인", "스포츠",
 ];
 
 const USAGE_FREQUENCY = [
@@ -63,25 +58,26 @@ const SECTIONS = [
   { id: 2, title: "관심 분야 및 현재 상황", emoji: "🌍" },
 ];
 
-export default function StudentSurvey({ studentName, onComplete }: StudentSurveyProps) {
+export default function StudentSurvey({ studentName, onComplete, existingSurvey }: StudentSurveyProps) {
   const { toast } = useToast();
   const [section, setSection] = useState(0);
   const [saving, setSaving] = useState(false);
+  const isEditing = !!existingSurvey;
 
   // Section 1
-  const [studyReason, setStudyReason] = useState<string[]>([]);
-  const [studyGoal, setStudyGoal] = useState("");
-  const [studyTrigger, setStudyTrigger] = useState("");
+  const [studyReason, setStudyReason] = useState<string[]>(existingSurvey?.study_reason ?? []);
+  const [studyGoal, setStudyGoal] = useState(existingSurvey?.study_goal ?? "");
+  const [studyTrigger, setStudyTrigger] = useState(existingSurvey?.study_trigger ?? "");
 
   // Section 2
-  const [preferredMethods, setPreferredMethods] = useState<string[]>([]);
-  const [pastMethods, setPastMethods] = useState("");
-  const [dislikedMethods, setDislikedMethods] = useState("");
+  const [preferredMethods, setPreferredMethods] = useState<string[]>(existingSurvey?.preferred_methods ?? []);
+  const [pastMethods, setPastMethods] = useState(existingSurvey?.past_methods ?? "");
+  const [dislikedMethods, setDislikedMethods] = useState(existingSurvey?.disliked_methods ?? "");
 
   // Section 3
-  const [interestTopics, setInterestTopics] = useState<string[]>([]);
-  const [usageFrequency, setUsageFrequency] = useState("");
-  const [additionalNote, setAdditionalNote] = useState("");
+  const [interestTopics, setInterestTopics] = useState<string[]>(existingSurvey?.interest_topics ?? []);
+  const [usageFrequency, setUsageFrequency] = useState(existingSurvey?.english_usage_frequency ?? "");
+  const [additionalNote, setAdditionalNote] = useState(existingSurvey?.additional_note ?? "");
 
   const toggleArrayItem = (arr: string[], item: string, setter: (v: string[]) => void) => {
     setter(arr.includes(item) ? arr.filter((v) => v !== item) : [...arr, item]);
@@ -100,7 +96,7 @@ export default function StudentSurvey({ studentName, onComplete }: StudentSurvey
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("로그인이 필요합니다.");
 
-      const { error } = await supabase.from("student_surveys").insert({
+      const payload = {
         user_id: session.user.id,
         student_name: studentName,
         study_reason: studyReason,
@@ -113,11 +109,21 @@ export default function StudentSurvey({ studentName, onComplete }: StudentSurvey
         english_usage_frequency: usageFrequency || null,
         additional_note: additionalNote.trim() || null,
         completed_at: new Date().toISOString(),
-      });
+      };
 
-      if (error) throw error;
+      if (isEditing && existingSurvey) {
+        const { error } = await supabase
+          .from("student_surveys")
+          .update(payload)
+          .eq("id", existingSurvey.id);
+        if (error) throw error;
+        toast({ title: "설문이 수정되었습니다! 😊" });
+      } else {
+        const { error } = await supabase.from("student_surveys").insert(payload);
+        if (error) throw error;
+        toast({ title: "설문이 완료되었습니다! 감사합니다 😊" });
+      }
 
-      toast({ title: "설문이 완료되었습니다! 감사합니다 😊" });
       onComplete();
     } catch (e: unknown) {
       toast({
@@ -160,14 +166,22 @@ export default function StudentSurvey({ studentName, onComplete }: StudentSurvey
   return (
     <div className="max-w-lg mx-auto">
       {/* Header */}
-      <div className="text-center mb-6">
+      <div className="text-center mb-4">
         <div className="w-14 h-14 rounded-2xl gold-gradient flex items-center justify-center shadow-gold mx-auto mb-3">
-          <BookOpen className="w-7 h-7 text-accent-foreground" />
+          {isEditing ? <Pencil className="w-7 h-7 text-accent-foreground" /> : <BookOpen className="w-7 h-7 text-accent-foreground" />}
         </div>
-        <h1 className="text-lg font-bold text-foreground">{studentName}님, 반갑습니다!</h1>
+        <h1 className="text-lg font-bold text-foreground">
+          {isEditing ? "설문 수정하기" : `${studentName}님, 반갑습니다!`}
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           맞춤형 수업을 위해 몇 가지 질문에 답해주세요
         </p>
+      </div>
+
+      {/* Banner */}
+      <div className="flex gap-2.5 items-start bg-gold/10 border border-gold/30 rounded-xl px-4 py-3 mb-6">
+        <Info className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-foreground leading-relaxed">{SURVEY_BANNER}</p>
       </div>
 
       {/* Progress */}
@@ -201,29 +215,17 @@ export default function StudentSurvey({ studentName, onComplete }: StudentSurvey
               <p className="text-xs text-muted-foreground">복수 선택 가능</p>
               {renderCheckboxGrid(STUDY_REASONS, studyReason, setStudyReason)}
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-foreground">
                 영어 공부를 통해 이루고 싶은 구체적인 목표가 있나요?
               </Label>
-              <Textarea
-                value={studyGoal}
-                onChange={(e) => setStudyGoal(e.target.value)}
-                placeholder="예: 해외 출장에서 영어로 프레젠테이션하기, 원어민과 자연스럽게 대화하기"
-                rows={3}
-              />
+              <Textarea value={studyGoal} onChange={(e) => setStudyGoal(e.target.value)} placeholder="예: 해외 출장에서 영어로 프레젠테이션하기" rows={3} />
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-foreground">
                 영어 공부를 시작하게 된 계기가 있나요?
               </Label>
-              <Textarea
-                value={studyTrigger}
-                onChange={(e) => setStudyTrigger(e.target.value)}
-                placeholder="예: 최근 해외 여행에서 소통이 안 돼서, 회사에서 영어 사용 기회가 늘어서"
-                rows={3}
-              />
+              <Textarea value={studyTrigger} onChange={(e) => setStudyTrigger(e.target.value)} placeholder="예: 최근 해외 여행에서 소통이 안 돼서" rows={3} />
             </div>
           </>
         )}
@@ -237,29 +239,17 @@ export default function StudentSurvey({ studentName, onComplete }: StudentSurvey
               <p className="text-xs text-muted-foreground">복수 선택 가능</p>
               {renderCheckboxGrid(PREFERRED_METHODS, preferredMethods, setPreferredMethods)}
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-foreground">
                 기존에 영어를 공부했던 방식이 있다면 알려주세요
               </Label>
-              <Textarea
-                value={pastMethods}
-                onChange={(e) => setPastMethods(e.target.value)}
-                placeholder="예: 학원 그룹 수업, 전화영어, 독학(유튜브), 1:1 과외 등"
-                rows={3}
-              />
+              <Textarea value={pastMethods} onChange={(e) => setPastMethods(e.target.value)} placeholder="예: 학원 그룹 수업, 전화영어, 독학(유튜브)" rows={3} />
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-foreground">
                 이전 학습에서 싫어했거나 효과 없었던 방식이 있나요?
               </Label>
-              <Textarea
-                value={dislikedMethods}
-                onChange={(e) => setDislikedMethods(e.target.value)}
-                placeholder="예: 문법만 반복하는 수업, 교재 읽기만 하는 수업, 숙제가 너무 많은 방식"
-                rows={3}
-              />
+              <Textarea value={dislikedMethods} onChange={(e) => setDislikedMethods(e.target.value)} placeholder="예: 문법만 반복하는 수업" rows={3} />
             </div>
           </>
         )}
@@ -273,7 +263,6 @@ export default function StudentSurvey({ studentName, onComplete }: StudentSurvey
               <p className="text-xs text-muted-foreground">복수 선택 가능</p>
               {renderCheckboxGrid(INTEREST_TOPICS, interestTopics, setInterestTopics)}
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-foreground">
                 현재 일상에서 영어를 얼마나 사용하시나요? <span className="text-gold">*</span>
@@ -295,17 +284,11 @@ export default function StudentSurvey({ studentName, onComplete }: StudentSurvey
                 ))}
               </RadioGroup>
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-foreground">
                 추가로 전달하고 싶은 내용이 있으면 자유롭게 적어주세요
               </Label>
-              <Textarea
-                value={additionalNote}
-                onChange={(e) => setAdditionalNote(e.target.value)}
-                placeholder="수업에 대한 기대, 걱정, 궁금한 점 등 무엇이든 좋습니다"
-                rows={3}
-              />
+              <Textarea value={additionalNote} onChange={(e) => setAdditionalNote(e.target.value)} placeholder="수업에 대한 기대, 걱정, 궁금한 점 등" rows={3} />
             </div>
           </>
         )}
@@ -313,33 +296,17 @@ export default function StudentSurvey({ studentName, onComplete }: StudentSurvey
 
       {/* Navigation */}
       <div className="flex items-center justify-between mt-5">
-        <Button
-          variant="outline"
-          onClick={() => setSection((s) => s - 1)}
-          disabled={section === 0}
-          className="gap-1.5"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          이전
+        <Button variant="outline" onClick={() => setSection((s) => s - 1)} disabled={section === 0} className="gap-1.5">
+          <ChevronLeft className="w-4 h-4" /> 이전
         </Button>
-
         {section < 2 ? (
-          <Button
-            onClick={() => setSection((s) => s + 1)}
-            disabled={!canProceed()}
-            className="gap-1.5 gold-gradient text-accent-foreground font-bold shadow-gold"
-          >
-            다음
-            <ChevronRight className="w-4 h-4" />
+          <Button onClick={() => setSection((s) => s + 1)} disabled={!canProceed()} className="gap-1.5 gold-gradient text-accent-foreground font-bold shadow-gold">
+            다음 <ChevronRight className="w-4 h-4" />
           </Button>
         ) : (
-          <Button
-            onClick={handleSubmit}
-            disabled={!canProceed() || saving}
-            className="gap-1.5 gold-gradient text-accent-foreground font-bold shadow-gold"
-          >
+          <Button onClick={handleSubmit} disabled={!canProceed() || saving} className="gap-1.5 gold-gradient text-accent-foreground font-bold shadow-gold">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            설문 완료
+            {isEditing ? "수정 완료" : "설문 완료"}
           </Button>
         )}
       </div>
