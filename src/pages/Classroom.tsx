@@ -300,6 +300,7 @@ export default function Classroom() {
   const [elapsed, setElapsed] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [notes, setNotes] = useState("");
+  const [isOffline, setIsOffline] = useState(false);
   // Keep refs in sync for flush-before-switch
   useEffect(() => { notesRef.current = notes; }, [notes]);
   useEffect(() => { sessionIdRef.current = session.sessionId; }, [session.sessionId]);
