@@ -1187,6 +1187,11 @@ export default function Classroom() {
                     >
                       {saveFlash ? "저장됨 ✓" : "저장"}
                     </Button>
+                    {isOffline && (
+                      <span className="flex items-center gap-1 text-[10px] text-destructive font-semibold animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-destructive" />오프라인
+                      </span>
+                    )}
                     <Button size="sm" variant="outline" onClick={handleOpenEditorFullscreen}
                       disabled={!session.sessionId}
                       className="h-7 text-xs gap-1.5 transition-all border-muted-foreground/30 text-muted-foreground hover:bg-muted"
