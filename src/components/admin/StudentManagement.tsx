@@ -1561,6 +1561,45 @@ export default function StudentManagement() {
                             </Button>
                           </div>
                         </div>
+                        {/* Group students */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Users className="w-3 h-3" /> 그룹 수강생
+                          </Label>
+                          {editGroupStudents.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {editGroupStudents.map((name, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-accent/50 text-foreground">
+                                  {name}
+                                  <button type="button" onClick={() => setEditGroupStudents(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <Select
+                            value=""
+                            onValueChange={(v) => {
+                              if (v && !editGroupStudents.includes(v)) {
+                                setEditGroupStudents(prev => [...prev, v]);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue placeholder="수강생 추가..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {students
+                                .filter(s => s.status === "active" && s.name !== students.find(st => st.id === editingStudentId)?.name && !editGroupStudents.includes(s.name))
+                                .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+                                .map(s => (
+                                  <SelectItem key={s.dbId || s.name} value={s.name}>{s.name}</SelectItem>
+                                ))
+                              }
+                            </SelectContent>
+                          </Select>
+                        </div>
                         {/* Fee preview */}
                         {(() => {
                           const editBaseLessons = calcBaseLessons(editSchedules);
