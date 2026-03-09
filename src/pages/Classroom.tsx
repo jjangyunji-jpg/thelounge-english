@@ -517,6 +517,7 @@ export default function Classroom() {
   const [newHwDesc, setNewHwDesc] = useState("");
   const [newHwPreset, setNewHwPreset] = useState(false);
   const [savingHw, setSavingHw] = useState(false);
+  const [selectedHwStudents, setSelectedHwStudents] = useState<string[]>([]);
 
   const [editingHwId, setEditingHwId] = useState<string | null>(null);
   const [editHwType, setEditHwType] = useState<HwType>("writing");
@@ -717,8 +718,10 @@ export default function Classroom() {
     if (!newHwTitle.trim()) return;
     setSavingHw(true);
     try {
-      // For group sessions, create homework for each group member individually
-      const targetStudents = groupStudents.length > 0 ? groupStudents : [session.dbStudentName];
+      // For group sessions, create homework for selected members (or all if none selected)
+      const targetStudents = groupStudents.length > 0
+        ? (selectedHwStudents.length > 0 ? selectedHwStudents : groupStudents)
+        : [session.dbStudentName];
       const inserts = targetStudents.map(sn => ({
         student_name: sn, title: newHwTitle.trim(),
         description: newHwDesc.trim() || null, type: newHwType, is_preset: newHwPreset,
@@ -729,9 +732,10 @@ export default function Classroom() {
       if (data && data.length > 0) {
         // Show the first one in the UI list (for the group/primary student)
         setHwList((prev) => [...prev, { id: data[0].id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true }]);
-        const msg = groupStudents.length > 0 ? `숙제가 ${groupStudents.length}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
+        const count = groupStudents.length > 0 ? targetStudents.length : 0;
+        const msg = count > 0 ? `숙제가 ${count}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
         toast({ title: msg });
-        setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing"); setNewHwPreset(false);
+        setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing"); setNewHwPreset(false); setSelectedHwStudents([]);
         setAddingHw(false);
       }
     } catch (e: unknown) {
@@ -1355,13 +1359,48 @@ export default function Classroom() {
                           <input type="checkbox" checked={newHwPreset} onChange={(e) => setNewHwPreset(e.target.checked)} className="rounded border-border" />
                           <span className="text-xs text-muted-foreground">정기 숙제로 등록 <span className="text-[10px]">(매 수업마다 자동 표시)</span></span>
                         </label>
+                        {groupStudents.length > 0 && (
+                          <div className="space-y-1.5 p-2.5 rounded-lg border border-border bg-muted/30">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-semibold text-foreground">대상 학생 선택</span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedHwStudents(prev => prev.length === groupStudents.length ? [] : [...groupStudents])}
+                                className="text-[10px] text-[hsl(var(--navy))] hover:underline"
+                              >
+                                {selectedHwStudents.length === groupStudents.length ? "전체 해제" : "전체 선택"}
+                              </button>
+                            </div>
+                            {groupStudents.map(sn => (
+                              <label key={sn} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedHwStudents.length === 0 || selectedHwStudents.includes(sn)}
+                                  onChange={(e) => {
+                                    if (selectedHwStudents.length === 0) {
+                                      // First interaction: select only this one or all-except-this
+                                      setSelectedHwStudents(e.target.checked ? groupStudents : groupStudents.filter(s => s !== sn));
+                                    } else {
+                                      setSelectedHwStudents(prev => e.target.checked ? [...prev, sn] : prev.filter(s => s !== sn));
+                                    }
+                                  }}
+                                  className="rounded border-border"
+                                />
+                                <span className="text-xs text-foreground">{sn}</span>
+                              </label>
+                            ))}
+                            {selectedHwStudents.length > 0 && selectedHwStudents.length < groupStudents.length && (
+                              <p className="text-[10px] text-muted-foreground">{selectedHwStudents.length}명 선택됨</p>
+                            )}
+                          </div>
+                        )}
                         <div className="flex gap-1.5">
-                          <Button size="sm" onClick={handleAddHw} disabled={!newHwTitle.trim() || savingHw}
+                          <Button size="sm" onClick={handleAddHw} disabled={!newHwTitle.trim() || savingHw || (groupStudents.length > 0 && selectedHwStudents.length === 0 && false)}
                             className="flex-1 h-8 text-xs bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground gap-1.5"
                           >
                             <Plus className="w-3.5 h-3.5" />{savingHw ? "저장 중..." : "추가"}
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => { setAddingHw(false); setNewHwTitle(""); setNewHwDesc(""); setNewHwPreset(false); }} className="h-8 text-xs">취소</Button>
+                          <Button size="sm" variant="ghost" onClick={() => { setAddingHw(false); setNewHwTitle(""); setNewHwDesc(""); setNewHwPreset(false); setSelectedHwStudents([]); }} className="h-8 text-xs">취소</Button>
                         </div>
                       </div>
                     ) : (
