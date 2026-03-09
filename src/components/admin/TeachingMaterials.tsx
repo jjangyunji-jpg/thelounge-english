@@ -48,6 +48,10 @@ export default function TeachingMaterials() {
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
 
+  // Drag state
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   const fetchCategories = useCallback(async () => {
     const { data } = await supabase
       .from("teaching_material_categories")
