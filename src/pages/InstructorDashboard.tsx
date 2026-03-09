@@ -3442,7 +3442,7 @@ export default function InstructorDashboard() {
               .from("homework_submissions")
               .select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction")
               .eq("id", reviewHw?.submission.id)
-              .single();
+              .maybeSingle();
             if (updatedSub) {
               setSubmissions(prev => prev.map(s => s.id === updatedSub.id ? updatedSub : s));
             }
