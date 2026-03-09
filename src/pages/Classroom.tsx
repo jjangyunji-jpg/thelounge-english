@@ -1365,27 +1365,26 @@ export default function Classroom() {
                           <input type="checkbox" checked={newHwPreset} onChange={(e) => setNewHwPreset(e.target.checked)} className="rounded border-border" />
                           <span className="text-xs text-muted-foreground">정기 숙제로 등록 <span className="text-[10px]">(매 수업마다 자동 표시)</span></span>
                         </label>
-                        {groupStudents.length > 0 && (
+                        {allGroupMembers.length > 0 && (
                           <div className="space-y-1.5 p-2.5 rounded-lg border border-border bg-muted/30">
                             <div className="flex items-center justify-between">
                               <span className="text-[11px] font-semibold text-foreground">대상 학생 선택</span>
                               <button
                                 type="button"
-                                onClick={() => setSelectedHwStudents(prev => prev.length === groupStudents.length ? [] : [...groupStudents])}
+                                onClick={() => setSelectedHwStudents(prev => prev.length === allGroupMembers.length ? [] : [...allGroupMembers])}
                                 className="text-[10px] text-[hsl(var(--navy))] hover:underline"
                               >
-                                {selectedHwStudents.length === groupStudents.length ? "전체 해제" : "전체 선택"}
+                                {selectedHwStudents.length === allGroupMembers.length ? "전체 해제" : "전체 선택"}
                               </button>
                             </div>
-                            {groupStudents.map(sn => (
+                            {allGroupMembers.map(sn => (
                               <label key={sn} className="flex items-center gap-2 cursor-pointer">
                                 <input
                                   type="checkbox"
                                   checked={selectedHwStudents.length === 0 || selectedHwStudents.includes(sn)}
                                   onChange={(e) => {
                                     if (selectedHwStudents.length === 0) {
-                                      // First interaction: select only this one or all-except-this
-                                      setSelectedHwStudents(e.target.checked ? groupStudents : groupStudents.filter(s => s !== sn));
+                                      setSelectedHwStudents(e.target.checked ? allGroupMembers : allGroupMembers.filter(s => s !== sn));
                                     } else {
                                       setSelectedHwStudents(prev => e.target.checked ? [...prev, sn] : prev.filter(s => s !== sn));
                                     }
@@ -1395,7 +1394,7 @@ export default function Classroom() {
                                 <span className="text-xs text-foreground">{sn}</span>
                               </label>
                             ))}
-                            {selectedHwStudents.length > 0 && selectedHwStudents.length < groupStudents.length && (
+                            {selectedHwStudents.length > 0 && selectedHwStudents.length < allGroupMembers.length && (
                               <p className="text-[10px] text-muted-foreground">{selectedHwStudents.length}명 선택됨</p>
                             )}
                           </div>
