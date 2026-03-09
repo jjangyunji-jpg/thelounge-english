@@ -517,6 +517,7 @@ export default function Classroom() {
   const [newHwDesc, setNewHwDesc] = useState("");
   const [newHwPreset, setNewHwPreset] = useState(false);
   const [savingHw, setSavingHw] = useState(false);
+  const [selectedHwStudents, setSelectedHwStudents] = useState<string[]>([]);
 
   const [editingHwId, setEditingHwId] = useState<string | null>(null);
   const [editHwType, setEditHwType] = useState<HwType>("writing");
