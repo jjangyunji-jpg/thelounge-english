@@ -48,6 +48,10 @@ export default function TeachingMaterials() {
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
 
+  // Drag state
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   const fetchCategories = useCallback(async () => {
     const { data } = await supabase
       .from("teaching_material_categories")
@@ -157,7 +161,39 @@ export default function TeachingMaterials() {
 
   const noopToggle = () => {};
 
-  const selectedCat = categories.find(c => c.slug === category);
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = async (targetIndex: number) => {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const updated = [...materials];
+    const [moved] = updated.splice(dragIndex, 1);
+    updated.splice(targetIndex, 0, moved);
+    setMaterials(updated);
+    setDragIndex(null);
+    setDragOverIndex(null);
+
+    // Persist new order
+    const promises = updated.map((m, i) =>
+      supabase.from("teaching_materials").update({ sort_order: i }).eq("id", m.id)
+    );
+    await Promise.all(promises);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -273,8 +309,21 @@ export default function TeachingMaterials() {
             <div className="py-12 text-center text-muted-foreground text-sm">등록된 자료가 없습니다</div>
           ) : (
             <div className="space-y-2">
-              {materials.map(m => (
-                <div key={m.id} className={cn("rounded-lg border bg-card p-4", !m.is_active && "opacity-50")}>
+              {materials.map((m, idx) => (
+                <div
+                  key={m.id}
+                  draggable={editing !== m.id}
+                  onDragStart={() => handleDragStart(idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDrop={() => handleDrop(idx)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    "rounded-lg border bg-card p-4 transition-all",
+                    !m.is_active && "opacity-50",
+                    dragIndex === idx && "opacity-30",
+                    dragOverIndex === idx && dragIndex !== idx && "border-primary border-dashed"
+                  )}
+                >
                   {editing === m.id ? (
                     <div className="space-y-3">
                       <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="text-sm" />
@@ -298,7 +347,7 @@ export default function TeachingMaterials() {
                     </div>
                   ) : (
                     <div className="flex items-start gap-3">
-                      <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
+                      <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0 cursor-grab active:cursor-grabbing" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-gold flex-shrink-0" />
