@@ -380,6 +380,9 @@ export default function TeachingMaterials() {
                         <button onClick={() => startEdit(m)} className="p-1.5 rounded hover:bg-muted" title="편집">
                           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                         </button>
+                        <button onClick={() => handleCopy(m)} className="p-1.5 rounded hover:bg-muted" title="복사">
+                          <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
                         <button onClick={() => handleDelete(m.id)} className="p-1.5 rounded hover:bg-muted" title="삭제">
                           <Trash2 className="w-3.5 h-3.5 text-destructive" />
                         </button>
