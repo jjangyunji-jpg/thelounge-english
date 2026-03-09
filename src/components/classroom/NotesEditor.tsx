@@ -150,6 +150,26 @@ export default function NotesEditor({
         lang: "en",
       },
       handlePaste: (view, event) => {
+        // Handle image paste
+        const items = event.clipboardData?.items;
+        if (items) {
+          for (const item of Array.from(items)) {
+            if (item.type.startsWith("image/")) {
+              event.preventDefault();
+              const file = item.getAsFile();
+              if (file && editor) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const base64 = e.target?.result as string;
+                  editor.chain().focus().setImage({ src: base64 }).run();
+                };
+                reader.readAsDataURL(file);
+              }
+              return true;
+            }
+          }
+        }
+        // Handle YouTube paste
         const text = event.clipboardData?.getData("text/plain") ?? "";
         const ytMatch = text.match(
           /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]+)/
