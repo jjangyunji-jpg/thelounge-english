@@ -57,8 +57,8 @@ export default function Login() {
         return;
       }
 
-      // Even if approved, check if student still has an active waitlist entry
-      if (roleData.role === "student") {
+      // Only check waitlist for unapproved students
+      if (roleData.role === "student" && !roleData.approved) {
         const { data: waitlistEntry } = await supabase
           .from("waitlist_entries")
           .select("id")

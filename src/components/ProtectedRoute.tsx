@@ -44,8 +44,8 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
         return;
       }
 
-      // Check if student has active waitlist entry → redirect to waitlist
-      if (studentRole && allowedRoles.includes("student")) {
+      // Check if unapproved student has active waitlist entry → redirect to waitlist
+      if (studentRole && !studentRole.approved && allowedRoles.includes("student")) {
         const { data: waitlistEntry } = await supabase
           .from("waitlist_entries")
           .select("id")
