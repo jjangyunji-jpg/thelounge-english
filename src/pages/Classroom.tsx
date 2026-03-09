@@ -451,8 +451,12 @@ export default function Classroom() {
   const [editHwPreset, setEditHwPreset] = useState(false);
   const [savingEditHw, setSavingEditHw] = useState(false);
 
+  const dataLoadedForRef = useRef<string | null>(null);
   useEffect(() => {
     if (sessionLoading || !session.sessionId) return;
+    // Prevent re-loading data for the same session (e.g. when sessionLoading toggles)
+    if (dataLoadedForRef.current === session.sessionId) return;
+    dataLoadedForRef.current = session.sessionId;
     const loadData = async () => {
       const { data: sessionData } = await supabase
         .from("class_sessions").select("notes, remarks").eq("id", session.sessionId).single();
