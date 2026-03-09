@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock, Mail, Loader2, FileText, Paperclip, Monitor, Pause, Play } from "lucide-react";
+import { Plus, Search, Download, ChevronDown, ChevronUp, UserX, BookOpen, Edit2, RefreshCw, Trash2, Target, Check, X, Bell, BellOff, Video, ExternalLink, Link2, PenLine, Mic, Brain, Clock, Mail, Loader2, FileText, Paperclip, Monitor, Pause, Play, Users } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -121,6 +121,7 @@ interface Student {
   withdrawalReason?: string;
   pauses: PauseRecord[];
   studentType: string;
+  groupStudents: string[];
 }
 
 // removed old calcMonthlyFee - now using the one at module level
@@ -283,6 +284,7 @@ export default function StudentManagement() {
       withdrawalReason: row.withdrawal_reason || "",
       pauses: [],
       studentType: row.student_type || "regular",
+      groupStudents: row.group_students || [],
     }));
     setStudents(dbStudents);
 
@@ -337,7 +339,8 @@ export default function StudentManagement() {
    const [editSchedules, setEditSchedules] = useState<ScheduleSlot[]>([]);
    const [editSchedDay, setEditSchedDay] = useState("월");
    const [editSchedTime, setEditSchedTime] = useState("09:00");
-   const [editSchedFreq, setEditSchedFreq] = useState<Frequency>("weekly");
+    const [editSchedFreq, setEditSchedFreq] = useState<Frequency>("weekly");
+    const [editGroupStudents, setEditGroupStudents] = useState<string[]>([]);
 
   // Meet link editing
   const [editingMeetId, setEditingMeetId] = useState<number | null>(null);
@@ -508,6 +511,7 @@ export default function StudentManagement() {
     setEditStartDate(s.startDate ? new Date(s.startDate + "T00:00:00") : undefined);
     setEditSchedules([...s.schedules]);
     setEditStudentType(s.studentType as "regular" | "corporate");
+    setEditGroupStudents([...s.groupStudents]);
     setEditSchedDay("월");
     setEditSchedTime("09:00");
   };
@@ -538,6 +542,7 @@ export default function StudentManagement() {
         start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
         schedules: editSchedules.length > 0 ? JSON.stringify(editSchedules) : null,
         student_type: editStudentType,
+        group_students: editGroupStudents,
       };
       if (newInstructorId) {
         updatePayload.instructor_id = newInstructorId;
@@ -585,6 +590,7 @@ export default function StudentManagement() {
           startDate: editStartDate ? format(editStartDate, "yyyy-MM-dd") : "",
           schedules: [...editSchedules],
           studentType: editStudentType,
+          groupStudents: [...editGroupStudents],
         };
       })
     );
@@ -734,6 +740,7 @@ export default function StudentManagement() {
       meetLink: "",
       schedules: newStudent.schedules,
       studentType: newStudent.studentType,
+      groupStudents: [],
     };
     setStudents((prev) => [s, ...prev]);
     setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular" });
@@ -1553,6 +1560,45 @@ export default function StudentManagement() {
                               <Plus className="w-3 h-3" />
                             </Button>
                           </div>
+                        </div>
+                        {/* Group students */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Users className="w-3 h-3" /> 그룹 수강생
+                          </Label>
+                          {editGroupStudents.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {editGroupStudents.map((name, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-accent/50 text-foreground">
+                                  {name}
+                                  <button type="button" onClick={() => setEditGroupStudents(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <Select
+                            value=""
+                            onValueChange={(v) => {
+                              if (v && !editGroupStudents.includes(v)) {
+                                setEditGroupStudents(prev => [...prev, v]);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue placeholder="수강생 추가..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {students
+                                .filter(s => s.status === "active" && s.name !== students.find(st => st.id === editingStudentId)?.name && !editGroupStudents.includes(s.name))
+                                .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+                                .map(s => (
+                                  <SelectItem key={s.dbId || s.name} value={s.name}>{s.name}</SelectItem>
+                                ))
+                              }
+                            </SelectContent>
+                          </Select>
                         </div>
                         {/* Fee preview */}
                         {(() => {
