@@ -725,8 +725,8 @@ export default function Classroom() {
     setSavingHw(true);
     try {
       // For group sessions, create homework for selected members (or all if none selected)
-      const targetStudents = groupStudents.length > 0
-        ? (selectedHwStudents.length > 0 ? selectedHwStudents : groupStudents)
+      const targetStudents = allGroupMembers.length > 0
+        ? (selectedHwStudents.length > 0 ? selectedHwStudents : allGroupMembers)
         : [session.dbStudentName];
       const inserts = targetStudents.map(sn => ({
         student_name: sn, title: newHwTitle.trim(),
