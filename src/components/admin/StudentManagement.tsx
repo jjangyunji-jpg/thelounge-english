@@ -511,6 +511,7 @@ export default function StudentManagement() {
     setEditStartDate(s.startDate ? new Date(s.startDate + "T00:00:00") : undefined);
     setEditSchedules([...s.schedules]);
     setEditStudentType(s.studentType as "regular" | "corporate");
+    setEditGroupStudents([...s.groupStudents]);
     setEditSchedDay("월");
     setEditSchedTime("09:00");
   };
