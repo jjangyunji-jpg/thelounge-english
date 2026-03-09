@@ -161,7 +161,39 @@ export default function TeachingMaterials() {
 
   const noopToggle = () => {};
 
-  const selectedCat = categories.find(c => c.slug === category);
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = async (targetIndex: number) => {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const updated = [...materials];
+    const [moved] = updated.splice(dragIndex, 1);
+    updated.splice(targetIndex, 0, moved);
+    setMaterials(updated);
+    setDragIndex(null);
+    setDragOverIndex(null);
+
+    // Persist new order
+    const promises = updated.map((m, i) =>
+      supabase.from("teaching_materials").update({ sort_order: i }).eq("id", m.id)
+    );
+    await Promise.all(promises);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
 
   return (
     <div className="space-y-6">
