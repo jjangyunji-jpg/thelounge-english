@@ -382,11 +382,84 @@ export default function Classroom() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
+  // ── Local backup & offline detection ──
+  const LOCAL_BACKUP_KEY = "classroom_notes_backup";
+
+  // Save to localStorage on every change as safety net
+  useEffect(() => {
+    if (!session.sessionId || !notes.trim()) return;
+    const stripped = notes.replace(/<[^>]*>/g, "").trim();
+    if (!stripped || stripped === "Homework Feedback /Small Talk /") return;
+    try {
+      localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify({
+        sessionId: session.sessionId,
+        notes,
+        savedAt: Date.now(),
+      }));
+    } catch { /* quota exceeded – ignore */ }
+  }, [notes, session.sessionId]);
+
+  // Detect online/offline
+  useEffect(() => {
+    const goOffline = () => {
+      setIsOffline(true);
+      toast({ title: "⚠️ 인터넷 연결이 끊겼습니다", description: "노트가 로컬에 자동 백업됩니다. 연결이 복구되면 자동 저장됩니다.", variant: "destructive" });
+    };
+    const goOnline = () => {
+      setIsOffline(false);
+      toast({ title: "✓ 인터넷 연결이 복구되었습니다" });
+      // Flush current notes to DB on reconnect
+      const sid = sessionIdRef.current;
+      const n = notesRef.current;
+      if (sid && n.trim()) {
+        supabase.from("class_sessions").update({ notes: n.trim() }).eq("id", sid);
+      }
+    };
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
+  }, []);
+
+  // On load, check for unsaved local backup and offer recovery
+  useEffect(() => {
+    if (!session.sessionId) return;
+    try {
+      const raw = localStorage.getItem(LOCAL_BACKUP_KEY);
+      if (!raw) return;
+      const backup = JSON.parse(raw);
+      if (backup.sessionId !== session.sessionId) return;
+      // Only offer recovery if backup is recent (within 2 hours) and longer than DB version
+      const age = Date.now() - backup.savedAt;
+      if (age > 2 * 60 * 60 * 1000) { localStorage.removeItem(LOCAL_BACKUP_KEY); return; }
+      // Compare after initial load
+      const checkTimer = setTimeout(() => {
+        const currentLen = notesRef.current.replace(/<[^>]*>/g, "").trim().length;
+        const backupLen = backup.notes.replace(/<[^>]*>/g, "").trim().length;
+        if (backupLen > currentLen + 50) {
+          // Backup has significantly more content
+          toast({
+            title: "📋 저장되지 않은 로컬 백업이 발견되었습니다",
+            description: `백업 내용이 현재보다 ${backupLen - currentLen}자 더 많습니다. 복원하려면 버전 히스토리를 확인하세요.`,
+            duration: 10000,
+          });
+          // Auto-restore since backup is clearly more complete
+          setNotes(backup.notes);
+          autoSaveNotes(backup.notes);
+        }
+        localStorage.removeItem(LOCAL_BACKUP_KEY);
+      }, 2000);
+      return () => clearTimeout(checkTimer);
+    } catch { /* ignore */ }
+  }, [session.sessionId]);
+
 
   // Auto-save notes to DB for realtime mirroring (debounced 1.5s)
   const autoSaveNotes = useCallback(async (text: string) => {
     if (!session.sessionId || !text.trim()) return;
-    await supabase.from("class_sessions").update({ notes: text.trim() }).eq("id", session.sessionId);
+    const { error } = await supabase.from("class_sessions").update({ notes: text.trim() }).eq("id", session.sessionId);
+    if (error && !navigator.onLine) {
+      setIsOffline(true);
+    }
   }, [session.sessionId]);
 
   const autoSaveRemarks = useCallback(async (text: string) => {
