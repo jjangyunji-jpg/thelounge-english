@@ -309,8 +309,21 @@ export default function TeachingMaterials() {
             <div className="py-12 text-center text-muted-foreground text-sm">등록된 자료가 없습니다</div>
           ) : (
             <div className="space-y-2">
-              {materials.map(m => (
-                <div key={m.id} className={cn("rounded-lg border bg-card p-4", !m.is_active && "opacity-50")}>
+              {materials.map((m, idx) => (
+                <div
+                  key={m.id}
+                  draggable={editing !== m.id}
+                  onDragStart={() => handleDragStart(idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDrop={() => handleDrop(idx)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    "rounded-lg border bg-card p-4 transition-all",
+                    !m.is_active && "opacity-50",
+                    dragIndex === idx && "opacity-30",
+                    dragOverIndex === idx && dragIndex !== idx && "border-primary border-dashed"
+                  )}
+                >
                   {editing === m.id ? (
                     <div className="space-y-3">
                       <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="text-sm" />
