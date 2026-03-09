@@ -240,6 +240,7 @@
 }
 .tiptap table {
   @apply border-collapse w-full my-3;
+  position: relative;
 }
 .tiptap th,
 .tiptap td {
@@ -255,15 +256,55 @@
   top: 0;
   bottom: 0;
   width: 4px;
-  background-color: hsl(var(--accent));
+  background-color: transparent;
   cursor: col-resize;
   z-index: 20;
+  transition: background-color 0.15s;
+}
+.tiptap .column-resize-handle:hover,
+.tiptap .column-resize-handle.active {
+  background-color: hsl(var(--primary));
 }
 .tiptap .selectedCell {
   background-color: hsl(var(--accent) / 0.15);
 }
 .tiptap.resize-cursor {
   cursor: col-resize;
+}
+
+/* Table hover add-row/column buttons */
+.table-hover-controls {
+  pointer-events: none;
+  position: absolute;
+  z-index: 30;
+}
+.table-hover-controls .table-add-btn {
+  pointer-events: all;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.1s;
+  border: none;
+  box-shadow: 0 1px 3px hsl(var(--primary) / 0.3);
+}
+.table-hover-controls .table-add-btn:hover {
+  transform: scale(1.2);
+}
+.table-wrapper {
+  position: relative;
+}
+.table-wrapper:hover .table-add-btn {
+  opacity: 1;
 }
 .tiptap img {
   @apply rounded-lg my-3 max-w-full h-auto;
