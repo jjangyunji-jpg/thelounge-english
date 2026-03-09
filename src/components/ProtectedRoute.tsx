@@ -44,6 +44,20 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
         return;
       }
 
+      // Check if student has active waitlist entry → redirect to waitlist
+      if (studentRole && allowedRoles.includes("student")) {
+        const { data: waitlistEntry } = await supabase
+          .from("waitlist_entries")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .eq("status", "waiting")
+          .maybeSingle();
+        if (waitlistEntry) {
+          setStatus("waitlist");
+          return;
+        }
+      }
+
       // Check if user has any of the allowed roles (must be approved)
       const hasAccess = roles.some(
         (r) => r.approved && allowedRoles.includes(r.role as AppRole)

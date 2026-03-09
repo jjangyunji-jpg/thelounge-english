@@ -57,6 +57,20 @@ export default function Login() {
         return;
       }
 
+      // Even if approved, check if student still has an active waitlist entry
+      if (roleData.role === "student") {
+        const { data: waitlistEntry } = await supabase
+          .from("waitlist_entries")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("status", "waiting")
+          .maybeSingle();
+        if (waitlistEntry) {
+          navigate("/waitlist");
+          return;
+        }
+      }
+
       // Redirect based on role
       switch (roleData.role) {
         case "admin":
