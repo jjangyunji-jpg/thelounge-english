@@ -339,7 +339,8 @@ export default function StudentManagement() {
    const [editSchedules, setEditSchedules] = useState<ScheduleSlot[]>([]);
    const [editSchedDay, setEditSchedDay] = useState("월");
    const [editSchedTime, setEditSchedTime] = useState("09:00");
-   const [editSchedFreq, setEditSchedFreq] = useState<Frequency>("weekly");
+    const [editSchedFreq, setEditSchedFreq] = useState<Frequency>("weekly");
+    const [editGroupStudents, setEditGroupStudents] = useState<string[]>([]);
 
   // Meet link editing
   const [editingMeetId, setEditingMeetId] = useState<number | null>(null);
