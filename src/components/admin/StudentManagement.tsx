@@ -121,6 +121,7 @@ interface Student {
   withdrawalReason?: string;
   pauses: PauseRecord[];
   studentType: string;
+  groupStudents: string[];
 }
 
 // removed old calcMonthlyFee - now using the one at module level
