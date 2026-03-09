@@ -153,6 +153,21 @@ export default function TeachingMaterials() {
     fetchMaterials();
   };
 
+  const handleCopy = async (m: Material) => {
+    setSaving(true);
+    const maxOrder = materials.length > 0 ? Math.max(...materials.map(x => x.sort_order)) + 1 : 0;
+    const { error } = await supabase.from("teaching_materials").insert({
+      category: m.category,
+      title: `${m.title} (복사)`,
+      content: m.content,
+      sort_order: maxOrder,
+      is_active: m.is_active,
+    });
+    if (error) { toast({ title: "복사 실패", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "자료가 복사되었습니다 ✓" }); fetchMaterials(); }
+    setSaving(false);
+  };
+
   const startEdit = (m: Material) => {
     setEditing(m.id);
     setEditTitle(m.title);
