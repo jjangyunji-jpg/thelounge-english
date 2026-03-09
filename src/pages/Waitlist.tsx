@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Loader2, LogOut, Clock, Hash, Play } from "lucide-react";
+import { BookOpen, Loader2, LogOut, Clock, Play, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +13,19 @@ interface WaitlistEntry {
   student_name: string;
 }
 
-// Placeholder videos — admin can configure these later
+interface SurveyData {
+  id: string;
+  study_reason: string[] | null;
+  study_goal: string | null;
+  study_trigger: string | null;
+  preferred_methods: string[] | null;
+  past_methods: string | null;
+  disliked_methods: string | null;
+  interest_topics: string[] | null;
+  english_usage_frequency: string | null;
+  additional_note: string | null;
+}
+
 const WAITLIST_VIDEOS = [
   {
     title: "The Lounge English 소개",
@@ -34,6 +46,8 @@ export default function Waitlist() {
   const [position, setPosition] = useState<number | null>(null);
   const [totalWaiting, setTotalWaiting] = useState(0);
   const [surveyCompleted, setSurveyCompleted] = useState<boolean | null>(null);
+  const [existingSurvey, setExistingSurvey] = useState<SurveyData | null>(null);
+  const [editingSurvey, setEditingSurvey] = useState(false);
 
   useEffect(() => {
     loadWaitlistData();
@@ -52,38 +66,21 @@ export default function Waitlist() {
 
   const loadWaitlistData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/login");
-      return;
-    }
+    if (!session) { navigate("/login"); return; }
 
-    // Fetch waitlist entry + survey status in parallel
     const [entryRes, surveyRes, rolesRes] = await Promise.all([
-      supabase
-        .from("waitlist_entries")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .eq("status", "waiting")
-        .maybeSingle(),
-      supabase
-        .from("student_surveys")
-        .select("id")
-        .eq("user_id", session.user.id)
-        .maybeSingle(),
-      supabase
-        .from("user_roles")
-        .select("role, approved")
-        .eq("user_id", session.user.id),
+      supabase.from("waitlist_entries").select("*").eq("user_id", session.user.id).eq("status", "waiting").maybeSingle(),
+      supabase.from("student_surveys").select("id, study_reason, study_goal, study_trigger, preferred_methods, past_methods, disliked_methods, interest_topics, english_usage_frequency, additional_note").eq("user_id", session.user.id).maybeSingle(),
+      supabase.from("user_roles").select("role, approved").eq("user_id", session.user.id),
     ]);
 
     setSurveyCompleted(!!surveyRes.data);
+    setExistingSurvey(surveyRes.data as SurveyData | null);
 
     const myEntry = entryRes.data;
     if (!myEntry) {
       const studentRole = rolesRes.data?.find((r) => r.role === "student");
-      if (studentRole?.approved) {
-        navigate("/my/dashboard");
-      }
+      if (studentRole?.approved) navigate("/my/dashboard");
       setLoading(false);
       return;
     }
@@ -91,10 +88,7 @@ export default function Waitlist() {
     setEntry(myEntry as WaitlistEntry);
 
     const { data: allWaiting } = await supabase
-      .from("waitlist_entries")
-      .select("queue_number")
-      .eq("status", "waiting")
-      .order("queue_number", { ascending: true });
+      .from("waitlist_entries").select("queue_number").eq("status", "waiting").order("queue_number", { ascending: true });
 
     if (allWaiting) {
       setTotalWaiting(allWaiting.length);
@@ -118,8 +112,8 @@ export default function Waitlist() {
     );
   }
 
-  // Show survey if not completed
-  if (surveyCompleted === false && entry) {
+  // Show survey if not completed OR editing
+  if ((surveyCompleted === false || editingSurvey) && entry) {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b border-border bg-card">
@@ -130,19 +124,30 @@ export default function Waitlist() {
               </div>
               <div>
                 <p className="font-bold text-sm text-foreground">The Lounge English</p>
-                <p className="text-xs text-muted-foreground">학습 성향 설문</p>
+                <p className="text-xs text-muted-foreground">{editingSurvey ? "설문 수정" : "학습 성향 설문"}</p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground text-xs gap-1.5">
-              <LogOut className="w-3.5 h-3.5" />
-              로그아웃
-            </Button>
+            <div className="flex items-center gap-2">
+              {editingSurvey && (
+                <Button variant="outline" size="sm" onClick={() => setEditingSurvey(false)} className="text-xs">
+                  돌아가기
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground text-xs gap-1.5">
+                <LogOut className="w-3.5 h-3.5" /> 로그아웃
+              </Button>
+            </div>
           </div>
         </header>
         <main className="px-4 py-8">
           <StudentSurvey
             studentName={entry.student_name}
-            onComplete={() => setSurveyCompleted(true)}
+            existingSurvey={editingSurvey ? existingSurvey : null}
+            onComplete={() => {
+              setSurveyCompleted(true);
+              setEditingSurvey(false);
+              loadWaitlistData();
+            }}
           />
         </main>
       </div>
@@ -151,7 +156,6 @@ export default function Waitlist() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -164,8 +168,7 @@ export default function Waitlist() {
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground text-xs gap-1.5">
-            <LogOut className="w-3.5 h-3.5" />
-            로그아웃
+            <LogOut className="w-3.5 h-3.5" /> 로그아웃
           </Button>
         </div>
       </header>
@@ -196,6 +199,18 @@ export default function Waitlist() {
             );
           })()}
         </div>
+
+        {/* Edit Survey Button */}
+        {surveyCompleted && (
+          <Button
+            variant="outline"
+            onClick={() => setEditingSurvey(true)}
+            className="w-full gap-2 py-5 rounded-xl border-gold/30 text-foreground hover:bg-gold/5"
+          >
+            <Pencil className="w-4 h-4 text-gold" />
+            설문 응답 수정하기
+          </Button>
+        )}
 
         {/* Videos Section */}
         <div className="space-y-4">

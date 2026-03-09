@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, Library, ArrowLeft, FileQuestion, Target, MapIcon, MessageSquareHeart, Receipt } from "lucide-react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, Library, ArrowLeft, FileQuestion, Target, MapIcon, MessageSquareHeart, Receipt, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "cash-receipts" | "guide" | "messages" | "settings";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "surveys" | "cash-receipts" | "guide" | "messages" | "settings";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -19,6 +19,7 @@ const navItems = [
   { id: "cash-receipts" as AdminTab, label: "결제확인", icon: Receipt },
   { id: "class-feedback" as AdminTab, label: "강사 피드백", icon: MessageSquareHeart },
   { id: "student-feedback" as AdminTab, label: "학생 피드백", icon: Target },
+  { id: "surveys" as AdminTab, label: "학생 설문", icon: ClipboardList },
   { id: "curriculum" as AdminTab, label: "커리큘럼 가이드", icon: MapIcon },
   { id: "materials" as AdminTab, label: "수업 자료", icon: Library },
   { id: "guide" as AdminTab, label: "이용가이드 관리", icon: FileQuestion },
