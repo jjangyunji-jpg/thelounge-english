@@ -61,10 +61,46 @@ export default function ClassroomEditorFullscreen() {
     load();
   }, [sessionId]);
 
+  // Local backup safety net
+  const LOCAL_BACKUP_KEY = "classroom_notes_backup";
+  const notesRef = useRef(notes);
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+
+  useEffect(() => {
+    if (!sessionId || !notes.trim()) return;
+    const stripped = notes.replace(/<[^>]*>/g, "").trim();
+    if (!stripped) return;
+    try {
+      localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify({
+        sessionId, notes, savedAt: Date.now(),
+      }));
+    } catch { /* ignore */ }
+  }, [notes, sessionId]);
+
+  // Online/offline detection
+  const [isOffline, setIsOffline] = useState(false);
+  useEffect(() => {
+    const goOffline = () => {
+      setIsOffline(true);
+      toast({ title: "⚠️ 연결 끊김", description: "로컬에 자동 백업 중", variant: "destructive" });
+    };
+    const goOnline = () => {
+      setIsOffline(false);
+      toast({ title: "✓ 연결 복구" });
+      if (sessionId && notesRef.current.trim()) {
+        supabase.from("class_sessions").update({ notes: notesRef.current.trim() }).eq("id", sessionId);
+      }
+    };
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
+  }, [sessionId]);
+
   // Auto-save to DB
   const autoSaveNotes = useCallback(async (text: string) => {
     if (!sessionId || !text.trim()) return;
-    await supabase.from("class_sessions").update({ notes: text.trim() }).eq("id", sessionId);
+    const { error } = await supabase.from("class_sessions").update({ notes: text.trim() }).eq("id", sessionId);
+    if (error && !navigator.onLine) setIsOffline(true);
   }, [sessionId]);
 
   // Broadcast channel for bidirectional sync
