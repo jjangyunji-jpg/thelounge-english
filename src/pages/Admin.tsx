@@ -22,7 +22,7 @@ import { Menu, X, Loader2 } from "lucide-react";
 export type AdminLevel = "manager" | "staff";
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
+  const [activeTab, setActiveTab] = useState<AdminTab | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [adminLevel, setAdminLevel] = useState<AdminLevel>("staff");
@@ -40,7 +40,9 @@ export default function Admin() {
       const isManagerOrAbove = roles.includes("admin") || roles.includes("manager");
       const isStaff = roles.includes("staff");
       if (!isManagerOrAbove && !isStaff) { navigate("/login"); return; }
-      setAdminLevel(isManagerOrAbove ? "manager" : "staff");
+      const level = isManagerOrAbove ? "manager" : "staff";
+      setAdminLevel(level);
+      setActiveTab(level === "staff" ? "materials" : "dashboard");
       setLoading(false);
     })();
   }, [navigate]);
