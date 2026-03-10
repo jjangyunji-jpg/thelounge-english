@@ -3,11 +3,17 @@ import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpe
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import type { AdminLevel } from "@/pages/Admin";
+
 export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "surveys" | "cash-receipts" | "guide" | "messages" | "settings";
+
+// Tabs staff can access (read-only / limited)
+const staffAllowedTabs: AdminTab[] = ["dashboard", "operations", "students", "class-feedback", "student-feedback", "surveys", "cash-receipts"];
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
   onTabChange: (tab: AdminTab) => void;
+  adminLevel: AdminLevel;
 }
 
 const navItems = [
