@@ -95,6 +95,8 @@ export default function InstructorManagement() {
   const [feedbackCategories, setFeedbackCategories] = useState<FeedbackCategory[]>([]);
   const [periodLabels, setPeriodLabels] = useState<string[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
+  const [staffUserIds, setStaffUserIds] = useState<Set<string>>(new Set());
+  const [togglingStaff, setTogglingStaff] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInstructors();
