@@ -102,7 +102,51 @@ export default function InstructorManagement() {
     fetchInstructors();
     fetchAllFeedback();
     fetchFeedbackCategories();
+    fetchStaffRoles();
   }, []);
+
+  const fetchStaffRoles = async () => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "staff");
+    if (data) {
+      setStaffUserIds(new Set(data.map(r => r.user_id)));
+    }
+  };
+
+  const toggleStaffRole = async (ins: Instructor) => {
+    if (!ins.user_id) return;
+    setTogglingStaff(ins.id);
+    const isStaff = staffUserIds.has(ins.user_id);
+
+    if (isStaff) {
+      // Remove staff role
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", ins.user_id)
+        .eq("role", "staff");
+      if (error) {
+        toast({ title: "권한 제거 실패", description: error.message, variant: "destructive" });
+      } else {
+        setStaffUserIds(prev => { const n = new Set(prev); n.delete(ins.user_id!); return n; });
+        toast({ title: "Staff 권한이 제거되었습니다" });
+      }
+    } else {
+      // Add staff role
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({ user_id: ins.user_id, role: "staff" as any, approved: true });
+      if (error) {
+        toast({ title: "권한 부여 실패", description: error.message, variant: "destructive" });
+      } else {
+        setStaffUserIds(prev => new Set(prev).add(ins.user_id!));
+        toast({ title: "Staff 권한이 부여되었습니다" });
+      }
+    }
+    setTogglingStaff(null);
+  };
 
   const fetchInstructors = async () => {
     setLoading(true);
