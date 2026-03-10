@@ -92,7 +92,7 @@ export default function Admin() {
     <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block flex-shrink-0">
-        <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} adminLevel={adminLevel} />
       </div>
 
       {/* Mobile Sidebar Overlay */}
