@@ -22,7 +22,7 @@ import { Menu, X, Loader2 } from "lucide-react";
 export type AdminLevel = "manager" | "staff";
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
+  const [activeTab, setActiveTab] = useState<AdminTab | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [adminLevel, setAdminLevel] = useState<AdminLevel>("staff");
