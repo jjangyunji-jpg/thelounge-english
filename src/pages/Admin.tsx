@@ -109,6 +109,7 @@ export default function Admin() {
                 setActiveTab(tab);
                 setSidebarOpen(false);
               }}
+              adminLevel={adminLevel}
             />
           </div>
           <button

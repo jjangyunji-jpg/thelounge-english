@@ -74,6 +74,8 @@ export default function Login() {
       // Redirect based on role
       switch (roleData.role) {
         case "admin":
+        case "manager":
+        case "staff":
           navigate("/admin");
           break;
         case "instructor":
