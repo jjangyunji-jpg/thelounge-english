@@ -95,12 +95,58 @@ export default function InstructorManagement() {
   const [feedbackCategories, setFeedbackCategories] = useState<FeedbackCategory[]>([]);
   const [periodLabels, setPeriodLabels] = useState<string[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
+  const [staffUserIds, setStaffUserIds] = useState<Set<string>>(new Set());
+  const [togglingStaff, setTogglingStaff] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInstructors();
     fetchAllFeedback();
     fetchFeedbackCategories();
+    fetchStaffRoles();
   }, []);
+
+  const fetchStaffRoles = async () => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "staff");
+    if (data) {
+      setStaffUserIds(new Set(data.map(r => r.user_id)));
+    }
+  };
+
+  const toggleStaffRole = async (ins: Instructor) => {
+    if (!ins.user_id) return;
+    setTogglingStaff(ins.id);
+    const isStaff = staffUserIds.has(ins.user_id);
+
+    if (isStaff) {
+      // Remove staff role
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", ins.user_id)
+        .eq("role", "staff");
+      if (error) {
+        toast({ title: "권한 제거 실패", description: error.message, variant: "destructive" });
+      } else {
+        setStaffUserIds(prev => { const n = new Set(prev); n.delete(ins.user_id!); return n; });
+        toast({ title: "Staff 권한이 제거되었습니다" });
+      }
+    } else {
+      // Add staff role
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({ user_id: ins.user_id, role: "staff" as any, approved: true });
+      if (error) {
+        toast({ title: "권한 부여 실패", description: error.message, variant: "destructive" });
+      } else {
+        setStaffUserIds(prev => new Set(prev).add(ins.user_id!));
+        toast({ title: "Staff 권한이 부여되었습니다" });
+      }
+    }
+    setTogglingStaff(null);
+  };
 
   const fetchInstructors = async () => {
     setLoading(true);
@@ -674,6 +720,24 @@ export default function InstructorManagement() {
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">비고</span><span className="text-xs font-medium">{ins.bio_notes || "—"}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">미팅 링크</span><span className="text-xs font-medium truncate max-w-[180px]">{ins.meet_link ? <a href={ins.meet_link} target="_blank" rel="noopener noreferrer" className="text-navy underline">{ins.meet_link}</a> : "—"}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">계정</span><span className={`text-xs font-medium ${ins.user_id ? "text-success" : "text-muted-foreground"}`}>{ins.user_id ? "연결됨" : "미연결"}</span></div>
+                              {ins.user_id && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-muted-foreground">Staff 권한</span>
+                                  <button
+                                    onClick={() => toggleStaffRole(ins)}
+                                    disabled={togglingStaff === ins.id}
+                                    className="flex items-center gap-1.5 text-xs font-medium transition-colors"
+                                  >
+                                    {togglingStaff === ins.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : staffUserIds.has(ins.user_id!) ? (
+                                      <><ToggleRight className="w-5 h-5 text-success" /><span className="text-success">부여됨</span></>
+                                    ) : (
+                                      <><ToggleLeft className="w-5 h-5 text-muted-foreground" /><span className="text-muted-foreground">미부여</span></>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

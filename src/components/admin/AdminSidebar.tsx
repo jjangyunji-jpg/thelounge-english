@@ -8,7 +8,7 @@ import type { AdminLevel } from "@/pages/Admin";
 export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "surveys" | "cash-receipts" | "guide" | "messages" | "settings";
 
 // Tabs staff can access (read-only / limited)
-const staffAllowedTabs: AdminTab[] = ["dashboard", "operations", "students", "class-feedback", "student-feedback", "surveys", "cash-receipts"];
+const staffAllowedTabs: AdminTab[] = ["dashboard", "operations", "students", "class-feedback", "student-feedback", "surveys", "cash-receipts", "materials"];
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
