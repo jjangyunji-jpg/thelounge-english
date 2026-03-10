@@ -33,9 +33,10 @@ const navItems = [
   { id: "settings" as AdminTab, label: "기본 설정", icon: Settings },
 ];
 
-export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
+export default function AdminSidebar({ activeTab, onTabChange, adminLevel }: AdminSidebarProps) {
   const navigate = useNavigate();
   const [email, setEmail] = useState<string | null>(null);
+  const filteredNavItems = adminLevel === "staff" ? navItems.filter(item => staffAllowedTabs.includes(item.id)) : navItems;
 
   useEffect(() => {
     // Get initial session
