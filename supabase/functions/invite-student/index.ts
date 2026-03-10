@@ -40,9 +40,8 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", callerUserId)
-      .eq("role", "admin")
-      .maybeSingle();
-    if (!roleData) {
+      .in("role", ["admin", "manager"]);
+    if (!roleData || roleData.length === 0) {
       return new Response(JSON.stringify({ error: "권한이 없습니다." }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

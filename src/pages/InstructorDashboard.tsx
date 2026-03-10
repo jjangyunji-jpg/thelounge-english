@@ -1328,13 +1328,13 @@ export default function InstructorDashboard() {
     if (!user) { navigate("/login"); return; }
     setUser({ email: user.email ?? "" });
 
-    // Check admin role
+    // Check admin/manager/staff role
     const { data: adminRole } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin");
-    if (adminRole && adminRole.length > 0) setIsAdmin(true);
+      .eq("user_id", user.id);
+    const adminRoles = (adminRole || []).map(r => r.role);
+    if (adminRoles.includes("admin") || adminRoles.includes("manager") || adminRoles.includes("staff")) setIsAdmin(true);
 
     // Try user_id first, fallback to email
     let { data: ins } = await supabase

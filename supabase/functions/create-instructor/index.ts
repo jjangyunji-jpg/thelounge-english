@@ -35,10 +35,9 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
+      .in("role", ["admin", "manager"]);
 
-    if (!roleData) throw new Error("Admin access required");
+    if (!roleData || roleData.length === 0) throw new Error("Manager access required");
 
     const body = await req.json();
     const { name, email, password, phone, lessonRate, meetingRate } = body;

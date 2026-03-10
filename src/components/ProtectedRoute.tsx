@@ -3,7 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
-type AppRole = "admin" | "instructor" | "student";
+type AppRole = "admin" | "manager" | "staff" | "instructor" | "student";
 
 interface ProtectedRouteProps {
   /** Roles that are allowed to access this route */
@@ -59,14 +59,21 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
       }
 
       // Check if user has any of the allowed roles (must be approved)
+      // Manager/staff can access admin routes
+      const expandedAllowed = [...allowedRoles];
+      if (expandedAllowed.includes("admin") || expandedAllowed.includes("manager") || expandedAllowed.includes("staff")) {
+        if (!expandedAllowed.includes("manager")) expandedAllowed.push("manager");
+        if (!expandedAllowed.includes("staff")) expandedAllowed.push("staff");
+      }
+
       const hasAccess = roles.some(
-        (r) => r.approved && allowedRoles.includes(r.role as AppRole)
+        (r) => r.approved && expandedAllowed.includes(r.role as AppRole)
       );
 
-      // Special case: admin role can access everything
-      const isAdmin = roles.some((r) => r.approved && r.role === "admin");
+      // Special case: manager role can access everything (like old admin)
+      const isManagerOrAbove = roles.some((r) => r.approved && (r.role === "admin" || r.role === "manager"));
 
-      setStatus(hasAccess || isAdmin ? "authorized" : "unauthorized");
+      setStatus(hasAccess || isManagerOrAbove ? "authorized" : "unauthorized");
     };
 
     check();

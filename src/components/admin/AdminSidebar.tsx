@@ -3,11 +3,17 @@ import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpe
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import type { AdminLevel } from "@/pages/Admin";
+
 export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "surveys" | "cash-receipts" | "guide" | "messages" | "settings";
+
+// Tabs staff can access (read-only / limited)
+const staffAllowedTabs: AdminTab[] = ["dashboard", "operations", "students", "class-feedback", "student-feedback", "surveys", "cash-receipts"];
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
   onTabChange: (tab: AdminTab) => void;
+  adminLevel: AdminLevel;
 }
 
 const navItems = [
@@ -27,9 +33,10 @@ const navItems = [
   { id: "settings" as AdminTab, label: "기본 설정", icon: Settings },
 ];
 
-export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
+export default function AdminSidebar({ activeTab, onTabChange, adminLevel }: AdminSidebarProps) {
   const navigate = useNavigate();
   const [email, setEmail] = useState<string | null>(null);
+  const filteredNavItems = adminLevel === "staff" ? navItems.filter(item => staffAllowedTabs.includes(item.id)) : navItems;
 
   useEffect(() => {
     // Get initial session
@@ -67,7 +74,7 @@ export default function AdminSidebar({ activeTab, onTabChange }: AdminSidebarPro
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-5 space-y-1">
-        {navItems.map((item) => {
+        {filteredNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (

@@ -30,8 +30,8 @@ export default function Login() {
         .select("role, approved")
         .eq("user_id", userId);
 
-      // Instructor role takes priority for redirect (even if also admin)
-      const priorityOrder = ["instructor", "admin", "student"];
+      // Instructor role takes priority for redirect
+      const priorityOrder = ["instructor", "admin", "manager", "staff", "student"];
       const roleData = (roles || []).sort(
         (a, b) => priorityOrder.indexOf(a.role) - priorityOrder.indexOf(b.role)
       )[0];
@@ -74,6 +74,8 @@ export default function Login() {
       // Redirect based on role
       switch (roleData.role) {
         case "admin":
+        case "manager":
+        case "staff":
           navigate("/admin");
           break;
         case "instructor":

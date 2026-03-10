@@ -38,9 +38,9 @@ const App = () => (
           <Route path="/set-password" element={<SetPassword />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* Admin only (admin role can access everything) */}
+          {/* Admin: manager + staff */}
           <Route path="/admin" element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "manager", "staff"]}>
               <Admin />
             </ProtectedRoute>
           } />
