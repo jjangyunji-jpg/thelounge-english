@@ -720,6 +720,24 @@ export default function InstructorManagement() {
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">비고</span><span className="text-xs font-medium">{ins.bio_notes || "—"}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">미팅 링크</span><span className="text-xs font-medium truncate max-w-[180px]">{ins.meet_link ? <a href={ins.meet_link} target="_blank" rel="noopener noreferrer" className="text-navy underline">{ins.meet_link}</a> : "—"}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">계정</span><span className={`text-xs font-medium ${ins.user_id ? "text-success" : "text-muted-foreground"}`}>{ins.user_id ? "연결됨" : "미연결"}</span></div>
+                              {ins.user_id && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-muted-foreground">Staff 권한</span>
+                                  <button
+                                    onClick={() => toggleStaffRole(ins)}
+                                    disabled={togglingStaff === ins.id}
+                                    className="flex items-center gap-1.5 text-xs font-medium transition-colors"
+                                  >
+                                    {togglingStaff === ins.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : staffUserIds.has(ins.user_id!) ? (
+                                      <><ToggleRight className="w-5 h-5 text-success" /><span className="text-success">부여됨</span></>
+                                    ) : (
+                                      <><ToggleLeft className="w-5 h-5 text-muted-foreground" /><span className="text-muted-foreground">미부여</span></>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
