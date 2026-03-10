@@ -45,7 +45,7 @@ serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
-      .in("role", ["admin", "instructor"]);
+      .in("role", ["admin", "manager", "instructor"]);
     if (!roleData || roleData.length === 0) {
       return new Response(JSON.stringify({ error: "권한이 없습니다." }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },

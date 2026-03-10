@@ -32,9 +32,9 @@ serve(async (req) => {
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Check instructor/admin role
+    // Check instructor/manager role
     const { data: roleData } = await sb.from("user_roles").select("role")
-      .eq("user_id", userId).in("role", ["admin", "instructor"]);
+      .eq("user_id", userId).in("role", ["admin", "manager", "instructor"]);
     if (!roleData || roleData.length === 0) {
       return new Response(JSON.stringify({ error: "권한이 없습니다." }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
