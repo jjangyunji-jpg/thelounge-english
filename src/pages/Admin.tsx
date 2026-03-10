@@ -19,10 +19,13 @@ import SurveyManagement from "@/components/admin/SurveyManagement";
 
 import { Menu, X, Loader2 } from "lucide-react";
 
+export type AdminLevel = "manager" | "staff";
+
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [adminLevel, setAdminLevel] = useState<AdminLevel>("staff");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,9 +35,12 @@ export default function Admin() {
       const { data } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin");
-      if (!data || data.length === 0) { navigate("/login"); return; }
+        .eq("user_id", user.id);
+      const roles = (data || []).map((r) => r.role);
+      const isManagerOrAbove = roles.includes("admin") || roles.includes("manager");
+      const isStaff = roles.includes("staff");
+      if (!isManagerOrAbove && !isStaff) { navigate("/login"); return; }
+      setAdminLevel(isManagerOrAbove ? "manager" : "staff");
       setLoading(false);
     })();
   }, [navigate]);
