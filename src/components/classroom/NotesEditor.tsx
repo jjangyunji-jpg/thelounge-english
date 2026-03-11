@@ -252,25 +252,19 @@ export default function NotesEditor({
           event.preventDefault();
           if (slashRangeRef.current) {
             const { from, to } = slashRangeRef.current;
-            // Use view.dispatch to delete the slash text
-            const tr = view.state.tr.delete(from, to);
-            view.dispatch(tr);
+            // Delete the "//" text via ProseMirror view
+            view.dispatch(view.state.tr.delete(from, to));
             setSlashMenuOpen(false);
             slashRangeRef.current = null;
-            // Use a timeout to let the editor instance become available via the hook
+            // Use internalEditorRef to access the tiptap editor (avoids stale closure)
             setTimeout(() => {
-              const editorEl = (view as any).editor || (view.dom.closest('.ProseMirror') as any)?.__editor;
-              // Fallback: dispatch commands via the view
-              try {
-                // We need the tiptap editor instance - access via editorRef or re-query
-                const tipTapEditor = (view as any)._tiptapEditor;
-                if (tipTapEditor) {
-                  tipTapEditor.chain().focus().toggleCallout({ type: "info" }).run();
-                  setTimeout(() => {
-                    tipTapEditor.chain().focus().toggleHeading({ level: 1 }).run();
-                  }, 20);
-                }
-              } catch { /* ignore */ }
+              const ed = internalEditorRef.current;
+              if (ed) {
+                ed.chain().focus().toggleCallout({ type: "info" }).run();
+                setTimeout(() => {
+                  ed.chain().focus().toggleHeading({ level: 1 }).run();
+                }, 20);
+              }
             }, 10);
           }
           return true;
