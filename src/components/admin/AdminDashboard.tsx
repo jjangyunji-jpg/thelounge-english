@@ -43,9 +43,9 @@ export default function AdminDashboard() {
     const now = new Date();
     const todayStr = todayKSTString();
     const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-    const monthStart = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}-01`;
-    const monthEnd = new Date(kstNow.getFullYear(), kstNow.getMonth() + 1, 0);
-    const monthEndStr = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}-${String(monthEnd.getDate()).padStart(2, "0")}`;
+    const currentMonthStart = new Date(kstNow.getFullYear(), kstNow.getMonth(), 1);
+    const currentMonthEnd = new Date(kstNow.getFullYear(), kstNow.getMonth() + 1, 0, 23, 59, 59);
+    const monthStartStr = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}-01`;
 
     const [
       insRes, studRes, periodRes, holidayRes, sessRes, feedbackRes, meetRes,
@@ -77,7 +77,7 @@ export default function AdminDashboard() {
     setTotalStudents(activeStudents.length);
 
     // New students this month
-    const newThisMonth = students.filter(s => s.created_at && s.created_at.slice(0, 10) >= monthStart).length;
+    const newThisMonth = students.filter(s => s.created_at && s.created_at.slice(0, 10) >= monthStartStr).length;
     setNewStudentsThisMonth(newThisMonth);
 
     // Per-instructor cards
@@ -92,11 +92,11 @@ export default function AdminDashboard() {
       const nameSet = new Set<string>([ins.name]);
       insStudents.forEach(s => { if (s.instructor_name) nameSet.add(s.instructor_name); });
 
-      // Estimated pay: month-based, completed sessions only (ended_at 기준)
+      // Estimated pay: month-based, completed sessions only (ended_at 기준, KST Date 비교)
       let estimatedPay = 0;
       const monthSessions = allSessions.filter(s => {
-        const d = s.scheduled_at.slice(0, 10);
-        return nameSet.has(s.instructor_name) && d >= monthStart && d <= monthEndStr && !!s.ended_at;
+        const d = new Date(s.scheduled_at);
+        return nameSet.has(s.instructor_name) && d >= currentMonthStart && d <= currentMonthEnd && !!s.ended_at;
       });
       if (ins.position === "대표") {
         estimatedPay = monthSessions.length * ins.lesson_rate;
@@ -107,8 +107,8 @@ export default function AdminDashboard() {
         });
         // Include meetings for non-owner instructors
         const insMeetings = allMeetings.filter(m => {
-          const d = m.scheduled_at.slice(0, 10);
-          return m.instructor_id === ins.id && d >= monthStart && d <= todayStr;
+          const d = new Date(m.scheduled_at);
+          return m.instructor_id === ins.id && d >= currentMonthStart && d <= now;
         });
         insMeetings.forEach(m => {
           estimatedPay += Math.round((m.duration_minutes / 60) * BASE_SALARY);
