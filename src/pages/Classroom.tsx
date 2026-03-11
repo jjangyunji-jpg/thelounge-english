@@ -478,11 +478,19 @@ export default function Classroom() {
     autoSaveRemarks(remarks);
   };
 
+  const stripHtml = (text: string): string => {
+    if (!text || !/<[a-z][\s\S]*>/i.test(text)) return text;
+    const tmp = document.createElement("div");
+    tmp.innerHTML = text;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
   const handleRemarksChange = (val: string) => {
-    setRemarks(val);
+    const clean = stripHtml(val);
+    setRemarks(clean);
     setRemarksSaved(false);
     if (remarksTimerRef.current) clearTimeout(remarksTimerRef.current);
-    remarksTimerRef.current = setTimeout(() => autoSaveRemarks(val), 1500);
+    remarksTimerRef.current = setTimeout(() => autoSaveRemarks(clean), 1500);
   };
 
   const handleOpenEditorFullscreen = () => {
@@ -553,7 +561,12 @@ export default function Classroom() {
 
       // Load remarks: use current session's remarks, or fall back to most recent previous session's remarks
       if (sessionData?.remarks) {
-        setRemarks(sessionData.remarks);
+        const cleanRemarks = stripHtml(sessionData.remarks);
+        setRemarks(cleanRemarks);
+        // If HTML was stripped, save the cleaned version back
+        if (cleanRemarks !== sessionData.remarks) {
+          await supabase.from("class_sessions").update({ remarks: cleanRemarks }).eq("id", session.sessionId);
+        }
       } else {
         // Fetch previous session's remarks for carry-forward
         const { data: prevSession } = await supabase
@@ -566,9 +579,9 @@ export default function Classroom() {
           .limit(1)
           .single();
         if (prevSession?.remarks) {
-          setRemarks(prevSession.remarks);
-          // Auto-save carried-forward remarks to current session
-          await supabase.from("class_sessions").update({ remarks: prevSession.remarks }).eq("id", session.sessionId);
+          const cleanPrev = stripHtml(prevSession.remarks);
+          setRemarks(cleanPrev);
+          await supabase.from("class_sessions").update({ remarks: cleanPrev }).eq("id", session.sessionId);
         } else {
           setRemarks("");
         }
