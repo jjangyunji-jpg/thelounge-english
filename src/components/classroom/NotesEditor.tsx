@@ -120,6 +120,11 @@ export default function NotesEditor({
     ],
     content: content || "",
     editable: editable && !disabled,
+    onUpdate: ({ editor: e }) => {
+      if (!isUpdatingRef.current) {
+        onChange(e.getHTML());
+      }
+    },
     editorProps: {
       attributes: {
         class: "outline-none min-h-[500px] px-4 py-4 text-sm leading-relaxed",
