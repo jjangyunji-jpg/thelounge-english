@@ -189,13 +189,13 @@ export default function NotesEditor({
         return false;
       },
       handleKeyDown: (view, event) => {
-        if (slashMenuOpen && event.key === "Escape") {
+        if (slashMenuOpenRef.current && event.key === "Escape") {
           setSlashMenuOpen(false);
           return true;
         }
 
         // "//" + space → auto-insert callout with h3
-        if (slashMenuOpen && event.key === " " && slashFilter === "/") {
+        if (slashMenuOpenRef.current && event.key === " " && slashFilterRef.current === "/") {
           event.preventDefault();
           if (slashRangeRef.current && editor) {
             const { from, to } = slashRangeRef.current;
