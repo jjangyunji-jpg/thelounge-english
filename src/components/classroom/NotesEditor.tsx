@@ -114,41 +114,41 @@ export default function NotesEditor({
     ],
     content: content || "",
     editable: editable && !disabled,
-    onUpdate: ({ editor: ed }) => {
-      if (isUpdatingRef.current) return;
-      onChange(ed.getHTML());
-
-      // Detect slash command
-      const { from } = ed.state.selection;
-      const textBefore = ed.state.doc.textBetween(
-        Math.max(0, from - 20),
-        from,
-        "\n"
-      );
-      const slashMatch = textBefore.match(/\/([a-zA-Z가-힣\/]*)$/);
-      if (slashMatch) {
-        setSlashFilter(slashMatch[1].toLowerCase());
-        slashRangeRef.current = { from: from - slashMatch[0].length, to: from };
-        // Get cursor position for menu
-        const coords = ed.view.coordsAtPos(from);
-        const containerRect = editorContainerRef.current?.getBoundingClientRect();
-        if (containerRect) {
-          setSlashMenuPos({
-            top: coords.bottom - containerRect.top + 4,
-            left: coords.left - containerRect.left,
-          });
-        }
-        setSlashMenuOpen(true);
-      } else {
-        setSlashMenuOpen(false);
-        slashRangeRef.current = null;
-      }
-    },
     editorProps: {
       attributes: {
         class: "outline-none min-h-[500px] px-4 py-4 text-sm leading-relaxed",
         spellcheck: "true",
         lang: "en",
+      },
+      transformPastedHTML(html) {
+        // Notion pastes tables as nested divs or splits each row into
+        // its own <table>. Merge them into a single standard HTML table.
+        const doc = new DOMParser().parseFromString(html, "text/html");
+
+        const tables = doc.querySelectorAll("table");
+        if (tables.length > 1) {
+          const merged = doc.createElement("table");
+          const tbody = doc.createElement("tbody");
+          tables.forEach((t, i) => {
+            const rows = t.querySelectorAll("tr");
+            rows.forEach((row, ri) => {
+              const newRow = row.cloneNode(true) as HTMLTableRowElement;
+              if (i === 0 && ri === 0) {
+                newRow.querySelectorAll("td").forEach((td) => {
+                  const th = doc.createElement("th");
+                  th.innerHTML = td.innerHTML;
+                  td.replaceWith(th);
+                });
+              }
+              tbody.appendChild(newRow);
+            });
+            t.remove();
+          });
+          merged.appendChild(tbody);
+          doc.body.prepend(merged);
+        }
+
+        return doc.body.innerHTML;
       },
       handlePaste: (view, event) => {
         // Handle image paste
