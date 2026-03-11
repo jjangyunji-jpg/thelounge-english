@@ -623,6 +623,32 @@ export default function StudentDashboard() {
     setAllSessions(visibleAllSessions);
     setLoading(false);
 
+    // ── 결제 미완료 팝업 체크 ──
+    // 1회 수업 이후 결제가 안된 학생에게 팝업 표시
+    const isCorporateStudent = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
+    if (!isCorporateStudent) {
+      const completedSessions = visibleAllSessions.filter(s => s.ended_at || s.started_at);
+      if (completedSessions.length >= 1) {
+        // 현재 월 결제 확인 여부 체크
+        const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+        const currentMonth = nowKst.slice(0, 7); // YYYY-MM
+        const { data: paymentConf } = await supabase
+          .from("payment_confirmations")
+          .select("id,confirmed")
+          .eq("student_name", student)
+          .eq("month", currentMonth)
+          .maybeSingle();
+        
+        if (!paymentConf || !paymentConf.confirmed) {
+          // 이번 세션에서 이미 닫았는지 확인
+          const dismissedKey = `payment_reminder_dismissed_${student}_${currentMonth}`;
+          if (!sessionStorage.getItem(dismissedKey)) {
+            setShowPaymentReminder(true);
+          }
+        }
+      }
+    }
+
     // ── 피드백 설문조사 체크 ──
     // 현재 기간의 마지막 세션(4주차)이 종료되었는지 확인
     const periods = periodsRes.data || [];
