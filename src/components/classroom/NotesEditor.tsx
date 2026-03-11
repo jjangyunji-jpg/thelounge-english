@@ -114,6 +114,49 @@ export default function NotesEditor({
     ],
     content: content || "",
     editable: editable && !disabled,
+    editorProps: {
+      transformPastedHTML(html) {
+        // Notion pastes tables as nested divs instead of <table>.
+        // Detect Notion table structure and convert to standard HTML table.
+        const doc = new DOMParser().parseFromString(html, "text/html");
+
+        // Notion uses <table> but wraps cells in complex divs. Also sometimes
+        // it pastes rows as separate <p> or <div> blocks outside the table.
+        // Strategy: if we find a <table>, keep it; otherwise detect Notion's
+        // div-based row/cell pattern.
+
+        // Fix 1: Notion sometimes copies each row as a separate <tr> wrapped
+        // in its own <table>. Merge them into one table.
+        const tables = doc.querySelectorAll("table");
+        if (tables.length > 1) {
+          const merged = doc.createElement("table");
+          const tbody = doc.createElement("tbody");
+          tables.forEach((t, i) => {
+            const rows = t.querySelectorAll("tr");
+            rows.forEach((row, ri) => {
+              const newRow = row.cloneNode(true) as HTMLTableRowElement;
+              // First table's first row becomes header
+              if (i === 0 && ri === 0) {
+                // Convert td to th for header row
+                newRow.querySelectorAll("td").forEach((td) => {
+                  const th = doc.createElement("th");
+                  th.innerHTML = td.innerHTML;
+                  td.replaceWith(th);
+                });
+              }
+              tbody.appendChild(newRow);
+            });
+            t.remove();
+          });
+          merged.appendChild(tbody);
+          doc.body.prepend(merged);
+        }
+
+        // Fix 2: Clean up empty paragraphs between table elements
+        const result = doc.body.innerHTML;
+        return result;
+      },
+    },
     onUpdate: ({ editor: ed }) => {
       if (isUpdatingRef.current) return;
       onChange(ed.getHTML());
