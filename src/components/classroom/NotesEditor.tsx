@@ -66,6 +66,7 @@ export default function NotesEditor({
   const slashMenuOpenRef = useRef(false);
   const slashFilterRef = useRef("");
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const internalEditorRef = useRef<any>(null);
   const [aiCorrecting, setAiCorrecting] = useState(false);
 
   // Keep refs in sync with state so handleKeyDown (stale closure) can read latest values
