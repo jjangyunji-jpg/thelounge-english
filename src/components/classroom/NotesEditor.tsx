@@ -261,16 +261,16 @@ export default function NotesEditor({
           return false;
         }
 
-        // "//" + space → auto-insert callout with h3
+        // "//" + space → auto-insert callout with h1
+        // Method 1: slash menu is open with "/" filter (normal flow)
         if (slashMenuOpenRef.current && event.key === " " && slashFilterRef.current === "/") {
           event.preventDefault();
           if (slashRangeRef.current) {
             const { from, to } = slashRangeRef.current;
-            // Delete the "//" text via ProseMirror view
             view.dispatch(view.state.tr.delete(from, to));
             setSlashMenuOpen(false);
+            slashMenuOpenRef.current = false;
             slashRangeRef.current = null;
-            // Use internalEditorRef to access the tiptap editor (avoids stale closure)
             setTimeout(() => {
               const ed = internalEditorRef.current;
               if (ed) {
@@ -282,6 +282,30 @@ export default function NotesEditor({
             }, 10);
           }
           return true;
+        }
+
+        // Method 2: Fallback — detect "//" before cursor directly (handles Korean IME bypass)
+        if (event.key === " " && !slashMenuOpenRef.current) {
+          const pos = view.state.selection.from;
+          if (pos >= 2) {
+            try {
+              const textBefore = view.state.doc.textBetween(pos - 2, pos, "");
+              if (textBefore === "//") {
+                event.preventDefault();
+                view.dispatch(view.state.tr.delete(pos - 2, pos));
+                setTimeout(() => {
+                  const ed = internalEditorRef.current;
+                  if (ed) {
+                    ed.chain().focus().toggleCallout({ type: "info" }).run();
+                    setTimeout(() => {
+                      ed.chain().focus().toggleHeading({ level: 1 }).run();
+                    }, 20);
+                  }
+                }, 10);
+                return true;
+              }
+            } catch { /* ignore position errors */ }
+          }
         }
 
         // Arrow replacements: -> → , <-> ↔
@@ -309,8 +333,6 @@ export default function NotesEditor({
 
         // <- + space → ←
         if (event.key === " ") {
-
-          // <- + space → ← (async is fine here)
           setTimeout(() => {
             if (!editor) return;
             const pos = editor.state.selection.from;
