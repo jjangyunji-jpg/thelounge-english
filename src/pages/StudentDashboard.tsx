@@ -1122,7 +1122,7 @@ export default function StudentDashboard() {
                 onClick={() => {
                   const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
                   const currentMonth = nowKst.slice(0, 7);
-                  sessionStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  localStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
                   setShowPaymentReminder(false);
                 }}
               >
