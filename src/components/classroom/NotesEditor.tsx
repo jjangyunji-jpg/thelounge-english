@@ -213,8 +213,10 @@ export default function NotesEditor({
         }
         if (slashMenuOpenRef.current) {
           if (text.length === 1 && /[a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣/]/.test(text)) {
-            // Update filter and extend range
-            setSlashFilter(prev => prev + text);
+            // Update filter and extend range — sync ref immediately so handleKeyDown can read it
+            const newFilter = slashFilterRef.current + text;
+            slashFilterRef.current = newFilter;
+            setSlashFilter(newFilter);
             if (slashRangeRef.current) {
               slashRangeRef.current = { ...slashRangeRef.current, to: slashRangeRef.current.to + 1 };
             }
