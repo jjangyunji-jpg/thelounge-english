@@ -63,6 +63,7 @@ export default function AdminDashboard() {
     const students = studRes.data || [];
     const allSessions = sessRes.data || [];
     const allFeedback = feedbackRes.data || [];
+    const allMeetings = meetRes.data || [];
 
     // Current period
     const periods = periodRes.data || [];
@@ -91,21 +92,27 @@ export default function AdminDashboard() {
       const nameSet = new Set<string>([ins.name]);
       insStudents.forEach(s => { if (s.instructor_name) nameSet.add(s.instructor_name); });
 
-      // Estimated pay for current period
+      // Estimated pay: month-based, completed sessions only (ended_at 기준)
       let estimatedPay = 0;
-      if (currentPeriod) {
-        const periodSessions = allSessions.filter(s => {
-          const d = s.scheduled_at.slice(0, 10);
-          return nameSet.has(s.instructor_name) && d >= currentPeriod.start_date && d <= todayStr;
+      const monthSessions = allSessions.filter(s => {
+        const d = s.scheduled_at.slice(0, 10);
+        return nameSet.has(s.instructor_name) && d >= monthStart && d <= monthEndStr && !!s.ended_at;
+      });
+      if (ins.position === "대표") {
+        estimatedPay = monthSessions.length * ins.lesson_rate;
+      } else {
+        monthSessions.forEach(s => {
+          const levelRate = LEVEL_RATES[s.level] || 19000;
+          estimatedPay += BASE_SALARY + levelRate;
         });
-        if (ins.position === "대표") {
-          estimatedPay = periodSessions.length * ins.lesson_rate;
-        } else {
-          periodSessions.forEach(s => {
-            const levelRate = LEVEL_RATES[s.level] || 19000;
-            estimatedPay += BASE_SALARY + levelRate;
-          });
-        }
+        // Include meetings for non-owner instructors
+        const insMeetings = allMeetings.filter(m => {
+          const d = m.scheduled_at.slice(0, 10);
+          return m.instructor_id === ins.id && d >= monthStart && d <= todayStr;
+        });
+        insMeetings.forEach(m => {
+          estimatedPay += Math.round((m.duration_minutes / 60) * BASE_SALARY);
+        });
       }
 
       // Feedback average
