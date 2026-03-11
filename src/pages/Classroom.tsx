@@ -561,7 +561,12 @@ export default function Classroom() {
 
       // Load remarks: use current session's remarks, or fall back to most recent previous session's remarks
       if (sessionData?.remarks) {
-        setRemarks(sessionData.remarks);
+        const cleanRemarks = stripHtml(sessionData.remarks);
+        setRemarks(cleanRemarks);
+        // If HTML was stripped, save the cleaned version back
+        if (cleanRemarks !== sessionData.remarks) {
+          await supabase.from("class_sessions").update({ remarks: cleanRemarks }).eq("id", session.sessionId);
+        }
       } else {
         // Fetch previous session's remarks for carry-forward
         const { data: prevSession } = await supabase
