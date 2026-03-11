@@ -1086,6 +1086,48 @@ export default function StudentDashboard() {
         />
       )}
 
+      {/* ── Payment Reminder Popup ── */}
+      {showPaymentReminder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card rounded-xl shadow-xl border border-border w-[340px] mx-4 overflow-hidden">
+            <div className="px-5 pt-5 pb-4 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mx-auto">
+                <CreditCard className="w-6 h-6 text-gold" />
+              </div>
+              <h3 className="text-sm font-bold text-foreground">수업료 결제 안내</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                수업이 시작되었지만 아직 이번 달 수업료가<br />결제되지 않았습니다. 결제를 진행해 주세요.
+              </p>
+            </div>
+            <div className="px-5 pb-5 flex flex-col gap-2">
+              <Button
+                size="sm"
+                className="w-full bg-gold hover:bg-gold/90 text-foreground font-semibold"
+                onClick={() => {
+                  const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                  const currentMonth = nowKst.slice(0, 7);
+                  sessionStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  setShowPaymentReminder(false);
+                  setShowPaymentModal(true);
+                }}
+              >
+                결제하기
+              </Button>
+              <button
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                onClick={() => {
+                  const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                  const currentMonth = nowKst.slice(0, 7);
+                  sessionStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  setShowPaymentReminder(false);
+                }}
+              >
+                나중에 할게요
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bug Report Modal */}
       <BugReportModal
