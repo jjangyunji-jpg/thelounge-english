@@ -46,7 +46,8 @@ function isCorrect(userAnswer: string, expected: string): boolean {
 function speakKorean(text: string) {
   if (!("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
+  const cleaned = text.replace(/[\/\\,.\-~!@#$%^&*()_+=\[\]{}<>?;:'"「」『』·…|]/g, " ").replace(/\s+/g, " ").trim();
+  const utter = new SpeechSynthesisUtterance(cleaned);
   utter.lang = "ko-KR";
   utter.rate = 0.9;
   window.speechSynthesis.speak(utter);
