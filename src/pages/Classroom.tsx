@@ -579,9 +579,9 @@ export default function Classroom() {
           .limit(1)
           .single();
         if (prevSession?.remarks) {
-          setRemarks(prevSession.remarks);
-          // Auto-save carried-forward remarks to current session
-          await supabase.from("class_sessions").update({ remarks: prevSession.remarks }).eq("id", session.sessionId);
+          const cleanPrev = stripHtml(prevSession.remarks);
+          setRemarks(cleanPrev);
+          await supabase.from("class_sessions").update({ remarks: cleanPrev }).eq("id", session.sessionId);
         } else {
           setRemarks("");
         }
