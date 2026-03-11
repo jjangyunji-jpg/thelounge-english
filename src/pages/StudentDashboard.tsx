@@ -940,61 +940,8 @@ export default function StudentDashboard() {
     return { submitted, total: sessionHw.length, pending: sessionHw.length - submitted };
   })();
 
-  // 결제 버튼 활성화 여부
-  const paymentAvailable = (() => {
-    if (!schedulePeriods.length || !studentRecord?.schedules?.length) return false;
-    const now = new Date();
-    const sortedPeriods = [...schedulePeriods].sort((a, b) => a.start_date.localeCompare(b.start_date));
-    
-    for (let i = 0; i < sortedPeriods.length; i++) {
-      const period = sortedPeriods[i];
-      const periodEnd = new Date(period.end_date + "T00:00:00");
-      
-      // 해당 기간의 마지막 수업일 찾기
-      const periodSessions = allSessions
-        .filter(s => {
-          const d = new Date(s.scheduled_at);
-          return d >= new Date(period.start_date + "T00:00:00") && d <= new Date(period.end_date + "T23:59:59");
-        })
-        .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-      
-      const lastSessionDate = periodSessions.length > 0
-        ? new Date(periodSessions[0].scheduled_at)
-        : periodEnd;
-      
-      // 마지막 수업 전날
-      const activateFrom = new Date(lastSessionDate);
-      activateFrom.setDate(activateFrom.getDate() - 1);
-      activateFrom.setHours(0, 0, 0, 0);
-      
-      // 다음 기간 첫 수업 + 5일
-      const nextPeriod = sortedPeriods[i + 1];
-      let activateUntil: Date;
-      if (nextPeriod) {
-        const nextPeriodSessions = allSessions
-          .filter(s => {
-            const d = new Date(s.scheduled_at);
-            return d >= new Date(nextPeriod.start_date + "T00:00:00") && d <= new Date(nextPeriod.end_date + "T23:59:59");
-          })
-          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-        
-        const firstNextSession = nextPeriodSessions.length > 0
-          ? new Date(nextPeriodSessions[0].scheduled_at)
-          : new Date(nextPeriod.start_date + "T00:00:00");
-        
-        activateUntil = new Date(firstNextSession);
-        activateUntil.setDate(activateUntil.getDate() + 5);
-        activateUntil.setHours(23, 59, 59, 999);
-      } else {
-        // 마지막 기간이면 종료일 + 10일
-        activateUntil = new Date(periodEnd);
-        activateUntil.setDate(activateUntil.getDate() + 10);
-      }
-      
-      if (now >= activateFrom && now <= activateUntil) return true;
-    }
-    return false;
-  })();
+  // 결제 버튼은 항상 활성화
+  const paymentAvailable = true;
 
   const vocabByWeek = periodVocabWords.reduce<Record<string, VocabWord[]>>((acc, w) => {
     if (!acc[w.week_label]) acc[w.week_label] = [];
