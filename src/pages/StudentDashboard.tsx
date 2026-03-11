@@ -403,6 +403,7 @@ export default function StudentDashboard() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [showMakeup, setShowMakeup] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPaymentReminder, setShowPaymentReminder] = useState(false);
   const [paymentStep, setPaymentStep] = useState<"select" | "receipt" | "attendance">("select");
   const [receiptType, setReceiptType] = useState<"phone" | "business">("phone");
   const [receiptNumber, setReceiptNumber] = useState("");
