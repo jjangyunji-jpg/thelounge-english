@@ -44,22 +44,26 @@ export default function AdminDashboard() {
     const todayStr = todayKSTString();
     const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
     const monthStart = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}-01`;
+    const monthEnd = new Date(kstNow.getFullYear(), kstNow.getMonth() + 1, 0);
+    const monthEndStr = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}-${String(monthEnd.getDate()).padStart(2, "0")}`;
 
     const [
-      insRes, studRes, periodRes, holidayRes, sessRes, feedbackRes,
+      insRes, studRes, periodRes, holidayRes, sessRes, feedbackRes, meetRes,
     ] = await Promise.all([
       supabase.from("instructors").select("id,name,position,active,lesson_rate,meeting_rate").eq("active", true),
       supabase.from("instructor_students").select("id,instructor_id,student_name,schedules,created_at,status,instructor_name"),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("holiday_notices").select("title,date_start,date_end").gte("date_end", todayStr).order("date_start", { ascending: true }),
-      supabase.from("class_sessions").select("id,instructor_name,level,scheduled_at,student_name"),
+      supabase.from("class_sessions").select("id,instructor_name,level,scheduled_at,student_name,ended_at"),
       supabase.from("class_feedback").select("instructor_name,satisfaction,teaching_quality,communication,lesson_preparation,ratings"),
+      supabase.from("business_meetings").select("id,instructor_id,scheduled_at,duration_minutes,notes"),
     ]);
 
     const instructors = insRes.data || [];
     const students = studRes.data || [];
     const allSessions = sessRes.data || [];
     const allFeedback = feedbackRes.data || [];
+    const allMeetings = meetRes.data || [];
 
     // Current period
     const periods = periodRes.data || [];
@@ -88,21 +92,27 @@ export default function AdminDashboard() {
       const nameSet = new Set<string>([ins.name]);
       insStudents.forEach(s => { if (s.instructor_name) nameSet.add(s.instructor_name); });
 
-      // Estimated pay for current period
+      // Estimated pay: month-based, completed sessions only (ended_at 기준)
       let estimatedPay = 0;
-      if (currentPeriod) {
-        const periodSessions = allSessions.filter(s => {
-          const d = s.scheduled_at.slice(0, 10);
-          return nameSet.has(s.instructor_name) && d >= currentPeriod.start_date && d <= todayStr;
+      const monthSessions = allSessions.filter(s => {
+        const d = s.scheduled_at.slice(0, 10);
+        return nameSet.has(s.instructor_name) && d >= monthStart && d <= monthEndStr && !!s.ended_at;
+      });
+      if (ins.position === "대표") {
+        estimatedPay = monthSessions.length * ins.lesson_rate;
+      } else {
+        monthSessions.forEach(s => {
+          const levelRate = LEVEL_RATES[s.level] || 19000;
+          estimatedPay += BASE_SALARY + levelRate;
         });
-        if (ins.position === "대표") {
-          estimatedPay = periodSessions.length * ins.lesson_rate;
-        } else {
-          periodSessions.forEach(s => {
-            const levelRate = LEVEL_RATES[s.level] || 19000;
-            estimatedPay += BASE_SALARY + levelRate;
-          });
-        }
+        // Include meetings for non-owner instructors
+        const insMeetings = allMeetings.filter(m => {
+          const d = m.scheduled_at.slice(0, 10);
+          return m.instructor_id === ins.id && d >= monthStart && d <= todayStr;
+        });
+        insMeetings.forEach(m => {
+          estimatedPay += Math.round((m.duration_minutes / 60) * BASE_SALARY);
+        });
       }
 
       // Feedback average
