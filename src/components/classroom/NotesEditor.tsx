@@ -196,7 +196,17 @@ export default function NotesEditor({
       },
       handleTextInput: (view, from, to, text) => {
         if (text === "/") {
-          // Open slash menu
+          if (slashMenuOpenRef.current) {
+            // Second "/" typed while menu is open → update filter synchronously
+            const newFilter = slashFilterRef.current + "/";
+            slashFilterRef.current = newFilter;
+            setSlashFilter(newFilter);
+            if (slashRangeRef.current) {
+              slashRangeRef.current = { ...slashRangeRef.current, to: slashRangeRef.current.to + 1 };
+            }
+            return false;
+          }
+          // First "/" → open slash menu
           const coords = view.coordsAtPos(from);
           const containerRect = editorContainerRef.current?.getBoundingClientRect();
           if (containerRect) {
@@ -207,9 +217,11 @@ export default function NotesEditor({
             });
           }
           slashRangeRef.current = { from, to: to + 1 };
+          slashFilterRef.current = "";
           setSlashFilter("");
+          slashMenuOpenRef.current = true;
           setSlashMenuOpen(true);
-          return false; // let "/" be inserted
+          return false;
         }
         if (slashMenuOpenRef.current) {
           if (text.length === 1 && /[a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣/]/.test(text)) {
