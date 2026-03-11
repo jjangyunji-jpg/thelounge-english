@@ -1587,8 +1587,7 @@ export default function StudentDashboard() {
               </div>
               ) : (
               <>
-              {paymentAvailable ? (
-                <button
+              <button
                   onClick={() => setShowPaymentModal(true)}
                   className="w-full rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-gold/10 border border-gold/30 hover:bg-gold/20"
                 >
@@ -1597,29 +1596,8 @@ export default function StudentDashboard() {
                   </div>
                   <div>
                     <p className="text-xs font-bold leading-none text-foreground">수업료 결제하기</p>
-                    <p className="text-[10px] mt-0.5 text-gold font-medium">결제 가능</p>
                   </div>
                 </button>
-              ) : (
-                <div className="relative group">
-                  <button
-                    disabled
-                    className="w-full rounded-lg p-3 flex flex-col items-start gap-2 text-left bg-muted/30 border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
-                      <CreditCard className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold leading-none text-muted-foreground">수업료 결제하기</p>
-                      <p className="text-[10px] mt-0.5 text-muted-foreground">결제 기간이 아닙니다</p>
-                    </div>
-                  </button>
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-md bg-foreground text-background text-[10px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-                    기간 종료 전 결제가 가능합니다
-                  </div>
-                </div>
-              )}
-              </>
               )}
             </div>
           </div>
