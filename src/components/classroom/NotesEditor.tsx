@@ -249,16 +249,27 @@ export default function NotesEditor({
         // "//" + space → auto-insert callout with h3
         if (slashMenuOpenRef.current && event.key === " " && slashFilterRef.current === "/") {
           event.preventDefault();
-          if (slashRangeRef.current && editor) {
+          if (slashRangeRef.current) {
             const { from, to } = slashRangeRef.current;
-            editor.chain().focus().deleteRange({ from, to }).run();
+            // Use view.dispatch to delete the slash text
+            const tr = view.state.tr.delete(from, to);
+            view.dispatch(tr);
             setSlashMenuOpen(false);
             slashRangeRef.current = null;
+            // Use a timeout to let the editor instance become available via the hook
             setTimeout(() => {
-              editor.chain().focus().toggleCallout({ type: "info" }).run();
-              setTimeout(() => {
-                editor.chain().focus().toggleHeading({ level: 1 }).run();
-              }, 20);
+              const editorEl = (view as any).editor || (view.dom.closest('.ProseMirror') as any)?.__editor;
+              // Fallback: dispatch commands via the view
+              try {
+                // We need the tiptap editor instance - access via editorRef or re-query
+                const tipTapEditor = (view as any)._tiptapEditor;
+                if (tipTapEditor) {
+                  tipTapEditor.chain().focus().toggleCallout({ type: "info" }).run();
+                  setTimeout(() => {
+                    tipTapEditor.chain().focus().toggleHeading({ level: 1 }).run();
+                  }, 20);
+                }
+              } catch { /* ignore */ }
             }, 10);
           }
           return true;
