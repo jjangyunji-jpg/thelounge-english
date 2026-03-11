@@ -1408,6 +1408,14 @@ export default function StudentDashboard() {
           </div>
           {authStudent && (
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+              <a
+                href="https://daily-diary-lounge.lovable.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold text-primary-foreground bg-gold hover:bg-gold/90 transition-colors whitespace-nowrap shadow-sm animate-pulse hover:animate-none"
+              >
+                📝 다이어리 라운지
+              </a>
               <button
                 onClick={async () => {
                   try {
@@ -1421,14 +1429,6 @@ export default function StudentDashboard() {
               >
                 가이드
               </button>
-              <a
-                href="https://daily-diary-lounge.lovable.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold text-primary-foreground bg-gold hover:bg-gold/90 transition-colors whitespace-nowrap shadow-sm animate-pulse hover:animate-none"
-              >
-                📝 다이어리 라운지
-              </a>
               <button
                 onClick={() => setShowBugReport(true)}
                 className="px-1.5 sm:px-2 py-1.5 rounded-lg text-[11px] sm:text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
