@@ -43,9 +43,9 @@ export default function AdminDashboard() {
     const now = new Date();
     const todayStr = todayKSTString();
     const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-    const monthStart = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}-01`;
-    const monthEnd = new Date(kstNow.getFullYear(), kstNow.getMonth() + 1, 0);
-    const monthEndStr = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}-${String(monthEnd.getDate()).padStart(2, "0")}`;
+    const currentMonthStart = new Date(kstNow.getFullYear(), kstNow.getMonth(), 1);
+    const currentMonthEnd = new Date(kstNow.getFullYear(), kstNow.getMonth() + 1, 0, 23, 59, 59);
+    const monthStartStr = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}-01`;
 
     const [
       insRes, studRes, periodRes, holidayRes, sessRes, feedbackRes, meetRes,
