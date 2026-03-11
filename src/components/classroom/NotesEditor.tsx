@@ -63,6 +63,8 @@ export default function NotesEditor({
   const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [slashFilter, setSlashFilter] = useState("");
   const slashRangeRef = useRef<{ from: number; to: number } | null>(null);
+  const slashMenuOpenRef = useRef(false);
+  const slashFilterRef = useRef("");
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [aiCorrecting, setAiCorrecting] = useState(false);
 
