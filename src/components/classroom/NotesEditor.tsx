@@ -63,8 +63,14 @@ export default function NotesEditor({
   const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [slashFilter, setSlashFilter] = useState("");
   const slashRangeRef = useRef<{ from: number; to: number } | null>(null);
+  const slashMenuOpenRef = useRef(false);
+  const slashFilterRef = useRef("");
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [aiCorrecting, setAiCorrecting] = useState(false);
+
+  // Keep refs in sync with state so handleKeyDown (stale closure) can read latest values
+  useEffect(() => { slashMenuOpenRef.current = slashMenuOpen; }, [slashMenuOpen]);
+  useEffect(() => { slashFilterRef.current = slashFilter; }, [slashFilter]);
 
   const editor = useEditor({
     extensions: [
@@ -183,13 +189,13 @@ export default function NotesEditor({
         return false;
       },
       handleKeyDown: (view, event) => {
-        if (slashMenuOpen && event.key === "Escape") {
+        if (slashMenuOpenRef.current && event.key === "Escape") {
           setSlashMenuOpen(false);
           return true;
         }
 
         // "//" + space → auto-insert callout with h3
-        if (slashMenuOpen && event.key === " " && slashFilter === "/") {
+        if (slashMenuOpenRef.current && event.key === " " && slashFilterRef.current === "/") {
           event.preventDefault();
           if (slashRangeRef.current && editor) {
             const { from, to } = slashRangeRef.current;
