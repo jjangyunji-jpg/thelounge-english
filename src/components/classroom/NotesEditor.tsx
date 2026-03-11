@@ -66,6 +66,7 @@ export default function NotesEditor({
   const slashMenuOpenRef = useRef(false);
   const slashFilterRef = useRef("");
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const internalEditorRef = useRef<any>(null);
   const [aiCorrecting, setAiCorrecting] = useState(false);
 
   // Keep refs in sync with state so handleKeyDown (stale closure) can read latest values
@@ -249,16 +250,21 @@ export default function NotesEditor({
         // "//" + space → auto-insert callout with h3
         if (slashMenuOpenRef.current && event.key === " " && slashFilterRef.current === "/") {
           event.preventDefault();
-          if (slashRangeRef.current && editor) {
+          if (slashRangeRef.current) {
             const { from, to } = slashRangeRef.current;
-            editor.chain().focus().deleteRange({ from, to }).run();
+            // Delete the "//" text via ProseMirror view
+            view.dispatch(view.state.tr.delete(from, to));
             setSlashMenuOpen(false);
             slashRangeRef.current = null;
+            // Use internalEditorRef to access the tiptap editor (avoids stale closure)
             setTimeout(() => {
-              editor.chain().focus().toggleCallout({ type: "info" }).run();
-              setTimeout(() => {
-                editor.chain().focus().toggleHeading({ level: 1 }).run();
-              }, 20);
+              const ed = internalEditorRef.current;
+              if (ed) {
+                ed.chain().focus().toggleCallout({ type: "info" }).run();
+                setTimeout(() => {
+                  ed.chain().focus().toggleHeading({ level: 1 }).run();
+                }, 20);
+              }
             }, 10);
           }
           return true;
@@ -323,6 +329,11 @@ export default function NotesEditor({
       },
     },
   });
+
+  // Keep internal editor ref in sync
+  useEffect(() => {
+    if (editor) internalEditorRef.current = editor;
+  }, [editor]);
 
   const executeSlashCommand = useCallback((action: () => void) => {
     if (!editor || !slashRangeRef.current) return;
