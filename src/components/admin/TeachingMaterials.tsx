@@ -117,12 +117,18 @@ export default function TeachingMaterials() {
   // ── Material CRUD ──
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
+    // Treat empty-ish HTML (e.g. "<p></p>") as empty
+    const strippedContent = newContent.replace(/<[^>]*>/g, "").trim();
+    if (!strippedContent) {
+      toast({ title: "내용을 입력해주세요", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     const maxOrder = materials.length > 0 ? Math.max(...materials.map(m => m.sort_order)) + 1 : 0;
     const { error } = await supabase.from("teaching_materials").insert({
       category,
       title: newTitle.trim(),
-      content: newContent.trim(),
+      content: newContent,
       sort_order: maxOrder,
     });
     if (error) { toast({ title: "추가 실패", description: error.message, variant: "destructive" }); }
@@ -132,9 +138,14 @@ export default function TeachingMaterials() {
 
   const handleSaveEdit = async () => {
     if (!editing || !editTitle.trim()) return;
+    const strippedContent = editContent.replace(/<[^>]*>/g, "").trim();
+    if (!strippedContent) {
+      toast({ title: "내용을 입력해주세요", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.from("teaching_materials")
-      .update({ title: editTitle.trim(), content: editContent.trim() })
+      .update({ title: editTitle.trim(), content: editContent })
       .eq("id", editing);
     if (error) { toast({ title: "수정 실패", description: error.message, variant: "destructive" }); }
     else { toast({ title: "수정 완료 ✓" }); setEditing(null); fetchMaterials(); }
