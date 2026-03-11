@@ -624,14 +624,19 @@ export default function StudentDashboard() {
     setLoading(false);
 
     // ── 결제 미완료 팝업 체크 ──
-    // 1회 수업 이후 결제가 안된 학생에게 팝업 표시
+    // 수업 완료 후 다음 접속 시 결제가 안된 학생에게 팝업 표시
     const isCorporateStudent = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
     if (!isCorporateStudent) {
-      const completedSessions = visibleAllSessions.filter(s => s.ended_at || s.started_at);
-      if (completedSessions.length >= 1) {
-        // 현재 월 결제 확인 여부 체크
-        const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-        const currentMonth = nowKst.slice(0, 7); // YYYY-MM
+      const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+      const currentMonth = nowKst.slice(0, 7); // YYYY-MM
+      // 이번 달에 완료된 수업이 있는지 확인
+      const completedThisMonth = visibleAllSessions.filter(s => {
+        if (!s.ended_at) return false;
+        const sessionDate = new Date(s.scheduled_at);
+        const sessionMonth = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(sessionDate).slice(0, 7);
+        return sessionMonth === currentMonth;
+      });
+      if (completedThisMonth.length >= 1) {
         const { data: paymentConf } = await supabase
           .from("payment_confirmations")
           .select("id,confirmed")
@@ -640,9 +645,8 @@ export default function StudentDashboard() {
           .maybeSingle();
         
         if (!paymentConf || !paymentConf.confirmed) {
-          // 이번 세션에서 이미 닫았는지 확인
           const dismissedKey = `payment_reminder_dismissed_${student}_${currentMonth}`;
-          if (!sessionStorage.getItem(dismissedKey)) {
+          if (!localStorage.getItem(dismissedKey)) {
             setShowPaymentReminder(true);
           }
         }
@@ -1106,7 +1110,7 @@ export default function StudentDashboard() {
                 onClick={() => {
                   const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
                   const currentMonth = nowKst.slice(0, 7);
-                  sessionStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  localStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
                   setShowPaymentReminder(false);
                   setShowPaymentModal(true);
                 }}
@@ -1118,7 +1122,7 @@ export default function StudentDashboard() {
                 onClick={() => {
                   const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
                   const currentMonth = nowKst.slice(0, 7);
-                  sessionStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  localStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
                   setShowPaymentReminder(false);
                 }}
               >
