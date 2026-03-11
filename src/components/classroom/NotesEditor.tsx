@@ -115,18 +115,16 @@ export default function NotesEditor({
     content: content || "",
     editable: editable && !disabled,
     editorProps: {
+      attributes: {
+        class: "outline-none min-h-[500px] px-4 py-4 text-sm leading-relaxed",
+        spellcheck: "true",
+        lang: "en",
+      },
       transformPastedHTML(html) {
-        // Notion pastes tables as nested divs instead of <table>.
-        // Detect Notion table structure and convert to standard HTML table.
+        // Notion pastes tables as nested divs or splits each row into
+        // its own <table>. Merge them into a single standard HTML table.
         const doc = new DOMParser().parseFromString(html, "text/html");
 
-        // Notion uses <table> but wraps cells in complex divs. Also sometimes
-        // it pastes rows as separate <p> or <div> blocks outside the table.
-        // Strategy: if we find a <table>, keep it; otherwise detect Notion's
-        // div-based row/cell pattern.
-
-        // Fix 1: Notion sometimes copies each row as a separate <tr> wrapped
-        // in its own <table>. Merge them into one table.
         const tables = doc.querySelectorAll("table");
         if (tables.length > 1) {
           const merged = doc.createElement("table");
@@ -135,9 +133,7 @@ export default function NotesEditor({
             const rows = t.querySelectorAll("tr");
             rows.forEach((row, ri) => {
               const newRow = row.cloneNode(true) as HTMLTableRowElement;
-              // First table's first row becomes header
               if (i === 0 && ri === 0) {
-                // Convert td to th for header row
                 newRow.querySelectorAll("td").forEach((td) => {
                   const th = doc.createElement("th");
                   th.innerHTML = td.innerHTML;
@@ -152,46 +148,7 @@ export default function NotesEditor({
           doc.body.prepend(merged);
         }
 
-        // Fix 2: Clean up empty paragraphs between table elements
-        const result = doc.body.innerHTML;
-        return result;
-      },
-    },
-    onUpdate: ({ editor: ed }) => {
-      if (isUpdatingRef.current) return;
-      onChange(ed.getHTML());
-
-      // Detect slash command
-      const { from } = ed.state.selection;
-      const textBefore = ed.state.doc.textBetween(
-        Math.max(0, from - 20),
-        from,
-        "\n"
-      );
-      const slashMatch = textBefore.match(/\/([a-zA-Z가-힣\/]*)$/);
-      if (slashMatch) {
-        setSlashFilter(slashMatch[1].toLowerCase());
-        slashRangeRef.current = { from: from - slashMatch[0].length, to: from };
-        // Get cursor position for menu
-        const coords = ed.view.coordsAtPos(from);
-        const containerRect = editorContainerRef.current?.getBoundingClientRect();
-        if (containerRect) {
-          setSlashMenuPos({
-            top: coords.bottom - containerRect.top + 4,
-            left: coords.left - containerRect.left,
-          });
-        }
-        setSlashMenuOpen(true);
-      } else {
-        setSlashMenuOpen(false);
-        slashRangeRef.current = null;
-      }
-    },
-    editorProps: {
-      attributes: {
-        class: "outline-none min-h-[500px] px-4 py-4 text-sm leading-relaxed",
-        spellcheck: "true",
-        lang: "en",
+        return doc.body.innerHTML;
       },
       handlePaste: (view, event) => {
         // Handle image paste
