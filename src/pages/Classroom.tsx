@@ -478,11 +478,19 @@ export default function Classroom() {
     autoSaveRemarks(remarks);
   };
 
+  const stripHtml = (text: string): string => {
+    if (!text || !/<[a-z][\s\S]*>/i.test(text)) return text;
+    const tmp = document.createElement("div");
+    tmp.innerHTML = text;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
   const handleRemarksChange = (val: string) => {
-    setRemarks(val);
+    const clean = stripHtml(val);
+    setRemarks(clean);
     setRemarksSaved(false);
     if (remarksTimerRef.current) clearTimeout(remarksTimerRef.current);
-    remarksTimerRef.current = setTimeout(() => autoSaveRemarks(val), 1500);
+    remarksTimerRef.current = setTimeout(() => autoSaveRemarks(clean), 1500);
   };
 
   const handleOpenEditorFullscreen = () => {
