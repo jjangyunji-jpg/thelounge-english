@@ -403,6 +403,7 @@ export default function StudentDashboard() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [showMakeup, setShowMakeup] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPaymentReminder, setShowPaymentReminder] = useState(false);
   const [paymentStep, setPaymentStep] = useState<"select" | "receipt" | "attendance">("select");
   const [receiptType, setReceiptType] = useState<"phone" | "business">("phone");
   const [receiptNumber, setReceiptNumber] = useState("");
@@ -621,6 +622,32 @@ export default function StudentDashboard() {
     setSessions(visibleRecentSessions);
     setAllSessions(visibleAllSessions);
     setLoading(false);
+
+    // ── 결제 미완료 팝업 체크 ──
+    // 1회 수업 이후 결제가 안된 학생에게 팝업 표시
+    const isCorporateStudent = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
+    if (!isCorporateStudent) {
+      const completedSessions = visibleAllSessions.filter(s => s.ended_at || s.started_at);
+      if (completedSessions.length >= 1) {
+        // 현재 월 결제 확인 여부 체크
+        const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+        const currentMonth = nowKst.slice(0, 7); // YYYY-MM
+        const { data: paymentConf } = await supabase
+          .from("payment_confirmations")
+          .select("id,confirmed")
+          .eq("student_name", student)
+          .eq("month", currentMonth)
+          .maybeSingle();
+        
+        if (!paymentConf || !paymentConf.confirmed) {
+          // 이번 세션에서 이미 닫았는지 확인
+          const dismissedKey = `payment_reminder_dismissed_${student}_${currentMonth}`;
+          if (!sessionStorage.getItem(dismissedKey)) {
+            setShowPaymentReminder(true);
+          }
+        }
+      }
+    }
 
     // ── 피드백 설문조사 체크 ──
     // 현재 기간의 마지막 세션(4주차)이 종료되었는지 확인
@@ -939,61 +966,8 @@ export default function StudentDashboard() {
     return { submitted, total: sessionHw.length, pending: sessionHw.length - submitted };
   })();
 
-  // 결제 버튼 활성화 여부
-  const paymentAvailable = (() => {
-    if (!schedulePeriods.length || !studentRecord?.schedules?.length) return false;
-    const now = new Date();
-    const sortedPeriods = [...schedulePeriods].sort((a, b) => a.start_date.localeCompare(b.start_date));
-    
-    for (let i = 0; i < sortedPeriods.length; i++) {
-      const period = sortedPeriods[i];
-      const periodEnd = new Date(period.end_date + "T00:00:00");
-      
-      // 해당 기간의 마지막 수업일 찾기
-      const periodSessions = allSessions
-        .filter(s => {
-          const d = new Date(s.scheduled_at);
-          return d >= new Date(period.start_date + "T00:00:00") && d <= new Date(period.end_date + "T23:59:59");
-        })
-        .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-      
-      const lastSessionDate = periodSessions.length > 0
-        ? new Date(periodSessions[0].scheduled_at)
-        : periodEnd;
-      
-      // 마지막 수업 전날
-      const activateFrom = new Date(lastSessionDate);
-      activateFrom.setDate(activateFrom.getDate() - 1);
-      activateFrom.setHours(0, 0, 0, 0);
-      
-      // 다음 기간 첫 수업 + 5일
-      const nextPeriod = sortedPeriods[i + 1];
-      let activateUntil: Date;
-      if (nextPeriod) {
-        const nextPeriodSessions = allSessions
-          .filter(s => {
-            const d = new Date(s.scheduled_at);
-            return d >= new Date(nextPeriod.start_date + "T00:00:00") && d <= new Date(nextPeriod.end_date + "T23:59:59");
-          })
-          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-        
-        const firstNextSession = nextPeriodSessions.length > 0
-          ? new Date(nextPeriodSessions[0].scheduled_at)
-          : new Date(nextPeriod.start_date + "T00:00:00");
-        
-        activateUntil = new Date(firstNextSession);
-        activateUntil.setDate(activateUntil.getDate() + 5);
-        activateUntil.setHours(23, 59, 59, 999);
-      } else {
-        // 마지막 기간이면 종료일 + 10일
-        activateUntil = new Date(periodEnd);
-        activateUntil.setDate(activateUntil.getDate() + 10);
-      }
-      
-      if (now >= activateFrom && now <= activateUntil) return true;
-    }
-    return false;
-  })();
+  // 결제 버튼은 항상 활성화
+  const paymentAvailable = true;
 
   const vocabByWeek = periodVocabWords.reduce<Record<string, VocabWord[]>>((acc, w) => {
     if (!acc[w.week_label]) acc[w.week_label] = [];
@@ -1112,6 +1086,48 @@ export default function StudentDashboard() {
         />
       )}
 
+      {/* ── Payment Reminder Popup ── */}
+      {showPaymentReminder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card rounded-xl shadow-xl border border-border w-[340px] mx-4 overflow-hidden">
+            <div className="px-5 pt-5 pb-4 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mx-auto">
+                <CreditCard className="w-6 h-6 text-gold" />
+              </div>
+              <h3 className="text-sm font-bold text-foreground">수업료 결제 안내</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                수업이 시작되었지만 아직 이번 달 수업료가<br />결제되지 않았습니다. 결제를 진행해 주세요.
+              </p>
+            </div>
+            <div className="px-5 pb-5 flex flex-col gap-2">
+              <Button
+                size="sm"
+                className="w-full bg-gold hover:bg-gold/90 text-foreground font-semibold"
+                onClick={() => {
+                  const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                  const currentMonth = nowKst.slice(0, 7);
+                  sessionStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  setShowPaymentReminder(false);
+                  setShowPaymentModal(true);
+                }}
+              >
+                결제하기
+              </Button>
+              <button
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                onClick={() => {
+                  const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                  const currentMonth = nowKst.slice(0, 7);
+                  sessionStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  setShowPaymentReminder(false);
+                }}
+              >
+                나중에 할게요
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bug Report Modal */}
       <BugReportModal
@@ -1570,9 +1586,7 @@ export default function StudentDashboard() {
                 </button>
               </div>
               ) : (
-              <>
-              {paymentAvailable ? (
-                <button
+              <button
                   onClick={() => setShowPaymentModal(true)}
                   className="w-full rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all hover:opacity-90 active:scale-[0.98] bg-gold/10 border border-gold/30 hover:bg-gold/20"
                 >
@@ -1581,29 +1595,8 @@ export default function StudentDashboard() {
                   </div>
                   <div>
                     <p className="text-xs font-bold leading-none text-foreground">수업료 결제하기</p>
-                    <p className="text-[10px] mt-0.5 text-gold font-medium">결제 가능</p>
                   </div>
                 </button>
-              ) : (
-                <div className="relative group">
-                  <button
-                    disabled
-                    className="w-full rounded-lg p-3 flex flex-col items-start gap-2 text-left bg-muted/30 border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <div className="w-7 h-7 rounded-md flex items-center justify-center bg-card">
-                      <CreditCard className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold leading-none text-muted-foreground">수업료 결제하기</p>
-                      <p className="text-[10px] mt-0.5 text-muted-foreground">결제 기간이 아닙니다</p>
-                    </div>
-                  </button>
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-md bg-foreground text-background text-[10px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-                    기간 종료 전 결제가 가능합니다
-                  </div>
-                </div>
-              )}
-              </>
               )}
             </div>
           </div>
