@@ -92,11 +92,11 @@ export default function AdminDashboard() {
       const nameSet = new Set<string>([ins.name]);
       insStudents.forEach(s => { if (s.instructor_name) nameSet.add(s.instructor_name); });
 
-      // Estimated pay: month-based, completed sessions only (ended_at 기준)
+      // Estimated pay: month-based, completed sessions only (ended_at 기준, KST Date 비교)
       let estimatedPay = 0;
       const monthSessions = allSessions.filter(s => {
-        const d = s.scheduled_at.slice(0, 10);
-        return nameSet.has(s.instructor_name) && d >= monthStart && d <= monthEndStr && !!s.ended_at;
+        const d = new Date(s.scheduled_at);
+        return nameSet.has(s.instructor_name) && d >= currentMonthStart && d <= currentMonthEnd && !!s.ended_at;
       });
       if (ins.position === "대표") {
         estimatedPay = monthSessions.length * ins.lesson_rate;
@@ -107,8 +107,8 @@ export default function AdminDashboard() {
         });
         // Include meetings for non-owner instructors
         const insMeetings = allMeetings.filter(m => {
-          const d = m.scheduled_at.slice(0, 10);
-          return m.instructor_id === ins.id && d >= monthStart && d <= todayStr;
+          const d = new Date(m.scheduled_at);
+          return m.instructor_id === ins.id && d >= currentMonthStart && d <= now;
         });
         insMeetings.forEach(m => {
           estimatedPay += Math.round((m.duration_minutes / 60) * BASE_SALARY);
