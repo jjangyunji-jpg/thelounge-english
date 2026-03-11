@@ -340,6 +340,8 @@ export default function NotesEditor({
   useEffect(() => {
     if (editor) internalEditorRef.current = editor;
   }, [editor]);
+
+  const executeSlashCommand = useCallback((action: () => void) => {
     if (!editor || !slashRangeRef.current) return;
     const { from, to } = slashRangeRef.current;
     editor.chain().focus().deleteRange({ from, to }).run();
