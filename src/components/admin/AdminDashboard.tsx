@@ -77,7 +77,7 @@ export default function AdminDashboard() {
     setTotalStudents(activeStudents.length);
 
     // New students this month
-    const newThisMonth = students.filter(s => s.created_at && s.created_at.slice(0, 10) >= monthStart).length;
+    const newThisMonth = students.filter(s => s.created_at && s.created_at.slice(0, 10) >= monthStartStr).length;
     setNewStudentsThisMonth(newThisMonth);
 
     // Per-instructor cards
