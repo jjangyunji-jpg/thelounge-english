@@ -188,10 +188,57 @@ export default function NotesEditor({
         }
         return false;
       },
+      handleTextInput: (view, from, to, text) => {
+        if (text === "/") {
+          // Open slash menu
+          const coords = view.coordsAtPos(from);
+          const containerRect = editorContainerRef.current?.getBoundingClientRect();
+          if (containerRect) {
+            const scrollTop = editorContainerRef.current?.scrollTop || 0;
+            setSlashMenuPos({
+              top: coords.bottom - containerRect.top + scrollTop + 4,
+              left: coords.left - containerRect.left,
+            });
+          }
+          slashRangeRef.current = { from, to: to + 1 };
+          setSlashFilter("");
+          setSlashMenuOpen(true);
+          return false; // let "/" be inserted
+        }
+        if (slashMenuOpenRef.current) {
+          if (text.length === 1 && /[a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣/]/.test(text)) {
+            // Update filter and extend range
+            setSlashFilter(prev => prev + text);
+            if (slashRangeRef.current) {
+              slashRangeRef.current = { ...slashRangeRef.current, to: slashRangeRef.current.to + 1 };
+            }
+          } else {
+            // Non-filter character: close menu
+            setSlashMenuOpen(false);
+            slashRangeRef.current = null;
+          }
+        }
+        return false;
+      },
       handleKeyDown: (view, event) => {
         if (slashMenuOpenRef.current && event.key === "Escape") {
           setSlashMenuOpen(false);
           return true;
+        }
+
+        if (slashMenuOpenRef.current && event.key === "Backspace") {
+          const filter = slashFilterRef.current;
+          if (filter.length > 0) {
+            setSlashFilter(filter.slice(0, -1));
+            if (slashRangeRef.current) {
+              slashRangeRef.current = { ...slashRangeRef.current, to: slashRangeRef.current.to - 1 };
+            }
+          } else {
+            // Backspace on "/" itself: close menu
+            setSlashMenuOpen(false);
+            slashRangeRef.current = null;
+          }
+          return false;
         }
 
         // "//" + space → auto-insert callout with h3
