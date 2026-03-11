@@ -138,9 +138,14 @@ export default function TeachingMaterials() {
 
   const handleSaveEdit = async () => {
     if (!editing || !editTitle.trim()) return;
+    const strippedContent = editContent.replace(/<[^>]*>/g, "").trim();
+    if (!strippedContent) {
+      toast({ title: "내용을 입력해주세요", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.from("teaching_materials")
-      .update({ title: editTitle.trim(), content: editContent.trim() })
+      .update({ title: editTitle.trim(), content: editContent })
       .eq("id", editing);
     if (error) { toast({ title: "수정 실패", description: error.message, variant: "destructive" }); }
     else { toast({ title: "수정 완료 ✓" }); setEditing(null); fetchMaterials(); }
