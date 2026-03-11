@@ -247,28 +247,31 @@ export default function TeachingMaterials() {
                 <button onClick={() => setEditingCategoryId(null)} className="p-1 rounded hover:bg-muted"><X className="w-3.5 h-3.5 text-muted-foreground" /></button>
               </div>
             ) : (
-              <button
-                onClick={() => setCategory(cat.slug)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                  category === cat.slug
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
-                )}
-              >
-                <FolderOpen className="w-3.5 h-3.5" />
-                {cat.name}
+              <div className="flex items-center">
+                <button
+                  onClick={() => setCategory(cat.slug)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                    category === cat.slug
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted",
+                    category === cat.slug && "rounded-r-none"
+                  )}
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  {cat.name}
+                </button>
                 {category === cat.slug && (
-                  <span className="flex items-center gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={e => { e.stopPropagation(); setEditingCategoryId(cat.id); setEditCategoryName(cat.name); }} className="p-0.5 rounded hover:bg-primary-foreground/20" title="이름 변경">
+                  <span className="flex items-center gap-0.5 bg-primary rounded-r-lg px-1 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={e => { e.stopPropagation(); setEditingCategoryId(cat.id); setEditCategoryName(cat.name); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="이름 변경">
                       <Pencil className="w-3 h-3" />
                     </button>
-                    <button onClick={e => { e.stopPropagation(); handleDeleteCategory(cat); }} className="p-0.5 rounded hover:bg-primary-foreground/20" title="삭제">
+                    <button onClick={e => { e.stopPropagation(); handleDeleteCategory(cat); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="삭제">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </span>
                 )}
-              </button>
+              </div>
             )}
           </div>
         ))}
