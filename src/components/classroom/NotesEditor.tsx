@@ -68,6 +68,10 @@ export default function NotesEditor({
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [aiCorrecting, setAiCorrecting] = useState(false);
 
+  // Keep refs in sync with state so handleKeyDown (stale closure) can read latest values
+  useEffect(() => { slashMenuOpenRef.current = slashMenuOpen; }, [slashMenuOpen]);
+  useEffect(() => { slashFilterRef.current = slashFilter; }, [slashFilter]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
