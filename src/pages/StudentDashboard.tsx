@@ -637,12 +637,21 @@ export default function StudentDashboard() {
         return sessionMonth === currentMonth;
       });
       if (completedThisMonth.length >= 1) {
-        const { data: paymentConf } = await supabase
+        // month 컬럼에는 period ID 또는 YYYY-MM 형식이 저장될 수 있으므로 둘 다 확인
+        const activePeriod = (periodsRes.data || []).find((p: SchedulePeriod) => {
+          const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+          return p.start_date <= today && p.end_date >= today;
+        });
+        const monthCandidates = [currentMonth];
+        if (activePeriod) monthCandidates.push(activePeriod.id);
+
+        const { data: paymentConfs } = await supabase
           .from("payment_confirmations")
           .select("id,confirmed")
           .eq("student_name", student)
-          .eq("month", currentMonth)
-          .maybeSingle();
+          .in("month", monthCandidates);
+
+        const paymentConf = paymentConfs?.find(c => c.confirmed) || paymentConfs?.[0] || null;
         
         if (!paymentConf || !paymentConf.confirmed) {
           const dismissedKey = `payment_reminder_dismissed_${student}_${currentMonth}`;
