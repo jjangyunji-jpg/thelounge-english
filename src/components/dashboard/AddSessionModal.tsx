@@ -90,6 +90,15 @@ export default function AddSessionModal({
     if (error) {
       toast({ title: "추가 실패", description: error.message, variant: "destructive" });
     } else {
+      // Mark matching available slot as booked
+      const slotTime = `${time}:00`;
+      await supabase
+        .from("instructor_available_slots")
+        .update({ status: "booked" })
+        .eq("slot_date", date)
+        .eq("slot_time", slotTime)
+        .eq("status", "open");
+
       toast({ title: "수업이 추가되었습니다 ✓" });
       onAdded();
       onClose();
