@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Select,
   SelectContent,
@@ -1275,6 +1275,9 @@ function RescheduleModal({
 export default function InstructorDashboard() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const viewingInstructorId = searchParams.get("instructor_id");
+  const [isViewingAsAdmin, setIsViewingAsAdmin] = useState(false);
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [instructor, setInstructor] = useState<Instructor | null>(null);
   const [students, setStudents] = useState<StudentFull[]>([]);
@@ -1321,7 +1324,7 @@ export default function InstructorDashboard() {
   const [expandedHwStudent, setExpandedHwStudent] = useState<string | null>(null);
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1334,7 +1337,25 @@ export default function InstructorDashboard() {
       .select("role")
       .eq("user_id", user.id);
     const adminRoles = (adminRole || []).map(r => r.role);
-    if (adminRoles.includes("admin") || adminRoles.includes("manager") || adminRoles.includes("staff")) setIsAdmin(true);
+    const hasAdminAccess = adminRoles.includes("admin") || adminRoles.includes("manager") || adminRoles.includes("staff");
+    if (hasAdminAccess) setIsAdmin(true);
+
+    // If admin is viewing a specific instructor via query param
+    if (viewingInstructorId && hasAdminAccess) {
+      const { data: ins } = await supabase
+        .from("instructors").select("*").eq("id", viewingInstructorId).maybeSingle();
+      if (!ins) {
+        toast({ title: "강사를 찾을 수 없습니다", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      setInstructor(ins);
+      setProfileName(ins.name);
+      setIsViewingAsAdmin(true);
+      setProfileNickname("");
+      await loadData(ins);
+      return;
+    }
 
     // Try user_id first, fallback to email
     let { data: ins } = await supabase
@@ -1888,6 +1909,15 @@ export default function InstructorDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Admin viewing banner */}
+      {isViewingAsAdmin && (
+        <div className="bg-navy text-primary-foreground px-4 py-2 flex items-center justify-between text-sm">
+          <span className="font-medium">👀 {instructor.name} 강사의 대시보드를 보고 있습니다</span>
+          <Button size="sm" variant="secondary" onClick={() => navigate("/admin")} className="h-7 text-xs">
+            어드민으로 돌아가기
+          </Button>
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-3 sm:px-5 py-3">
         <div className="flex items-center justify-between">
