@@ -331,6 +331,23 @@ export default function Vocabulary() {
 
   useEffect(() => { load(); }, [student]);
 
+  // Auto-start test when navigated from homework with ?startTest=weekLabel
+  useEffect(() => {
+    if (loading || autoTestTriggered || words.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const startTestWeek = params.get("startTest");
+    if (!startTestWeek) return;
+    setAutoTestTriggered(true);
+    const weekWords = words.filter(w => w.week_label === startTestWeek);
+    const targetWords = weekWords.length > 0 ? weekWords : words;
+    const shuffled = [...targetWords].sort(() => Math.random() - 0.5);
+    setTestWords(shuffled.slice(0, Math.min(50, shuffled.length)));
+    // Clean the URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete("startTest");
+    window.history.replaceState({}, "", url.toString());
+  }, [loading, words, autoTestTriggered]);
+
   const byWeek = words.reduce<Record<string, VocabWord[]>>((acc, w) => {
     if (!acc[w.week_label]) acc[w.week_label] = [];
     acc[w.week_label].push(w);
