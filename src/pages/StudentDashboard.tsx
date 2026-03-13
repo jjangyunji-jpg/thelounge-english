@@ -1282,6 +1282,23 @@ export default function StudentDashboard() {
                   />
                 </div>
 
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+                  <button
+                    onClick={() => setRecurringReceipt(!recurringReceipt)}
+                    className={cn("w-9 h-5 rounded-full transition-colors relative shrink-0",
+                      recurringReceipt ? "bg-primary" : "bg-muted-foreground/30"
+                    )}
+                  >
+                    <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                      recurringReceipt ? "translate-x-4" : "translate-x-0.5"
+                    )} />
+                  </button>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">매달 자동 발급</p>
+                    <p className="text-[10px] text-muted-foreground">매달 별도 요청 없이 현금영수증이 발급됩니다</p>
+                  </div>
+                </div>
+
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={() => { setPaymentStep("select"); setReceiptNumber(""); }}
@@ -1294,13 +1311,13 @@ export default function StudentDashboard() {
                     onClick={async () => {
                       if (!receiptNumber.trim()) return;
                       const { error } = await supabase.from("cash_receipts" as any).upsert(
-                        { student_name: student, receipt_type: receiptType, receipt_number: receiptNumber.trim(), updated_at: new Date().toISOString() } as any,
+                        { student_name: student, receipt_type: receiptType, receipt_number: receiptNumber.trim(), recurring: recurringReceipt, updated_at: new Date().toISOString() } as any,
                         { onConflict: "student_name" } as any
                       );
                       if (error) {
                         toast({ title: "저장 실패", description: error.message, variant: "destructive" });
                       } else {
-                        toast({ title: "현금영수증 정보가 저장되었습니다" });
+                        toast({ title: recurringReceipt ? "매달 자동 발급으로 저장되었습니다" : "현금영수증 정보가 저장되었습니다" });
                         setShowPaymentModal(false);
                         setPaymentStep("select");
                         setReceiptNumber("");
