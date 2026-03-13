@@ -1275,6 +1275,9 @@ function RescheduleModal({
 export default function InstructorDashboard() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const viewingInstructorId = searchParams.get("instructor_id");
+  const [isViewingAsAdmin, setIsViewingAsAdmin] = useState(false);
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [instructor, setInstructor] = useState<Instructor | null>(null);
   const [students, setStudents] = useState<StudentFull[]>([]);
