@@ -1909,6 +1909,15 @@ export default function InstructorDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Admin viewing banner */}
+      {isViewingAsAdmin && (
+        <div className="bg-navy text-primary-foreground px-4 py-2 flex items-center justify-between text-sm">
+          <span className="font-medium">👀 {instructor.name} 강사의 대시보드를 보고 있습니다</span>
+          <Button size="sm" variant="secondary" onClick={() => navigate("/admin")} className="h-7 text-xs">
+            어드민으로 돌아가기
+          </Button>
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-3 sm:px-5 py-3">
         <div className="flex items-center justify-between">
