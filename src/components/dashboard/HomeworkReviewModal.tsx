@@ -189,6 +189,13 @@ export default function HomeworkReviewModal({
   const [saving, setSaving] = useState(false);
   const [dismissedIndices, setDismissedIndices] = useState<Set<number>>(new Set());
   const [manualCorrections, setManualCorrections] = useState<CorrectionItem[]>([]);
+  const [editedAICorrections, setEditedAICorrections] = useState<Map<number, CorrectionItem>>(new Map());
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  const handleSaveEdit = (idx: number, item: CorrectionItem) => {
+    setEditedAICorrections(prev => new Map(prev).set(idx, item));
+    setEditingIndex(null);
+  };
 
   const toggleDismiss = (idx: number) => {
     setDismissedIndices(prev => {
