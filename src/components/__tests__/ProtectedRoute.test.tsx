@@ -56,12 +56,12 @@ describe("ProtectedRoute", () => {
   });
 
   it("shows loader initially", () => {
-    // Session never resolves quickly enough, so we see the loader
     mockSession = { user: { id: "u1" } };
     mockRoles = [{ role: "admin", approved: true }];
-    renderProtected(["admin"]);
-    // The spinner should be visible initially
-    expect(screen.getByText("Protected Content").closest("div") || document.querySelector(".animate-spin")).toBeTruthy();
+    const { container } = renderProtected(["admin"]);
+    // Before async check resolves, loader spinner should be visible
+    const spinner = container.querySelector(".animate-spin");
+    expect(spinner).toBeTruthy();
   });
 
   it("redirects to /login when not authenticated", async () => {
