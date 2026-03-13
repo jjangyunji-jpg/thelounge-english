@@ -50,7 +50,7 @@ async function registerKoreanFont(doc: jsPDF) {
   doc.setFont("SpoqaHanSansNeo");
 }
 
-function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodStart: string, periodEnd: string, meetingRate: number = 20000, flatRate?: number) {
+export function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodStart: string, periodEnd: string, meetingRate: number = 20000, flatRate?: number) {
   const start = new Date(periodStart);
   const end = new Date(periodEnd);
   const now = new Date();
