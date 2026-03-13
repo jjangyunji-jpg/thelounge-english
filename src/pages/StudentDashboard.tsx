@@ -407,6 +407,8 @@ export default function StudentDashboard() {
   const [paymentStep, setPaymentStep] = useState<"select" | "receipt" | "attendance">("select");
   const [receiptType, setReceiptType] = useState<"phone" | "business">("phone");
   const [receiptNumber, setReceiptNumber] = useState("");
+  const [recurringReceipt, setRecurringReceipt] = useState(false);
+  const [recurringAttendance, setRecurringAttendance] = useState(false);
   const [attendancePeriodType, setAttendancePeriodType] = useState<"month" | "custom">("month");
   const [attendanceMonth, setAttendanceMonth] = useState(() => {
     const now = new Date();
