@@ -1324,7 +1324,7 @@ export default function InstructorDashboard() {
   const [expandedHwStudent, setExpandedHwStudent] = useState<string | null>(null);
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1337,7 +1337,25 @@ export default function InstructorDashboard() {
       .select("role")
       .eq("user_id", user.id);
     const adminRoles = (adminRole || []).map(r => r.role);
-    if (adminRoles.includes("admin") || adminRoles.includes("manager") || adminRoles.includes("staff")) setIsAdmin(true);
+    const hasAdminAccess = adminRoles.includes("admin") || adminRoles.includes("manager") || adminRoles.includes("staff");
+    if (hasAdminAccess) setIsAdmin(true);
+
+    // If admin is viewing a specific instructor via query param
+    if (viewingInstructorId && hasAdminAccess) {
+      const { data: ins } = await supabase
+        .from("instructors").select("*").eq("id", viewingInstructorId).maybeSingle();
+      if (!ins) {
+        toast({ title: "강사를 찾을 수 없습니다", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      setInstructor(ins);
+      setProfileName(ins.name);
+      setIsViewingAsAdmin(true);
+      setProfileNickname("");
+      await loadData(ins);
+      return;
+    }
 
     // Try user_id first, fallback to email
     let { data: ins } = await supabase
