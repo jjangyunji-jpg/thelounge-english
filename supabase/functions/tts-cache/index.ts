@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
+const VOICE_ID = "EXAVITQu4vr4xnSDxMaL"; // Sarah
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
