@@ -256,8 +256,8 @@ export default function HomeworkReviewModal({
             ...aiResult,
             errors: [
               ...aiResult.errors
-                .filter((_, i) => !dismissedIndices.has(i))
-                .map((e, _, __, origIdx = aiResult.errors.indexOf(e)) => editedAICorrections.get(origIdx) ?? e),
+                .map((e, i) => editedAICorrections.has(i) ? editedAICorrections.get(i)! : e)
+                .filter((_, i) => !dismissedIndices.has(i)),
               ...manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
             ],
           })) : manualCorrections.filter(c => c.original.trim() && c.corrected.trim()).length > 0
