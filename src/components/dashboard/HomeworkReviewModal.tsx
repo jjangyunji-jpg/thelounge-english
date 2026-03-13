@@ -388,6 +388,11 @@ export default function HomeworkReviewModal({
                     ]}
                     dismissedIndices={dismissedIndices}
                     onToggleDismiss={toggleDismiss}
+                    editedCorrections={editedAICorrections}
+                    editingIndex={editingIndex}
+                    onStartEdit={setEditingIndex}
+                    onSaveEdit={handleSaveEdit}
+                    onCancelEdit={() => setEditingIndex(null)}
                   />
                 ) : (
                   <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{textContent}</p>
