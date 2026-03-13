@@ -23,6 +23,8 @@ interface CashReceipt {
   student_name: string;
   receipt_type: string;
   receipt_number: string;
+  recurring: boolean;
+  recurring_attendance: boolean;
 }
 
 interface PaymentConfirmation {
