@@ -123,7 +123,7 @@ export default function CashReceiptManagement() {
     setLoading(true);
     const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
-      supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
+      supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based
       supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
