@@ -28,6 +28,7 @@ const navItems = [
   { id: "surveys" as AdminTab, label: "학생 설문", icon: ClipboardList },
   { id: "curriculum" as AdminTab, label: "커리큘럼 가이드", icon: MapIcon },
   { id: "materials" as AdminTab, label: "수업 자료", icon: Library },
+  { id: "support" as AdminTab, label: "버그/개선 관리", icon: LifeBuoy },
   { id: "guide" as AdminTab, label: "이용가이드 관리", icon: FileQuestion },
   { id: "messages" as AdminTab, label: "메시지 관리", icon: MessageSquare },
   { id: "settings" as AdminTab, label: "기본 설정", icon: Settings },
