@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import type { AdminLevel } from "@/pages/Admin";
 
-export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "surveys" | "cash-receipts" | "guide" | "messages" | "settings";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "surveys" | "cash-receipts" | "support" | "guide" | "messages" | "settings";
 
 // Tabs staff can access (read-only / limited)
 const staffAllowedTabs: AdminTab[] = ["materials"];
