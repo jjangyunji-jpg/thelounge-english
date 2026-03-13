@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
-import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle } from "lucide-react";
+import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,6 +23,8 @@ interface CashReceipt {
   student_name: string;
   receipt_type: string;
   receipt_number: string;
+  recurring: boolean;
+  recurring_attendance: boolean;
 }
 
 interface PaymentConfirmation {
@@ -121,7 +123,7 @@ export default function CashReceiptManagement() {
     setLoading(true);
     const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
-      supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number"),
+      supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based
       supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
@@ -475,10 +477,11 @@ export default function CashReceiptManagement() {
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">유형</th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">번호</th>
+                  <th className="text-center px-4 py-3 font-semibold text-foreground">자동발급</th>
                 </tr>
               </thead>
               <tbody>
-                {receipts.map((r, i) => (
+                {receipts.filter(r => r.receipt_number).map((r, i) => (
                   <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
                     <td className="px-4 py-3">
@@ -487,10 +490,36 @@ export default function CashReceiptManagement() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-foreground">{r.receipt_number}</td>
+                    <td className="px-4 py-3 text-center">
+                      {r.recurring && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                          <RefreshCw className="w-3 h-3" /> 매달
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Recurring Attendance Requests */}
+      {receipts.some(r => r.recurring_attendance) && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">출석증 매달 자동 발급 대상</p>
+          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="divide-y divide-border">
+              {receipts.filter(r => r.recurring_attendance).map((r, i) => (
+                <div key={i} className="px-4 py-3 flex items-center justify-between hover:bg-muted/30">
+                  <span className="font-medium text-foreground">{r.student_name}</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                    <RefreshCw className="w-3 h-3" /> 매달 자동
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -407,6 +407,8 @@ export default function StudentDashboard() {
   const [paymentStep, setPaymentStep] = useState<"select" | "receipt" | "attendance">("select");
   const [receiptType, setReceiptType] = useState<"phone" | "business">("phone");
   const [receiptNumber, setReceiptNumber] = useState("");
+  const [recurringReceipt, setRecurringReceipt] = useState(false);
+  const [recurringAttendance, setRecurringAttendance] = useState(false);
   const [attendancePeriodType, setAttendancePeriodType] = useState<"month" | "custom">("month");
   const [attendanceMonth, setAttendanceMonth] = useState(() => {
     const now = new Date();
@@ -1280,6 +1282,23 @@ export default function StudentDashboard() {
                   />
                 </div>
 
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+                  <button
+                    onClick={() => setRecurringReceipt(!recurringReceipt)}
+                    className={cn("w-9 h-5 rounded-full transition-colors relative shrink-0",
+                      recurringReceipt ? "bg-primary" : "bg-muted-foreground/30"
+                    )}
+                  >
+                    <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                      recurringReceipt ? "translate-x-4" : "translate-x-0.5"
+                    )} />
+                  </button>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">매달 자동 발급</p>
+                    <p className="text-[10px] text-muted-foreground">매달 별도 요청 없이 현금영수증이 발급됩니다</p>
+                  </div>
+                </div>
+
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={() => { setPaymentStep("select"); setReceiptNumber(""); }}
@@ -1292,13 +1311,13 @@ export default function StudentDashboard() {
                     onClick={async () => {
                       if (!receiptNumber.trim()) return;
                       const { error } = await supabase.from("cash_receipts" as any).upsert(
-                        { student_name: student, receipt_type: receiptType, receipt_number: receiptNumber.trim(), updated_at: new Date().toISOString() } as any,
+                        { student_name: student, receipt_type: receiptType, receipt_number: receiptNumber.trim(), recurring: recurringReceipt, updated_at: new Date().toISOString() } as any,
                         { onConflict: "student_name" } as any
                       );
                       if (error) {
                         toast({ title: "저장 실패", description: error.message, variant: "destructive" });
                       } else {
-                        toast({ title: "현금영수증 정보가 저장되었습니다" });
+                        toast({ title: recurringReceipt ? "매달 자동 발급으로 저장되었습니다" : "현금영수증 정보가 저장되었습니다" });
                         setShowPaymentModal(false);
                         setPaymentStep("select");
                         setReceiptNumber("");
@@ -1354,6 +1373,23 @@ export default function StudentDashboard() {
                   )}
                 </div>
 
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+                  <button
+                    onClick={() => setRecurringAttendance(!recurringAttendance)}
+                    className={cn("w-9 h-5 rounded-full transition-colors relative shrink-0",
+                      recurringAttendance ? "bg-primary" : "bg-muted-foreground/30"
+                    )}
+                  >
+                    <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                      recurringAttendance ? "translate-x-4" : "translate-x-0.5"
+                    )} />
+                  </button>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">매달 자동 요청</p>
+                    <p className="text-[10px] text-muted-foreground">매달 별도 요청 없이 출석증이 발급됩니다</p>
+                  </div>
+                </div>
+
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={() => setPaymentStep("select")}
@@ -1376,18 +1412,25 @@ export default function StudentDashboard() {
                         toast({ title: "로그인이 필요합니다", variant: "destructive" });
                         return;
                       }
+                      // Save recurring attendance preference
+                      if (recurringAttendance) {
+                        await supabase.from("cash_receipts" as any).upsert(
+                          { student_name: student, recurring_attendance: true, updated_at: new Date().toISOString() } as any,
+                          { onConflict: "student_name" } as any
+                        );
+                      }
                       const { error } = await supabase.from("support_requests").insert({
                         user_id: user.id,
                         user_name: student,
                         role: "student",
                         category: "attendance",
-                        title: "출석증 요청",
-                        description: `학생명: ${student}\n출석 기간: ${periodStr}`,
+                        title: recurringAttendance ? "출석증 매달 자동 요청" : "출석증 요청",
+                        description: `학생명: ${student}\n출석 기간: ${periodStr}${recurringAttendance ? "\n⚡ 매달 자동 발급 요청" : ""}`,
                       });
                       if (error) {
                         toast({ title: "요청 실패", description: error.message, variant: "destructive" });
                       } else {
-                        toast({ title: "출석증 요청이 접수되었습니다", description: "관리자 확인 후 발급됩니다." });
+                        toast({ title: recurringAttendance ? "매달 자동 발급으로 설정되었습니다" : "출석증 요청이 접수되었습니다", description: "관리자 확인 후 발급됩니다." });
                         setShowPaymentModal(false);
                         setPaymentStep("select");
                       }
