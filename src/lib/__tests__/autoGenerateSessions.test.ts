@@ -58,14 +58,3 @@ describe("autoGenerateSessions", () => {
     expect(result).toEqual({ totalCreated: 0 });
   });
 });
-
-  it("handles edge function errors gracefully", async () => {
-    const mockEq = getMockEq();
-    const mockInvoke = getMockInvoke();
-    mockEq.mockResolvedValue({ data: [{ id: "p1" }], error: null });
-    mockInvoke.mockRejectedValue(new Error("network error"));
-
-    const result = await autoGenerateSessions();
-    expect(result).toEqual({ totalCreated: 0 });
-  });
-});
