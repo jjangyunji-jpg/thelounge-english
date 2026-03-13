@@ -40,14 +40,57 @@ interface HomeworkReviewModalProps {
   onReviewed: () => void;
 }
 
-/** Render inline diff: strikethrough original, colored corrected — click to dismiss */
+/** Inline edit popover for a correction */
+function InlineEditForm({
+  item, onSave, onCancel,
+}: {
+  item: CorrectionItem;
+  onSave: (updated: CorrectionItem) => void;
+  onCancel: () => void;
+}) {
+  const [corrected, setCorrected] = useState(item.corrected);
+  const [explanation, setExplanation] = useState(item.explanation);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onCancel();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onCancel]);
+
+  return (
+    <div ref={ref} className="absolute top-full left-0 z-20 mt-1 p-2.5 rounded-lg bg-popover border border-border shadow-xl space-y-1.5 min-w-[220px]"
+      onClick={e => e.stopPropagation()}>
+      <p className="text-[10px] text-muted-foreground font-semibold">교정 수정</p>
+      <Input value={corrected} onChange={e => setCorrected(e.target.value)}
+        placeholder="올바른 표현" className="h-7 text-xs" autoFocus />
+      <Input value={explanation} onChange={e => setExplanation(e.target.value)}
+        placeholder="설명 (선택)" className="h-7 text-xs" />
+      <div className="flex gap-1.5 pt-0.5">
+        <Button size="sm" variant="ghost" onClick={onCancel} className="h-6 text-[10px] px-2">취소</Button>
+        <Button size="sm" onClick={() => onSave({ ...item, corrected, explanation })}
+          className="h-6 text-[10px] px-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground">저장</Button>
+      </div>
+    </div>
+  );
+}
+
+/** Render inline diff: strikethrough original, colored corrected — click to dismiss, pencil to edit */
 function InlineCorrectedText({
   original, errors, dismissedIndices, onToggleDismiss,
+  editedCorrections, editingIndex, onStartEdit, onSaveEdit, onCancelEdit,
 }: {
   original: string;
   errors: CorrectionItem[];
   dismissedIndices: Set<number>;
   onToggleDismiss: (idx: number) => void;
+  editedCorrections: Map<number, CorrectionItem>;
+  editingIndex: number | null;
+  onStartEdit: (idx: number) => void;
+  onSaveEdit: (idx: number, item: CorrectionItem) => void;
+  onCancelEdit: () => void;
 }) {
   if (!errors || errors.length === 0) {
     return <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{original}</p>;
@@ -57,7 +100,10 @@ function InlineCorrectedText({
   const parts: React.ReactNode[] = [];
   let key = 0;
 
-  const indexedErrors = errors.map((e, i) => ({ ...e, origIdx: i }));
+  const indexedErrors = errors.map((e, i) => {
+    const edited = editedCorrections.get(i);
+    return { ...(edited ?? e), origIdx: i };
+  });
   const sortedErrors = [...indexedErrors].sort((a, b) => {
     const posA = remaining.toLowerCase().indexOf(a.original.toLowerCase());
     const posB = remaining.toLowerCase().indexOf(b.original.toLowerCase());
@@ -73,6 +119,7 @@ function InlineCorrectedText({
     }
 
     const isDismissed = dismissedIndices.has(err.origIdx);
+    const isEditing = editingIndex === err.origIdx;
 
     if (isDismissed) {
       parts.push(
@@ -87,17 +134,29 @@ function InlineCorrectedText({
       );
     } else {
       parts.push(
-        <span key={key++}
-          className="inline-flex items-baseline gap-0.5 cursor-pointer group relative rounded px-0.5 hover:bg-destructive/5 transition-colors"
-          onClick={() => onToggleDismiss(err.origIdx)}
-          title="클릭하여 교정 취소"
-        >
+        <span key={key++} className="relative inline-flex items-baseline gap-0.5 group rounded px-0.5 hover:bg-destructive/5 transition-colors">
           <span className="line-through text-destructive/70 decoration-destructive/50">{remaining.slice(idx, idx + err.original.length)}</span>
           <span className="text-[hsl(var(--navy))] font-semibold">{err.corrected}</span>
-          <X className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity inline-block ml-0.5" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5 ml-0.5">
+            <button onClick={(e) => { e.stopPropagation(); onStartEdit(err.origIdx); }}
+              className="text-muted-foreground hover:text-[hsl(var(--navy))] transition-colors" title="교정 수정">
+              <Pencil className="w-2.5 h-2.5" />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onToggleDismiss(err.origIdx); }}
+              className="text-muted-foreground hover:text-destructive transition-colors" title="교정 취소">
+              <X className="w-2.5 h-2.5" />
+            </button>
+          </span>
           <span className="hidden group-hover:block absolute -top-8 left-0 z-10 px-2 py-1 rounded bg-popover border border-border shadow-lg text-[10px] text-muted-foreground whitespace-nowrap max-w-[200px]">
             {err.explanation}
           </span>
+          {isEditing && (
+            <InlineEditForm
+              item={err}
+              onSave={(updated) => onSaveEdit(err.origIdx, updated)}
+              onCancel={onCancelEdit}
+            />
+          )}
         </span>
       );
     }
