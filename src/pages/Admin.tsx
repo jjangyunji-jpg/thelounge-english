@@ -80,6 +80,8 @@ export default function Admin() {
         return <SurveyManagement />;
       case "cash-receipts":
         return <CashReceiptManagement />;
+      case "support":
+        return <SupportRequestManagement />;
       case "guide":
         return <GuideManagement />;
       case "messages":
