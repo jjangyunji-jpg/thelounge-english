@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { exportAllSettlementsPdf } from "@/lib/exportSettlementPdf";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useNavigate } from "react-router-dom";
 
 interface FeedbackCategory {
   id: string;
