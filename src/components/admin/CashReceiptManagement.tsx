@@ -477,10 +477,11 @@ export default function CashReceiptManagement() {
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">유형</th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">번호</th>
+                  <th className="text-center px-4 py-3 font-semibold text-foreground">자동발급</th>
                 </tr>
               </thead>
               <tbody>
-                {receipts.map((r, i) => (
+                {receipts.filter(r => r.receipt_number).map((r, i) => (
                   <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
                     <td className="px-4 py-3">
@@ -489,10 +490,36 @@ export default function CashReceiptManagement() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-foreground">{r.receipt_number}</td>
+                    <td className="px-4 py-3 text-center">
+                      {r.recurring && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                          <RefreshCw className="w-3 h-3" /> 매달
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Recurring Attendance Requests */}
+      {receipts.some(r => r.recurring_attendance) && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">출석증 매달 자동 발급 대상</p>
+          <div className="border border-border rounded-lg overflow-hidden">
+            <div className="divide-y divide-border">
+              {receipts.filter(r => r.recurring_attendance).map((r, i) => (
+                <div key={i} className="px-4 py-3 flex items-center justify-between hover:bg-muted/30">
+                  <span className="font-medium text-foreground">{r.student_name}</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                    <RefreshCw className="w-3 h-3" /> 매달 자동
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
