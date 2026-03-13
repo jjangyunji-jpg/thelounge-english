@@ -64,4 +64,37 @@ describe("todayKSTString", () => {
     const result = todayKSTString();
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
+
+  it("has valid month and day ranges", () => {
+    const result = todayKSTString();
+    const [, month, day] = result.split("-").map(Number);
+    expect(month).toBeGreaterThanOrEqual(1);
+    expect(month).toBeLessThanOrEqual(12);
+    expect(day).toBeGreaterThanOrEqual(1);
+    expect(day).toBeLessThanOrEqual(31);
+  });
+});
+
+describe("toKST edge cases", () => {
+  it("handles year boundary (Dec 31 UTC → Jan 1 KST)", () => {
+    // 2024-12-31T15:00:00Z → 2025-01-01T00:00:00 KST
+    const result = toKST("2024-12-31T15:00:00Z");
+    expect(result.getFullYear()).toBe(2025);
+    expect(result.getMonth()).toBe(0); // January
+    expect(result.getDate()).toBe(1);
+  });
+
+  it("handles month boundary", () => {
+    // 2024-01-31T15:00:00Z → 2024-02-01T00:00:00 KST
+    const result = toKST("2024-01-31T15:00:00Z");
+    expect(result.getMonth()).toBe(1); // February
+    expect(result.getDate()).toBe(1);
+  });
+
+  it("isSameDayKST handles midnight boundary correctly", () => {
+    // 14:59 UTC = 23:59 KST (same day)
+    // 15:00 UTC = 00:00 KST next day
+    expect(isSameDayKST("2024-03-15T14:59:00Z", "2024-03-15T00:00:00+09:00")).toBe(true);
+    expect(isSameDayKST("2024-03-15T15:00:00Z", "2024-03-15T00:00:00+09:00")).toBe(false);
+  });
 });
