@@ -75,6 +75,7 @@ interface NewInstructorForm {
 
 export default function InstructorManagement() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [deactivateTarget, setDeactivateTarget] = useState<Instructor | null>(null);
   const [deactivateReason, setDeactivateReason] = useState("");
