@@ -132,7 +132,6 @@ function SpeechQuestion({
   question: Question; qIndex: number; total: number; onAnswer: (answer: string) => void;
 }) {
   const [value, setValue] = useState("");
-  const [spoken, setSpoken] = useState(false);
 
   const { listening, start, stop } = useSpeechRecognition(
     useCallback((transcript: string) => {
@@ -140,18 +139,11 @@ function SpeechQuestion({
     }, [])
   );
 
-  // Auto-speak the Korean meaning when question appears
+  // Reset value when question changes
   useEffect(() => {
-    setSpoken(false);
     setValue("");
-    const timer = setTimeout(() => {
-      speakKorean(question.word.korean_meaning);
-      setSpoken(true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [question.word.korean_meaning]);
+  }, [question.word.id]);
 
-  const replay = () => speakKorean(question.word.korean_meaning);
   const submit = () => { if (!value.trim()) return; onAnswer(value.trim()); setValue(""); };
 
   const hasSpeechAPI = typeof window !== "undefined" &&
@@ -159,19 +151,11 @@ function SpeechQuestion({
 
   return (
     <div className="space-y-4">
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-2">
         <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
-          🔊 뜻을 듣고 영어로 답하세요
+          🎙️ 뜻을 보고 영어로 말하세요
         </p>
-
-        {/* Replay button */}
-        <button onClick={replay}
-          className="w-16 h-16 rounded-full bg-navy/10 hover:bg-navy/20 flex items-center justify-center mx-auto transition-colors"
-        >
-          <Volume2 className="w-7 h-7 text-navy" />
-        </button>
-        <p className="text-[10px] text-muted-foreground">다시 듣기</p>
-
+        <p className="text-2xl font-bold text-foreground">{question.word.korean_meaning}</p>
         {question.word.part_of_speech && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
             {question.word.part_of_speech}
@@ -179,19 +163,31 @@ function SpeechQuestion({
         )}
       </div>
 
+      {/* Mic button */}
+      {hasSpeechAPI && (
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={() => listening ? stop() : start()}
+            className={cn(
+              "w-16 h-16 rounded-full flex items-center justify-center transition-all",
+              listening
+                ? "bg-destructive/15 text-destructive animate-pulse"
+                : "bg-navy/10 hover:bg-navy/20 text-navy"
+            )}
+          >
+            {listening ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+          </button>
+          <p className="text-[10px] text-muted-foreground">
+            {listening ? "듣고 있어요..." : "탭하여 음성 입력"}
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <Input value={value} onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="영어로 입력 또는 🎙️ 음성 입력..." className="flex-1 text-sm" autoFocus
         />
-        {hasSpeechAPI && (
-          <Button size="sm" variant={listening ? "destructive" : "outline"}
-            onClick={() => listening ? stop() : start()}
-            className="gap-1 flex-shrink-0"
-          >
-            {listening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-          </Button>
-        )}
         <Button size="sm" onClick={submit} disabled={!value.trim()}
           className="bg-navy hover:bg-navy-light text-primary-foreground gap-1.5"
         >확인 <ChevronRight className="w-3.5 h-3.5" /></Button>
@@ -343,8 +339,8 @@ export default function VocabTestModal({
                 <Button className="w-full bg-gold hover:bg-gold-dark text-foreground font-semibold gap-2"
                   onClick={() => startTest("speech")}
                 >
-                  🔊 음성 모드
-                  <span className="text-[10px] font-normal opacity-80">뜻을 듣고 영어 입력/말하기</span>
+                  🎙️ 음성 모드
+                  <span className="text-[10px] font-normal opacity-80">뜻을 보고 영어로 말하기</span>
                 </Button>
               </div>
             </div>
