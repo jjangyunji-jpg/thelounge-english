@@ -295,6 +295,7 @@ export default function Vocabulary() {
   const [showRangePicker, setShowRangePicker] = useState(false);
   const [studyWords, setStudyWords] = useState<VocabWord[] | null>(null);
   const [testWords, setTestWords] = useState<VocabWord[] | null>(null);
+  const [autoTestTriggered, setAutoTestTriggered] = useState(false);
 
   useEffect(() => {
     const init = async () => {
