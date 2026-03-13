@@ -255,7 +255,9 @@ export default function HomeworkReviewModal({
           ai_correction: aiResult ? JSON.parse(JSON.stringify({
             ...aiResult,
             errors: [
-              ...aiResult.errors.filter((_, i) => !dismissedIndices.has(i)),
+              ...aiResult.errors
+                .filter((_, i) => !dismissedIndices.has(i))
+                .map((e, _, __, origIdx = aiResult.errors.indexOf(e)) => editedAICorrections.get(origIdx) ?? e),
               ...manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
             ],
           })) : manualCorrections.filter(c => c.original.trim() && c.corrected.trim()).length > 0
