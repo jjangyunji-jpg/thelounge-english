@@ -94,14 +94,18 @@ export type Database = {
           id: string
           receipt_number: string
           receipt_type: string
+          recurring: boolean
+          recurring_attendance: boolean
           student_name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
-          receipt_number: string
+          receipt_number?: string
           receipt_type?: string
+          recurring?: boolean
+          recurring_attendance?: boolean
           student_name: string
           updated_at?: string
         }
@@ -110,6 +114,8 @@ export type Database = {
           id?: string
           receipt_number?: string
           receipt_type?: string
+          recurring?: boolean
+          recurring_attendance?: boolean
           student_name?: string
           updated_at?: string
         }
