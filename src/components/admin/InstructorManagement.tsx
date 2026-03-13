@@ -450,7 +450,16 @@ export default function InstructorManagement() {
                 <p className="text-xs text-muted-foreground mt-0.5">{ins.email}</p>
               </div>
 
-              <div className="hidden md:flex items-center gap-4 text-sm">
+              <div className="hidden md:flex items-center gap-3 text-sm">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 text-muted-foreground"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/t/dashboard?instructor_id=${ins.id}`); }}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  대시보드
+                </Button>
                 <div className="text-center">
                   <p className="font-semibold text-foreground">
                     {ins.position === '대표' ? `₩${ins.lesson_rate.toLocaleString()}` : `₩${BASE_SALARY.toLocaleString()}`}
