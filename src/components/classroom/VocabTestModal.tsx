@@ -339,8 +339,8 @@ export default function VocabTestModal({
                 <Button className="w-full bg-gold hover:bg-gold-dark text-foreground font-semibold gap-2"
                   onClick={() => startTest("speech")}
                 >
-                  🔊 음성 모드
-                  <span className="text-[10px] font-normal opacity-80">뜻을 듣고 영어 입력/말하기</span>
+                  🎙️ 음성 모드
+                  <span className="text-[10px] font-normal opacity-80">뜻을 보고 영어로 말하기</span>
                 </Button>
               </div>
             </div>
