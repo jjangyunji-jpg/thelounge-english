@@ -4,7 +4,7 @@ import FeedbackSurveyModal from "@/components/classroom/FeedbackSurveyModal";
 
 import WeeklyTasksSection from "@/components/dashboard/WeeklyTasksSection";
 import HomeworkSubmitModal from "@/components/dashboard/HomeworkSubmitModal";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   BookOpen, Trophy, Calendar, Video, Clock, Check,
   Volume2, Loader2, Square, PenLine, Mic, Brain,
