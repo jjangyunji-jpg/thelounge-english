@@ -788,12 +788,43 @@ export default function Classroom() {
   const handleSaveEditHw = async () => {
     if (!editHwTitle.trim() || !editingHwId) return;
     setSavingEditHw(true);
-    const { error } = await supabase.from("homework_assignments")
-      .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null, is_preset: editHwPreset, session_id: editHwPreset ? null : (session.sessionId || null) })
-      .eq("id", editingHwId);
-    if (!error) {
-      setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim(), isPreset: editHwPreset } : h));
-      toast({ title: "숙제가 수정됐습니다 ✓" });
+    
+    const editingItem = hwList.find(h => h.id === editingHwId);
+    
+    // If editing a preset template, create a session-specific copy instead of modifying the template
+    if (editingItem?.isPreset && !editingItem.presetOriginId) {
+      try {
+        const { data: copy, error } = await supabase.from("homework_assignments").insert({
+          student_name: session.dbStudentName,
+          title: editHwTitle.trim(),
+          description: editHwDesc.trim() || null,
+          type: editHwType,
+          is_preset: false,
+          session_id: session.sessionId || null,
+          preset_origin_id: editingHwId,
+        }).select().single();
+        if (error) throw error;
+        if (copy) {
+          // Replace the template in the list with the session copy
+          setHwList((prev) => prev.map((h) => h.id === editingHwId ? {
+            id: copy.id, type: editHwType, title: editHwTitle.trim(),
+            description: editHwDesc.trim(), isPreset: false, saved: true,
+            presetOriginId: editingHwId,
+          } : h));
+          toast({ title: "이번 수업용 숙제가 생성됐습니다 ✓" });
+        }
+      } catch (e: unknown) {
+        toast({ title: "저장 실패", variant: "destructive" });
+      }
+    } else {
+      // Normal edit (session-specific homework or existing copy)
+      const { error } = await supabase.from("homework_assignments")
+        .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null, is_preset: editHwPreset, session_id: editHwPreset ? null : (session.sessionId || null) })
+        .eq("id", editingHwId);
+      if (!error) {
+        setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim(), isPreset: editHwPreset } : h));
+        toast({ title: "숙제가 수정됐습니다 ✓" });
+      }
     }
     setSavingEditHw(false);
     cancelEditHw();
