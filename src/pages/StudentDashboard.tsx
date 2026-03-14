@@ -512,7 +512,7 @@ export default function StudentDashboard() {
         .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
       supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id")
         .eq("student_name", student).order("created_at", { ascending: false }),
-      supabase.from("homework_submissions").select("id,assignment_id,status,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction")
+      supabase.from("homework_submissions").select("id,assignment_id,status,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction,submitted_at")
         .eq("student_name", student),
       supabase.from("vocabulary_words").select("id,english_word,korean_meaning,part_of_speech,audio_url,week_label,created_at")
         .eq("student_name", student).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
