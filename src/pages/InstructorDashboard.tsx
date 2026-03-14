@@ -2913,6 +2913,13 @@ export default function InstructorDashboard() {
                       <div className="flex items-center gap-2">
                         <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColor)}>{statusLabel}</span>
                         <button
+                          onClick={() => navigate(`/t/student-dashboard?student_name=${encodeURIComponent(st.student_name)}`)}
+                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          title="학생 대시보드 보기"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => setEditStudent(st)}
                           className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                           title="학생 정보 수정"
