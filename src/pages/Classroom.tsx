@@ -595,9 +595,20 @@ export default function Classroom() {
         .order("created_at", { ascending: true });
 
       if (data && data.length > 0) {
-        setHwList(data.map((d) => ({
+        // Filter out preset templates that already have a session copy
+        const sessionCopyOriginIds = new Set(
+          data.filter(d => d.preset_origin_id && d.session_id === session.sessionId)
+            .map(d => d.preset_origin_id)
+        );
+        const filtered = data.filter(d => {
+          // Hide template if a session copy exists for it
+          if (d.is_preset && sessionCopyOriginIds.has(d.id)) return false;
+          return true;
+        });
+        setHwList(filtered.map((d) => ({
           id: d.id, type: d.type as HwType, title: d.title,
           description: d.description || "", isPreset: d.is_preset, saved: true,
+          presetOriginId: d.preset_origin_id,
         })));
       }
       setSessionTopic(session.topic);
