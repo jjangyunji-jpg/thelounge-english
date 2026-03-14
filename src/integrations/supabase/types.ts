@@ -414,6 +414,7 @@ export type Database = {
           due_at: string | null
           id: string
           is_preset: boolean
+          preset_origin_id: string | null
           session_id: string | null
           student_name: string
           title: string
@@ -425,6 +426,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           is_preset?: boolean
+          preset_origin_id?: string | null
           session_id?: string | null
           student_name: string
           title: string
@@ -436,12 +438,20 @@ export type Database = {
           due_at?: string | null
           id?: string
           is_preset?: boolean
+          preset_origin_id?: string | null
           session_id?: string | null
           student_name?: string
           title?: string
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "homework_assignments_preset_origin_id_fkey"
+            columns: ["preset_origin_id"]
+            isOneToOne: false
+            referencedRelation: "homework_assignments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "homework_assignments_session_id_fkey"
             columns: ["session_id"]
