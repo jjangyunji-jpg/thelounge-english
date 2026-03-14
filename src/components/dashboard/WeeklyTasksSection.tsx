@@ -93,6 +93,8 @@ export default function WeeklyTasksSection({
     .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
   const latestSession = pastSessions[0] ?? null;
   const latestSessionId = latestSession?.id ?? null;
+  // Second-most-recent session (used to filter preset submissions)
+  const prevSession = pastSessions[1] ?? null;
 
   // Assignments for the latest session + preset homework (exclude memorizing presets - vocab test handles it)
   const weekAssignments = assignments.filter(a => {
@@ -100,7 +102,20 @@ export default function WeeklyTasksSection({
     return a.is_preset || (a.session_id && a.session_id === latestSessionId);
   });
 
-  const getSub = (aId: string) => submissions.find(s => s.assignment_id === aId);
+  // For preset assignments, only show submissions made AFTER the previous session
+  // This prevents last week's submission from appearing under this week's (updated) question
+  const getSub = (aId: string) => {
+    const assignment = weekAssignments.find(a => a.id === aId);
+    const sub = submissions.find(s => s.assignment_id === aId);
+    if (!sub) return undefined;
+    // For preset assignments, check if submission is from the current period
+    if (assignment?.is_preset && prevSession && sub.submitted_at) {
+      const prevSessionTime = new Date(prevSession.scheduled_at).getTime();
+      const subTime = new Date(sub.submitted_at).getTime();
+      if (subTime < prevSessionTime) return undefined; // Old submission, don't show
+    }
+    return sub;
+  };
 
   // Vocab test for the latest session's week
   const latestWeekLabel = latestSession ? getWeekLabelFromDate(new Date(latestSession.scheduled_at)) : null;
