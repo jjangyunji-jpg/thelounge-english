@@ -338,6 +338,7 @@ export default function Vocabulary() {
     const startTestWeek = params.get("startTest");
     if (!startTestWeek) return;
     setAutoTestTriggered(true);
+    setAutoTestWeekLabel(startTestWeek);
     const weekWords = words.filter(w => w.week_label === startTestWeek);
     const targetWords = weekWords.length > 0 ? weekWords : words;
     const shuffled = [...targetWords].sort(() => Math.random() - 0.5);
