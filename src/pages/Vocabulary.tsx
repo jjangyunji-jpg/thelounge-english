@@ -296,6 +296,7 @@ export default function Vocabulary() {
   const [studyWords, setStudyWords] = useState<VocabWord[] | null>(null);
   const [testWords, setTestWords] = useState<VocabWord[] | null>(null);
   const [autoTestTriggered, setAutoTestTriggered] = useState(false);
+  const [autoTestWeekLabel, setAutoTestWeekLabel] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -338,6 +339,7 @@ export default function Vocabulary() {
     const startTestWeek = params.get("startTest");
     if (!startTestWeek) return;
     setAutoTestTriggered(true);
+    setAutoTestWeekLabel(startTestWeek);
     const weekWords = words.filter(w => w.week_label === startTestWeek);
     const targetWords = weekWords.length > 0 ? weekWords : words;
     const shuffled = [...targetWords].sort(() => Math.random() - 0.5);
@@ -440,7 +442,7 @@ export default function Vocabulary() {
         <VocabTestModal
           words={testWords}
           studentName={student}
-          weekLabel="랜덤"
+          weekLabel={autoTestWeekLabel || "랜덤"}
           completedTests={0}
           scheduledAt={new Date()}
           onClose={() => setTestWords(null)}

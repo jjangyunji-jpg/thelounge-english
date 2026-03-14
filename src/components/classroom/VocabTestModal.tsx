@@ -32,14 +32,27 @@ function buildQuestions(words: VocabWord[]): Question[] {
 }
 
 function normalize(s: string) {
-  return s.toLowerCase().trim().replace(/[.,!?'"]/g, "");
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[\u2018\u2019\u201C\u201D]/g, "'")   // smart quotes → straight
+    .replace(/[.,!?'"]/g, "")                        // strip punctuation
+    .replace(/[-–—]/g, " ")                          // hyphens → spaces
+    .replace(/\s+/g, " ")                            // collapse whitespace
+    .trim();
 }
 
 function isCorrect(userAnswer: string, expected: string): boolean {
   const u = normalize(userAnswer);
   const e = normalize(expected);
   if (u === e) return true;
-  return e.split(" ").every((word) => u.includes(normalize(word)));
+  // Also match if all words from expected are present
+  const eWords = e.split(" ").filter(Boolean);
+  const uWords = u.split(" ").filter(Boolean);
+  if (eWords.length > 0 && eWords.every((word) => uWords.includes(word))) return true;
+  // Match ignoring spaces entirely (e.g. "oneofakind" === "one of a kind")
+  if (u.replace(/\s/g, "") === e.replace(/\s/g, "")) return true;
+  return false;
 }
 
 // ── TTS helper (browser built-in) ──
