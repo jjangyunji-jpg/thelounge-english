@@ -433,12 +433,34 @@ export default function StudentDashboard() {
   const [authNickname, setAuthNickname] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [notLinked, setNotLinked] = useState(false);
-  const searchParams = new URLSearchParams(window.location.search);
+  const [searchParams] = useSearchParams();
   const urlStudent = searchParams.get("name");
+  const urlStudentName = searchParams.get("student_name");
+
+  // Instructor view mode: when student_name param is provided by an instructor
+  const [isInstructorView, setIsInstructorView] = useState(false);
+  const [viewingStudentName, setViewingStudentName] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+        // Check if this is an instructor viewing a student's dashboard
+        if (urlStudentName) {
+          // Verify the user is an instructor
+          const { data: roles } = await supabase
+            .from("user_roles")
+            .select("role, approved")
+            .eq("user_id", session.user.id);
+          const isInstructor = roles?.some(r => r.approved && (r.role === "instructor" || r.role === "admin" || r.role === "manager"));
+
+          if (isInstructor) {
+            setIsInstructorView(true);
+            setViewingStudentName(urlStudentName);
+            setAuthLoading(false);
+            return;
+          }
+        }
+
         // Check if student has a linked instructor_students record
         const { data: linkedRecord } = await supabase
           .from("instructor_students")
@@ -474,10 +496,10 @@ export default function StudentDashboard() {
       }
       setAuthLoading(false);
     });
-  }, []);
+  }, [urlStudentName]);
 
-  // auth 학생명 > URL 파라미터 > 기본값 순 우선순위
-  const student = authStudent || urlStudent || "정유리";
+  // instructor view > auth 학생명 > URL 파라미터 > 기본값 순 우선순위
+  const student = viewingStudentName || authStudent || urlStudent || "정유리";
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
