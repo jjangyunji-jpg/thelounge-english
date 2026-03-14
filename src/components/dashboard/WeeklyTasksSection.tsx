@@ -38,6 +38,7 @@ interface Assignment {
   due_at: string | null;
   is_preset: boolean;
   session_id: string | null;
+  preset_origin_id?: string | null;
 }
 
 interface Submission {
@@ -97,8 +98,15 @@ export default function WeeklyTasksSection({
   const prevSession = pastSessions[1] ?? null;
 
   // Assignments for the latest session + preset homework (exclude memorizing presets - vocab test handles it)
+  // Also exclude preset templates that have session-specific copies
+  const sessionCopyOriginIds = new Set(
+    assignments.filter(a => a.preset_origin_id && a.session_id === latestSessionId)
+      .map(a => a.preset_origin_id)
+  );
   const weekAssignments = assignments.filter(a => {
     if (a.is_preset && a.type === "memorizing") return false;
+    // Hide template if a session copy exists
+    if (a.is_preset && sessionCopyOriginIds.has(a.id)) return false;
     return a.is_preset || (a.session_id && a.session_id === latestSessionId);
   });
 
