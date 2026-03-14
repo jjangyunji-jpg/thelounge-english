@@ -757,6 +757,11 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                         {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })}
                       </p>
                     </div>
+                    {req.original_scheduled_at && (
+                      <p className="text-xs text-muted-foreground">
+                        기존: <span className="font-semibold">{fmtDateKo(new Date(req.original_scheduled_at).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }))} {new Date(req.original_scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" })}</span>
+                      </p>
+                    )}
                     {slot && (
                       <p className="text-xs text-foreground">
                         → <span className="font-semibold text-primary">{fmtDateKo(slot.slot_date)} {fmtTimeKo(slot.slot_time)}</span>
