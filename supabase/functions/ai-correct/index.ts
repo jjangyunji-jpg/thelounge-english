@@ -6,6 +6,226 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function buildToolsAndChoice(mode: string) {
+  if (mode === "typo") {
+    return {
+      tools: [{
+        type: "function",
+        function: {
+          name: "typo_result",
+          description: "Return the text with only spelling fixes applied.",
+          parameters: {
+            type: "object",
+            properties: {
+              corrected: { type: "string", description: "The text with only misspellings fixed" },
+            },
+            required: ["corrected"],
+            additionalProperties: false,
+          },
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "typo_result" } },
+    };
+  }
+
+  if (mode === "homework_review") {
+    return {
+      tools: [{
+        type: "function",
+        function: {
+          name: "homework_review_result",
+          description: "Return homework review results with corrections, errors, scores, and feedback.",
+          parameters: {
+            type: "object",
+            properties: {
+              corrected: { type: "string", description: "Corrected version of the text" },
+              errors: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    original: { type: "string", description: "Exact substring from student text" },
+                    corrected: { type: "string", description: "Corrected version" },
+                    explanation: { type: "string", description: "Explanation in Korean" },
+                  },
+                  required: ["original", "corrected", "explanation"],
+                  additionalProperties: false,
+                },
+              },
+              score: { type: "number", description: "Naturalness score 1-10" },
+              english_level: { type: "string", description: "CEFR level e.g. A1, B1, C1" },
+              vocab_level: { type: "string", description: "Vocab level in Korean" },
+              feedback: {
+                type: "object",
+                properties: {
+                  praise: { type: "string", description: "Warm praise about grammar/structure in Korean" },
+                  priorities: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "3 improvement priorities in Korean",
+                  },
+                },
+                required: ["praise", "priorities"],
+                additionalProperties: false,
+              },
+            },
+            required: ["corrected", "errors", "score", "english_level", "vocab_level", "feedback"],
+            additionalProperties: false,
+          },
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "homework_review_result" } },
+    };
+  }
+
+  if (mode === "correct") {
+    return {
+      tools: [{
+        type: "function",
+        function: {
+          name: "correct_result",
+          description: "Return grammar correction results.",
+          parameters: {
+            type: "object",
+            properties: {
+              corrected: { type: "string" },
+              errors: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    original: { type: "string" },
+                    corrected: { type: "string" },
+                    explanation: { type: "string" },
+                  },
+                  required: ["original", "corrected", "explanation"],
+                  additionalProperties: false,
+                },
+              },
+              score: { type: "number" },
+            },
+            required: ["corrected", "errors", "score"],
+            additionalProperties: false,
+          },
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "correct_result" } },
+    };
+  }
+
+  if (mode === "synonyms") {
+    return {
+      tools: [{
+        type: "function",
+        function: {
+          name: "synonyms_result",
+          description: "Return synonyms for key words.",
+          parameters: {
+            type: "object",
+            properties: {
+              synonyms: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    word: { type: "string" },
+                    alternatives: { type: "array", items: { type: "string" } },
+                    example: { type: "string" },
+                  },
+                  required: ["word", "alternatives", "example"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["synonyms"],
+            additionalProperties: false,
+          },
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "synonyms_result" } },
+    };
+  }
+
+  if (mode === "notes_correct") {
+    return {
+      tools: [{
+        type: "function",
+        function: {
+          name: "notes_correct_result",
+          description: "Return error corrections for the text.",
+          parameters: {
+            type: "object",
+            properties: {
+              errors: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    original: { type: "string" },
+                    corrected: { type: "string" },
+                  },
+                  required: ["original", "corrected"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["errors"],
+            additionalProperties: false,
+          },
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "notes_correct_result" } },
+    };
+  }
+
+  // default / "analyze"
+  return {
+    tools: [{
+      type: "function",
+      function: {
+        name: "analyze_result",
+        description: "Return analysis of spoken English.",
+        parameters: {
+          type: "object",
+          properties: {
+            corrected: { type: "string" },
+            errors: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  original: { type: "string" },
+                  corrected: { type: "string" },
+                  explanation: { type: "string" },
+                },
+                required: ["original", "corrected", "explanation"],
+                additionalProperties: false,
+              },
+            },
+            synonyms: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  word: { type: "string" },
+                  alternatives: { type: "array", items: { type: "string" } },
+                },
+                required: ["word", "alternatives"],
+                additionalProperties: false,
+              },
+            },
+            score: { type: "number" },
+            feedback: { type: "string" },
+          },
+          required: ["corrected", "errors", "synonyms", "score", "feedback"],
+          additionalProperties: false,
+        },
+      },
+    }],
+    tool_choice: { type: "function", function: { name: "analyze_result" } },
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -55,57 +275,40 @@ RULES:
 - Do NOT change grammar, sentence structure, punctuation, word choice, tense, or meaning.
 - Do NOT add or remove words. Do NOT rephrase or restructure sentences.
 - If a word is spelled correctly, leave it exactly as-is even if grammar is wrong.
-- Return a JSON object with: { "corrected": "the text with only spelling fixes" }
 - If there are no misspellings, return the original text UNCHANGED.`;
       userPrompt = `Fix only misspelled words (do NOT fix grammar): "${text}"`;
     } else if (mode === "correct") {
       systemPrompt = `You are an expert English language teacher. Correct grammar, vocabulary, and expression errors in the student's speech transcript. 
-      Return a JSON object with:
-      - corrected: the corrected version of the text
-      - errors: array of { original, corrected, explanation } objects for each error found
-      - score: naturalness score 1-10
-      Keep explanations concise and educational. Respond in Korean for explanations.`;
+Keep explanations concise and educational. Respond in Korean for explanations.`;
       userPrompt = `Correct this student's English: "${text}"`;
     } else if (mode === "synonyms") {
       systemPrompt = `You are an English vocabulary expert. Find interesting synonyms and alternative expressions for key words and phrases in the text.
-      Return a JSON object with:
-      - synonyms: array of { word, alternatives: string[], example: string } objects
-      Limit to the 5 most interesting/educational words. Respond in Korean for context.`;
+Limit to the 5 most interesting/educational words. Respond in Korean for context.`;
       userPrompt = `Find synonyms for key words in: "${text}"`;
     } else if (mode === "homework_review") {
       systemPrompt = `You are an expert English language teacher reviewing a Korean student's written homework.
-Return a JSON object with:
-- corrected: the corrected version of the text
-- errors: array of { original, corrected, explanation } objects for each error found. The "original" must be the EXACT substring from the student's text. Keep explanations concise in Korean.
-- score: naturalness score 1-10 (how natural the English sounds)
-- english_level: estimated English proficiency level as a string (e.g. "A1", "A2", "B1", "B2", "C1", "C2" using CEFR scale)
-- vocab_level: estimated vocabulary level as a string (e.g. "초급", "중급", "중상급", "고급")
-- feedback: object with:
-  - praise: one warm, friendly, human-like sentence praising what the student did well STRICTLY in terms of GRAMMAR USAGE or LOGICAL STRUCTURE/FLOW of the writing (in Korean). Write as if a caring teacher is speaking directly to the student — use casual, encouraging tone (e.g. "~했네요!", "~한 부분이 정말 좋았어요!"). Do NOT praise effort, attitude, topic choice, or content. Focus ONLY on grammatical accuracy and structural organization.
-  - priorities: array of exactly 3 strings, each describing the most important thing the student should fix or improve (in Korean, concise)
 
 IMPORTANT for errors:
 - The "original" field must match exactly a substring in the student's text (case-sensitive)
 - Do NOT fix the entire sentence; only mark the specific word(s) that are wrong
-- If a word is spelled correctly but used incorrectly, still mark it`;
+- If a word is spelled correctly but used incorrectly, still mark it
+- Keep explanations concise in Korean.
+
+For feedback.praise: Write one warm, friendly, human-like sentence praising what the student did well STRICTLY in terms of GRAMMAR USAGE or LOGICAL STRUCTURE/FLOW of the writing (in Korean). Write as if a caring teacher is speaking directly to the student — use casual, encouraging tone (e.g. "~했네요!", "~한 부분이 정말 좋았어요!"). Do NOT praise effort, attitude, topic choice, or content. Focus ONLY on grammatical accuracy and structural organization.
+For feedback.priorities: Provide exactly 3 strings, each describing the most important thing the student should fix or improve (in Korean, concise).`;
       userPrompt = `Review this student's English homework: "${text}"`;
     } else if (mode === "notes_correct") {
       systemPrompt = `You are an expert English language teacher. Correct grammar and expression errors in the student's text.
-Return a JSON object with:
-- errors: array of { original, corrected } objects for each error found. The "original" must be the EXACT substring from the student's text (case-sensitive). Only mark the specific word(s) that are wrong, not entire sentences. Do NOT include explanations.
-- If there are no errors, return { "errors": [] }`;
+The "original" must be the EXACT substring from the student's text (case-sensitive). Only mark the specific word(s) that are wrong, not entire sentences.
+If there are no errors, return an empty errors array.`;
       userPrompt = `Correct errors in this English text: "${text}"`;
     } else {
       systemPrompt = `You are an expert English language teacher analyzing a student's spoken English.
-      Return a JSON object with:
-      - corrected: grammatically correct version
-      - errors: array of { original, corrected, explanation } for each error
-      - synonyms: array of { word, alternatives: string[] } for interesting word choices
-      - score: naturalness score 1-10
-      - feedback: one encouraging sentence of overall feedback
-      Respond in Korean for explanations and feedback.`;
+Respond in Korean for explanations and feedback.`;
       userPrompt = `Analyze this student's English speech: "${text}"`;
     }
+
+    const { tools, tool_choice } = buildToolsAndChoice(mode);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -119,7 +322,8 @@ Return a JSON object with:
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        response_format: { type: "json_object" },
+        tools,
+        tool_choice,
       }),
     });
 
@@ -136,16 +340,32 @@ Return a JSON object with:
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const errText = await response.text();
+      console.error("AI gateway error:", response.status, errText);
       throw new Error("AI gateway error");
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    const result = JSON.parse(content);
 
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Extract result from tool call
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      const result = JSON.parse(toolCall.function.arguments);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Fallback: try content field (shouldn't happen with tool_choice)
+    const content = data.choices?.[0]?.message?.content;
+    if (content) {
+      const result = JSON.parse(content);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    throw new Error("No result from AI");
   } catch (error) {
     console.error("Error in ai-correct:", error);
     return new Response(
