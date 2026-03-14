@@ -510,7 +510,7 @@ export default function StudentDashboard() {
         .contains("group_students", [student]).order("scheduled_at", { ascending: false }).limit(20),
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
         .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
-      supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id")
+      supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id,preset_origin_id")
         .eq("student_name", student).order("created_at", { ascending: false }),
       supabase.from("homework_submissions").select("id,assignment_id,status,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction,submitted_at")
         .eq("student_name", student),
