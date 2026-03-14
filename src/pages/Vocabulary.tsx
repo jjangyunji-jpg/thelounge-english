@@ -296,6 +296,7 @@ export default function Vocabulary() {
   const [studyWords, setStudyWords] = useState<VocabWord[] | null>(null);
   const [testWords, setTestWords] = useState<VocabWord[] | null>(null);
   const [autoTestTriggered, setAutoTestTriggered] = useState(false);
+  const [autoTestWeekLabel, setAutoTestWeekLabel] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
