@@ -1069,6 +1069,21 @@ export default function StudentDashboard() {
   return (
     <>
     <div className="min-h-screen bg-background">
+      {/* ── Instructor View Banner ── */}
+      {isInstructorView && (
+        <div className="bg-navy text-primary-foreground px-4 py-2 flex items-center justify-between text-sm sticky top-0 z-40">
+          <span className="font-medium">👀 {student} 학생의 대시보드를 보고 있습니다</span>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-7 text-xs gap-1"
+            onClick={() => navigate(-1)}
+          >
+            <ChevronLeft className="w-3 h-3" />
+            돌아가기
+          </Button>
+        </div>
+      )}
       {/* ── Holiday Popup ── */}
       {currentPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
