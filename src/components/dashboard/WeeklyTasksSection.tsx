@@ -38,6 +38,7 @@ interface Assignment {
   due_at: string | null;
   is_preset: boolean;
   session_id: string | null;
+  preset_origin_id?: string | null;
 }
 
 interface Submission {
