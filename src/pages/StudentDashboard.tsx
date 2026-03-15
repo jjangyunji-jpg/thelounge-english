@@ -1808,7 +1808,7 @@ export default function StudentDashboard() {
             testHistory={testHistory}
             onSubmissionUpdate={(sub) => {
               setSubmissions(prev => {
-                const idx = prev.findIndex(s => s.assignment_id === sub.assignment_id);
+                const idx = prev.findIndex(s => s.id === sub.id);
                 if (idx >= 0) {
                   const next = [...prev];
                   next[idx] = sub;
