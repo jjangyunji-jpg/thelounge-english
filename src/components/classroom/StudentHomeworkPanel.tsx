@@ -18,6 +18,7 @@ interface Assignment {
   title: string;
   description: string | null;
   is_preset: boolean;
+  session_id: string | null;
 }
 
 interface Submission {
