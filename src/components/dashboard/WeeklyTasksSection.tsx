@@ -114,17 +114,20 @@ export default function WeeklyTasksSection({
   // This prevents last week's submission from appearing under this week's (updated) question
   const getSub = (aId: string) => {
     const assignment = weekAssignments.find(a => a.id === aId);
-    const sub = submissions.find(s => s.assignment_id === aId);
-    if (!sub) return undefined;
-    // For preset assignments, only count submissions made AFTER the latest session started
-    // e.g. 3/14 7pm session → homework submitted after 3/14 7pm counts for this week
-    // Once 3/21 7pm session becomes latestSession, the window resets
-    if (assignment?.is_preset && latestSession && sub.submitted_at) {
+    if (!assignment) return undefined;
+
+    // For preset assignments, find the submission made AFTER the latest session started
+    // (there may be multiple submissions across weeks for the same preset assignment)
+    if (assignment.is_preset && latestSession) {
       const latestSessionTime = new Date(latestSession.scheduled_at).getTime();
-      const subTime = new Date(sub.submitted_at).getTime();
-      if (subTime < latestSessionTime) return undefined; // Submitted before this session, don't count
+      const matchingSub = submissions
+        .filter(s => s.assignment_id === aId && s.submitted_at)
+        .find(s => new Date(s.submitted_at!).getTime() >= latestSessionTime);
+      return matchingSub;
     }
-    return sub;
+
+    // For session-specific assignments, any submission counts
+    return submissions.find(s => s.assignment_id === aId);
   };
 
   // Vocab test for the latest session's week
