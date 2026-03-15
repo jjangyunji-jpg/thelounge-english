@@ -116,11 +116,13 @@ export default function WeeklyTasksSection({
     const assignment = weekAssignments.find(a => a.id === aId);
     const sub = submissions.find(s => s.assignment_id === aId);
     if (!sub) return undefined;
-    // For preset assignments, check if submission is from the current period
-    if (assignment?.is_preset && prevSession && sub.submitted_at) {
-      const prevSessionTime = new Date(prevSession.scheduled_at).getTime();
+    // For preset assignments, only count submissions made AFTER the latest session started
+    // e.g. 3/14 7pm session → homework submitted after 3/14 7pm counts for this week
+    // Once 3/21 7pm session becomes latestSession, the window resets
+    if (assignment?.is_preset && latestSession && sub.submitted_at) {
+      const latestSessionTime = new Date(latestSession.scheduled_at).getTime();
       const subTime = new Date(sub.submitted_at).getTime();
-      if (subTime < prevSessionTime) return undefined; // Old submission, don't show
+      if (subTime < latestSessionTime) return undefined; // Submitted before this session, don't count
     }
     return sub;
   };
