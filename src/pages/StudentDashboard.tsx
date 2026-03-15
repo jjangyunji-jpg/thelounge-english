@@ -737,7 +737,15 @@ export default function StudentDashboard() {
 
   };
 
-  const getSubmission = (aId: string) => submissions.find(s => s.assignment_id === aId);
+  const getSubmission = (aId: string) => {
+    const matched = submissions.filter(s => s.assignment_id === aId);
+    if (matched.length === 0) return undefined;
+    return [...matched].sort((a, b) => {
+      const aTs = a.submitted_at ? new Date(a.submitted_at).getTime() : 0;
+      const bTs = b.submitted_at ? new Date(b.submitted_at).getTime() : 0;
+      return bTs - aTs;
+    })[0];
+  };
 
   const handleQuickComplete = async (assignment: Assignment) => {
     setHwCompletingId(assignment.id);
