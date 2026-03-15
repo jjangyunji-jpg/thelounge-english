@@ -18,6 +18,7 @@ interface Assignment {
   title: string;
   description: string | null;
   is_preset: boolean;
+  session_id: string | null;
 }
 
 interface Submission {
@@ -491,7 +492,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [{ data: asgn }, { data: subs }] = await Promise.all([
+      const [{ data: asgn }, { data: subs }, { data: sessionRows }] = await Promise.all([
         supabase
           .from("homework_assignments")
           .select("id, type, title, description, is_preset, session_id")
@@ -502,14 +503,57 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
           .from("homework_submissions")
           .select("*")
           .eq("student_name", studentName),
+        supabase
+          .from("class_sessions")
+          .select("id, scheduled_at")
+          .eq("student_name", studentName)
+          .order("scheduled_at", { ascending: true }),
       ]);
 
-      setAssignments((asgn ?? []) as Assignment[]);
+      const assignmentRows = (asgn ?? []) as Assignment[];
+      const submissionRows = (subs ?? []) as Submission[];
+      const sessions = (sessionRows ?? []) as { id: string; scheduled_at: string }[];
+
+      setAssignments(assignmentRows);
+
+      const currentSession = sessions.find((s) => s.id === sessionId) ?? null;
+      const currentSessionTime = currentSession ? new Date(currentSession.scheduled_at).getTime() : null;
+      const nextSessionTime = currentSession
+        ? sessions
+            .filter((s) => new Date(s.scheduled_at).getTime() > currentSessionTime!)
+            .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0]?.scheduled_at ?? null
+        : null;
+      const nextSessionTs = nextSessionTime ? new Date(nextSessionTime).getTime() : Number.POSITIVE_INFINITY;
+
+      const groupedByAssignment = submissionRows.reduce<Record<string, Submission[]>>((acc, sub) => {
+        if (!sub.assignment_id) return acc;
+        if (!acc[sub.assignment_id]) acc[sub.assignment_id] = [];
+        acc[sub.assignment_id].push(sub);
+        return acc;
+      }, {});
+
+      const pickLatest = (list: Submission[]) =>
+        [...list].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())[0] ?? null;
 
       const subMap: Record<string, Submission> = {};
-      (subs ?? []).forEach((s) => {
-        if (s.assignment_id) subMap[s.assignment_id] = s as Submission;
+      assignmentRows.forEach((assignment) => {
+        const candidates = groupedByAssignment[assignment.id] ?? [];
+        if (candidates.length === 0) return;
+
+        if (assignment.is_preset && currentSessionTime) {
+          const inWindow = candidates.filter((sub) => {
+            const ts = new Date(sub.submitted_at).getTime();
+            return ts >= currentSessionTime && ts < nextSessionTs;
+          });
+          const selected = pickLatest(inWindow);
+          if (selected) subMap[assignment.id] = selected;
+          return;
+        }
+
+        const latest = pickLatest(candidates);
+        if (latest) subMap[assignment.id] = latest;
       });
+
       setSubmissions(subMap);
       setLoading(false);
     };
