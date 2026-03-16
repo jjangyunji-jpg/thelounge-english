@@ -737,6 +737,9 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
               </h3>
               {pendingRequests.map(req => {
                 const slot = slots.find(s => s.id === req.slot_id);
+                // For pending reschedule requests, original_scheduled_at may not be set yet — look up from session
+                const origSession = req.original_session_id ? sessionById.get(req.original_session_id) : null;
+                const origAt = req.original_scheduled_at || origSession?.scheduled_at || null;
                 return (
                   <div key={req.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
                     <div className="flex items-start justify-between">
@@ -757,15 +760,35 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                         {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })}
                       </p>
                     </div>
-                    {req.original_scheduled_at && (
-                      <p className="text-xs text-muted-foreground">
-                        기존: <span className="font-semibold">{fmtDateKo(new Date(req.original_scheduled_at).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }))} {new Date(req.original_scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" })}</span>
-                      </p>
-                    )}
-                    {slot && (
-                      <p className="text-xs text-foreground">
-                        → <span className="font-semibold text-primary">{fmtDateKo(slot.slot_date)} {fmtTimeKo(slot.slot_time)}</span>
-                      </p>
+                    {/* Schedule change summary: original → new */}
+                    {(origAt || slot) && (
+                      <div className="rounded-md bg-muted/30 px-3 py-2 text-xs">
+                        {origAt && req.request_type === "reschedule" ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-muted-foreground line-through">
+                              {new Date(origAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}{" "}
+                              {new Date(origAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" })}
+                            </span>
+                            {slot && (
+                              <>
+                                <span className="text-muted-foreground font-bold">→</span>
+                                <span className="font-semibold text-primary">
+                                  {new Date(slot.slot_date + "T00:00:00").toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}{" "}
+                                  {fmtTimeKo(slot.slot_time)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        ) : slot ? (
+                          <p className="text-foreground">
+                            <span className="text-muted-foreground">보강 일정: </span>
+                            <span className="font-semibold text-primary">
+                              {new Date(slot.slot_date + "T00:00:00").toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}{" "}
+                              {fmtTimeKo(slot.slot_time)}
+                            </span>
+                          </p>
+                        ) : null}
+                      </div>
                     )}
                     {rejectingId === req.id ? (
                       <div className="space-y-2">
