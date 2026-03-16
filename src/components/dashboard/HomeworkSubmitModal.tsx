@@ -344,14 +344,26 @@ export default function HomeworkSubmitModal({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-border bg-muted/20">
-          <Button size="sm" onClick={handleSubmit}
-            disabled={!canSubmit || submitting || recorder.recording}
-            className="w-full h-9 text-sm gap-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground">
-            {submitting
-              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />제출 중...</>
-              : <><Send className="w-3.5 h-3.5" />{submission ? "숙제 수정하기" : "숙제 제출하기"}</>}
-          </Button>
+        <div className="px-4 py-3 border-t border-border bg-muted/20 space-y-2">
+          {isDraft && (
+            <p className="text-[10px] text-muted-foreground text-center">📝 임시저장된 내용입니다</p>
+          )}
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleSaveDraft}
+              disabled={!canSaveDraft || savingDraft || submitting || recorder.recording}
+              className="h-9 text-sm gap-2 flex-shrink-0">
+              {savingDraft
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />저장 중...</>
+                : <><Save className="w-3.5 h-3.5" />임시저장</>}
+            </Button>
+            <Button size="sm" onClick={handleSubmit}
+              disabled={!canSubmit || submitting || recorder.recording}
+              className="flex-1 h-9 text-sm gap-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground">
+              {submitting
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />제출 중...</>
+                : <><Send className="w-3.5 h-3.5" />{submission && !isDraft ? "숙제 수정하기" : "숙제 제출하기"}</>}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
