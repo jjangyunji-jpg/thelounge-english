@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Mic, Square, Play, Pause, Send, RotateCcw, Loader2, X,
   PenLine, BookOpen, Brain, Paperclip, FileUp, Monitor,
