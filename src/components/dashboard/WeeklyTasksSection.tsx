@@ -203,6 +203,7 @@ export default function WeeklyTasksSection({
           {weekAssignments.map(a => {
             const sub = getSub(a.id);
             const done = sub && (sub.status === "submitted" || sub.status === "reviewed");
+            const isDraft = sub && sub.status === "draft";
             const meta = HW_META[a.type as HwType] ?? HW_META.writing;
             const Icon = meta.icon;
             const isQuickType = a.type === "memorizing" || a.type === "speaking";
@@ -243,12 +244,20 @@ export default function WeeklyTasksSection({
                   </div>
 
                   {/* Action button */}
-                  {!isQuickType && !done && (
+                  {!isQuickType && !done && !isDraft && (
                     <button
                       onClick={() => setModalAssignment(a)}
                       className="flex-shrink-0 text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10"
                     >
                       제출하기
+                    </button>
+                  )}
+                  {isDraft && !isQuickType && (
+                    <button
+                      onClick={() => setModalAssignment(a)}
+                      className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))] font-semibold hover:bg-[hsl(var(--gold)/0.25)] transition-colors cursor-pointer"
+                    >
+                      임시저장 →
                     </button>
                   )}
                   {done && sub?.status === "reviewed" ? (

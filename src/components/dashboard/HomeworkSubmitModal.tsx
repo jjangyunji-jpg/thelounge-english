@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Mic, Square, Play, Pause, Send, RotateCcw, Loader2, X,
-  PenLine, BookOpen, Brain, Paperclip, FileUp, Monitor,
+  PenLine, BookOpen, Brain, Paperclip, FileUp, Monitor, Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +41,7 @@ interface Submission {
   instructor_note: string | null;
   reviewed_at: string | null;
   ai_correction: any | null;
+  submitted_at?: string | null;
 }
 
 function useAudioRecorder() {
@@ -109,11 +110,18 @@ export default function HomeworkSubmitModal({
   const { toast } = useToast();
   const [text, setText] = useState(submission?.text_content ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [fileObj, setFileObj] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const meta = HW_META[assignment.type as HwType] ?? HW_META.writing;
   const Icon = meta.icon;
   const recorder = useAudioRecorder();
+
+  const isDraft = submission?.status === "draft";
+
+  // Auto-save draft every 30 seconds if text changed
+  const lastSavedTextRef = useRef(submission?.text_content ?? "");
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isReadingType = assignment.type === "reading" || assignment.type === "watching";
   const showTextArea = meta.requiresText || assignment.type === "memorizing" || isReadingType;
@@ -127,8 +135,12 @@ export default function HomeworkSubmitModal({
       (!meta.requiresAudio || recorder.audioBlob !== null) &&
       (!meta.requiresFile || fileObj !== null);
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
+  const canSaveDraft = text.trim().length > 0 || recorder.audioBlob !== null || fileObj !== null;
+
+  const saveOrSubmit = async (asDraft: boolean) => {
+    if (asDraft) setSavingDraft(true);
+    else setSubmitting(true);
+
     let audioStorageUrl: string | null = null;
     let fileStorageUrl: string | null = null;
     try {
@@ -153,7 +165,9 @@ export default function HomeworkSubmitModal({
         fileStorageUrl = pub.publicUrl;
       }
 
+      const status = asDraft ? "draft" : "submitted";
       let resultSub: Submission | null = null;
+
       if (submission) {
         const { data, error } = await supabase
           .from("homework_submissions")
@@ -161,8 +175,8 @@ export default function HomeworkSubmitModal({
             text_content: text.trim() || null,
             audio_url: audioStorageUrl ?? submission.audio_url,
             file_url: fileStorageUrl ?? (submission as any).file_url,
-            status: "submitted",
-            submitted_at: new Date().toISOString(),
+            status,
+            submitted_at: asDraft ? submission.submitted_at ?? new Date().toISOString() : new Date().toISOString(),
           })
           .eq("id", submission.id)
           .select()
@@ -178,7 +192,7 @@ export default function HomeworkSubmitModal({
             text_content: text.trim() || null,
             audio_url: audioStorageUrl,
             file_url: fileStorageUrl,
-            status: "submitted",
+            status,
           })
           .select()
           .single();
@@ -186,15 +200,25 @@ export default function HomeworkSubmitModal({
         resultSub = data;
       }
 
-      toast({ title: "숙제가 제출됐습니다 ✓" });
-      if (resultSub) onSubmitted(resultSub);
-      onClose();
+      if (asDraft) {
+        lastSavedTextRef.current = text;
+        toast({ title: "임시저장 완료 ✓" });
+        if (resultSub) onSubmitted(resultSub);
+      } else {
+        toast({ title: "숙제가 제출됐습니다 ✓" });
+        if (resultSub) onSubmitted(resultSub);
+        onClose();
+      }
     } catch (e: unknown) {
-      toast({ title: "제출 실패", description: e instanceof Error ? e.message : "오류 발생", variant: "destructive" });
+      toast({ title: asDraft ? "임시저장 실패" : "제출 실패", description: e instanceof Error ? e.message : "오류 발생", variant: "destructive" });
     } finally {
       setSubmitting(false);
+      setSavingDraft(false);
     }
   };
+
+  const handleSubmit = () => saveOrSubmit(false);
+  const handleSaveDraft = () => saveOrSubmit(true);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
@@ -320,14 +344,26 @@ export default function HomeworkSubmitModal({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-border bg-muted/20">
-          <Button size="sm" onClick={handleSubmit}
-            disabled={!canSubmit || submitting || recorder.recording}
-            className="w-full h-9 text-sm gap-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground">
-            {submitting
-              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />제출 중...</>
-              : <><Send className="w-3.5 h-3.5" />{submission ? "숙제 수정하기" : "숙제 제출하기"}</>}
-          </Button>
+        <div className="px-4 py-3 border-t border-border bg-muted/20 space-y-2">
+          {isDraft && (
+            <p className="text-[10px] text-muted-foreground text-center">📝 임시저장된 내용입니다</p>
+          )}
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleSaveDraft}
+              disabled={!canSaveDraft || savingDraft || submitting || recorder.recording}
+              className="h-9 text-sm gap-2 flex-shrink-0">
+              {savingDraft
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />저장 중...</>
+                : <><Save className="w-3.5 h-3.5" />임시저장</>}
+            </Button>
+            <Button size="sm" onClick={handleSubmit}
+              disabled={!canSubmit || submitting || recorder.recording}
+              className="flex-1 h-9 text-sm gap-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground">
+              {submitting
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />제출 중...</>
+                : <><Send className="w-3.5 h-3.5" />{submission && !isDraft ? "숙제 수정하기" : "숙제 제출하기"}</>}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
