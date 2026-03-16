@@ -41,6 +41,7 @@ interface Submission {
   instructor_note: string | null;
   reviewed_at: string | null;
   ai_correction: any | null;
+  submitted_at?: string | null;
 }
 
 function useAudioRecorder() {
