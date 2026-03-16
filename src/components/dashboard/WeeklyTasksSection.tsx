@@ -130,8 +130,11 @@ export default function WeeklyTasksSection({
     return submissions.find(s => s.assignment_id === aId);
   };
 
-  // Vocab test for the latest session's week
-  const latestWeekLabel = latestSession ? getWeekLabelFromDate(new Date(latestSession.scheduled_at)) : null;
+  // Vocab test: use the latest week_label from actual vocab words (not computed from session date)
+  // This ensures the test shows even when session week and vocab week_label differ
+  const latestWeekLabel = vocabWords.length > 0
+    ? vocabWords.reduce((latest, w) => w.week_label > latest ? w.week_label : latest, vocabWords[0].week_label)
+    : null;
   const weekVocabCount = latestWeekLabel ? vocabWords.filter(w => w.week_label === latestWeekLabel).length : 0;
   const weekTestsDone = latestWeekLabel ? testHistory.filter(t => t.week_label === latestWeekLabel && t.completed_at).length : 0;
 
