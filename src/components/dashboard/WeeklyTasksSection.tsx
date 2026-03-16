@@ -203,6 +203,7 @@ export default function WeeklyTasksSection({
           {weekAssignments.map(a => {
             const sub = getSub(a.id);
             const done = sub && (sub.status === "submitted" || sub.status === "reviewed");
+            const isDraft = sub && sub.status === "draft";
             const meta = HW_META[a.type as HwType] ?? HW_META.writing;
             const Icon = meta.icon;
             const isQuickType = a.type === "memorizing" || a.type === "speaking";
