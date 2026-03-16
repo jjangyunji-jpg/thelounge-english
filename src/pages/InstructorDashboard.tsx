@@ -1233,6 +1233,27 @@ function RescheduleModal({
     if (error) {
       toast({ title: "변경 실패", description: error.message, variant: "destructive" });
     } else {
+      // Sync instructor_available_slots: release old slot, book new slot
+      const origDate = orig.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      const origTime = orig.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Seoul" });
+      const newSlotTime = `${time}:00`;
+
+      // Release old slot back to open (if it exists)
+      await supabase
+        .from("instructor_available_slots")
+        .update({ status: "open" })
+        .eq("slot_date", origDate)
+        .eq("slot_time", origTime)
+        .eq("status", "booked");
+
+      // Book new slot (if matching open slot exists)
+      await supabase
+        .from("instructor_available_slots")
+        .update({ status: "booked" })
+        .eq("slot_date", date)
+        .eq("slot_time", newSlotTime)
+        .eq("status", "open");
+
       toast({ title: "수업 일정이 변경되었습니다 ✓" });
       onSaved();
       onClose();
