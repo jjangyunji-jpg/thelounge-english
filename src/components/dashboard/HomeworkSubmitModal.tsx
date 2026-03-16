@@ -109,11 +109,18 @@ export default function HomeworkSubmitModal({
   const { toast } = useToast();
   const [text, setText] = useState(submission?.text_content ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [fileObj, setFileObj] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const meta = HW_META[assignment.type as HwType] ?? HW_META.writing;
   const Icon = meta.icon;
   const recorder = useAudioRecorder();
+
+  const isDraft = submission?.status === "draft";
+
+  // Auto-save draft every 30 seconds if text changed
+  const lastSavedTextRef = useRef(submission?.text_content ?? "");
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isReadingType = assignment.type === "reading" || assignment.type === "watching";
   const showTextArea = meta.requiresText || assignment.type === "memorizing" || isReadingType;
@@ -127,8 +134,12 @@ export default function HomeworkSubmitModal({
       (!meta.requiresAudio || recorder.audioBlob !== null) &&
       (!meta.requiresFile || fileObj !== null);
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
+  const canSaveDraft = text.trim().length > 0 || recorder.audioBlob !== null || fileObj !== null;
+
+  const saveOrSubmit = async (asDraft: boolean) => {
+    if (asDraft) setSavingDraft(true);
+    else setSubmitting(true);
+
     let audioStorageUrl: string | null = null;
     let fileStorageUrl: string | null = null;
     try {
@@ -153,7 +164,9 @@ export default function HomeworkSubmitModal({
         fileStorageUrl = pub.publicUrl;
       }
 
+      const status = asDraft ? "draft" : "submitted";
       let resultSub: Submission | null = null;
+
       if (submission) {
         const { data, error } = await supabase
           .from("homework_submissions")
@@ -161,8 +174,8 @@ export default function HomeworkSubmitModal({
             text_content: text.trim() || null,
             audio_url: audioStorageUrl ?? submission.audio_url,
             file_url: fileStorageUrl ?? (submission as any).file_url,
-            status: "submitted",
-            submitted_at: new Date().toISOString(),
+            status,
+            submitted_at: asDraft ? submission.submitted_at ?? new Date().toISOString() : new Date().toISOString(),
           })
           .eq("id", submission.id)
           .select()
@@ -178,7 +191,7 @@ export default function HomeworkSubmitModal({
             text_content: text.trim() || null,
             audio_url: audioStorageUrl,
             file_url: fileStorageUrl,
-            status: "submitted",
+            status,
           })
           .select()
           .single();
@@ -186,15 +199,25 @@ export default function HomeworkSubmitModal({
         resultSub = data;
       }
 
-      toast({ title: "숙제가 제출됐습니다 ✓" });
-      if (resultSub) onSubmitted(resultSub);
-      onClose();
+      if (asDraft) {
+        lastSavedTextRef.current = text;
+        toast({ title: "임시저장 완료 ✓" });
+        if (resultSub) onSubmitted(resultSub);
+      } else {
+        toast({ title: "숙제가 제출됐습니다 ✓" });
+        if (resultSub) onSubmitted(resultSub);
+        onClose();
+      }
     } catch (e: unknown) {
-      toast({ title: "제출 실패", description: e instanceof Error ? e.message : "오류 발생", variant: "destructive" });
+      toast({ title: asDraft ? "임시저장 실패" : "제출 실패", description: e instanceof Error ? e.message : "오류 발생", variant: "destructive" });
     } finally {
       setSubmitting(false);
+      setSavingDraft(false);
     }
   };
+
+  const handleSubmit = () => saveOrSubmit(false);
+  const handleSaveDraft = () => saveOrSubmit(true);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
