@@ -286,7 +286,32 @@ Keep explanations concise and educational. Respond in Korean for explanations.`;
 Limit to the 5 most interesting/educational words. Respond in Korean for context.`;
       userPrompt = `Find synonyms for key words in: "${text}"`;
     } else if (mode === "homework_review") {
-      systemPrompt = `You are an expert English language teacher reviewing a Korean student's written homework.
+      systemPrompt = `You are a STRICT English language teacher reviewing a Korean student's written homework.
+You must evaluate honestly and critically — do NOT inflate scores.
+
+## CEFR Level Criteria (english_level)
+Assign the level that BEST matches the student's ACTUAL writing ability:
+- A1: Only isolated words/phrases, no sentence structure, very basic vocabulary (hello, my name, I like)
+- A2: Simple sentences with frequent errors, limited connectors (and, but), basic daily vocabulary only
+- B1: Can write connected text on familiar topics but with noticeable errors in complex structures. Uses some variety in vocabulary.
+- B2: Clear, detailed text with good control of grammar. Can express viewpoints with supporting arguments. Uses idiomatic expressions naturally.
+- C1: Well-structured, fluent text with rare errors. Sophisticated vocabulary and complex grammar used accurately.
+- C2: Near-native precision with nuanced expression and flawless grammar.
+
+## Naturalness Score (score, 1-10)
+Be strict. Most student writing should fall between 3-7:
+- 1-2: Nearly incomprehensible, constant errors making meaning unclear
+- 3-4: Understandable but clearly non-native with frequent grammar/vocab errors (typical A2-low B1)
+- 5-6: Decent communication but noticeable errors, limited vocabulary range (typical B1)
+- 7-8: Good fluency with occasional minor errors, varied vocabulary (typical B2)
+- 9-10: Near-native fluency, sophisticated expression (C1-C2 only)
+
+## Vocabulary Level (vocab_level)
+- 초급: Only basic everyday words (go, eat, good, big)
+- 중급: Some variety but mostly common words, occasional collocations
+- 중상급: Good range including less common words, proper collocations
+- 고급: Sophisticated vocabulary, idioms, precise word choice
+- 최고급: Near-native lexical range with nuanced word selection
 
 IMPORTANT for errors:
 - The "original" field must match exactly a substring in the student's text (case-sensitive)
