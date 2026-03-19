@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   CheckCircle2, Circle, BookOpen, PenLine, Mic, Brain,
   Trophy, ExternalLink, Link2, ClipboardList, Paperclip, Monitor,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +87,7 @@ export default function WeeklyTasksSection({
   const [modalAssignment, setModalAssignment] = useState<Assignment | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [feedbackAssignment, setFeedbackAssignment] = useState<{ assignment: Assignment; submission: Submission } | null>(null);
+  const [expandedHwId, setExpandedHwId] = useState<string | null>(null);
 
   // Find the most recent past session (latest completed/past session)
   const now = new Date();
@@ -288,10 +290,11 @@ export default function WeeklyTasksSection({
                   ) : null}
                 </div>
 
-                {/* Description preview for reading/watching */}
-                {(a.type === "reading" || a.type === "watching") && a.description && (
+                {/* Description for all types */}
+                {a.description && (
                   <div className="ml-8">
-                    {extractUrls(a.description).length > 0 && (
+                    {/* For reading/watching: show URL links */}
+                    {(a.type === "reading" || a.type === "watching") && extractUrls(a.description).length > 0 && (
                       <div className="space-y-1">
                         {extractUrls(a.description).map((url, i) => (
                           <a key={i} href={url} target="_blank" rel="noopener noreferrer"
@@ -301,6 +304,21 @@ export default function WeeklyTasksSection({
                             <ExternalLink className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                           </a>
                         ))}
+                      </div>
+                    )}
+                    {/* For non-link types or descriptions without URLs: show expandable detail */}
+                    {!(a.type === "reading" || a.type === "watching") || extractUrls(a.description).length === 0 ? (
+                      <button
+                        onClick={() => setExpandedHwId(prev => prev === a.id ? null : a.id)}
+                        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors mt-0.5"
+                      >
+                        {expandedHwId === a.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        상세 보기
+                      </button>
+                    ) : null}
+                    {expandedHwId === a.id && (
+                      <div className="mt-1.5 px-2.5 py-2 rounded-md border border-border bg-muted/20 text-xs text-muted-foreground whitespace-pre-wrap">
+                        {a.description}
                       </div>
                     )}
                   </div>
