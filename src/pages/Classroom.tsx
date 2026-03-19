@@ -552,7 +552,7 @@ export default function Classroom() {
     dataLoadedForRef.current = session.sessionId;
     const loadData = async () => {
       const { data: sessionData } = await supabase
-        .from("class_sessions").select("notes, remarks").eq("id", session.sessionId).single();
+        .from("class_sessions").select("notes, remarks, group_students").eq("id", session.sessionId).single();
       const notesRaw = sessionData?.notes || "";
       const isEmptyNotes = !notesRaw || notesRaw.replace(/<p><\/p>/g, "").replace(/<br\s*\/?>/g, "").trim() === "";
       if (!isEmptyNotes) {
