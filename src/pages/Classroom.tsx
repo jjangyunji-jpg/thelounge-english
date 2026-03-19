@@ -840,8 +840,8 @@ export default function Classroom() {
     setHwList((prev) => prev.filter((h) => h.id !== id));
   };
 
-  const startEditHw = (hw: HomeworkItem) => { setEditingHwId(hw.id); setEditHwType(hw.type); setEditHwTitle(hw.title); setEditHwDesc(hw.description); setEditHwPreset(hw.isPreset); setAddingHw(false); };
-  const cancelEditHw = () => { setEditingHwId(null); setEditHwTitle(""); setEditHwDesc(""); setEditHwPreset(false); };
+  const startEditHw = (hw: HomeworkItem) => { setEditingHwId(hw.id); setEditHwType(hw.type); setEditHwTitle(hw.title); setEditHwDesc(hw.description); setEditHwPreset(hw.isPreset); setAddingHw(false); setSelectedEditHwStudents(hw.studentName ? [hw.studentName] : [session.dbStudentName]); };
+  const cancelEditHw = () => { setEditingHwId(null); setEditHwTitle(""); setEditHwDesc(""); setEditHwPreset(false); setSelectedEditHwStudents([]); };
 
   const handleSaveEditHw = async () => {
     if (!editHwTitle.trim() || !editingHwId) return;
