@@ -2185,7 +2185,7 @@ export default function InstructorDashboard() {
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
-                              <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
+                              <a href={`/t/classroom?sessionId=${s.id}`}>
                                 <Button size="sm" className="h-6 text-[10px] gap-1 bg-navy hover:bg-navy-light text-primary-foreground px-2">
                                   <FileText className="w-3 h-3" /> 수업노트
                                 </Button>
@@ -2203,7 +2203,7 @@ export default function InstructorDashboard() {
                               <p className="text-sm font-medium text-foreground/70">{fmtName(v.student_name)}</p>
                               <p className="text-[11px] text-muted-foreground">{v.level || "—"} · 예정</p>
                             </div>
-                            <a href={`/t/classroom?student=${encodeURIComponent(v.student_name)}`} target="_blank" rel="noopener noreferrer">
+                            <a href={`/t/classroom?student=${encodeURIComponent(v.student_name)}`}>
                               <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 px-2">
                                 <FileText className="w-3 h-3" /> 수업노트
                               </Button>
@@ -2411,7 +2411,7 @@ export default function InstructorDashboard() {
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                                        <a href={`/t/classroom?sessionId=${s.id}`}>
+                                        <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
                                           <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2">
                                             <FileText className="w-3 h-3" /> 이번 수업
                                           </Button>
