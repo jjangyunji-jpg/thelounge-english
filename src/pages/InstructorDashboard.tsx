@@ -3006,6 +3006,46 @@ export default function InstructorDashboard() {
                   <Target className="w-3 h-3" />
                   목표 일괄 설정
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/8"
+                  onClick={async () => {
+                    const sp = allPeriods[studentTabPeriodIdx] || period;
+                    if (!sp || !instructor) return;
+                    // Find students who had completed sessions in this period
+                    const periodSessions = sessions.filter(s =>
+                      s.ended_at &&
+                      s.instructor_name === instructor.name &&
+                      s.scheduled_at >= sp.start_date &&
+                      s.scheduled_at <= sp.end_date + "T23:59:59"
+                    );
+                    const completedStudentNames = [...new Set(periodSessions.map(s => s.student_name))];
+                    if (completedStudentNames.length === 0) {
+                      toast({ title: "이 기간에 완료된 수업이 없습니다." });
+                      return;
+                    }
+                    const { data: existingFb } = await supabase
+                      .from("instructor_student_feedback" as any)
+                      .select("student_name")
+                      .eq("instructor_name", instructor.name)
+                      .eq("period_id", sp.id);
+                    const alreadyDone = new Set((existingFb || []).map((f: any) => f.student_name));
+                    const needFeedback = completedStudentNames.filter(sn => !alreadyDone.has(sn));
+                    if (needFeedback.length === 0) {
+                      toast({ title: "모든 학생의 피드백이 이미 완료되었습니다 ✅" });
+                      return;
+                    }
+                    const feedbackStudents = needFeedback.map(sn => {
+                      const st = students.find(s2 => s2.student_name === sn);
+                      return { student_name: sn, level: st?.level || null, learning_objective: st?.learning_objective || null };
+                    });
+                    setStudentFeedbackModal({ students: feedbackStudents, periodId: sp.id, periodLabel: sp.label, periodStartDate: sp.start_date, periodEndDate: sp.end_date });
+                  }}
+                >
+                  <ClipboardCheck className="w-3 h-3" />
+                  학생 피드백
+                </Button>
               </h2>
               {allPeriods.length > 0 && (
                 <div className="flex items-center gap-2 shrink-0">
