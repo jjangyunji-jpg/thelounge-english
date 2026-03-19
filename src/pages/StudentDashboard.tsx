@@ -812,6 +812,7 @@ export default function StudentDashboard() {
   // 반복 일정 중 아직 class_session에 없는 것들 (가상 upcoming)
   const virtualUpcoming = recurringDates.filter(
     d => d.getTime() > Date.now() && !existingSessionDates.has(d.toDateString()) &&
+      !rescheduledOriginDateStrings.has(d.toDateString()) &&
       !(studentRecord?.pauses?.some(p => {
         const dateKey = toLocalDateKey(d);
         return dateKey >= p.pause_start && (!p.pause_end || dateKey <= p.pause_end);
