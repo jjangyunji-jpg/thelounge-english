@@ -1,0 +1,1 @@
+DELETE FROM homework_assignments WHERE id = 'd94d70c3-5ae3-4825-878f-eb5f51128d6e';
