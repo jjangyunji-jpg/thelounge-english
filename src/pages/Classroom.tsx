@@ -818,8 +818,8 @@ export default function Classroom() {
       const { data, error } = await supabase.from("homework_assignments").insert(inserts).select();
       if (error) throw error;
       if (data && data.length > 0) {
-        // Show the first one in the UI list (for the group/primary student)
-        setHwList((prev) => [...prev, { id: data[0].id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true }]);
+        // Show all created homework in the UI list (for group classes, show each member's entry)
+        setHwList((prev) => [...prev, ...data.map(d => ({ id: d.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true, studentName: d.student_name }))]);
         const count = allGroupMembers.length > 0 ? targetStudents.length : 0;
         const msg = count > 0 ? `숙제가 ${count}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
         toast({ title: msg });
