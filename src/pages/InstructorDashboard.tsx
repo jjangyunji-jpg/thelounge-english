@@ -2969,7 +2969,7 @@ export default function InstructorDashboard() {
                                   );
                                 })()}
                                 {latestPast && (
-                                  <a href={`/t/classroom?sessionId=${latestPast.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-navy hover:underline mt-1">
+                                  <a href={`/t/classroom?sessionId=${latestPast.id}`} className="inline-flex items-center gap-1 text-[10px] text-navy hover:underline mt-1">
                                     <FileText className="w-3 h-3" /> 수업노트 보기
                                   </a>
                                 )}
