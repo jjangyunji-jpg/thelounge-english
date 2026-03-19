@@ -35,6 +35,7 @@ interface HomeworkItem {
   isPreset: boolean;
   saved: boolean;
   presetOriginId?: string | null;
+  studentName?: string;
 }
 
 const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string; hint: string }> = {
@@ -551,7 +552,7 @@ export default function Classroom() {
     dataLoadedForRef.current = session.sessionId;
     const loadData = async () => {
       const { data: sessionData } = await supabase
-        .from("class_sessions").select("notes, remarks").eq("id", session.sessionId).single();
+        .from("class_sessions").select("notes, remarks, group_students").eq("id", session.sessionId).single();
       const notesRaw = sessionData?.notes || "";
       const isEmptyNotes = !notesRaw || notesRaw.replace(/<p><\/p>/g, "").replace(/<br\s*\/?>/g, "").trim() === "";
       if (!isEmptyNotes) {
@@ -590,9 +591,13 @@ export default function Classroom() {
         }
       }
 
+      // Load homework for primary student AND group members
+      const gsArr = Array.isArray((sessionData as any)?.group_students) ? (sessionData as any).group_students as string[] : [];
+      const allHwStudents = [session.dbStudentName, ...gsArr.filter(s => s !== session.dbStudentName)];
+      
       const { data } = await supabase
         .from("homework_assignments").select("*")
-        .eq("student_name", session.dbStudentName)
+        .in("student_name", allHwStudents)
         .or(`session_id.eq.${session.sessionId},is_preset.eq.true`)
         .order("created_at", { ascending: true });
 
@@ -611,6 +616,7 @@ export default function Classroom() {
           id: d.id, type: d.type as HwType, title: d.title,
           description: d.description || "", isPreset: d.is_preset, saved: true,
           presetOriginId: d.preset_origin_id,
+          studentName: d.student_name,
         })));
       }
 
@@ -812,8 +818,8 @@ export default function Classroom() {
       const { data, error } = await supabase.from("homework_assignments").insert(inserts).select();
       if (error) throw error;
       if (data && data.length > 0) {
-        // Show the first one in the UI list (for the group/primary student)
-        setHwList((prev) => [...prev, { id: data[0].id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true }]);
+        // Show all created homework in the UI list (for group classes, show each member's entry)
+        setHwList((prev) => [...prev, ...data.map(d => ({ id: d.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true, studentName: d.student_name }))]);
         const count = allGroupMembers.length > 0 ? targetStudents.length : 0;
         const msg = count > 0 ? `숙제가 ${count}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
         toast({ title: msg });
@@ -1489,6 +1495,9 @@ export default function Classroom() {
                           <div className={cn("mt-0.5 flex-shrink-0", meta.color)}><Icon className="w-3.5 h-3.5" /></div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
+                              {allGroupMembers.length > 0 && hw.studentName && hw.studentName !== session.dbStudentName && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--gold)/0.12)] text-[hsl(var(--gold-dark))]">{hw.studentName}</span>
+                              )}
                               <span className="text-xs font-semibold text-foreground">{hw.title}</span>
                               <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>{meta.label}</span>
                               {hw.isPreset && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--navy)/0.1)] text-[hsl(var(--navy))]">정기</span>}
