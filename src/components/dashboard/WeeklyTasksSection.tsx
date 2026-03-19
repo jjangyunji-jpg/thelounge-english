@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   CheckCircle2, Circle, BookOpen, PenLine, Mic, Brain,
   Trophy, ExternalLink, Link2, ClipboardList, Paperclip, Monitor,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
