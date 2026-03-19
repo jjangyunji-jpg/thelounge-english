@@ -613,6 +613,55 @@ export default function Classroom() {
           presetOriginId: d.preset_origin_id,
         })));
       }
+
+      // Load previous session's homework status
+      const { data: prevSessData } = await supabase
+        .from("class_sessions")
+        .select("id")
+        .eq("student_name", session.dbStudentName)
+        .lt("scheduled_at", session.scheduledAt.toISOString())
+        .order("scheduled_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (prevSessData?.id) {
+        const { data: prevHwData } = await supabase
+          .from("homework_assignments")
+          .select("id, type, title, is_preset, preset_origin_id")
+          .eq("student_name", session.dbStudentName)
+          .or(`session_id.eq.${prevSessData.id},is_preset.eq.true`)
+          .order("created_at", { ascending: true });
+
+        if (prevHwData && prevHwData.length > 0) {
+          // Filter out preset templates with session copies
+          const prevCopyOriginIds = new Set(
+            prevHwData.filter(d => d.preset_origin_id && d.session_id === prevSessData.id)
+              .map(d => d.preset_origin_id)
+          );
+          const filteredPrev = prevHwData.filter(d => {
+            if (d.is_preset && prevCopyOriginIds.has(d.id)) return false;
+            return true;
+          });
+          const hwIds = filteredPrev.map(h => h.id);
+          const { data: subData } = await supabase
+            .from("homework_submissions")
+            .select("assignment_id, status")
+            .in("assignment_id", hwIds);
+
+          const subMap = new Map((subData || []).map(s => [s.assignment_id, s.status]));
+          setPrevHwList(filteredPrev.map(h => ({
+            id: h.id,
+            type: h.type as HwType,
+            title: h.title,
+            status: subMap.get(h.id) || "not_submitted",
+          })));
+        } else {
+          setPrevHwList([]);
+        }
+      } else {
+        setPrevHwList([]);
+      }
+
       setSessionTopic(session.topic);
     };
     loadData();
