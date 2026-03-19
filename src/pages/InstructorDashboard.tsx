@@ -2411,7 +2411,7 @@ export default function InstructorDashboard() {
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                                        <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
+                                        <a href={`/t/classroom?sessionId=${s.id}`}>
                                           <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2">
                                             <FileText className="w-3 h-3" /> 이번 수업
                                           </Button>
@@ -2969,7 +2969,7 @@ export default function InstructorDashboard() {
                                   );
                                 })()}
                                 {latestPast && (
-                                  <a href={`/t/classroom?sessionId=${latestPast.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-navy hover:underline mt-1">
+                                  <a href={`/t/classroom?sessionId=${latestPast.id}`} className="inline-flex items-center gap-1 text-[10px] text-navy hover:underline mt-1">
                                     <FileText className="w-3 h-3" /> 수업노트 보기
                                   </a>
                                 )}
