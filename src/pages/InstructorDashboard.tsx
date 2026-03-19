@@ -1998,6 +1998,7 @@ export default function InstructorDashboard() {
             level: s.level,
             meet_link: s.meet_link,
             instructor_name: s.instructor_name,
+            group_students: s.group_students || [],
           }))}
           instructorName={instructor.name}
           defaultDate={addSessionDefaultDate}
