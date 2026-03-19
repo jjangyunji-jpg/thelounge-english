@@ -421,6 +421,7 @@ export default function StudentDashboard() {
   const [vocabStudyOpen] = useState(false); // kept for potential future use
   const [hwModalAssignment, setHwModalAssignment] = useState<Assignment | null>(null);
   const [hwCompletingId, setHwCompletingId] = useState<string | null>(null);
+  const [hwFeedback, setHwFeedback] = useState<{ assignment: Assignment; submission: Submission } | null>(null);
 
   // Feedback survey state
   const [feedbackNeeded, setFeedbackNeeded] = useState<{
