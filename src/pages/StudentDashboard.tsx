@@ -100,6 +100,7 @@ interface ClassSession {
   instructor_name: string;
   started_at: string | null;
   ended_at: string | null;
+  reschedule_origin_dates?: string[];
 }
 
 interface Assignment {
