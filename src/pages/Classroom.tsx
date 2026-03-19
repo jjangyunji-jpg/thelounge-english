@@ -592,8 +592,8 @@ export default function Classroom() {
       }
 
       // Load homework for primary student AND group members
-      const allHwStudents = [session.dbStudentName, ...groupStudents.filter(s => s !== session.dbStudentName)];
-      
+      const gsArr = Array.isArray((sessionData as any)?.group_students) ? (sessionData as any).group_students as string[] : [];
+      const allHwStudents = [session.dbStudentName, ...gsArr.filter(s => s !== session.dbStudentName)];
       
       const { data } = await supabase
         .from("homework_assignments").select("*")
