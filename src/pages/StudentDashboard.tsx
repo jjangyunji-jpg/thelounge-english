@@ -837,7 +837,7 @@ export default function StudentDashboard() {
   // 수업일수: 지난 실제 세션 + 반복 일정에서 시작일 ~ 오늘까지 지나간 날 (중복 제거)
   const pastSessions = sessions.filter(s => msUntil(s.scheduled_at) <= 0);
   const pastRecurring = recurringDates.filter(
-    d => d.getTime() <= Date.now() && !existingSessionDates.has(d.toDateString())
+    d => d.getTime() <= Date.now() && !existingSessionDates.has(d.toDateString()) && !rescheduledOriginDateStrings.has(d.toDateString())
   );
   const totalClassDays = pastSessions.length + pastRecurring.length;
 
