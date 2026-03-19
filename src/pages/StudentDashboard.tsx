@@ -532,7 +532,7 @@ export default function StudentDashboard() {
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
         .eq("student_name", student).order("scheduled_at", { ascending: true }),
       // Group sessions: where student is in group_students array
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,student_name")
         .contains("group_students", [student]).order("scheduled_at", { ascending: false }).limit(20),
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
         .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
