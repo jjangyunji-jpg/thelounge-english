@@ -18,6 +18,7 @@ interface StudentOption {
   level: string | null;
   meet_link: string | null;
   instructor_name: string | null;
+  group_students?: string[];
 }
 
 interface AddSessionModalProps {
