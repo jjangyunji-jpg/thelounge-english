@@ -104,7 +104,8 @@ export default function WeeklyTasksSection({
       .map(a => a.preset_origin_id)
   );
   const weekAssignments = assignments.filter(a => {
-    if (a.is_preset && a.type === "memorizing") return false;
+    // Only hide memorizing presets that are vocab-test-specific (title contains "단어 테스트")
+    if (a.is_preset && a.type === "memorizing" && a.title.includes("단어 테스트")) return false;
     // Hide template if a session copy exists
     if (a.is_preset && sessionCopyOriginIds.has(a.id)) return false;
     return a.is_preset || (a.session_id && a.session_id === latestSessionId);
