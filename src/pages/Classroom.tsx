@@ -1495,6 +1495,9 @@ export default function Classroom() {
                           <div className={cn("mt-0.5 flex-shrink-0", meta.color)}><Icon className="w-3.5 h-3.5" /></div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
+                              {allGroupMembers.length > 0 && hw.studentName && hw.studentName !== session.dbStudentName && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--gold)/0.12)] text-[hsl(var(--gold-dark))]">{hw.studentName}</span>
+                              )}
                               <span className="text-xs font-semibold text-foreground">{hw.title}</span>
                               <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>{meta.label}</span>
                               {hw.isPreset && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--navy)/0.1)] text-[hsl(var(--navy))]">정기</span>}
