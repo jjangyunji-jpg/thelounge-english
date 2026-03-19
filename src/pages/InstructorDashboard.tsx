@@ -1935,7 +1935,7 @@ export default function InstructorDashboard() {
       completedMonthSessions,
       monthTotal,
       weekSubmittedHw: weekSubmittedCount,
-      totalHw: sAssignments.length,
+      totalHw: sAssignments.filter(a => !(a.is_preset && a.type === "memorizing")).filter(a => a.is_preset || a.session_id === latestSessionId).length,
       weekVocabCount: weekVocabTests.length,
     };
   };
