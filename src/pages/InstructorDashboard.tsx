@@ -65,6 +65,7 @@ interface StudentFull {
   extra_lessons: number | null;
   start_date: string | null;
   student_type: string | null;
+  group_students?: string[];
   instructor_id: string;
   instructor_name: string | null;
   pauses: PauseRecord[];
@@ -1998,6 +1999,7 @@ export default function InstructorDashboard() {
             level: s.level,
             meet_link: s.meet_link,
             instructor_name: s.instructor_name,
+            group_students: s.group_students || [],
           }))}
           instructorName={instructor.name}
           defaultDate={addSessionDefaultDate}
