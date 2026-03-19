@@ -1923,11 +1923,12 @@ export default function InstructorDashboard() {
       }
     }
 
-    // Weekly vocab tests
+    // Weekly vocab tests: count tests after latest past session
     const weekVocabTests = vocabTests.filter((v) => {
       if (v.student_name !== studentName) return false;
+      if (!latestPastSession) return false;
       const d = new Date(v.started_at);
-      return d >= weekStart && d < weekEnd;
+      return d.getTime() >= latestSessionTime;
     });
 
     return {
