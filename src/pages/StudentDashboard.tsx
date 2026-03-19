@@ -2060,6 +2060,19 @@ export default function StudentDashboard() {
         }}
       />
     )}
+    {hwFeedback && (
+      <HomeworkFeedbackModal
+        assignmentTitle={hwFeedback.assignment.title}
+        assignmentType={hwFeedback.assignment.type}
+        textContent={hwFeedback.submission.text_content}
+        audioUrl={hwFeedback.submission.audio_url}
+        fileUrl={hwFeedback.submission.file_url}
+        instructorNote={hwFeedback.submission.instructor_note}
+        reviewedAt={hwFeedback.submission.reviewed_at}
+        aiCorrection={hwFeedback.submission.ai_correction}
+        onClose={() => setHwFeedback(null)}
+      />
+    )}
     </>
   );
 }
