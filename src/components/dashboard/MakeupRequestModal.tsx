@@ -168,18 +168,27 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (requestType === "reschedule" && !selectedSession) return;
     setSubmitting(true);
     try {
-      const { data: slotCheck } = await supabase.from("instructor_available_slots")
-        .select("status").eq("id", selectedSlot.id).single();
-      if (!slotCheck || slotCheck.status !== "open") {
-        toast({ title: "이미 예약된 시간입니다", description: "다른 시간을 선택해주세요.", variant: "destructive" });
+      // Atomically book the slot: only update if still "open"
+      const { data: updated, error: updateErr } = await supabase
+        .from("instructor_available_slots")
+        .update({ status: "booked" })
+        .eq("id", selectedSlot.id)
+        .eq("status", "open")
+        .select("id");
+
+      if (updateErr || !updated || updated.length === 0) {
+        toast({ title: "이미 예약된 시간입니다", description: "다른 사람이 먼저 신청했습니다. 다른 시간을 선택해주세요.", variant: "destructive" });
         const { data: fresh } = await supabase.from("instructor_available_slots").select("*")
           .eq("instructor_name", instructorName).eq("status", "open")
           .gte("slot_date", todayStr).order("slot_date").order("slot_time");
         setSlots((fresh || []) as AvailableSlot[]);
+        setSelectedSlot(null);
+        setSelectedDate(null);
+        setStep("calendar");
         setSubmitting(false);
         return;
       }
-      await supabase.from("instructor_available_slots").update({ status: "booked" }).eq("id", selectedSlot.id);
+
       const { error } = await supabase.from("makeup_requests").insert({
         student_name: studentName,
         instructor_name: instructorName,
