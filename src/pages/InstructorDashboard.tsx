@@ -2473,6 +2473,137 @@ export default function InstructorDashboard() {
                                   })()}
                                   </div>
                                 </div>
+                                {/* Homework toggle for this student */}
+                                {(() => {
+                                  const nowTs = new Date();
+                                  const sSessions = sessions.filter(ss => ss.student_name === s.student_name);
+                                  const pastSessions = sSessions.filter(ss => new Date(ss.scheduled_at) <= nowTs).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+                                  const latestPast = pastSessions[0] || null;
+                                  const studentAssignments = assignments.filter(a => a.student_name === s.student_name && (a.is_preset || (latestPast && a.session_id === latestPast.id)));
+                                  const stVocabAll = vocabTests.filter(v => v.student_name === s.student_name);
+                                  const hasVocab = stVocabAll.length > 0;
+                                  const vocabDone = stVocabAll.some(v => v.completed_at);
+                                  const totalHw = studentAssignments.length + (hasVocab ? 1 : 0);
+                                  const submittedCount = studentAssignments.filter(a => {
+                                    const sub = submissions.find(sb => sb.assignment_id === a.id);
+                                    return sub && (sub.status === "submitted" || sub.status === "reviewed");
+                                  }).length + (vocabDone ? 1 : 0);
+                                  const allDone = totalHw > 0 && submittedCount === totalHw;
+                                  const noneSubmitted = submittedCount === 0 && totalHw > 0;
+                                  const isTodayExpanded = expandedTodayHwSession === s.id;
+
+                                  if (totalHw === 0) return null;
+
+                                  return (
+                                    <div className="mt-2 border-t border-border/50 pt-2">
+                                      <button
+                                        onClick={() => setExpandedTodayHwSession(isTodayExpanded ? null : s.id)}
+                                        className="w-full flex items-center gap-2 text-left"
+                                      >
+                                        <ClipboardCheck className="w-3 h-3 text-navy flex-shrink-0" />
+                                        <span className="text-[11px] font-medium text-foreground flex-1">숙제 현황</span>
+                                        <div className={cn(
+                                          "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                                          allDone ? "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]" :
+                                          noneSubmitted ? "bg-destructive/10 text-destructive" :
+                                          "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]"
+                                        )}>
+                                          {submittedCount}/{totalHw}
+                                        </div>
+                                        <ChevronDown className={cn("w-3 h-3 text-muted-foreground transition-transform", isTodayExpanded && "rotate-180")} />
+                                      </button>
+                                      {isTodayExpanded && (
+                                        <div className="mt-1.5 space-y-1">
+                                          {studentAssignments.map(a => {
+                                            const sub = submissions.find(sb => sb.assignment_id === a.id);
+                                            const hwType = a.type as HwType;
+                                            const meta = HW_TYPE_META[hwType];
+                                            const Icon = meta?.icon || FileText;
+                                            const isSubmitted = sub && (sub.status === "submitted" || sub.status === "reviewed");
+                                            const isReviewed = sub && sub.status === "reviewed";
+                                            const isQuickCheck = hwType === "reading" || hwType === "memorizing" || hwType === "watching";
+                                            return (
+                                              <div
+                                                key={a.id}
+                                                onClick={() => {
+                                                  if (!isQuickCheck && sub && sub.status === "submitted") {
+                                                    setReviewHw({ assignment: a, submission: sub });
+                                                  } else if (sub && sub.status === "reviewed") {
+                                                    setViewCheckedHw({ assignment: a, submission: sub });
+                                                  }
+                                                }}
+                                                className={cn(
+                                                  "flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left",
+                                                  isSubmitted ? "border-border bg-card" : "border-dashed border-muted-foreground/20 bg-muted/10",
+                                                  ((!isQuickCheck && sub?.status === "submitted") || sub?.status === "reviewed") && "cursor-pointer hover:bg-muted/40 transition-colors",
+                                                )}
+                                              >
+                                                <Icon className={cn("w-3 h-3 flex-shrink-0", meta?.color || "text-muted-foreground")} />
+                                                <span className="text-[11px] flex-1 truncate">{a.title}</span>
+                                                {isReviewed ? (
+                                                  <CheckCircle className="w-3 h-3 text-[hsl(var(--success))] flex-shrink-0" />
+                                                ) : isSubmitted ? (
+                                                  isQuickCheck ? (
+                                                    <Button
+                                                      size="sm"
+                                                      variant="outline"
+                                                      className="h-5 text-[9px] gap-0.5 border-[hsl(var(--success)/0.4)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.1)] px-1.5"
+                                                      onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        await supabase.from("homework_submissions").update({
+                                                          status: "reviewed",
+                                                          reviewed_at: new Date().toISOString(),
+                                                        }).eq("id", sub.id);
+                                                        toast({ title: "확인 완료 ✓" });
+                                                        setSubmissions(prev => prev.map(sb => sb.id === sub.id ? { ...sb, status: "reviewed", reviewed_at: new Date().toISOString() } : sb));
+                                                      }}
+                                                    >
+                                                      <Check className="w-2.5 h-2.5" /> 확인
+                                                    </Button>
+                                                  ) : (
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--gold)/0.12)] text-[hsl(var(--gold-dark))] font-medium flex-shrink-0">제출됨</span>
+                                                  )
+                                                ) : (
+                                                  <span className="text-[9px] text-muted-foreground/60 flex-shrink-0">미제출</span>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                          {/* Vocab test */}
+                                          {(() => {
+                                            const stVocab = vocabTests.filter(v => v.student_name === s.student_name && v.completed_at);
+                                            if (stVocab.length === 0 && !hasVocab) return null;
+                                            if (stVocab.length === 0) return (
+                                              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-dashed border-muted-foreground/20 bg-muted/10">
+                                                <GraduationCap className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                                <span className="text-[11px] flex-1">단어 테스트</span>
+                                                <span className="text-[9px] text-muted-foreground/60 flex-shrink-0">미완료</span>
+                                              </div>
+                                            );
+                                            const sorted = [...stVocab].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+                                            const latest = sorted[0];
+                                            return (
+                                              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-[hsl(var(--success)/0.04)]">
+                                                <GraduationCap className="w-3 h-3 text-[hsl(var(--success))] flex-shrink-0" />
+                                                <span className="text-[11px] flex-1">단어 테스트</span>
+                                                {latest.score !== null && latest.total !== null && (
+                                                  <span className={cn(
+                                                    "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                                                    latest.score / latest.total >= 0.8 ? "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]" :
+                                                    latest.score / latest.total >= 0.5 ? "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]" :
+                                                    "bg-destructive/10 text-destructive"
+                                                  )}>
+                                                    최근 {latest.score}/{latest.total}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            );
+                                          })()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             );
                           })}
