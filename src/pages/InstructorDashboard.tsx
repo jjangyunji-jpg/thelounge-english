@@ -65,6 +65,7 @@ interface StudentFull {
   extra_lessons: number | null;
   start_date: string | null;
   student_type: string | null;
+  group_students?: string[];
   instructor_id: string;
   instructor_name: string | null;
   pauses: PauseRecord[];
