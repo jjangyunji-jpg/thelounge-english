@@ -50,24 +50,27 @@ export default function AddSessionModal({
 
     const scheduledAt = new Date(`${date}T${time}:00+09:00`).toISOString();
 
-    // Check duplicate
-    const dayStart = new Date(`${date}T00:00:00+09:00`).toISOString();
-    const dayEnd = new Date(`${date}T23:59:59+09:00`).toISOString();
-    const { data: existing } = await supabase
-      .from("class_sessions")
-      .select("id")
-      .eq("student_name", selectedStudent)
-      .gte("scheduled_at", dayStart)
-      .lte("scheduled_at", dayEnd);
+    // Check duplicate (skip for group classes — they can have multiple sessions per day)
+    const isGroup = student?.group_students && student.group_students.length > 0;
+    if (!isGroup) {
+      const dayStart = new Date(`${date}T00:00:00+09:00`).toISOString();
+      const dayEnd = new Date(`${date}T23:59:59+09:00`).toISOString();
+      const { data: existing } = await supabase
+        .from("class_sessions")
+        .select("id")
+        .eq("student_name", selectedStudent)
+        .gte("scheduled_at", dayStart)
+        .lte("scheduled_at", dayEnd);
 
-    if (existing && existing.length > 0) {
-      toast({
-        title: "추가 실패",
-        description: `${selectedStudent}의 ${date} 수업이 이미 존재합니다.`,
-        variant: "destructive",
-      });
-      setSaving(false);
-      return;
+      if (existing && existing.length > 0) {
+        toast({
+          title: "추가 실패",
+          description: `${selectedStudent}의 ${date} 수업이 이미 존재합니다.`,
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
     }
 
     // Get group_students from instructor_students if it exists
