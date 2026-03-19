@@ -789,6 +789,19 @@ export default function StudentDashboard() {
     allSessions.map(s => new Date(s.scheduled_at).toDateString())
   );
 
+  // 일정 변경으로 인해 원래 날짜에서 이동된 날짜들 (이 날짜들은 가상 반복 일정에서 제외)
+  const rescheduledOriginDateStrings = new Set<string>();
+  for (const s of allSessions) {
+    if (Array.isArray(s.reschedule_origin_dates)) {
+      for (const originDate of s.reschedule_origin_dates) {
+        if (originDate) {
+          const d = new Date(originDate + "T00:00:00");
+          rescheduledOriginDateStrings.add(d.toDateString());
+        }
+      }
+    }
+  }
+
   const toLocalDateKey = (d: Date) => {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
