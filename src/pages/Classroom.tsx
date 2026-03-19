@@ -542,6 +542,7 @@ export default function Classroom() {
   const [editHwTitle, setEditHwTitle] = useState("");
   const [editHwDesc, setEditHwDesc] = useState("");
   const [editHwPreset, setEditHwPreset] = useState(false);
+  const [selectedEditHwStudents, setSelectedEditHwStudents] = useState<string[]>([]);
   const [savingEditHw, setSavingEditHw] = useState(false);
 
   const dataLoadedForRef = useRef<string | null>(null);
@@ -839,20 +840,28 @@ export default function Classroom() {
     setHwList((prev) => prev.filter((h) => h.id !== id));
   };
 
-  const startEditHw = (hw: HomeworkItem) => { setEditingHwId(hw.id); setEditHwType(hw.type); setEditHwTitle(hw.title); setEditHwDesc(hw.description); setEditHwPreset(hw.isPreset); setAddingHw(false); };
-  const cancelEditHw = () => { setEditingHwId(null); setEditHwTitle(""); setEditHwDesc(""); setEditHwPreset(false); };
+  const startEditHw = (hw: HomeworkItem) => { setEditingHwId(hw.id); setEditHwType(hw.type); setEditHwTitle(hw.title); setEditHwDesc(hw.description); setEditHwPreset(hw.isPreset); setAddingHw(false); setSelectedEditHwStudents(hw.studentName ? [hw.studentName] : [session.dbStudentName]); };
+  const cancelEditHw = () => { setEditingHwId(null); setEditHwTitle(""); setEditHwDesc(""); setEditHwPreset(false); setSelectedEditHwStudents([]); };
 
   const handleSaveEditHw = async () => {
     if (!editHwTitle.trim() || !editingHwId) return;
     setSavingEditHw(true);
     
     const editingItem = hwList.find(h => h.id === editingHwId);
+    const originalStudentName = editingItem?.studentName || session.dbStudentName;
+    
+    // Determine which students need new copies (excluding the original student who keeps the edited record)
+    const additionalStudents = allGroupMembers.length > 0
+      ? selectedEditHwStudents.filter(s => s !== originalStudentName)
+      : [];
     
     // If editing a preset template, create a session-specific copy instead of modifying the template
     if (editingItem?.isPreset && !editingItem.presetOriginId) {
       try {
+        // Create copy for the original student (or first selected student)
+        const primaryStudent = selectedEditHwStudents.length > 0 ? (selectedEditHwStudents.includes(originalStudentName) ? originalStudentName : selectedEditHwStudents[0]) : originalStudentName;
         const { data: copy, error } = await supabase.from("homework_assignments").insert({
-          student_name: session.dbStudentName,
+          student_name: primaryStudent,
           title: editHwTitle.trim(),
           description: editHwDesc.trim() || null,
           type: editHwType,
@@ -862,13 +871,34 @@ export default function Classroom() {
         }).select().single();
         if (error) throw error;
         if (copy) {
-          // Replace the template in the list with the session copy
           setHwList((prev) => prev.map((h) => h.id === editingHwId ? {
             id: copy.id, type: editHwType, title: editHwTitle.trim(),
             description: editHwDesc.trim(), isPreset: false, saved: true,
-            presetOriginId: editingHwId,
+            presetOriginId: editingHwId, studentName: primaryStudent,
           } : h));
           toast({ title: "이번 수업용 숙제가 생성됐습니다 ✓" });
+        }
+        // Create copies for additional students
+        const otherStudents = selectedEditHwStudents.filter(s => s !== primaryStudent);
+        if (otherStudents.length > 0) {
+          const inserts = otherStudents.map(sn => ({
+            student_name: sn,
+            title: editHwTitle.trim(),
+            description: editHwDesc.trim() || null,
+            type: editHwType,
+            is_preset: false,
+            session_id: session.sessionId || null,
+            preset_origin_id: editingHwId,
+          }));
+          const { data: extras } = await supabase.from("homework_assignments").insert(inserts).select();
+          if (extras) {
+            setHwList(prev => [...prev, ...extras.map(r => ({
+              id: r.id, type: r.type as HwType, title: r.title,
+              description: r.description || "", isPreset: false, saved: true,
+              presetOriginId: r.preset_origin_id || undefined,
+              studentName: r.student_name,
+            }))]);
+          }
         }
       } catch (e: unknown) {
         toast({ title: "저장 실패", variant: "destructive" });
@@ -881,6 +911,25 @@ export default function Classroom() {
       if (!error) {
         setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim(), isPreset: editHwPreset } : h));
         toast({ title: "숙제가 수정됐습니다 ✓" });
+      }
+      // Create copies for additional students
+      if (additionalStudents.length > 0) {
+        const inserts = additionalStudents.map(sn => ({
+          student_name: sn,
+          title: editHwTitle.trim(),
+          description: editHwDesc.trim() || null,
+          type: editHwType,
+          is_preset: editHwPreset,
+          session_id: editHwPreset ? null : (session.sessionId || null),
+        }));
+        const { data: extras } = await supabase.from("homework_assignments").insert(inserts).select();
+        if (extras) {
+          setHwList(prev => [...prev, ...extras.map(r => ({
+            id: r.id, type: r.type as HwType, title: r.title,
+            description: r.description || "", isPreset: r.is_preset, saved: true,
+            studentName: r.student_name,
+          }))]);
+        }
       }
     }
     setSavingEditHw(false);
@@ -1477,7 +1526,37 @@ export default function Classroom() {
                             <label className="flex items-center gap-2 px-1 cursor-pointer">
                               <input type="checkbox" checked={editHwPreset} onChange={(e) => setEditHwPreset(e.target.checked)} className="rounded border-border" />
                               <span className="text-xs text-muted-foreground">정기 숙제로 등록 (모든 수업에 노출)</span>
-                            </label>
+                             </label>
+                            {allGroupMembers.length > 0 && (
+                              <div className="space-y-1.5 p-2.5 rounded-lg border border-border bg-muted/30">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-semibold text-foreground">대상 학생 선택</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedEditHwStudents(prev => prev.length === allGroupMembers.length ? [] : [...allGroupMembers])}
+                                    className="text-[10px] text-[hsl(var(--navy))] hover:underline"
+                                  >
+                                    {selectedEditHwStudents.length === allGroupMembers.length ? "전체 해제" : "전체 선택"}
+                                  </button>
+                                </div>
+                                {allGroupMembers.map(sn => (
+                                  <label key={sn} className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedEditHwStudents.includes(sn)}
+                                      onChange={(e) => {
+                                        setSelectedEditHwStudents(prev => e.target.checked ? [...prev, sn] : prev.filter(s => s !== sn));
+                                      }}
+                                      className="rounded border-border"
+                                    />
+                                    <span className="text-xs text-foreground">{sn}</span>
+                                  </label>
+                                ))}
+                                {selectedEditHwStudents.length > 0 && selectedEditHwStudents.length < allGroupMembers.length && (
+                                  <p className="text-[10px] text-muted-foreground">{selectedEditHwStudents.length}명 선택됨</p>
+                                )}
+                              </div>
+                            )}
                             <div className="flex gap-1.5">
                               <Button size="sm" onClick={handleSaveEditHw} disabled={!editHwTitle.trim() || savingEditHw}
                                 className="flex-1 h-8 text-xs bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground gap-1.5"
