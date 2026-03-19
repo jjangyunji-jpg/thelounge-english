@@ -74,7 +74,7 @@ export default function AdminSidebar({ activeTab, onTabChange, adminLevel }: Adm
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-5 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-1">
         {filteredNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
