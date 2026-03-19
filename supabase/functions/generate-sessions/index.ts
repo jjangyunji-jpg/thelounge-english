@@ -249,7 +249,9 @@ serve(async (req) => {
             group_students: groupStudents,
           });
 
-          existingSet.add(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`);
+          if (!isGroup) {
+            existingSet.add(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`);
+          }
         }
       }
     }
