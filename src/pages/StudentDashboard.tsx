@@ -532,7 +532,7 @@ export default function StudentDashboard() {
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
         .eq("student_name", student).order("scheduled_at", { ascending: true }),
       // Group sessions: where student is in group_students array
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,student_name")
         .contains("group_students", [student]).order("scheduled_at", { ascending: false }).limit(20),
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
         .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
@@ -566,8 +566,37 @@ export default function StudentDashboard() {
 
     setAssignments(hwRes.data || []);
     setSubmissions(subRes.data || []);
-    setVocabWords(vocRes.data || []);
-    setTestHistory(testRes.data || []);
+    setSchedulePeriods(periodsRes.data || []);
+
+    // For group members: also fetch vocab words and test history from the primary student
+    let mergedVocab = vocRes.data || [];
+    let mergedTests = testRes.data || [];
+    const groupPrimaryStudents = new Set(
+      (groupSessRes.data || [])
+        .map((s: any) => s.student_name)
+        .filter((name: string) => name && name !== student)
+    );
+    if (groupPrimaryStudents.size > 0) {
+      const primaryName = [...groupPrimaryStudents][0]; // typically one primary student
+      const [primaryVocRes, primaryTestRes] = await Promise.all([
+        supabase.from("vocabulary_words").select("id,english_word,korean_meaning,part_of_speech,audio_url,week_label,created_at")
+          .eq("student_name", primaryName).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
+        supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
+          .eq("student_name", primaryName).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
+      ]);
+      // Merge vocab words (deduplicate by id)
+      const vocIds = new Set(mergedVocab.map((w: any) => w.id));
+      for (const w of (primaryVocRes.data || [])) {
+        if (!vocIds.has(w.id)) mergedVocab.push(w);
+      }
+      // Merge test history (deduplicate by id)
+      const testIds = new Set(mergedTests.map((t: any) => t.id));
+      for (const t of (primaryTestRes.data || [])) {
+        if (!testIds.has(t.id)) mergedTests.push(t);
+      }
+    }
+    setVocabWords(mergedVocab);
+    setTestHistory(mergedTests);
     setSchedulePeriods(periodsRes.data || []);
 
     // Auto-select current period
