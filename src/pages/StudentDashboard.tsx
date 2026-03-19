@@ -100,6 +100,7 @@ interface ClassSession {
   instructor_name: string;
   started_at: string | null;
   ended_at: string | null;
+  reschedule_origin_dates?: string[];
 }
 
 interface Assignment {
@@ -526,14 +527,14 @@ export default function StudentDashboard() {
   const loadAll = async () => {
     setLoading(true);
     const [sessRes, allSessRes, groupSessRes, groupAllSessRes, hwRes, subRes, vocRes, testRes, studentRes, periodsRes, holidaysRes] = await Promise.all([
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
         .eq("student_name", student).order("scheduled_at", { ascending: false }).limit(20),
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
         .eq("student_name", student).order("scheduled_at", { ascending: true }),
       // Group sessions: where student is in group_students array
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
         .contains("group_students", [student]).order("scheduled_at", { ascending: false }).limit(20),
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
         .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
       supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id,preset_origin_id")
         .eq("student_name", student).order("created_at", { ascending: false }),
@@ -788,6 +789,19 @@ export default function StudentDashboard() {
     allSessions.map(s => new Date(s.scheduled_at).toDateString())
   );
 
+  // 일정 변경으로 인해 원래 날짜에서 이동된 날짜들 (이 날짜들은 가상 반복 일정에서 제외)
+  const rescheduledOriginDateStrings = new Set<string>();
+  for (const s of allSessions) {
+    if (Array.isArray(s.reschedule_origin_dates)) {
+      for (const originDate of s.reschedule_origin_dates) {
+        if (originDate) {
+          const d = new Date(originDate + "T00:00:00");
+          rescheduledOriginDateStrings.add(d.toDateString());
+        }
+      }
+    }
+  }
+
   const toLocalDateKey = (d: Date) => {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -798,6 +812,7 @@ export default function StudentDashboard() {
   // 반복 일정 중 아직 class_session에 없는 것들 (가상 upcoming)
   const virtualUpcoming = recurringDates.filter(
     d => d.getTime() > Date.now() && !existingSessionDates.has(d.toDateString()) &&
+      !rescheduledOriginDateStrings.has(d.toDateString()) &&
       !(studentRecord?.pauses?.some(p => {
         const dateKey = toLocalDateKey(d);
         return dateKey >= p.pause_start && (!p.pause_end || dateKey <= p.pause_end);
@@ -822,7 +837,7 @@ export default function StudentDashboard() {
   // 수업일수: 지난 실제 세션 + 반복 일정에서 시작일 ~ 오늘까지 지나간 날 (중복 제거)
   const pastSessions = sessions.filter(s => msUntil(s.scheduled_at) <= 0);
   const pastRecurring = recurringDates.filter(
-    d => d.getTime() <= Date.now() && !existingSessionDates.has(d.toDateString())
+    d => d.getTime() <= Date.now() && !existingSessionDates.has(d.toDateString()) && !rescheduledOriginDateStrings.has(d.toDateString())
   );
   const totalClassDays = pastSessions.length + pastRecurring.length;
 
@@ -856,7 +871,7 @@ export default function StudentDashboard() {
     ...recurringDates
       .filter((d) => {
         const dateKey = toLocalDateKey(d);
-        return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey);
+        return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey) && !rescheduledOriginDateStrings.has(d.toDateString());
       })
       .map((d) => d.toDateString()),
   ]);
