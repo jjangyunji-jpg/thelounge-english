@@ -1896,34 +1896,46 @@ export default function InstructorDashboard() {
     // Use max of actual or scheduled
     const monthTotal = Math.max(totalMonthScheduled, periodSess.length);
 
-    // Weekly homework: this week Mon-Sun
-    const weekDay = now.getDay();
-    const mondayOffset = weekDay === 0 ? -6 : 1 - weekDay;
-    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
-    weekStart.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-
+    // Weekly homework: count submissions made AFTER the most recent past session
     const sAssignments = assignments.filter((a) => a.student_name === studentName);
     const sSubmissions = submissions.filter((s) => s.student_name === studentName);
-    const weekSubmissions = sSubmissions.filter((s) => {
-      const d = new Date(s.submitted_at);
-      return d >= weekStart && d < weekEnd;
-    });
-    const weekSubmittedCount = weekSubmissions.length;
 
-    // Weekly vocab tests
+    // Find most recent past session for this student
+    const latestPastSession = sSessions
+      .filter(s => new Date(s.scheduled_at) <= now)
+      .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0];
+    const latestSessionTime = latestPastSession ? new Date(latestPastSession.scheduled_at).getTime() : 0;
+
+    // For preset assignments: count submissions after latest session
+    // For session-specific assignments: count submissions for latest session's assignments
+    let weekSubmittedCount = 0;
+    const latestSessionId = latestPastSession?.id;
+    for (const a of sAssignments) {
+      if (a.is_preset && a.type === "memorizing") continue; // vocab test handles this
+      const sub = sSubmissions.find(s => s.assignment_id === a.id);
+      if (!sub || (sub.status !== "submitted" && sub.status !== "reviewed")) continue;
+      if (a.is_preset) {
+        if (latestPastSession && sub.submitted_at && new Date(sub.submitted_at).getTime() >= latestSessionTime) {
+          weekSubmittedCount++;
+        }
+      } else if (a.session_id === latestSessionId) {
+        weekSubmittedCount++;
+      }
+    }
+
+    // Weekly vocab tests: count tests after latest past session
     const weekVocabTests = vocabTests.filter((v) => {
       if (v.student_name !== studentName) return false;
+      if (!latestPastSession) return false;
       const d = new Date(v.started_at);
-      return d >= weekStart && d < weekEnd;
+      return d.getTime() >= latestSessionTime;
     });
 
     return {
       completedMonthSessions,
       monthTotal,
       weekSubmittedHw: weekSubmittedCount,
-      totalHw: sAssignments.length,
+      totalHw: sAssignments.filter(a => !(a.is_preset && a.type === "memorizing")).filter(a => a.is_preset || a.session_id === latestSessionId).length,
       weekVocabCount: weekVocabTests.length,
     };
   };

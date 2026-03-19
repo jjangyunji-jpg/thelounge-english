@@ -118,11 +118,14 @@ export default function WeeklyTasksSection({
 
     // For preset assignments, find the submission made AFTER the latest session started
     // (there may be multiple submissions across weeks for the same preset assignment)
-    if (assignment.is_preset && latestSession) {
+    if (assignment.is_preset) {
+      if (!latestSession) return undefined; // No past sessions → no current-week submission
       const latestSessionTime = new Date(latestSession.scheduled_at).getTime();
+      // Return the MOST RECENT matching submission (sort desc, pick first)
       const matchingSub = submissions
         .filter(s => s.assignment_id === aId && s.submitted_at)
-        .find(s => new Date(s.submitted_at!).getTime() >= latestSessionTime);
+        .filter(s => new Date(s.submitted_at!).getTime() >= latestSessionTime)
+        .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())[0];
       return matchingSub;
     }
 
