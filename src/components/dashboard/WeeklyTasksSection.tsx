@@ -87,6 +87,7 @@ export default function WeeklyTasksSection({
   const [modalAssignment, setModalAssignment] = useState<Assignment | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [feedbackAssignment, setFeedbackAssignment] = useState<{ assignment: Assignment; submission: Submission } | null>(null);
+  const [expandedHwId, setExpandedHwId] = useState<string | null>(null);
 
   // Find the most recent past session (latest completed/past session)
   const now = new Date();
