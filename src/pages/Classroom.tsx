@@ -35,6 +35,7 @@ interface HomeworkItem {
   isPreset: boolean;
   saved: boolean;
   presetOriginId?: string | null;
+  studentName?: string;
 }
 
 const HW_TYPE_META: Record<HwType, { label: string; icon: React.ElementType; color: string; hint: string }> = {
