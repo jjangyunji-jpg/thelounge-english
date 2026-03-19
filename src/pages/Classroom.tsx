@@ -1526,7 +1526,37 @@ export default function Classroom() {
                             <label className="flex items-center gap-2 px-1 cursor-pointer">
                               <input type="checkbox" checked={editHwPreset} onChange={(e) => setEditHwPreset(e.target.checked)} className="rounded border-border" />
                               <span className="text-xs text-muted-foreground">정기 숙제로 등록 (모든 수업에 노출)</span>
-                            </label>
+                             </label>
+                            {allGroupMembers.length > 0 && (
+                              <div className="space-y-1.5 p-2.5 rounded-lg border border-border bg-muted/30">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-semibold text-foreground">대상 학생 선택</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedEditHwStudents(prev => prev.length === allGroupMembers.length ? [] : [...allGroupMembers])}
+                                    className="text-[10px] text-[hsl(var(--navy))] hover:underline"
+                                  >
+                                    {selectedEditHwStudents.length === allGroupMembers.length ? "전체 해제" : "전체 선택"}
+                                  </button>
+                                </div>
+                                {allGroupMembers.map(sn => (
+                                  <label key={sn} className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedEditHwStudents.includes(sn)}
+                                      onChange={(e) => {
+                                        setSelectedEditHwStudents(prev => e.target.checked ? [...prev, sn] : prev.filter(s => s !== sn));
+                                      }}
+                                      className="rounded border-border"
+                                    />
+                                    <span className="text-xs text-foreground">{sn}</span>
+                                  </label>
+                                ))}
+                                {selectedEditHwStudents.length > 0 && selectedEditHwStudents.length < allGroupMembers.length && (
+                                  <p className="text-[10px] text-muted-foreground">{selectedEditHwStudents.length}명 선택됨</p>
+                                )}
+                              </div>
+                            )}
                             <div className="flex gap-1.5">
                               <Button size="sm" onClick={handleSaveEditHw} disabled={!editHwTitle.trim() || savingEditHw}
                                 className="flex-1 h-8 text-xs bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground gap-1.5"
