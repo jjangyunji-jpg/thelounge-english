@@ -591,9 +591,13 @@ export default function Classroom() {
         }
       }
 
+      // Load homework for primary student AND group members
+      const groupStudentsArr = Array.isArray(sessionData?.group_students) ? sessionData.group_students : [];
+      const allHwStudents = [session.dbStudentName, ...groupStudentsArr.filter((s: string) => s !== session.dbStudentName)];
+      
       const { data } = await supabase
         .from("homework_assignments").select("*")
-        .eq("student_name", session.dbStudentName)
+        .in("student_name", allHwStudents)
         .or(`session_id.eq.${session.sessionId},is_preset.eq.true`)
         .order("created_at", { ascending: true });
 
@@ -612,6 +616,7 @@ export default function Classroom() {
           id: d.id, type: d.type as HwType, title: d.title,
           description: d.description || "", isPreset: d.is_preset, saved: true,
           presetOriginId: d.preset_origin_id,
+          studentName: d.student_name,
         })));
       }
 
