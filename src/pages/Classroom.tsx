@@ -848,12 +848,20 @@ export default function Classroom() {
     setSavingEditHw(true);
     
     const editingItem = hwList.find(h => h.id === editingHwId);
+    const originalStudentName = editingItem?.studentName || session.dbStudentName;
+    
+    // Determine which students need new copies (excluding the original student who keeps the edited record)
+    const additionalStudents = allGroupMembers.length > 0
+      ? selectedEditHwStudents.filter(s => s !== originalStudentName)
+      : [];
     
     // If editing a preset template, create a session-specific copy instead of modifying the template
     if (editingItem?.isPreset && !editingItem.presetOriginId) {
       try {
+        // Create copy for the original student (or first selected student)
+        const primaryStudent = selectedEditHwStudents.length > 0 ? (selectedEditHwStudents.includes(originalStudentName) ? originalStudentName : selectedEditHwStudents[0]) : originalStudentName;
         const { data: copy, error } = await supabase.from("homework_assignments").insert({
-          student_name: session.dbStudentName,
+          student_name: primaryStudent,
           title: editHwTitle.trim(),
           description: editHwDesc.trim() || null,
           type: editHwType,
@@ -863,13 +871,34 @@ export default function Classroom() {
         }).select().single();
         if (error) throw error;
         if (copy) {
-          // Replace the template in the list with the session copy
           setHwList((prev) => prev.map((h) => h.id === editingHwId ? {
             id: copy.id, type: editHwType, title: editHwTitle.trim(),
             description: editHwDesc.trim(), isPreset: false, saved: true,
-            presetOriginId: editingHwId,
+            presetOriginId: editingHwId, studentName: primaryStudent,
           } : h));
           toast({ title: "이번 수업용 숙제가 생성됐습니다 ✓" });
+        }
+        // Create copies for additional students
+        const otherStudents = selectedEditHwStudents.filter(s => s !== primaryStudent);
+        if (otherStudents.length > 0) {
+          const inserts = otherStudents.map(sn => ({
+            student_name: sn,
+            title: editHwTitle.trim(),
+            description: editHwDesc.trim() || null,
+            type: editHwType,
+            is_preset: false,
+            session_id: session.sessionId || null,
+            preset_origin_id: editingHwId,
+          }));
+          const { data: extras } = await supabase.from("homework_assignments").insert(inserts).select();
+          if (extras) {
+            setHwList(prev => [...prev, ...extras.map(r => ({
+              id: r.id, type: r.type as HwType, title: r.title,
+              description: r.description || "", isPreset: false, saved: true,
+              presetOriginId: r.preset_origin_id || undefined,
+              studentName: r.student_name,
+            }))]);
+          }
         }
       } catch (e: unknown) {
         toast({ title: "저장 실패", variant: "destructive" });
@@ -882,6 +911,25 @@ export default function Classroom() {
       if (!error) {
         setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim(), isPreset: editHwPreset } : h));
         toast({ title: "숙제가 수정됐습니다 ✓" });
+      }
+      // Create copies for additional students
+      if (additionalStudents.length > 0) {
+        const inserts = additionalStudents.map(sn => ({
+          student_name: sn,
+          title: editHwTitle.trim(),
+          description: editHwDesc.trim() || null,
+          type: editHwType,
+          is_preset: editHwPreset,
+          session_id: editHwPreset ? null : (session.sessionId || null),
+        }));
+        const { data: extras } = await supabase.from("homework_assignments").insert(inserts).select();
+        if (extras) {
+          setHwList(prev => [...prev, ...extras.map(r => ({
+            id: r.id, type: r.type as HwType, title: r.title,
+            description: r.description || "", isPreset: r.is_preset, saved: true,
+            studentName: r.student_name,
+          }))]);
+        }
       }
     }
     setSavingEditHw(false);
