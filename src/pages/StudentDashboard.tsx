@@ -1871,8 +1871,11 @@ export default function StudentDashboard() {
                           </p>
                           {a.due_at && <p className="text-[10px] text-muted-foreground">마감: {fmtDate(a.due_at)}</p>}
                         </div>
-                        {status === "reviewed" && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/10 text-success font-semibold flex-shrink-0">검토됨</span>
+                        {status === "reviewed" && sub && (
+                          <button
+                            onClick={() => setHwFeedback({ assignment: a, submission: sub })}
+                            className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0 hover:bg-[hsl(var(--success)/0.2)] transition-colors cursor-pointer"
+                          >검토됨 →</button>
                         )}
                         {status === "submitted" && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold-dark font-semibold flex-shrink-0">제출됨</span>
