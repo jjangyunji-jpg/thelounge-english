@@ -2361,124 +2361,11 @@ export default function InstructorDashboard() {
                             const isCompleted = !!s.ended_at;
                             return (
                               <div key={s.id} className={cn("rounded-lg border px-3 py-2.5", isCompleted ? "border-success/30 bg-success/5" : "border-border bg-muted/20")}>
-                                <div className="flex items-start gap-3">
-                                  <p className="text-xs font-bold text-primary w-12 text-center flex-shrink-0 pt-0.5">{fmtTime(s.scheduled_at)}</p>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                      <p className="text-sm font-medium text-foreground truncate">{fmtName(s.student_name)}</p>
-                                      {isCompleted && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
-                                    </div>
-                                    <p className="text-[11px] text-muted-foreground truncate">{s.topic || s.level}</p>
-                                    {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
-                                      <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
-                                        <RefreshCw className="w-2.5 h-2.5" />
-                                        {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                                  <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
-                                    <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2">
-                                      <FileText className="w-3 h-3" /> 이번 수업
-                                    </Button>
-                                  </a>
-                                  {(() => {
-                                    const scheduledKst = new Date(s.scheduled_at);
-                                    const nowMs = Date.now();
-                                    const diffMs = nowMs - scheduledKst.getTime();
-                                    const after30min = diffMs >= 30 * 60 * 1000;
-                                    const within12h = diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000;
-                                    if (!isCompleted && after30min && within12h) return (
-                                      <Button
-                                        size="sm"
-                                        className="h-7 text-[10px] gap-1 bg-success hover:bg-success/90 text-success-foreground px-2"
-                                        onClick={async () => {
-                                          const endedAt = new Date().toISOString();
-                                          const { error } = await supabase.from("class_sessions").update({
-                                            ended_at: endedAt,
-                                            started_at: s.started_at || s.scheduled_at,
-                                          }).eq("id", s.id);
-                                          if (error) {
-                                            toast({ title: "수업 완료 실패", description: error.message, variant: "destructive" });
-                                          } else {
-                                            toast({ title: "수업 완료 처리됨 ✓" });
-                                            const updatedSessions = sessions.map(sess => sess.id === s.id ? { ...sess, ended_at: endedAt, started_at: s.started_at || s.scheduled_at } : sess);
-                                            setSessions(updatedSessions);
-
-                                            // Check if last week of the month → trigger student feedback
-                                            if (period) {
-                                              const today = new Date();
-                                              const kstDate = new Date(today.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-                                              const lastDayOfMonth = new Date(kstDate.getFullYear(), kstDate.getMonth() + 1, 0).getDate();
-                                              const dayOfMonth = kstDate.getDate();
-                                              const isLastWeek = dayOfMonth > lastDayOfMonth - 7;
-
-                                              if (isLastWeek) {
-                                                // Get today's completed sessions (after this update)
-                                                const todayCompletedStudents = updatedSessions
-                                                  .filter(sess => isToday(sess.scheduled_at) && sess.ended_at && sess.instructor_name === instructor?.name)
-                                                  .map(sess => sess.student_name);
-                                                const uniqueStudents = [...new Set(todayCompletedStudents)];
-
-                                                // Check which students haven't gotten feedback yet this period
-                                                const { data: existingFeedback } = await supabase
-                                                  .from("instructor_student_feedback" as any)
-                                                  .select("student_name")
-                                                  .eq("instructor_name", instructor?.name || "")
-                                                  .eq("period_id", period.id);
-                                                const alreadyDone = new Set((existingFeedback || []).map((f: any) => f.student_name));
-                                                const needFeedback = uniqueStudents.filter(sn => !alreadyDone.has(sn));
-
-                                                // Check if all today's sessions are now completed
-                                                const todayAllCompleted = updatedSessions
-                                                  .filter(sess => isToday(sess.scheduled_at) && sess.instructor_name === instructor?.name)
-                                                  .every(sess => !!sess.ended_at);
-
-                                                if (todayAllCompleted && needFeedback.length > 0) {
-                                                  const feedbackStudents = needFeedback.map(sn => {
-                                                    const st = students.find(st2 => st2.student_name === sn);
-                                                    return { student_name: sn, level: st?.level || null, learning_objective: st?.learning_objective || null };
-                                                  });
-                                                  setStudentFeedbackModal({ students: feedbackStudents, periodId: period.id, periodLabel: period.label, periodStartDate: period.start_date, periodEndDate: period.end_date });
-                                                }
-                                              }
-                                            }
-                                          }
-                                        }}
-                                      >
-                                        <Check className="w-3 h-3" /> 수업 완료
-                                      </Button>
-                                    );
-                                    if (isCompleted && within12h) return (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 text-[10px] gap-1 border-muted-foreground/30 text-muted-foreground px-2"
-                                        onClick={async () => {
-                                          const { error } = await supabase.from("class_sessions").update({
-                                            ended_at: null,
-                                          }).eq("id", s.id);
-                                          if (error) {
-                                            toast({ title: "취소 실패", description: error.message, variant: "destructive" });
-                                          } else {
-                                            toast({ title: "수업 완료 취소됨" });
-                                            setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, ended_at: null } : sess));
-                                          }
-                                        }}
-                                      >
-                                        <X className="w-3 h-3" /> 완료 취소
-                                      </Button>
-                                    );
-                                    return null;
-                                  })()}
-                                  </div>
-                                </div>
-                                {/* Homework toggle for this student */}
                                 {(() => {
                                   const nowTs = new Date();
                                   const sSessions = sessions.filter(ss => ss.student_name === s.student_name);
-                                  const pastSessions = sSessions.filter(ss => new Date(ss.scheduled_at) <= nowTs).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-                                  const latestPast = pastSessions[0] || null;
+                                  const pastSess = sSessions.filter(ss => new Date(ss.scheduled_at) <= nowTs).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+                                  const latestPast = pastSess[0] || null;
                                   const studentAssignments = assignments.filter(a => a.student_name === s.student_name && (a.is_preset || (latestPast && a.session_id === latestPast.id)));
                                   const stVocabAll = vocabTests.filter(v => v.student_name === s.student_name);
                                   const hasVocab = stVocabAll.length > 0;
@@ -2492,28 +2379,134 @@ export default function InstructorDashboard() {
                                   const noneSubmitted = submittedCount === 0 && totalHw > 0;
                                   const isTodayExpanded = expandedTodayHwSession === s.id;
 
-                                  if (totalHw === 0) return null;
-
                                   return (
-                                    <div className="mt-2 border-t border-border/50 pt-2">
-                                      <button
-                                        onClick={() => setExpandedTodayHwSession(isTodayExpanded ? null : s.id)}
-                                        className="w-full flex items-center gap-2 text-left"
-                                      >
-                                        <ClipboardCheck className="w-3 h-3 text-navy flex-shrink-0" />
-                                        <span className="text-[11px] font-medium text-foreground flex-1">숙제 현황</span>
-                                        <div className={cn(
-                                          "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                                          allDone ? "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]" :
-                                          noneSubmitted ? "bg-destructive/10 text-destructive" :
-                                          "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]"
-                                        )}>
-                                          {submittedCount}/{totalHw}
+                                    <>
+                                      <div className="flex items-start gap-3">
+                                        <p className="text-xs font-bold text-primary w-12 text-center flex-shrink-0 pt-0.5">{fmtTime(s.scheduled_at)}</p>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1.5">
+                                            <p className="text-sm font-medium text-foreground truncate">{fmtName(s.student_name)}</p>
+                                            {isCompleted && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
+                                            {totalHw > 0 && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); setExpandedTodayHwSession(isTodayExpanded ? null : s.id); }}
+                                                className={cn(
+                                                  "text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 transition-colors",
+                                                  allDone ? "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]" :
+                                                  noneSubmitted ? "bg-destructive/10 text-destructive" :
+                                                  "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]"
+                                                )}
+                                              >
+                                                <ClipboardCheck className="w-2.5 h-2.5" />
+                                                {submittedCount}/{totalHw}
+                                              </button>
+                                            )}
+                                          </div>
+                                          <p className="text-[11px] text-muted-foreground truncate">{s.topic || s.level}</p>
+                                          {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
+                                            <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
+                                              <RefreshCw className="w-2.5 h-2.5" />
+                                              {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨
+                                            </p>
+                                          )}
                                         </div>
-                                        <ChevronDown className={cn("w-3 h-3 text-muted-foreground transition-transform", isTodayExpanded && "rotate-180")} />
-                                      </button>
-                                      {isTodayExpanded && (
-                                        <div className="mt-1.5 space-y-1">
+                                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
+                                          <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2">
+                                            <FileText className="w-3 h-3" /> 이번 수업
+                                          </Button>
+                                        </a>
+                                        {(() => {
+                                          const scheduledKst = new Date(s.scheduled_at);
+                                          const nowMs = Date.now();
+                                          const diffMs = nowMs - scheduledKst.getTime();
+                                          const after30min = diffMs >= 30 * 60 * 1000;
+                                          const within12h = diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000;
+                                          if (!isCompleted && after30min && within12h) return (
+                                            <Button
+                                              size="sm"
+                                              className="h-7 text-[10px] gap-1 bg-success hover:bg-success/90 text-success-foreground px-2"
+                                              onClick={async () => {
+                                                const endedAt = new Date().toISOString();
+                                                const { error } = await supabase.from("class_sessions").update({
+                                                  ended_at: endedAt,
+                                                  started_at: s.started_at || s.scheduled_at,
+                                                }).eq("id", s.id);
+                                                if (error) {
+                                                  toast({ title: "수업 완료 실패", description: error.message, variant: "destructive" });
+                                                } else {
+                                                  toast({ title: "수업 완료 처리됨 ✓" });
+                                                  const updatedSessions = sessions.map(sess => sess.id === s.id ? { ...sess, ended_at: endedAt, started_at: s.started_at || s.scheduled_at } : sess);
+                                                  setSessions(updatedSessions);
+
+                                                  // Check if last week of the month → trigger student feedback
+                                                  if (period) {
+                                                    const today = new Date();
+                                                    const kstDate = new Date(today.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+                                                    const lastDayOfMonth = new Date(kstDate.getFullYear(), kstDate.getMonth() + 1, 0).getDate();
+                                                    const dayOfMonth = kstDate.getDate();
+                                                    const isLastWeek = dayOfMonth > lastDayOfMonth - 7;
+
+                                                    if (isLastWeek) {
+                                                      const todayCompletedStudents = updatedSessions
+                                                        .filter(sess => isToday(sess.scheduled_at) && sess.ended_at && sess.instructor_name === instructor?.name)
+                                                        .map(sess => sess.student_name);
+                                                      const uniqueStudents = [...new Set(todayCompletedStudents)];
+
+                                                      const { data: existingFeedback } = await supabase
+                                                        .from("instructor_student_feedback" as any)
+                                                        .select("student_name")
+                                                        .eq("instructor_name", instructor?.name || "")
+                                                        .eq("period_id", period.id);
+                                                      const alreadyDone = new Set((existingFeedback || []).map((f: any) => f.student_name));
+                                                      const needFeedback = uniqueStudents.filter(sn => !alreadyDone.has(sn));
+
+                                                      const todayAllCompleted = updatedSessions
+                                                        .filter(sess => isToday(sess.scheduled_at) && sess.instructor_name === instructor?.name)
+                                                        .every(sess => !!sess.ended_at);
+
+                                                      if (todayAllCompleted && needFeedback.length > 0) {
+                                                        const feedbackStudents = needFeedback.map(sn => {
+                                                          const st = students.find(st2 => st2.student_name === sn);
+                                                          return { student_name: sn, level: st?.level || null, learning_objective: st?.learning_objective || null };
+                                                        });
+                                                        setStudentFeedbackModal({ students: feedbackStudents, periodId: period.id, periodLabel: period.label, periodStartDate: period.start_date, periodEndDate: period.end_date });
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }}
+                                            >
+                                              <Check className="w-3 h-3" /> 수업 완료
+                                            </Button>
+                                          );
+                                          if (isCompleted && within12h) return (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-7 text-[10px] gap-1 border-muted-foreground/30 text-muted-foreground px-2"
+                                              onClick={async () => {
+                                                const { error } = await supabase.from("class_sessions").update({
+                                                  ended_at: null,
+                                                }).eq("id", s.id);
+                                                if (error) {
+                                                  toast({ title: "취소 실패", description: error.message, variant: "destructive" });
+                                                } else {
+                                                  toast({ title: "수업 완료 취소됨" });
+                                                  setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, ended_at: null } : sess));
+                                                }
+                                              }}
+                                            >
+                                              <X className="w-3 h-3" /> 완료 취소
+                                            </Button>
+                                          );
+                                          return null;
+                                        })()}
+                                        </div>
+                                      </div>
+                                      {/* Expanded homework details */}
+                                      {isTodayExpanded && totalHw > 0 && (
+                                        <div className="mt-1.5 ml-[60px] space-y-1">
                                           {studentAssignments.map(a => {
                                             const sub = submissions.find(sb => sb.assignment_id === a.id);
                                             const hwType = a.type as HwType;
@@ -2533,13 +2526,13 @@ export default function InstructorDashboard() {
                                                   }
                                                 }}
                                                 className={cn(
-                                                  "flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left",
+                                                  "flex items-center gap-2 px-2 py-1 rounded-md border text-left",
                                                   isSubmitted ? "border-border bg-card" : "border-dashed border-muted-foreground/20 bg-muted/10",
                                                   ((!isQuickCheck && sub?.status === "submitted") || sub?.status === "reviewed") && "cursor-pointer hover:bg-muted/40 transition-colors",
                                                 )}
                                               >
                                                 <Icon className={cn("w-3 h-3 flex-shrink-0", meta?.color || "text-muted-foreground")} />
-                                                <span className="text-[11px] flex-1 truncate">{a.title}</span>
+                                                <span className="text-[10px] flex-1 truncate">{a.title}</span>
                                                 {isReviewed ? (
                                                   <CheckCircle className="w-3 h-3 text-[hsl(var(--success))] flex-shrink-0" />
                                                 ) : isSubmitted ? (
@@ -2574,18 +2567,18 @@ export default function InstructorDashboard() {
                                             const stVocab = vocabTests.filter(v => v.student_name === s.student_name && v.completed_at);
                                             if (stVocab.length === 0 && !hasVocab) return null;
                                             if (stVocab.length === 0) return (
-                                              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-dashed border-muted-foreground/20 bg-muted/10">
+                                              <div className="flex items-center gap-2 px-2 py-1 rounded-md border border-dashed border-muted-foreground/20 bg-muted/10">
                                                 <GraduationCap className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                                                <span className="text-[11px] flex-1">단어 테스트</span>
+                                                <span className="text-[10px] flex-1">단어 테스트</span>
                                                 <span className="text-[9px] text-muted-foreground/60 flex-shrink-0">미완료</span>
                                               </div>
                                             );
                                             const sorted = [...stVocab].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
                                             const latest = sorted[0];
                                             return (
-                                              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-[hsl(var(--success)/0.04)]">
+                                              <div className="flex items-center gap-2 px-2 py-1 rounded-md border border-border bg-[hsl(var(--success)/0.04)]">
                                                 <GraduationCap className="w-3 h-3 text-[hsl(var(--success))] flex-shrink-0" />
-                                                <span className="text-[11px] flex-1">단어 테스트</span>
+                                                <span className="text-[10px] flex-1">단어 테스트</span>
                                                 {latest.score !== null && latest.total !== null && (
                                                   <span className={cn(
                                                     "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
@@ -2601,7 +2594,7 @@ export default function InstructorDashboard() {
                                           })()}
                                         </div>
                                       )}
-                                    </div>
+                                    </>
                                   );
                                 })()}
                               </div>
