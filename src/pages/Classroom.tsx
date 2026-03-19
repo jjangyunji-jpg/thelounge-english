@@ -542,6 +542,7 @@ export default function Classroom() {
   const [editHwTitle, setEditHwTitle] = useState("");
   const [editHwDesc, setEditHwDesc] = useState("");
   const [editHwPreset, setEditHwPreset] = useState(false);
+  const [selectedEditHwStudents, setSelectedEditHwStudents] = useState<string[]>([]);
   const [savingEditHw, setSavingEditHw] = useState(false);
 
   const dataLoadedForRef = useRef<string | null>(null);
