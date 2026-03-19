@@ -307,6 +307,8 @@ export default function Classroom() {
   useEffect(() => { sessionIdRef.current = session.sessionId; }, [session.sessionId]);
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
+  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; status: string }[]>([]);
+  const [prevHwOpen, setPrevHwOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
   const [remarks, setRemarks] = useState("");
   const [remarksSaving, setRemarksSaving] = useState(false);
