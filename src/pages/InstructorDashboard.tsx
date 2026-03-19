@@ -1344,6 +1344,7 @@ export default function InstructorDashboard() {
   const [reviewHw, setReviewHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
   const [viewCheckedHw, setViewCheckedHw] = useState<{ assignment: HomeworkAssignment; submission: HomeworkSubmission } | null>(null);
   const [expandedHwStudent, setExpandedHwStudent] = useState<string | null>(null);
+  const [expandedTodayHwSession, setExpandedTodayHwSession] = useState<string | null>(null);
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
 
   useEffect(() => { init(); }, [viewingInstructorId]);
