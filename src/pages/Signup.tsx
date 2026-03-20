@@ -210,7 +210,7 @@ export default function Signup() {
                       )}
                     >
                       <UserPlus className="w-4 h-4" />
-                      <span className="text-xs font-medium">신규 상담 신청</span>
+                      <span className="text-xs font-medium">대기자 등록</span>
                     </button>
                   </div>
                 </div>
