@@ -197,7 +197,7 @@ export default function Signup() {
                       )}
                     >
                       <UserCheck className="w-4 h-4" />
-                      <span className="text-xs font-medium">기존 수강생</span>
+                      <span className="text-xs font-medium">수강생 등록 (상담완료)</span>
                     </button>
                     <button
                       type="button"
@@ -210,7 +210,7 @@ export default function Signup() {
                       )}
                     >
                       <UserPlus className="w-4 h-4" />
-                      <span className="text-xs font-medium">신규 상담 신청</span>
+                      <span className="text-xs font-medium">대기자 등록</span>
                     </button>
                   </div>
                 </div>
