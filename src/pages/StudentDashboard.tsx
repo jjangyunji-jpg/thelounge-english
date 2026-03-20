@@ -772,6 +772,23 @@ export default function StudentDashboard() {
   const getSubmission = (aId: string) => {
     const matched = submissions.filter(s => s.assignment_id === aId);
     if (matched.length === 0) return undefined;
+
+    // For preset homework, only count submissions after the most recent past session start
+    const assignment = assignments.find(a => a.id === aId);
+    if (assignment?.is_preset) {
+      const now = new Date();
+      const pastSessions = [...allSessions]
+        .filter(s => new Date(s.scheduled_at) <= now)
+        .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+      const latestSession = pastSessions[0];
+      if (!latestSession) return undefined;
+      const latestSessionTime = new Date(latestSession.scheduled_at).getTime();
+      const matchingSub = matched
+        .filter(s => s.submitted_at && new Date(s.submitted_at).getTime() >= latestSessionTime)
+        .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())[0];
+      return matchingSub;
+    }
+
     return [...matched].sort((a, b) => {
       const aTs = a.submitted_at ? new Date(a.submitted_at).getTime() : 0;
       const bTs = b.submitted_at ? new Date(b.submitted_at).getTime() : 0;
