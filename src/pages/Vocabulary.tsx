@@ -290,7 +290,7 @@ export default function Vocabulary() {
   const navigate = useNavigate();
   const [words, setWords] = useState<VocabWord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [student, setStudent] = useState<string>("정유리");
+  const [student, setStudent] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [showRangePicker, setShowRangePicker] = useState(false);
   const [studyWords, setStudyWords] = useState<VocabWord[] | null>(null);
@@ -318,19 +318,19 @@ export default function Vocabulary() {
     init();
   }, []);
 
-  const load = async () => {
+  const load = async (name: string) => {
     setLoading(true);
     const { data } = await supabase
       .from("vocabulary_words")
       .select("id, english_word, korean_meaning, part_of_speech, example_sentence, audio_url, week_label")
-      .eq("student_name", student)
+      .eq("student_name", name)
       .order("week_label", { ascending: false })
       .order("created_at", { ascending: true });
     setWords(data ?? []);
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [student]);
+  useEffect(() => { if (student) load(student); }, [student]);
 
   // Auto-start test when navigated from homework with ?startTest=weekLabel
   useEffect(() => {
@@ -379,7 +379,7 @@ export default function Vocabulary() {
           </button>
           <BookOpen className="w-4 h-4 text-gold flex-shrink-0" />
           <span className="font-bold text-foreground text-sm truncate">
-            {displayName || student} 님의 단어장
+            {displayName || student || ""} 님의 단어장
           </span>
           {!loading && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold flex-shrink-0">{words.length}개</span>
@@ -396,7 +396,7 @@ export default function Vocabulary() {
               <span className="sm:hidden">학습</span>
             </button>
           )}
-          <button onClick={load} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0" title="새로고침">
+          <button onClick={() => student && load(student)} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0" title="새로고침">
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           </button>
         </div>
@@ -426,7 +426,7 @@ export default function Vocabulary() {
       {showRangePicker && (
         <RangePickerModal
           allWords={words}
-          studentName={student}
+          studentName={student || ""}
           onStart={handleStartFromPicker}
           onClose={() => setShowRangePicker(false)}
         />
@@ -441,7 +441,7 @@ export default function Vocabulary() {
       {testWords && testWords.length > 0 && (
         <VocabTestModal
           words={testWords}
-          studentName={student}
+          studentName={student || ""}
           weekLabel={autoTestWeekLabel || "랜덤"}
           completedTests={0}
           scheduledAt={new Date()}
