@@ -290,7 +290,7 @@ export default function Vocabulary() {
   const navigate = useNavigate();
   const [words, setWords] = useState<VocabWord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [student, setStudent] = useState<string>("정유리");
+  const [student, setStudent] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [showRangePicker, setShowRangePicker] = useState(false);
   const [studyWords, setStudyWords] = useState<VocabWord[] | null>(null);
@@ -318,19 +318,19 @@ export default function Vocabulary() {
     init();
   }, []);
 
-  const load = async () => {
+  const load = async (name: string) => {
     setLoading(true);
     const { data } = await supabase
       .from("vocabulary_words")
       .select("id, english_word, korean_meaning, part_of_speech, example_sentence, audio_url, week_label")
-      .eq("student_name", student)
+      .eq("student_name", name)
       .order("week_label", { ascending: false })
       .order("created_at", { ascending: true });
     setWords(data ?? []);
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [student]);
+  useEffect(() => { if (student) load(student); }, [student]);
 
   // Auto-start test when navigated from homework with ?startTest=weekLabel
   useEffect(() => {
