@@ -379,7 +379,7 @@ export default function Vocabulary() {
           </button>
           <BookOpen className="w-4 h-4 text-gold flex-shrink-0" />
           <span className="font-bold text-foreground text-sm truncate">
-            {displayName || student} 님의 단어장
+            {displayName || student || ""} 님의 단어장
           </span>
           {!loading && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold flex-shrink-0">{words.length}개</span>
