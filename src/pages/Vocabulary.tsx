@@ -396,7 +396,7 @@ export default function Vocabulary() {
               <span className="sm:hidden">학습</span>
             </button>
           )}
-          <button onClick={load} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0" title="새로고침">
+          <button onClick={() => student && load(student)} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0" title="새로고침">
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           </button>
         </div>
