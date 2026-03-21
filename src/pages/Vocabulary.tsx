@@ -441,7 +441,7 @@ export default function Vocabulary() {
       {testWords && testWords.length > 0 && (
         <VocabTestModal
           words={testWords}
-          studentName={student}
+          studentName={student || ""}
           weekLabel={autoTestWeekLabel || "랜덤"}
           completedTests={0}
           scheduledAt={new Date()}
