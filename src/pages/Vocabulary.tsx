@@ -426,7 +426,7 @@ export default function Vocabulary() {
       {showRangePicker && (
         <RangePickerModal
           allWords={words}
-          studentName={student}
+          studentName={student || ""}
           onStart={handleStartFromPicker}
           onClose={() => setShowRangePicker(false)}
         />
