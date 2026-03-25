@@ -2139,6 +2139,10 @@ export default function StudentDashboard() {
         reviewedAt={hwFeedback.submission.reviewed_at}
         aiCorrection={hwFeedback.submission.ai_correction}
         onClose={() => setHwFeedback(null)}
+        onEdit={hwFeedback.submission.status === "submitted" ? () => {
+          setHwModalAssignment(hwFeedback.assignment);
+          setHwFeedback(null);
+        } : undefined}
       />
     )}
     </>
