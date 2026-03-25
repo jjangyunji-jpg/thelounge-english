@@ -121,7 +121,56 @@ export default function HomeworkSubmitModal({
 
   // Auto-save draft every 30 seconds if text changed
   const lastSavedTextRef = useRef(submission?.text_content ?? "");
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const submissionRef = useRef(submission);
+  submissionRef.current = submission;
+  const textRef = useRef(text);
+  textRef.current = text;
+
+  useEffect(() => {
+    autoSaveTimerRef.current = setInterval(async () => {
+      const currentText = textRef.current;
+      if (!currentText.trim() || currentText === lastSavedTextRef.current) return;
+      // Don't auto-save if already submitted and reviewed
+      if (submissionRef.current?.status === "reviewed") return;
+
+      try {
+        const status = submissionRef.current?.status === "submitted" ? "submitted" : "draft";
+        if (submissionRef.current) {
+          const { data, error } = await supabase
+            .from("homework_submissions")
+            .update({ text_content: currentText.trim(), status })
+            .eq("id", submissionRef.current.id)
+            .select()
+            .single();
+          if (!error && data) {
+            lastSavedTextRef.current = currentText;
+            onSubmitted(data);
+          }
+        } else {
+          const { data, error } = await supabase
+            .from("homework_submissions")
+            .insert({
+              assignment_id: assignment.id,
+              student_name: studentName,
+              text_content: currentText.trim(),
+              status: "draft",
+            })
+            .select()
+            .single();
+          if (!error && data) {
+            lastSavedTextRef.current = currentText;
+            submissionRef.current = data;
+            onSubmitted(data);
+          }
+        }
+      } catch {}
+    }, 30000);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
+    };
+  }, [assignment.id, studentName, onSubmitted]);
 
   const isReadingType = assignment.type === "reading" || assignment.type === "watching";
   const showTextArea = meta.requiresText || assignment.type === "memorizing" || isReadingType;
