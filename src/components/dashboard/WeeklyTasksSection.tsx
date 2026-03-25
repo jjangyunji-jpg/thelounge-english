@@ -280,12 +280,12 @@ export default function WeeklyTasksSection({
                     >
                       검토됨 →
                     </button>
-                  ) : done && !isQuickType ? (
+                  ) : done && sub?.status === "submitted" && !isQuickType ? (
                     <button
-                      onClick={() => setModalAssignment(a)}
-                      className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold hover:bg-[hsl(var(--success)/0.2)] transition-colors cursor-pointer"
+                      onClick={() => setFeedbackAssignment({ assignment: a, submission: sub })}
+                      className="flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold-dark font-semibold hover:bg-gold/20 transition-colors cursor-pointer"
                     >
-                      수정하기
+                      제출됨 →
                     </button>
                   ) : done ? (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0">
