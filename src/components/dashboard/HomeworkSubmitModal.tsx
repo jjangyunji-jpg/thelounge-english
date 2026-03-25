@@ -394,9 +394,9 @@ export default function HomeworkSubmitModal({
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-border bg-muted/20 space-y-2">
-          {isDraft && (
-            <p className="text-[10px] text-muted-foreground text-center">📝 임시저장된 내용입니다</p>
-          )}
+          <p className="text-[10px] text-muted-foreground text-center">
+            {isDraft ? "📝 임시저장된 내용입니다" : "💾 30초마다 자동 임시저장됩니다"}
+          </p>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={handleSaveDraft}
               disabled={!canSaveDraft || savingDraft || submitting || recorder.recording}
