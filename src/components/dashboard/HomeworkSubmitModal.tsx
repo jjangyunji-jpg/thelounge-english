@@ -121,7 +121,56 @@ export default function HomeworkSubmitModal({
 
   // Auto-save draft every 30 seconds if text changed
   const lastSavedTextRef = useRef(submission?.text_content ?? "");
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const submissionRef = useRef(submission);
+  submissionRef.current = submission;
+  const textRef = useRef(text);
+  textRef.current = text;
+
+  useEffect(() => {
+    autoSaveTimerRef.current = setInterval(async () => {
+      const currentText = textRef.current;
+      if (!currentText.trim() || currentText === lastSavedTextRef.current) return;
+      // Don't auto-save if already submitted and reviewed
+      if (submissionRef.current?.status === "reviewed") return;
+
+      try {
+        const status = submissionRef.current?.status === "submitted" ? "submitted" : "draft";
+        if (submissionRef.current) {
+          const { data, error } = await supabase
+            .from("homework_submissions")
+            .update({ text_content: currentText.trim(), status })
+            .eq("id", submissionRef.current.id)
+            .select()
+            .single();
+          if (!error && data) {
+            lastSavedTextRef.current = currentText;
+            onSubmitted(data);
+          }
+        } else {
+          const { data, error } = await supabase
+            .from("homework_submissions")
+            .insert({
+              assignment_id: assignment.id,
+              student_name: studentName,
+              text_content: currentText.trim(),
+              status: "draft",
+            })
+            .select()
+            .single();
+          if (!error && data) {
+            lastSavedTextRef.current = currentText;
+            submissionRef.current = data;
+            onSubmitted(data);
+          }
+        }
+      } catch {}
+    }, 30000);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
+    };
+  }, [assignment.id, studentName, onSubmitted]);
 
   const isReadingType = assignment.type === "reading" || assignment.type === "watching";
   const showTextArea = meta.requiresText || assignment.type === "memorizing" || isReadingType;
@@ -345,9 +394,9 @@ export default function HomeworkSubmitModal({
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-border bg-muted/20 space-y-2">
-          {isDraft && (
-            <p className="text-[10px] text-muted-foreground text-center">📝 임시저장된 내용입니다</p>
-          )}
+          <p className="text-[10px] text-muted-foreground text-center">
+            {isDraft ? "📝 임시저장된 내용입니다" : "💾 30초마다 자동 임시저장됩니다"}
+          </p>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={handleSaveDraft}
               disabled={!canSaveDraft || savingDraft || submitting || recorder.recording}
