@@ -392,6 +392,10 @@ export default function WeeklyTasksSection({
           reviewedAt={feedbackAssignment.submission.reviewed_at}
           aiCorrection={feedbackAssignment.submission.ai_correction}
           onClose={() => setFeedbackAssignment(null)}
+          onEdit={feedbackAssignment.submission.status === "submitted" ? () => {
+            setModalAssignment(feedbackAssignment.assignment);
+            setFeedbackAssignment(null);
+          } : undefined}
         />
       )}
     </>
