@@ -42,6 +42,8 @@ interface Props {
   onClose: () => void;
   /** If provided, show "Cancel Review" button (instructor only) */
   onUnreview?: () => Promise<void>;
+  /** If provided, show "수정하기" button (student can edit submitted hw) */
+  onEdit?: () => void;
 }
 
 /** Render inline diff: strikethrough original, colored corrected */
@@ -91,6 +93,7 @@ export default function HomeworkFeedbackModal({
   aiCorrection,
   onClose,
   onUnreview,
+  onEdit,
 }: Props) {
   const meta = HW_META[assignmentType as HwType] ?? HW_META.writing;
   const Icon = meta.icon;
@@ -106,8 +109,10 @@ export default function HomeworkFeedbackModal({
               <Icon className={cn("w-4 h-4", meta.color)} />
               {assignmentTitle}
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {meta.label} 숙제 · {reviewedAt ? `${new Date(reviewedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })} 검토됨` : "검토됨"}
+            <p className="text-xs text-muted-foreground mt-0.5 flex items-center flex-wrap gap-x-1">
+              <span>{meta.label} 숙제</span>
+              <span>·</span>
+              <span>{reviewedAt ? `${new Date(reviewedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })} 검토됨` : aiCorrection || instructorNote ? "검토됨" : "제출됨 (검토 대기중)"}</span>
               {aiCorrection && (
                 <span className="ml-2 flex items-center gap-1.5 flex-wrap text-[hsl(var(--navy))] font-semibold">
                   <Tooltip>
@@ -225,9 +230,24 @@ export default function HomeworkFeedbackModal({
             </div>
           )}
 
-          {!instructorNote && !aiCorrection && (
+          {!instructorNote && !aiCorrection && !onEdit && (
             <div className="rounded-lg border border-border bg-muted/10 p-4 text-center">
               <p className="text-xs text-muted-foreground">피드백 메시지가 없습니다</p>
+            </div>
+          )}
+
+          {/* Edit button for submitted (not yet reviewed) homework */}
+          {onEdit && (
+            <div className="pt-2 border-t border-border flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => { onClose(); onEdit(); }}
+              >
+                <PenLine className="w-3.5 h-3.5" />
+                수정하기
+              </Button>
             </div>
           )}
 

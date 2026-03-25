@@ -1943,7 +1943,10 @@ export default function StudentDashboard() {
                           >검토됨 →</button>
                         )}
                         {status === "submitted" && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold-dark font-semibold flex-shrink-0">제출됨</span>
+                          <button
+                            onClick={() => sub && setHwFeedback({ assignment: a, submission: sub })}
+                            className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold-dark font-semibold flex-shrink-0 hover:bg-gold/20 transition-colors cursor-pointer"
+                          >제출됨 →</button>
                         )}
                         {isPending && isQuickType && (
                           <button
@@ -2136,6 +2139,10 @@ export default function StudentDashboard() {
         reviewedAt={hwFeedback.submission.reviewed_at}
         aiCorrection={hwFeedback.submission.ai_correction}
         onClose={() => setHwFeedback(null)}
+        onEdit={hwFeedback.submission.status === "submitted" ? () => {
+          setHwModalAssignment(hwFeedback.assignment);
+          setHwFeedback(null);
+        } : undefined}
       />
     )}
     </>
