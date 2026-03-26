@@ -111,6 +111,7 @@ interface Assignment {
   due_at: string | null;
   is_preset: boolean;
   session_id: string | null;
+  preset_origin_id?: string | null;
 }
 
 interface Submission {
@@ -981,15 +982,70 @@ export default function StudentDashboard() {
 
   const periodSessionIds = new Set(periodSessions.map(s => s.id));
 
-  const periodAssignments = (selectedPeriod
-    ? assignments.filter(a => {
-        // Only show assignments linked to sessions in this period
-        if (a.is_preset) return false; // skip templates, only show session copies
-        if (!a.session_id) return false;
-        return periodSessionIds.has(a.session_id);
-      })
-    : assignments.filter(a => !a.is_preset)
-  ).filter(a => !(a.type === "memorizing" && a.title.includes("단어 테스트")));
+  // Build submission-based homework history for the period
+  // Each entry = one submission row (handles presets with multiple weekly submissions)
+  type PeriodHwEntry = {
+    assignment: typeof assignments[0];
+    submission: typeof submissions[0] | null;
+    weekNumber: number | null;
+    sortKey: number; // for ordering
+  };
+
+  const periodHwEntries: PeriodHwEntry[] = (() => {
+    const entries: PeriodHwEntry[] = [];
+    const vocabTestFilter = (a: typeof assignments[0]) => !(a.type === "memorizing" && a.title.includes("단어 테스트"));
+
+    // 1. Session-specific assignments (non-preset, has session_id in period)
+    const sessionAssignments = assignments.filter(a => {
+      if (a.is_preset) return false;
+      if (!a.session_id) return false;
+      if (selectedPeriod && !periodSessionIds.has(a.session_id)) return false;
+      return vocabTestFilter(a);
+    });
+    for (const a of sessionAssignments) {
+      const sub = submissions.find(s => s.assignment_id === a.id) ?? null;
+      const linkedSession = allSessions.find(s => s.id === a.session_id);
+      const wk = linkedSession?.scheduled_at && periodStart
+        ? Math.floor((new Date(linkedSession.scheduled_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
+        : null;
+      entries.push({ assignment: a, submission: sub, weekNumber: wk, sortKey: sub?.submitted_at ? new Date(sub.submitted_at).getTime() : (linkedSession ? new Date(linkedSession.scheduled_at).getTime() : 0) });
+    }
+
+    // 2. Preset templates — show one entry per submission in the period
+    const presetAssignments = assignments.filter(a => a.is_preset && vocabTestFilter(a));
+    // Collect IDs of presets that already have session copies shown
+    const coveredPresetIds = new Set(sessionAssignments.filter(a => a.preset_origin_id).map(a => a.preset_origin_id));
+    for (const a of presetAssignments) {
+      // Get all submissions for this preset in the period
+      const presetSubs = submissions.filter(s => {
+        if (s.assignment_id !== a.id) return false;
+        if (!s.submitted_at) return false;
+        if (selectedPeriod) {
+          const d = new Date(s.submitted_at);
+          return d >= periodStart! && d <= periodEnd!;
+        }
+        return true;
+      });
+      if (presetSubs.length === 0 && !coveredPresetIds.has(a.id)) {
+        // No submissions — skip (don't show empty presets in history)
+        continue;
+      }
+      for (const sub of presetSubs) {
+        // Derive week from submission date relative to period start
+        const wk = periodStart && sub.submitted_at
+          ? Math.floor((new Date(sub.submitted_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
+          : null;
+        entries.push({ assignment: a, submission: sub, weekNumber: wk, sortKey: new Date(sub.submitted_at!).getTime() });
+      }
+    }
+
+    // Sort by date descending (most recent first)
+    entries.sort((a, b) => b.sortKey - a.sortKey);
+    return entries;
+  })();
+
+  // Legacy compatibility: periodAssignments for stats (unique assignments that have submissions)
+  const periodAssignments = periodHwEntries.map(e => e.assignment).filter((a, i, arr) => arr.findIndex(x => x.id === a.id) === i);
 
   const periodVocabWords = selectedPeriod
     ? vocabWords.filter(w => {
@@ -1032,8 +1088,8 @@ export default function StudentDashboard() {
     ? periodAssignments.filter(a => a.session_id === latestPastSession.id)
     : [];
   const latestSessionPendingHw = latestSessionAssignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
-  const pendingHw = periodAssignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
-  const submittedHw = periodAssignments.filter(a => { const sub = getSubmission(a.id); return sub && sub.status !== "pending"; });
+  const pendingHw = periodHwEntries.filter(e => !e.submission || e.submission.status === "pending");
+  const submittedHw = periodHwEntries.filter(e => e.submission && e.submission.status !== "pending");
   const latestTest = periodTestHistory[0];
   const avgScore = periodTestHistory.length > 0
     ? Math.round(periodTestHistory.reduce((acc, t) => acc + (t.total ? (t.score ?? 0) / t.total : 0), 0) / periodTestHistory.length * 100)
@@ -1905,31 +1961,24 @@ export default function StudentDashboard() {
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">{pendingHw.length}미제출</span>
                 )}
               </div>
-              <span className="text-[10px] text-muted-foreground">{periodAssignments.length}개 전체</span>
+              <span className="text-[10px] text-muted-foreground">{periodHwEntries.length}개 전체</span>
             </button>
             {hwOpen && (
               <div className="divide-y divide-border/50">
-                {periodAssignments.length === 0 ? (
+                {periodHwEntries.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">이 기간에 배정된 숙제가 없습니다</p>
                 ) : (
-                  periodAssignments.map((a) => {
-                    const sub = getSubmission(a.id);
+                  periodHwEntries.map((entry, idx) => {
+                    const a = entry.assignment;
+                    const sub = entry.submission;
                     const status = sub?.status || "pending";
                     const meta = HW_META[a.type as HwType];
                     const Icon = meta?.icon ?? Brain;
-                    // Derive week label relative to period start
-                    const linkedSession = a.session_id ? allSessions.find(s => s.id === a.session_id) : null;
-                    const weekPrefix = linkedSession?.scheduled_at && periodStart
-                      ? (() => {
-                          const d = new Date(linkedSession.scheduled_at);
-                          const week = Math.floor((d.getTime() - periodStart.getTime()) / (7 * 86400000)) + 1;
-                          return `${week}주차`;
-                        })()
-                      : null;
+                    const weekPrefix = entry.weekNumber ? `${entry.weekNumber}주차` : null;
                     const isQuickType = a.type === "memorizing" || a.type === "speaking";
                     const isPending = status === "pending";
                     return (
-                      <div key={a.id} className="flex items-center gap-2.5 px-3 py-2.5">
+                      <div key={sub?.id ?? `${a.id}-${idx}`} className="flex items-center gap-2.5 px-3 py-2.5">
                         <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0",
                           status === "reviewed" ? "bg-success/10" : status === "submitted" ? "bg-gold/10" : "bg-muted"
                         )}>
@@ -1942,7 +1991,7 @@ export default function StudentDashboard() {
                             )}
                             <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
                           </div>
-                          {a.due_at && <p className="text-[10px] text-muted-foreground">마감: {fmtDate(a.due_at)}</p>}
+                          {sub?.submitted_at && <p className="text-[10px] text-muted-foreground">{fmtDate(sub.submitted_at)}</p>}
                         </div>
                         {status === "reviewed" && sub && (
                           <button
@@ -1950,9 +1999,9 @@ export default function StudentDashboard() {
                             className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0 hover:bg-[hsl(var(--success)/0.2)] transition-colors cursor-pointer"
                           >검토됨 →</button>
                         )}
-                        {status === "submitted" && (
+                        {status === "submitted" && sub && (
                           <button
-                            onClick={() => sub && setHwFeedback({ assignment: a, submission: sub })}
+                            onClick={() => setHwFeedback({ assignment: a, submission: sub })}
                             className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold-dark font-semibold flex-shrink-0 hover:bg-gold/20 transition-colors cursor-pointer"
                           >제출됨 →</button>
                         )}
