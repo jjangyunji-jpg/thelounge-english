@@ -259,6 +259,11 @@ export default function WeeklyTasksSection({
                         {meta.label}
                       </span>
                     </div>
+                    {sub?.submitted_at && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {new Date(sub.submitted_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })} 제출
+                      </p>
+                    )}
                   </div>
 
                   {/* Action button */}
