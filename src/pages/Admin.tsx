@@ -33,6 +33,11 @@ export default function Admin() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/login"); return; }
+
+      // Only the owner account can access admin dashboard
+      const OWNER_EMAIL = "reinainbiz@gmail.com";
+      if (user.email !== OWNER_EMAIL) { navigate("/login"); return; }
+
       const { data } = await supabase
         .from("user_roles")
         .select("role")
