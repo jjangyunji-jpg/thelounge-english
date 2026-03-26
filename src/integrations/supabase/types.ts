@@ -601,6 +601,7 @@ export type Database = {
           created_at: string
           english_name: string | null
           extra_lessons: number | null
+          google_sheet_url: string | null
           group_students: string[]
           id: string
           instructor_id: string
@@ -625,6 +626,7 @@ export type Database = {
           created_at?: string
           english_name?: string | null
           extra_lessons?: number | null
+          google_sheet_url?: string | null
           group_students?: string[]
           id?: string
           instructor_id: string
@@ -649,6 +651,7 @@ export type Database = {
           created_at?: string
           english_name?: string | null
           extra_lessons?: number | null
+          google_sheet_url?: string | null
           group_students?: string[]
           id?: string
           instructor_id?: string

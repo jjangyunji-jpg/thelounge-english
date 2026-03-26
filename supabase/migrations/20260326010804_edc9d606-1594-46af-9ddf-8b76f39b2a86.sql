@@ -1,0 +1,1 @@
+ALTER TABLE public.instructor_students ADD COLUMN google_sheet_url text DEFAULT NULL;
