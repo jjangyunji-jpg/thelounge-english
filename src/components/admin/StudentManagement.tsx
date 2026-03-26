@@ -122,6 +122,7 @@ interface Student {
   pauses: PauseRecord[];
   studentType: string;
   groupStudents: string[];
+  googleSheetUrl?: string;
 }
 
 // removed old calcMonthlyFee - now using the one at module level
