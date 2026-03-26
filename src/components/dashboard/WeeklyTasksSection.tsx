@@ -201,8 +201,9 @@ export default function WeeklyTasksSection({
       <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30">
           <div className="flex items-center gap-1.5">
-            <ClipboardList className="w-3.5 h-3.5 text-gold" />
-            <span className="text-xs font-semibold text-foreground">최근 수업 과제</span>
+            <span className="text-xs font-semibold text-foreground">
+              {weekNumber ? `${weekNumber}주차 수업 과제` : "최근 수업 과제"}
+            </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">
               {totalDone}/{totalTasks}
             </span>
@@ -347,7 +348,8 @@ export default function WeeklyTasksSection({
                   <div className="flex items-center gap-1.5">
                     <Trophy className="w-3.5 h-3.5 text-[hsl(var(--gold))]" />
                     <span className={cn("text-xs font-semibold", weekTestsDone > 0 ? "text-muted-foreground" : "text-foreground")}>
-                      이번주 단어 테스트
+                      {weekNumber ? `${weekNumber}주차 단어 테스트` : "이번주 단어 테스트"}
+                    </span>
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
                       {weekVocabCount}단어
