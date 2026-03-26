@@ -66,8 +66,8 @@ function InlineEditForm({
       <p className="text-[10px] text-muted-foreground font-semibold">교정 수정</p>
       <Input value={corrected} onChange={e => setCorrected(e.target.value)}
         placeholder="올바른 표현" className="h-7 text-xs" autoFocus />
-      <Input value={explanation} onChange={e => setExplanation(e.target.value)}
-        placeholder="설명 (선택)" className="h-7 text-xs" />
+      <Textarea value={explanation} onChange={e => setExplanation(e.target.value)}
+        placeholder="설명 (선택)" className="min-h-[56px] text-xs resize-y" />
       <div className="flex gap-1.5 pt-0.5">
         <Button size="sm" variant="ghost" onClick={onCancel} className="h-6 text-[10px] px-2">취소</Button>
         <Button size="sm" onClick={() => onSave({ ...item, corrected, explanation })}
@@ -433,11 +433,11 @@ export default function HomeworkReviewModal({
                         placeholder="올바른 표현"
                         className="h-7 text-xs"
                       />
-                      <Input
+                      <Textarea
                         value={c.explanation}
                         onChange={e => updateManualCorrection(i, "explanation", e.target.value)}
                         placeholder="설명 (선택)"
-                        className="h-7 text-xs"
+                        className="min-h-[56px] text-xs resize-y"
                       />
                     </div>
                     <button
