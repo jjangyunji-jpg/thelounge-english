@@ -55,31 +55,53 @@ function InlineCorrectedText({ original, errors }: { original: string; errors: C
   let remaining = original;
   const parts: React.ReactNode[] = [];
   let key = 0;
+  let errorIndex = 0;
 
   const sortedErrors = [...errors].sort((a, b) => {
-    const posA = remaining.toLowerCase().indexOf(a.original.toLowerCase());
-    const posB = remaining.toLowerCase().indexOf(b.original.toLowerCase());
+    const posA = original.toLowerCase().indexOf(a.original.toLowerCase());
+    const posB = original.toLowerCase().indexOf(b.original.toLowerCase());
     return posA - posB;
   });
+
+  const matchedErrors: { err: CorrectionItem; index: number }[] = [];
 
   for (const err of sortedErrors) {
     const idx = remaining.toLowerCase().indexOf(err.original.toLowerCase());
     if (idx === -1) continue;
+    errorIndex++;
+    matchedErrors.push({ err, index: errorIndex });
     if (idx > 0) parts.push(<span key={key++}>{remaining.slice(0, idx)}</span>);
     parts.push(
-      <span key={key++} className="inline-flex items-baseline gap-0.5 group relative">
+      <span key={key++} className="inline-flex items-baseline gap-0.5">
         <span className="line-through text-destructive/70 decoration-destructive/50">{remaining.slice(idx, idx + err.original.length)}</span>
         <span className="text-[hsl(var(--navy))] font-semibold">{err.corrected}</span>
-        <span className="hidden group-hover:block absolute -top-8 left-0 z-10 px-2 py-1 rounded bg-popover border border-border shadow-lg text-[10px] text-muted-foreground whitespace-nowrap max-w-[200px]">
-          {err.explanation}
-        </span>
+        <sup className="text-[9px] text-muted-foreground font-bold ml-0.5">{errorIndex}</sup>
       </span>
     );
     remaining = remaining.slice(idx + err.original.length);
   }
   if (remaining) parts.push(<span key={key++}>{remaining}</span>);
 
-  return <p className="text-sm leading-relaxed whitespace-pre-wrap">{parts}</p>;
+  return (
+    <div className="space-y-3">
+      <p className="text-sm leading-relaxed whitespace-pre-wrap">{parts}</p>
+      {matchedErrors.length > 0 && (
+        <div className="space-y-1.5 pt-2 border-t border-border">
+          {matchedErrors.map(({ err, index }) => (
+            <div key={index} className="flex gap-2 text-xs">
+              <span className="text-muted-foreground font-bold shrink-0 w-4 text-right">{index}.</span>
+              <span className="text-foreground">
+                <span className="line-through text-destructive/60">{err.original}</span>
+                {" → "}
+                <span className="text-[hsl(var(--navy))] font-semibold">{err.corrected}</span>
+                <span className="text-muted-foreground ml-1.5">— {err.explanation}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function HomeworkFeedbackModal({
