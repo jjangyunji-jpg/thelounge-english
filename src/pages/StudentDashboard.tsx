@@ -1746,9 +1746,13 @@ export default function StudentDashboard() {
             <div className="p-3 grid grid-cols-2 gap-2">
               {/* 수업 입장하기 */}
               {(() => {
-                const canEnter = nextClassDate && (
-                  (nextClassDate.getTime() - Date.now()) <= 10 * 60 * 1000 // 10분 전부터
-                );
+                const canEnter = nextClassDate && (() => {
+                  const now = new Date();
+                  // 수업 당일이면 입장 가능 (KST 기준)
+                  const nKST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+                  const cKST = new Date(nextClassDate.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+                  return nKST.getFullYear() === cKST.getFullYear() && nKST.getMonth() === cKST.getMonth() && nKST.getDate() === cKST.getDate();
+                })();
                 return (
                   <button
                     onClick={() => {
