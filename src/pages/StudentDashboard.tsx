@@ -1961,31 +1961,24 @@ export default function StudentDashboard() {
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">{pendingHw.length}미제출</span>
                 )}
               </div>
-              <span className="text-[10px] text-muted-foreground">{periodAssignments.length}개 전체</span>
+              <span className="text-[10px] text-muted-foreground">{periodHwEntries.length}개 전체</span>
             </button>
             {hwOpen && (
               <div className="divide-y divide-border/50">
-                {periodAssignments.length === 0 ? (
+                {periodHwEntries.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">이 기간에 배정된 숙제가 없습니다</p>
                 ) : (
-                  periodAssignments.map((a) => {
-                    const sub = getSubmission(a.id);
+                  periodHwEntries.map((entry, idx) => {
+                    const a = entry.assignment;
+                    const sub = entry.submission;
                     const status = sub?.status || "pending";
                     const meta = HW_META[a.type as HwType];
                     const Icon = meta?.icon ?? Brain;
-                    // Derive week label relative to period start
-                    const linkedSession = a.session_id ? allSessions.find(s => s.id === a.session_id) : null;
-                    const weekPrefix = linkedSession?.scheduled_at && periodStart
-                      ? (() => {
-                          const d = new Date(linkedSession.scheduled_at);
-                          const week = Math.floor((d.getTime() - periodStart.getTime()) / (7 * 86400000)) + 1;
-                          return `${week}주차`;
-                        })()
-                      : null;
+                    const weekPrefix = entry.weekNumber ? `${entry.weekNumber}주차` : null;
                     const isQuickType = a.type === "memorizing" || a.type === "speaking";
                     const isPending = status === "pending";
                     return (
-                      <div key={a.id} className="flex items-center gap-2.5 px-3 py-2.5">
+                      <div key={sub?.id ?? `${a.id}-${idx}`} className="flex items-center gap-2.5 px-3 py-2.5">
                         <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0",
                           status === "reviewed" ? "bg-success/10" : status === "submitted" ? "bg-gold/10" : "bg-muted"
                         )}>
@@ -1998,7 +1991,7 @@ export default function StudentDashboard() {
                             )}
                             <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
                           </div>
-                          {a.due_at && <p className="text-[10px] text-muted-foreground">마감: {fmtDate(a.due_at)}</p>}
+                          {sub?.submitted_at && <p className="text-[10px] text-muted-foreground">{fmtDate(sub.submitted_at)}</p>}
                         </div>
                         {status === "reviewed" && sub && (
                           <button
@@ -2006,9 +1999,9 @@ export default function StudentDashboard() {
                             className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0 hover:bg-[hsl(var(--success)/0.2)] transition-colors cursor-pointer"
                           >검토됨 →</button>
                         )}
-                        {status === "submitted" && (
+                        {status === "submitted" && sub && (
                           <button
-                            onClick={() => sub && setHwFeedback({ assignment: a, submission: sub })}
+                            onClick={() => setHwFeedback({ assignment: a, submission: sub })}
                             className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold-dark font-semibold flex-shrink-0 hover:bg-gold/20 transition-colors cursor-pointer"
                           >제출됨 →</button>
                         )}
