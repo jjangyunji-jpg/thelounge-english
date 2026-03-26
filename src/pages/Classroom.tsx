@@ -603,14 +603,42 @@ export default function Classroom() {
         .order("created_at", { ascending: true });
 
       if (data && data.length > 0) {
-        // Filter out preset templates that already have a session copy
-        const sessionCopyOriginIds = new Set(
+        // Auto-create session copies for preset templates that don't have one yet
+        const existingCopyOriginIds = new Set(
           data.filter(d => d.preset_origin_id && d.session_id === session.sessionId)
+            .map(d => `${d.preset_origin_id}__${d.student_name}`)
+        );
+        const presetsNeedingCopy = data.filter(d =>
+          d.is_preset && !existingCopyOriginIds.has(`${d.id}__${d.student_name}`)
+        );
+
+        let newCopies: typeof data = [];
+        if (presetsNeedingCopy.length > 0) {
+          const inserts = presetsNeedingCopy.map(p => ({
+            student_name: p.student_name,
+            title: p.title,
+            description: p.description,
+            type: p.type,
+            is_preset: false,
+            session_id: session.sessionId,
+            preset_origin_id: p.id,
+          }));
+          const { data: inserted } = await supabase
+            .from("homework_assignments").insert(inserts).select();
+          newCopies = inserted || [];
+        }
+
+        // Combine original data with new copies, then filter out preset templates
+        const allData = [...data, ...newCopies];
+        const sessionCopyOriginIds = new Set(
+          allData.filter(d => d.preset_origin_id && d.session_id === session.sessionId)
             .map(d => d.preset_origin_id)
         );
-        const filtered = data.filter(d => {
-          // Hide template if a session copy exists for it
+        const filtered = allData.filter(d => {
+          // Hide preset templates (copies exist for them now)
           if (d.is_preset && sessionCopyOriginIds.has(d.id)) return false;
+          // Hide preset templates without copies (shouldn't happen after auto-copy, but safety)
+          if (d.is_preset) return false;
           return true;
         });
         setHwList(filtered.map((d) => ({
@@ -640,14 +668,15 @@ export default function Classroom() {
           .order("created_at", { ascending: true });
 
         if (prevHwData && prevHwData.length > 0) {
-          // Filter out preset templates with session copies
+          // Filter: show session copies for prev session, hide templates with copies
           const prevCopyOriginIds = new Set(
             prevHwData.filter(d => d.preset_origin_id && d.session_id === prevSessData.id)
               .map(d => d.preset_origin_id)
           );
           const filteredPrev = prevHwData.filter(d => {
             if (d.is_preset && prevCopyOriginIds.has(d.id)) return false;
-            return true;
+            // Also hide pure presets if copies exist (prefer session copies)
+            return d.session_id === prevSessData.id || (d.is_preset && !prevCopyOriginIds.has(d.id));
           });
           const hwIds = filteredPrev.map(h => h.id);
           const { data: subData } = await supabase

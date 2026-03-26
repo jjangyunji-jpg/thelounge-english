@@ -495,7 +495,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
       const [{ data: asgn }, { data: subs }, { data: sessionRows }] = await Promise.all([
         supabase
           .from("homework_assignments")
-          .select("id, type, title, description, is_preset, session_id")
+          .select("id, type, title, description, is_preset, session_id, preset_origin_id")
           .eq("student_name", studentName)
           .or(`session_id.eq.${sessionId},is_preset.eq.true`)
           .order("created_at", { ascending: true }),
@@ -510,11 +510,21 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
           .order("scheduled_at", { ascending: true }),
       ]);
 
-      const assignmentRows = (asgn ?? []) as Assignment[];
+      const assignmentRows = (asgn ?? []) as (Assignment & { preset_origin_id?: string | null })[];
       const submissionRows = (subs ?? []) as Submission[];
       const sessions = (sessionRows ?? []) as { id: string; scheduled_at: string }[];
 
-      setAssignments(assignmentRows);
+      // Filter out preset templates that have session copies
+      const copyOriginIds = new Set(
+        assignmentRows.filter(a => a.preset_origin_id && a.session_id === sessionId)
+          .map(a => a.preset_origin_id)
+      );
+      const filtered = assignmentRows.filter(a => {
+        if (a.is_preset && copyOriginIds.has(a.id)) return false;
+        return true;
+      });
+
+      setAssignments(filtered);
 
       const currentSession = sessions.find((s) => s.id === sessionId) ?? null;
       const currentSessionTime = currentSession ? new Date(currentSession.scheduled_at).getTime() : null;
@@ -536,10 +546,11 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
         [...list].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())[0] ?? null;
 
       const subMap: Record<string, Submission> = {};
-      assignmentRows.forEach((assignment) => {
+      filtered.forEach((assignment) => {
         const candidates = groupedByAssignment[assignment.id] ?? [];
         if (candidates.length === 0) return;
 
+        // Only use time-window for remaining preset templates (fallback when no session copy exists)
         if (assignment.is_preset && currentSessionTime) {
           const inWindow = candidates.filter((sub) => {
             const ts = new Date(sub.submitted_at).getTime();
@@ -550,6 +561,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
           return;
         }
 
+        // Session-specific assignments (including auto-copies): any submission counts
         const latest = pickLatest(candidates);
         if (latest) subMap[assignment.id] = latest;
       });
