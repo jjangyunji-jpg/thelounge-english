@@ -1974,7 +1974,7 @@ export default function StudentDashboard() {
                     const status = sub?.status || "pending";
                     const meta = HW_META[a.type as HwType];
                     const Icon = meta?.icon ?? Brain;
-                    const weekPrefix = entry.weekNumber ? `${entry.weekNumber}주차` : null;
+                    const weekPrefix = entry.weekNumber ? `${entry.weekNumber}회차` : null;
                     const isQuickType = a.type === "memorizing" || a.type === "speaking";
                     const isPending = status === "pending";
                     return (
