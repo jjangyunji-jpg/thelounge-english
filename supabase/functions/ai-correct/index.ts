@@ -316,9 +316,12 @@ Be strict. Most student writing should fall between 3-7:
 IMPORTANT for errors — MINIMAL DIFF ONLY:
 - The "original" field must be the SHORTEST exact substring that contains the error (case-sensitive)
 - The "corrected" field must be ONLY the replacement for that minimal substring
-- Example: if student wrote "she suggested me retouch", original="me" corrected="I" — NOT the whole sentence
-- Do NOT include surrounding correct words in original or corrected
-- If a word is spelled correctly but used incorrectly, still mark just that word
+- NEVER include surrounding correct words. Strip matching prefix/suffix words.
+- GOOD: original="me" corrected="I" (from "she suggested me retouch" → "she suggested I retouch")
+- GOOD: original="go" corrected="went" (from "I go there yesterday")
+- BAD: original="she suggested me retouch" corrected="She suggested I retouch" — TOO LONG
+- BAD: original="I go there yesterday" corrected="I went there yesterday" — TOO LONG
+- If multiple words need fixing in the same phrase, split them into separate error entries
 - Keep explanations concise in Korean.
 
 For feedback.praise: Write like a friendly YouTube comment — casual, warm, with emojis! 🎉 Use 반말 or casual 존댓말 (e.g. "오 이 부분 진짜 잘 썼다! 👏", "문장 구조 깔끔하게 잘 잡았네요~ 💪"). Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
@@ -378,6 +381,28 @@ Respond in Korean for explanations and feedback.`;
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
       const result = JSON.parse(toolCall.function.arguments);
+
+      // Post-process: trim errors to minimal diff programmatically
+      if (result.errors && Array.isArray(result.errors)) {
+        result.errors = result.errors.map((err: { original: string; corrected: string; explanation?: string }) => {
+          const origWords = err.original.split(/\s+/);
+          const corrWords = err.corrected.split(/\s+/);
+          // Trim matching prefix words
+          let pre = 0;
+          while (pre < origWords.length && pre < corrWords.length && origWords[pre] === corrWords[pre]) pre++;
+          // Trim matching suffix words
+          let suf = 0;
+          while (suf < origWords.length - pre && suf < corrWords.length - pre &&
+                 origWords[origWords.length - 1 - suf] === corrWords[corrWords.length - 1 - suf]) suf++;
+          const oSlice = origWords.slice(pre, suf > 0 ? origWords.length - suf : origWords.length).join(" ");
+          const cSlice = corrWords.slice(pre, suf > 0 ? corrWords.length - suf : corrWords.length).join(" ");
+          if (oSlice || cSlice) {
+            return { ...err, original: oSlice || err.original, corrected: cSlice || err.corrected };
+          }
+          return err;
+        }).filter((e: { original: string; corrected: string }) => e.original !== e.corrected);
+      }
+
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
