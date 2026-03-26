@@ -907,10 +907,25 @@ export default function Classroom() {
       ? selectedEditHwStudents.filter(s => s !== originalStudentName)
       : [];
     
-    // If editing a preset template, create a session-specific copy instead of modifying the template
-    if (editingItem?.isPreset && !editingItem.presetOriginId) {
-      try {
-        // Create copy for the original student (or first selected student)
+    try {
+      // Case A: Editing a session copy that has a preset origin
+      if (editingItem?.presetOriginId) {
+        // Update the session copy
+        const { error } = await supabase.from("homework_assignments")
+          .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null })
+          .eq("id", editingHwId);
+        if (!error) {
+          // Also update the preset template so future sessions get the updated version
+          await supabase.from("homework_assignments")
+            .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null })
+            .eq("id", editingItem.presetOriginId);
+          setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() } : h));
+          toast({ title: "숙제가 수정됐습니다 (정기 숙제도 업데이트) ✓" });
+        }
+      }
+      // Case B: Editing a preset template directly (shouldn't normally happen since auto-copy replaces it, but safety)
+      else if (editingItem?.isPreset && !editingItem.presetOriginId) {
+        // Create session copy instead of modifying template
         const primaryStudent = selectedEditHwStudents.length > 0 ? (selectedEditHwStudents.includes(originalStudentName) ? originalStudentName : selectedEditHwStudents[0]) : originalStudentName;
         const { data: copy, error } = await supabase.from("homework_assignments").insert({
           student_name: primaryStudent,
@@ -922,24 +937,25 @@ export default function Classroom() {
           preset_origin_id: editingHwId,
         }).select().single();
         if (error) throw error;
+        // Also update the preset template for future sessions
+        await supabase.from("homework_assignments")
+          .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null })
+          .eq("id", editingHwId);
         if (copy) {
           setHwList((prev) => prev.map((h) => h.id === editingHwId ? {
             id: copy.id, type: editHwType, title: editHwTitle.trim(),
             description: editHwDesc.trim(), isPreset: false, saved: true,
             presetOriginId: editingHwId, studentName: primaryStudent,
           } : h));
-          toast({ title: "이번 수업용 숙제가 생성됐습니다 ✓" });
+          toast({ title: "숙제가 수정됐습니다 ✓" });
         }
         // Create copies for additional students
         const otherStudents = selectedEditHwStudents.filter(s => s !== primaryStudent);
         if (otherStudents.length > 0) {
           const inserts = otherStudents.map(sn => ({
-            student_name: sn,
-            title: editHwTitle.trim(),
-            description: editHwDesc.trim() || null,
-            type: editHwType,
-            is_preset: false,
-            session_id: session.sessionId || null,
+            student_name: sn, title: editHwTitle.trim(),
+            description: editHwDesc.trim() || null, type: editHwType,
+            is_preset: false, session_id: session.sessionId || null,
             preset_origin_id: editingHwId,
           }));
           const { data: extras } = await supabase.from("homework_assignments").insert(inserts).select();
@@ -947,42 +963,57 @@ export default function Classroom() {
             setHwList(prev => [...prev, ...extras.map(r => ({
               id: r.id, type: r.type as HwType, title: r.title,
               description: r.description || "", isPreset: false, saved: true,
-              presetOriginId: r.preset_origin_id || undefined,
+              presetOriginId: r.preset_origin_id || undefined, studentName: r.student_name,
+            }))]);
+          }
+        }
+      }
+      // Case C: Normal session-specific homework (no preset)
+      else {
+        // Check if user is converting to preset
+        if (editHwPreset && !editingItem?.isPreset) {
+          // Convert: create a preset template and link this as a session copy
+          const { data: presetData } = await supabase.from("homework_assignments").insert({
+            student_name: originalStudentName, title: editHwTitle.trim(),
+            description: editHwDesc.trim() || null, type: editHwType,
+            is_preset: true, session_id: null,
+          }).select().single();
+          if (presetData) {
+            // Update current record to be a session copy of the new preset
+            await supabase.from("homework_assignments")
+              .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null, preset_origin_id: presetData.id })
+              .eq("id", editingHwId);
+            setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim(), isPreset: false, presetOriginId: presetData.id } : h));
+            toast({ title: "정기 숙제로 등록됐습니다 ✓" });
+          }
+        } else {
+          const { error } = await supabase.from("homework_assignments")
+            .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null })
+            .eq("id", editingHwId);
+          if (!error) {
+            setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() } : h));
+            toast({ title: "숙제가 수정됐습니다 ✓" });
+          }
+        }
+        // Create copies for additional students
+        if (additionalStudents.length > 0) {
+          const inserts = additionalStudents.map(sn => ({
+            student_name: sn, title: editHwTitle.trim(),
+            description: editHwDesc.trim() || null, type: editHwType,
+            is_preset: false, session_id: session.sessionId || null,
+          }));
+          const { data: extras } = await supabase.from("homework_assignments").insert(inserts).select();
+          if (extras) {
+            setHwList(prev => [...prev, ...extras.map(r => ({
+              id: r.id, type: r.type as HwType, title: r.title,
+              description: r.description || "", isPreset: false, saved: true,
               studentName: r.student_name,
             }))]);
           }
         }
-      } catch (e: unknown) {
-        toast({ title: "저장 실패", variant: "destructive" });
       }
-    } else {
-      // Normal edit (session-specific homework or existing copy)
-      const { error } = await supabase.from("homework_assignments")
-        .update({ type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim() || null, is_preset: editHwPreset, session_id: editHwPreset ? null : (session.sessionId || null) })
-        .eq("id", editingHwId);
-      if (!error) {
-        setHwList((prev) => prev.map((h) => h.id === editingHwId ? { ...h, type: editHwType, title: editHwTitle.trim(), description: editHwDesc.trim(), isPreset: editHwPreset } : h));
-        toast({ title: "숙제가 수정됐습니다 ✓" });
-      }
-      // Create copies for additional students
-      if (additionalStudents.length > 0) {
-        const inserts = additionalStudents.map(sn => ({
-          student_name: sn,
-          title: editHwTitle.trim(),
-          description: editHwDesc.trim() || null,
-          type: editHwType,
-          is_preset: editHwPreset,
-          session_id: editHwPreset ? null : (session.sessionId || null),
-        }));
-        const { data: extras } = await supabase.from("homework_assignments").insert(inserts).select();
-        if (extras) {
-          setHwList(prev => [...prev, ...extras.map(r => ({
-            id: r.id, type: r.type as HwType, title: r.title,
-            description: r.description || "", isPreset: r.is_preset, saved: true,
-            studentName: r.student_name,
-          }))]);
-        }
-      }
+    } catch (e: unknown) {
+      toast({ title: "저장 실패", variant: "destructive" });
     }
     setSavingEditHw(false);
     cancelEditHw();
