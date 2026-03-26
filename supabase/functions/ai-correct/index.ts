@@ -313,15 +313,17 @@ Be strict. Most student writing should fall between 3-7:
 - 고급: Sophisticated vocabulary, idioms, precise word choice
 - 최고급: Near-native lexical range with nuanced word selection
 
-IMPORTANT for errors — MINIMAL DIFF ONLY:
-- The "original" field must be the SHORTEST exact substring that contains the error (case-sensitive)
-- The "corrected" field must be ONLY the replacement for that minimal substring
-- NEVER include surrounding correct words. Strip matching prefix/suffix words.
-- GOOD: original="me" corrected="I" (from "she suggested me retouch" → "she suggested I retouch")
-- GOOD: original="go" corrected="went" (from "I go there yesterday")
-- BAD: original="she suggested me retouch" corrected="She suggested I retouch" — TOO LONG
-- BAD: original="I go there yesterday" corrected="I went there yesterday" — TOO LONG
-- If multiple words need fixing in the same phrase, split them into separate error entries
+IMPORTANT for errors — CONCISE BUT MEANINGFUL:
+- The "original" field must be an exact substring from the student's text that contains the error
+- The "corrected" field must be the replacement for that substring
+- Include just enough context to show what changed meaningfully — NOT the whole sentence, but NOT just a single isolated word if the fix involves insertion or restructuring
+- GOOD: original="liked go" corrected="liked to go" (missing word insertion — show the surrounding context)
+- GOOD: original="go Japan" corrected="go to Japan" (missing preposition — show where it's inserted)
+- GOOD: original="me" corrected="I" (simple word swap — single word is fine)
+- GOOD: original="go" corrected="went" (tense fix — single word is fine)
+- BAD: original="I liked go Japan" corrected="I liked to go to Japan" — TOO LONG (whole sentence)
+- BAD: original="to" corrected="to go to" — CONFUSING without context
+- Rule: if the fix is a word swap, show just that word. If the fix adds/removes words, include 1 neighboring word for context.
 - Keep explanations concise in Korean.
 
 For feedback.praise: Write like a friendly YouTube comment — casual, warm, with emojis! 🎉 Use 반말 or casual 존댓말 (e.g. "오 이 부분 진짜 잘 썼다! 👏", "문장 구조 깔끔하게 잘 잡았네요~ 💪"). Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
@@ -382,20 +384,24 @@ Respond in Korean for explanations and feedback.`;
     if (toolCall?.function?.arguments) {
       const result = JSON.parse(toolCall.function.arguments);
 
-      // Post-process: trim errors to minimal diff programmatically
+      // Post-process: trim errors but keep 1 context word when lengths differ
       if (result.errors && Array.isArray(result.errors)) {
         result.errors = result.errors.map((err: { original: string; corrected: string; explanation?: string }) => {
           const origWords = err.original.split(/\s+/);
           const corrWords = err.corrected.split(/\s+/);
-          // Trim matching prefix words
+          if (origWords.length <= 3 && corrWords.length <= 3) return err; // already short enough
+          // Trim matching prefix words, keep 1 for context if lengths differ
           let pre = 0;
           while (pre < origWords.length && pre < corrWords.length && origWords[pre] === corrWords[pre]) pre++;
           // Trim matching suffix words
           let suf = 0;
           while (suf < origWords.length - pre && suf < corrWords.length - pre &&
                  origWords[origWords.length - 1 - suf] === corrWords[corrWords.length - 1 - suf]) suf++;
-          const oSlice = origWords.slice(pre, suf > 0 ? origWords.length - suf : origWords.length).join(" ");
-          const cSlice = corrWords.slice(pre, suf > 0 ? corrWords.length - suf : corrWords.length).join(" ");
+          // Keep 1 context word before the diff if words were added/removed
+          const needsContext = origWords.length !== corrWords.length && pre > 0;
+          const ctxPre = needsContext ? pre - 1 : pre;
+          const oSlice = origWords.slice(ctxPre, suf > 0 ? origWords.length - suf : origWords.length).join(" ");
+          const cSlice = corrWords.slice(ctxPre, suf > 0 ? corrWords.length - suf : corrWords.length).join(" ");
           if (oSlice || cSlice) {
             return { ...err, original: oSlice || err.original, corrected: cSlice || err.corrected };
           }
