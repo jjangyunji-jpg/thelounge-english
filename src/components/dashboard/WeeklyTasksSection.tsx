@@ -68,6 +68,7 @@ interface Props {
   vocabWords: { id: string; week_label: string }[];
   testHistory: { id: string; week_label: string | null; completed_at: string | null }[];
   onSubmissionUpdate: (sub: Submission) => void;
+  periodStart?: Date | null;
 }
 
 function getWeekLabelFromDate(date: Date) {
@@ -80,7 +81,7 @@ function getWeekLabelFromDate(date: Date) {
 
 export default function WeeklyTasksSection({
   assignments, submissions, sessions, studentName,
-  vocabWords, testHistory, onSubmissionUpdate,
+  vocabWords, testHistory, onSubmissionUpdate, periodStart,
 }: Props) {
   const { toast } = useToast();
   const navigate = useNavigate();
