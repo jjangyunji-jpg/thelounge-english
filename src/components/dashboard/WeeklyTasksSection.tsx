@@ -201,6 +201,7 @@ export default function WeeklyTasksSection({
       <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30">
           <div className="flex items-center gap-1.5">
+            <ClipboardList className="w-3.5 h-3.5 text-gold" />
             <span className="text-xs font-semibold text-foreground">
               {weekNumber ? `${weekNumber}주차 수업 과제` : "최근 수업 과제"}
             </span>
