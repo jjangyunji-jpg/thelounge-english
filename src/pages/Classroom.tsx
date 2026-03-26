@@ -840,22 +840,45 @@ export default function Classroom() {
       const targetStudents = allGroupMembers.length > 0
         ? (selectedHwStudents.length > 0 ? selectedHwStudents : allGroupMembers)
         : [session.dbStudentName];
-      const inserts = targetStudents.map(sn => ({
-        student_name: sn, title: newHwTitle.trim(),
-        description: newHwDesc.trim() || null, type: newHwType, is_preset: newHwPreset,
-        session_id: newHwPreset ? null : (session.sessionId || null),
-      }));
-      const { data, error } = await supabase.from("homework_assignments").insert(inserts).select();
-      if (error) throw error;
-      if (data && data.length > 0) {
-        // Show all created homework in the UI list (for group classes, show each member's entry)
-        setHwList((prev) => [...prev, ...data.map(d => ({ id: d.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: newHwPreset, saved: true, studentName: d.student_name }))]);
-        const count = allGroupMembers.length > 0 ? targetStudents.length : 0;
-        const msg = count > 0 ? `숙제가 ${count}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
-        toast({ title: msg });
-        setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing"); setNewHwPreset(false); setSelectedHwStudents([]);
-        setAddingHw(false);
+
+      if (newHwPreset) {
+        // Create preset templates first (no session_id)
+        const presetInserts = targetStudents.map(sn => ({
+          student_name: sn, title: newHwTitle.trim(),
+          description: newHwDesc.trim() || null, type: newHwType, is_preset: true,
+          session_id: null,
+        }));
+        const { data: presetData, error: presetErr } = await supabase.from("homework_assignments").insert(presetInserts).select();
+        if (presetErr) throw presetErr;
+        // Immediately create session copies so auto-copy doesn't duplicate
+        if (presetData && presetData.length > 0 && session.sessionId) {
+          const copyInserts = presetData.map(p => ({
+            student_name: p.student_name, title: p.title,
+            description: p.description, type: p.type, is_preset: false,
+            session_id: session.sessionId, preset_origin_id: p.id,
+          }));
+          const { data: copies } = await supabase.from("homework_assignments").insert(copyInserts).select();
+          if (copies && copies.length > 0) {
+            setHwList((prev) => [...prev, ...copies.map(d => ({ id: d.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: false, saved: true, presetOriginId: d.preset_origin_id, studentName: d.student_name }))]);
+          }
+        }
+      } else {
+        const inserts = targetStudents.map(sn => ({
+          student_name: sn, title: newHwTitle.trim(),
+          description: newHwDesc.trim() || null, type: newHwType, is_preset: false,
+          session_id: session.sessionId || null,
+        }));
+        const { data, error } = await supabase.from("homework_assignments").insert(inserts).select();
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setHwList((prev) => [...prev, ...data.map(d => ({ id: d.id, type: newHwType, title: newHwTitle.trim(), description: newHwDesc.trim(), isPreset: false, saved: true, studentName: d.student_name }))]);
+        }
       }
+      const count = allGroupMembers.length > 0 ? targetStudents.length : 0;
+      const msg = count > 0 ? `숙제가 ${count}명에게 추가됐습니다 ✓` : "숙제가 추가됐습니다 ✓";
+      toast({ title: msg });
+      setNewHwTitle(""); setNewHwDesc(""); setNewHwType("writing"); setNewHwPreset(false); setSelectedHwStudents([]);
+      setAddingHw(false);
     } catch (e: unknown) {
       console.error("homework save error:", e);
       toast({ title: "숙제 저장 실패", description: e instanceof Error ? e.message : "오류가 발생했습니다. 다시 시도해주세요.", variant: "destructive" });
