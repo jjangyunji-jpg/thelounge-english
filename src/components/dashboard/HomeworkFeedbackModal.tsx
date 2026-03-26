@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -47,7 +47,7 @@ interface Props {
 }
 
 /** Render inline diff: strikethrough original, colored corrected */
-function InlineCorrectedText({ original, errors }: { original: string; errors: CorrectionItem[] }) {
+const InlineCorrectedText = React.forwardRef<HTMLDivElement, { original: string; errors: CorrectionItem[] }>(function InlineCorrectedText({ original, errors }, ref) {
   if (!errors || errors.length === 0) {
     return <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{original}</p>;
   }
@@ -83,7 +83,7 @@ function InlineCorrectedText({ original, errors }: { original: string; errors: C
   if (remaining) parts.push(<span key={key++}>{remaining}</span>);
 
   return (
-    <div className="space-y-3">
+    <div ref={ref} className="space-y-3">
       <p className="text-sm leading-relaxed whitespace-pre-wrap">{parts}</p>
       {matchedErrors.length > 0 && (
         <div className="space-y-1.5 pt-2 border-t border-border">
@@ -102,7 +102,7 @@ function InlineCorrectedText({ original, errors }: { original: string; errors: C
       )}
     </div>
   );
-}
+});
 
 export default function HomeworkFeedbackModal({
   assignmentTitle,
