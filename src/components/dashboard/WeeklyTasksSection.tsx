@@ -99,44 +99,41 @@ export default function WeeklyTasksSection({
   // Second-most-recent session (used to filter preset submissions)
   const prevSession = pastSessions[1] ?? null;
 
-  // Assignments for the latest session + preset homework (exclude memorizing presets - vocab test handles it)
-  // Also exclude preset templates that have session-specific copies
+  // Assignments for the latest session (session-specific copies + remaining presets without copies)
   const sessionCopyOriginIds = new Set(
     assignments.filter(a => a.preset_origin_id && a.session_id === latestSessionId)
       .map(a => a.preset_origin_id)
   );
   const weekAssignments = assignments.filter(a => {
-    // Only hide memorizing presets that are vocab-test-specific (title contains "단어 테스트")
+    // Hide vocab-test presets (단어 테스트 handles separately)
     if (a.is_preset && a.type === "memorizing" && a.title.includes("단어 테스트")) return false;
-    // Hide template if a session copy exists
+    // Hide preset templates that have session copies
     if (a.is_preset && sessionCopyOriginIds.has(a.id)) return false;
-    return a.is_preset || (a.session_id && a.session_id === latestSessionId);
+    // Show session-specific assignments for latest session
+    if (a.session_id && a.session_id === latestSessionId) return true;
+    // Fallback: show preset templates without copies (instructor hasn't opened classroom yet)
+    if (a.is_preset) return true;
+    return false;
   });
 
-  // For preset assignments, only show submissions made AFTER the previous session
-  // This prevents last week's submission from appearing under this week's (updated) question
+  // Submission lookup — session copies use direct matching; presets fallback uses time-window
   const getSub = (aId: string) => {
     const assignment = weekAssignments.find(a => a.id === aId);
     if (!assignment) return undefined;
 
-    // For preset assignments, find the submission made AFTER the PREVIOUS session started
-    // Students submit homework BETWEEN sessions (after prev session, before/after latest session)
-    // so the cutoff must be the previous session, not the latest one
+    // For preset templates (fallback — no session copy exists yet), use time-window
     if (assignment.is_preset) {
-      if (!latestSession) return undefined; // No past sessions → no current-week submission
-      // Use prevSession as cutoff; if no prevSession, use latestSession (first ever session)
+      if (!latestSession) return undefined;
       const cutoffTime = prevSession
         ? new Date(prevSession.scheduled_at).getTime()
         : new Date(latestSession.scheduled_at).getTime();
-      // Return the MOST RECENT matching submission (sort desc, pick first)
-      const matchingSub = submissions
+      return submissions
         .filter(s => s.assignment_id === aId && s.submitted_at)
         .filter(s => new Date(s.submitted_at!).getTime() >= cutoffTime)
         .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())[0];
-      return matchingSub;
     }
 
-    // For session-specific assignments, any submission counts
+    // For session-specific assignments (including auto-copies), any submission counts
     return submissions.find(s => s.assignment_id === aId);
   };
 
