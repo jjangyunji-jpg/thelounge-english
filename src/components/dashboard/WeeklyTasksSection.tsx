@@ -68,6 +68,7 @@ interface Props {
   vocabWords: { id: string; week_label: string }[];
   testHistory: { id: string; week_label: string | null; completed_at: string | null }[];
   onSubmissionUpdate: (sub: Submission) => void;
+  periodStart?: Date | null;
 }
 
 function getWeekLabelFromDate(date: Date) {
@@ -80,7 +81,7 @@ function getWeekLabelFromDate(date: Date) {
 
 export default function WeeklyTasksSection({
   assignments, submissions, sessions, studentName,
-  vocabWords, testHistory, onSubmissionUpdate,
+  vocabWords, testHistory, onSubmissionUpdate, periodStart,
 }: Props) {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -98,6 +99,11 @@ export default function WeeklyTasksSection({
   const latestSessionId = latestSession?.id ?? null;
   // Second-most-recent session (used to filter preset submissions)
   const prevSession = pastSessions[1] ?? null;
+
+  // Calculate week number relative to period start
+  const weekNumber = latestSession && periodStart
+    ? Math.floor((new Date(latestSession.scheduled_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
+    : null;
 
   // Assignments for the latest session (session-specific copies + remaining presets without copies)
   const sessionCopyOriginIds = new Set(
@@ -196,7 +202,9 @@ export default function WeeklyTasksSection({
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30">
           <div className="flex items-center gap-1.5">
             <ClipboardList className="w-3.5 h-3.5 text-gold" />
-            <span className="text-xs font-semibold text-foreground">최근 수업 과제</span>
+            <span className="text-xs font-semibold text-foreground">
+              {weekNumber ? `${weekNumber}주차 수업 과제` : "최근 수업 과제"}
+            </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">
               {totalDone}/{totalTasks}
             </span>
@@ -341,7 +349,7 @@ export default function WeeklyTasksSection({
                   <div className="flex items-center gap-1.5">
                     <Trophy className="w-3.5 h-3.5 text-[hsl(var(--gold))]" />
                     <span className={cn("text-xs font-semibold", weekTestsDone > 0 ? "text-muted-foreground" : "text-foreground")}>
-                      이번주 단어 테스트
+                      {weekNumber ? `${weekNumber}주차 단어 테스트` : "이번주 단어 테스트"}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
                       {weekVocabCount}단어

@@ -982,9 +982,14 @@ export default function StudentDashboard() {
   const periodSessionIds = new Set(periodSessions.map(s => s.id));
 
   const periodAssignments = (selectedPeriod
-    ? assignments.filter(a => a.is_preset || !a.session_id || periodSessionIds.has(a.session_id))
-    : assignments
-  ).filter(a => !(a.is_preset && a.type === "memorizing"));
+    ? assignments.filter(a => {
+        // Only show assignments linked to sessions in this period
+        if (a.is_preset) return false; // skip templates, only show session copies
+        if (!a.session_id) return false;
+        return periodSessionIds.has(a.session_id);
+      })
+    : assignments.filter(a => !a.is_preset)
+  ).filter(a => !(a.type === "memorizing" && a.title.includes("단어 테스트")));
 
   const periodVocabWords = selectedPeriod
     ? vocabWords.filter(w => {
@@ -1873,6 +1878,7 @@ export default function StudentDashboard() {
             studentName={student}
             vocabWords={vocabWords}
             testHistory={testHistory}
+            periodStart={periodStart}
             onSubmissionUpdate={(sub) => {
               setSubmissions(prev => {
                 const idx = prev.findIndex(s => s.id === sub.id);
@@ -1906,7 +1912,7 @@ export default function StudentDashboard() {
                 {periodAssignments.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">이 기간에 배정된 숙제가 없습니다</p>
                 ) : (
-                  periodAssignments.slice(0, 5).map((a) => {
+                  periodAssignments.map((a) => {
                     const sub = getSubmission(a.id);
                     const status = sub?.status || "pending";
                     const meta = HW_META[a.type as HwType];
@@ -1930,10 +1936,12 @@ export default function StudentDashboard() {
                           <Icon className={cn("w-3.5 h-3.5", meta?.color)} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-foreground truncate">
-                            {weekPrefix && <span className="text-muted-foreground font-medium mr-1">[{weekPrefix}]</span>}
-                            {a.title}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            {weekPrefix && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold flex-shrink-0">{weekPrefix}</span>
+                            )}
+                            <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
+                          </div>
                           {a.due_at && <p className="text-[10px] text-muted-foreground">마감: {fmtDate(a.due_at)}</p>}
                         </div>
                         {status === "reviewed" && sub && (
@@ -1969,14 +1977,6 @@ export default function StudentDashboard() {
                     );
                   })
                 )}
-                {periodAssignments.length > 5 && (
-                  <button
-                    onClick={() => navigate("/my/classnote")}
-                    className="w-full text-center text-[11px] text-muted-foreground py-2 hover:text-foreground transition-colors"
-                  >
-                    +{periodAssignments.length - 5}개 더보기
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -1991,7 +1991,7 @@ export default function StudentDashboard() {
                 className="flex items-center gap-1.5 hover:opacity-70 transition-opacity"
               >
                 <BookOpen className="w-3.5 h-3.5 text-gold" />
-                <span className="text-xs font-semibold text-foreground">이달의 단어장</span>
+                <span className="text-xs font-semibold text-foreground">나의 단어장</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{periodVocabWords.length}개</span>
               </button>
               <button
