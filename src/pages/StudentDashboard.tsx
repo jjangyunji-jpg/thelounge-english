@@ -982,9 +982,14 @@ export default function StudentDashboard() {
   const periodSessionIds = new Set(periodSessions.map(s => s.id));
 
   const periodAssignments = (selectedPeriod
-    ? assignments.filter(a => a.is_preset || !a.session_id || periodSessionIds.has(a.session_id))
-    : assignments
-  ).filter(a => !(a.is_preset && a.type === "memorizing"));
+    ? assignments.filter(a => {
+        // Only show assignments linked to sessions in this period
+        if (a.is_preset) return false; // skip templates, only show session copies
+        if (!a.session_id) return false;
+        return periodSessionIds.has(a.session_id);
+      })
+    : assignments.filter(a => !a.is_preset)
+  ).filter(a => !(a.type === "memorizing" && a.title.includes("단어 테스트")));
 
   const periodVocabWords = selectedPeriod
     ? vocabWords.filter(w => {
@@ -1873,6 +1878,7 @@ export default function StudentDashboard() {
             studentName={student}
             vocabWords={vocabWords}
             testHistory={testHistory}
+            periodStart={periodStart}
             onSubmissionUpdate={(sub) => {
               setSubmissions(prev => {
                 const idx = prev.findIndex(s => s.id === sub.id);
@@ -1991,7 +1997,7 @@ export default function StudentDashboard() {
                 className="flex items-center gap-1.5 hover:opacity-70 transition-opacity"
               >
                 <BookOpen className="w-3.5 h-3.5 text-gold" />
-                <span className="text-xs font-semibold text-foreground">이달의 단어장</span>
+                <span className="text-xs font-semibold text-foreground">나의 단어장</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{periodVocabWords.length}개</span>
               </button>
               <button
