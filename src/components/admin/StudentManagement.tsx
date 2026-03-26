@@ -919,6 +919,28 @@ export default function StudentManagement() {
                   </Select>
                 </div>
 
+                {/* 최종 학습 목표 */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">최종 학습 목표</Label>
+                  <Textarea
+                    placeholder="예: 비즈니스 영어 회화 능력 향상"
+                    className="min-h-[60px] text-sm"
+                    value={newStudent.learningObjective}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, learningObjective: e.target.value }))}
+                  />
+                </div>
+
+                {/* 구글시트 URL */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">구글시트 URL</Label>
+                  <Input
+                    placeholder="https://docs.google.com/spreadsheets/..."
+                    className="h-9"
+                    value={newStudent.googleSheetUrl}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, googleSheetUrl: e.target.value }))}
+                  />
+                </div>
+
                 {/* 수업 일정 */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
