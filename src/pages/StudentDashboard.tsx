@@ -981,15 +981,70 @@ export default function StudentDashboard() {
 
   const periodSessionIds = new Set(periodSessions.map(s => s.id));
 
-  const periodAssignments = (selectedPeriod
-    ? assignments.filter(a => {
-        // Only show assignments linked to sessions in this period
-        if (a.is_preset) return false; // skip templates, only show session copies
-        if (!a.session_id) return false;
-        return periodSessionIds.has(a.session_id);
-      })
-    : assignments.filter(a => !a.is_preset)
-  ).filter(a => !(a.type === "memorizing" && a.title.includes("단어 테스트")));
+  // Build submission-based homework history for the period
+  // Each entry = one submission row (handles presets with multiple weekly submissions)
+  type PeriodHwEntry = {
+    assignment: typeof assignments[0];
+    submission: typeof submissions[0] | null;
+    weekNumber: number | null;
+    sortKey: number; // for ordering
+  };
+
+  const periodHwEntries: PeriodHwEntry[] = (() => {
+    const entries: PeriodHwEntry[] = [];
+    const vocabTestFilter = (a: typeof assignments[0]) => !(a.type === "memorizing" && a.title.includes("단어 테스트"));
+
+    // 1. Session-specific assignments (non-preset, has session_id in period)
+    const sessionAssignments = assignments.filter(a => {
+      if (a.is_preset) return false;
+      if (!a.session_id) return false;
+      if (selectedPeriod && !periodSessionIds.has(a.session_id)) return false;
+      return vocabTestFilter(a);
+    });
+    for (const a of sessionAssignments) {
+      const sub = submissions.find(s => s.assignment_id === a.id) ?? null;
+      const linkedSession = allSessions.find(s => s.id === a.session_id);
+      const wk = linkedSession?.scheduled_at && periodStart
+        ? Math.floor((new Date(linkedSession.scheduled_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
+        : null;
+      entries.push({ assignment: a, submission: sub, weekNumber: wk, sortKey: sub?.submitted_at ? new Date(sub.submitted_at).getTime() : (linkedSession ? new Date(linkedSession.scheduled_at).getTime() : 0) });
+    }
+
+    // 2. Preset templates — show one entry per submission in the period
+    const presetAssignments = assignments.filter(a => a.is_preset && vocabTestFilter(a));
+    // Collect IDs of presets that already have session copies shown
+    const coveredPresetIds = new Set(sessionAssignments.filter(a => a.preset_origin_id).map(a => a.preset_origin_id));
+    for (const a of presetAssignments) {
+      // Get all submissions for this preset in the period
+      const presetSubs = submissions.filter(s => {
+        if (s.assignment_id !== a.id) return false;
+        if (!s.submitted_at) return false;
+        if (selectedPeriod) {
+          const d = new Date(s.submitted_at);
+          return d >= periodStart! && d <= periodEnd!;
+        }
+        return true;
+      });
+      if (presetSubs.length === 0 && !coveredPresetIds.has(a.id)) {
+        // No submissions — skip (don't show empty presets in history)
+        continue;
+      }
+      for (const sub of presetSubs) {
+        // Derive week from submission date relative to period start
+        const wk = periodStart && sub.submitted_at
+          ? Math.floor((new Date(sub.submitted_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
+          : null;
+        entries.push({ assignment: a, submission: sub, weekNumber: wk, sortKey: new Date(sub.submitted_at!).getTime() });
+      }
+    }
+
+    // Sort by date descending (most recent first)
+    entries.sort((a, b) => b.sortKey - a.sortKey);
+    return entries;
+  })();
+
+  // Legacy compatibility: periodAssignments for stats (unique assignments that have submissions)
+  const periodAssignments = periodHwEntries.map(e => e.assignment).filter((a, i, arr) => arr.findIndex(x => x.id === a.id) === i);
 
   const periodVocabWords = selectedPeriod
     ? vocabWords.filter(w => {
