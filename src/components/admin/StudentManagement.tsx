@@ -937,9 +937,10 @@ export default function StudentManagement() {
                 <div className="space-y-1.5">
                   <Label className="text-xs">구글 미트 링크</Label>
                   <Input
-                    placeholder="https://meet.google.com/..."
+                    placeholder="meet.google.com/xxx-xxxx-xxx"
                     className="h-9"
                     value={newStudent.meetLink}
+                    onFocus={() => { if (!newStudent.meetLink) setNewStudent((p) => ({ ...p, meetLink: "https://" })); }}
                     onChange={(e) => setNewStudent((p) => ({ ...p, meetLink: e.target.value }))}
                   />
                 </div>
