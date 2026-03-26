@@ -668,14 +668,15 @@ export default function Classroom() {
           .order("created_at", { ascending: true });
 
         if (prevHwData && prevHwData.length > 0) {
-          // Filter out preset templates with session copies
+          // Filter: show session copies for prev session, hide templates with copies
           const prevCopyOriginIds = new Set(
             prevHwData.filter(d => d.preset_origin_id && d.session_id === prevSessData.id)
               .map(d => d.preset_origin_id)
           );
           const filteredPrev = prevHwData.filter(d => {
             if (d.is_preset && prevCopyOriginIds.has(d.id)) return false;
-            return true;
+            // Also hide pure presets if copies exist (prefer session copies)
+            return d.session_id === prevSessData.id || (d.is_preset && !prevCopyOriginIds.has(d.id));
           });
           const hwIds = filteredPrev.map(h => h.id);
           const { data: subData } = await supabase
