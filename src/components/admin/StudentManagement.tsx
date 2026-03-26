@@ -147,6 +147,7 @@ interface NewStudent {
   studentType: string;
   learningObjective: string;
   googleSheetUrl: string;
+  meetLink: string;
 }
 
 // Pause form sub-component
@@ -351,7 +352,7 @@ export default function StudentManagement() {
 
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
-    name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular", learningObjective: "", googleSheetUrl: "",
+    name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular", learningObjective: "", googleSheetUrl: "", meetLink: "",
   });
 
   const filtered = students.filter(
@@ -712,6 +713,7 @@ export default function StudentManagement() {
         student_type: newStudent.studentType,
         learning_objective: newStudent.learningObjective.trim() || null,
         google_sheet_url: newStudent.googleSheetUrl.trim() || null,
+        meet_link: newStudent.meetLink.trim() || null,
       } as any)
       .select()
       .single();
@@ -741,14 +743,14 @@ export default function StudentManagement() {
       learningObjective: newStudent.learningObjective,
       lessonHistory: [],
       reminderEnabled: true,
-      meetLink: "",
+      meetLink: newStudent.meetLink,
       schedules: newStudent.schedules,
       studentType: newStudent.studentType,
       groupStudents: [],
       googleSheetUrl: newStudent.googleSheetUrl,
     };
     setStudents((prev) => [s, ...prev]);
-    setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular", learningObjective: "", googleSheetUrl: "" });
+    setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular", learningObjective: "", googleSheetUrl: "", meetLink: "" });
     setDialogOpen(false);
     toast({ title: `${newStudent.name} 수강생 등록 완료 ✓` });
 
@@ -928,6 +930,17 @@ export default function StudentManagement() {
                     className="min-h-[60px] text-sm"
                     value={newStudent.learningObjective}
                     onChange={(e) => setNewStudent((p) => ({ ...p, learningObjective: e.target.value }))}
+                  />
+                </div>
+
+                {/* 구글 미트 링크 */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">구글 미트 링크</Label>
+                  <Input
+                    placeholder="https://meet.google.com/..."
+                    className="h-9"
+                    value={newStudent.meetLink}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, meetLink: e.target.value }))}
                   />
                 </div>
 
