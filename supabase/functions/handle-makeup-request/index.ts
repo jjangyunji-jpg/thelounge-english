@@ -47,7 +47,7 @@ serve(async (req) => {
     const { data: makeupReq, error: reqErr } = await sb
       .from("makeup_requests").select("*").eq("id", request_id).single();
     if (reqErr || !makeupReq) throw new Error("요청을 찾을 수 없습니다.");
-    if (makeupReq.status !== "pending") throw new Error("이미 처리된 요청입니다.");
+    if (action !== "cancel" && makeupReq.status !== "pending") throw new Error("이미 처리된 요청입니다.");
 
     // Get the slot
     const { data: slot } = await sb
