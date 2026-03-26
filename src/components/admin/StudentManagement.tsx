@@ -287,6 +287,7 @@ export default function StudentManagement() {
       pauses: [],
       studentType: row.student_type || "regular",
       groupStudents: row.group_students || [],
+      googleSheetUrl: (row as any).google_sheet_url || "",
     }));
     setStudents(dbStudents);
 
