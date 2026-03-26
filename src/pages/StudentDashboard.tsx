@@ -1088,8 +1088,8 @@ export default function StudentDashboard() {
     ? periodAssignments.filter(a => a.session_id === latestPastSession.id)
     : [];
   const latestSessionPendingHw = latestSessionAssignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
-  const pendingHw = periodAssignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
-  const submittedHw = periodAssignments.filter(a => { const sub = getSubmission(a.id); return sub && sub.status !== "pending"; });
+  const pendingHw = periodHwEntries.filter(e => !e.submission || e.submission.status === "pending");
+  const submittedHw = periodHwEntries.filter(e => e.submission && e.submission.status !== "pending");
   const latestTest = periodTestHistory[0];
   const avgScore = periodTestHistory.length > 0
     ? Math.round(periodTestHistory.reduce((acc, t) => acc + (t.total ? (t.score ?? 0) / t.total : 0), 0) / periodTestHistory.length * 100)
