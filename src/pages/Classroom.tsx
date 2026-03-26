@@ -1683,7 +1683,7 @@ export default function Classroom() {
                               )}
                               <span className="text-xs font-semibold text-foreground">{hw.title}</span>
                               <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>{meta.label}</span>
-                              {hw.isPreset && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--navy)/0.1)] text-[hsl(var(--navy))]">정기</span>}
+                              {(hw.isPreset || hw.presetOriginId) && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--navy)/0.1)] text-[hsl(var(--navy))]">정기</span>}
                             </div>
                             {hw.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{hw.description}</p>}
                             <p className="text-[10px] text-muted-foreground/70 mt-0.5">{meta.hint}</p>
