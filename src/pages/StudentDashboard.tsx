@@ -1912,7 +1912,7 @@ export default function StudentDashboard() {
                 {periodAssignments.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">이 기간에 배정된 숙제가 없습니다</p>
                 ) : (
-                  periodAssignments.slice(0, 5).map((a) => {
+                  periodAssignments.map((a) => {
                     const sub = getSubmission(a.id);
                     const status = sub?.status || "pending";
                     const meta = HW_META[a.type as HwType];
@@ -1936,10 +1936,12 @@ export default function StudentDashboard() {
                           <Icon className={cn("w-3.5 h-3.5", meta?.color)} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-foreground truncate">
-                            {weekPrefix && <span className="text-muted-foreground font-medium mr-1">[{weekPrefix}]</span>}
-                            {a.title}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            {weekPrefix && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold flex-shrink-0">{weekPrefix}</span>
+                            )}
+                            <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
+                          </div>
                           {a.due_at && <p className="text-[10px] text-muted-foreground">마감: {fmtDate(a.due_at)}</p>}
                         </div>
                         {status === "reviewed" && sub && (
@@ -1974,14 +1976,6 @@ export default function StudentDashboard() {
                       </div>
                     );
                   })
-                )}
-                {periodAssignments.length > 5 && (
-                  <button
-                    onClick={() => navigate("/my/classnote")}
-                    className="w-full text-center text-[11px] text-muted-foreground py-2 hover:text-foreground transition-colors"
-                  >
-                    +{periodAssignments.length - 5}개 더보기
-                  </button>
                 )}
               </div>
             )}
