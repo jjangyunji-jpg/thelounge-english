@@ -1649,13 +1649,31 @@ export default function InstructorDashboard() {
       }
     });
 
-  const uncheckedHwAll = myAssignments.filter((a) => {
-    const sub = submissions.find((s) => s.assignment_id === a.id);
-    return sub && sub.status === "submitted";
-  });
+  // Build submission-based unchecked homework entries
+  // Each entry is { assignment, submission } so preset assignments with multiple submissions each get their own row
+  type HwEntry = { assignment: HomeworkAssignment; submission: HomeworkSubmission };
 
-  const uncheckedHw = uncheckedHwAll.filter((a) => {
-    // Preset homework: always show in main
+  const uncheckedHwAllEntries: HwEntry[] = (() => {
+    const entries: HwEntry[] = [];
+    for (const a of myAssignments) {
+      if (a.is_preset) {
+        // For presets: find ALL submitted submissions
+        const subs = submissions.filter(s => s.assignment_id === a.id && s.status === "submitted");
+        for (const sub of subs) {
+          entries.push({ assignment: a, submission: sub });
+        }
+      } else {
+        // For session-specific: single submission
+        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "submitted");
+        if (sub) entries.push({ assignment: a, submission: sub });
+      }
+    }
+    // Sort by submitted_at descending
+    entries.sort((a, b) => new Date(b.submission.submitted_at).getTime() - new Date(a.submission.submitted_at).getTime());
+    return entries;
+  })();
+
+  const uncheckedHwEntries = uncheckedHwAllEntries.filter(({ assignment: a }) => {
     if (a.is_preset) return true;
     const nextSess = nextSessionByStudent.get(a.student_name);
     if (!nextSess) {
@@ -1669,24 +1687,42 @@ export default function InstructorDashboard() {
     return latestPast && a.session_id === latestPast.id;
   });
 
-  const uncheckedHwIds = new Set(uncheckedHw.map(a => a.id));
-  const olderUncheckedHw = uncheckedHwAll.filter(a => !uncheckedHwIds.has(a.id));
+  const uncheckedSubIds = new Set(uncheckedHwEntries.map(e => e.submission.id));
+  const olderUncheckedHwEntries = uncheckedHwAllEntries.filter(e => !uncheckedSubIds.has(e.submission.id));
 
-  // Reviewed homework: show until next session for that student starts
-  const checkedHw = myAssignments.filter((a) => {
-    const sub = submissions.find((s) => s.assignment_id === a.id);
-    if (!sub || sub.status !== "reviewed") return false;
-    // Find the session this assignment belongs to
-    const assignmentSession = a.session_id ? sessions.find(s => s.id === a.session_id) : null;
-    if (!assignmentSession) return false;
-    // Find the next session for this student after the assignment's session
-    const nextSession = sessions
-      .filter(s => s.student_name === a.student_name && new Date(s.scheduled_at) > new Date(assignmentSession.scheduled_at))
-      .sort((x, y) => new Date(x.scheduled_at).getTime() - new Date(y.scheduled_at).getTime())[0];
-    // Hide if next session has already started
-    if (nextSession && new Date(nextSession.scheduled_at) <= new Date()) return false;
-    return true;
-  });
+  // Legacy aliases for stats
+  const uncheckedHw = uncheckedHwEntries;
+  const olderUncheckedHw = olderUncheckedHwEntries;
+
+  // Reviewed homework entries: show until next session for that student starts
+  const checkedHwEntries: HwEntry[] = (() => {
+    const entries: HwEntry[] = [];
+    for (const a of myAssignments) {
+      const reviewedSubs = a.is_preset
+        ? submissions.filter(s => s.assignment_id === a.id && s.status === "reviewed")
+        : [submissions.find(s => s.assignment_id === a.id && s.status === "reviewed")].filter(Boolean) as HomeworkSubmission[];
+      for (const sub of reviewedSubs) {
+        // For session-specific: check if next session started
+        const assignmentSession = a.session_id ? sessions.find(s => s.id === a.session_id) : null;
+        if (!a.is_preset && !assignmentSession) continue;
+        if (a.is_preset) {
+          // For presets: show reviewed submissions from current period only (reviewed within last 2 weeks)
+          const twoWeeksAgo = new Date(nowDate.getTime() - 14 * 86400000);
+          if (sub.reviewed_at && new Date(sub.reviewed_at) < twoWeeksAgo) continue;
+          entries.push({ assignment: a, submission: sub });
+        } else {
+          const nextSession = sessions
+            .filter(s => s.student_name === a.student_name && new Date(s.scheduled_at) > new Date(assignmentSession!.scheduled_at))
+            .sort((x, y) => new Date(x.scheduled_at).getTime() - new Date(y.scheduled_at).getTime())[0];
+          if (nextSession && new Date(nextSession.scheduled_at) <= new Date()) continue;
+          entries.push({ assignment: a, submission: sub });
+        }
+      }
+    }
+    entries.sort((a, b) => new Date(b.submission.reviewed_at || b.submission.submitted_at).getTime() - new Date(a.submission.reviewed_at || a.submission.submitted_at).getTime());
+    return entries;
+  })();
+  const checkedHw = checkedHwEntries;
 
   // Period stats
   const BASE_PAY = 11000;
@@ -2633,8 +2669,9 @@ export default function InstructorDashboard() {
                     </h3>
                     {uncheckedHw.length > 0 ? (
                     <div className="space-y-1.5">
-                      {uncheckedHw.map((a) => {
-                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "submitted");
+                      {uncheckedHw.map((entry) => {
+                        const a = entry.assignment;
+                        const sub = entry.submission;
                         const hwType = a.type as HwType;
                         const meta = HW_TYPE_META[hwType];
                         const Icon = meta?.icon || FileText;
@@ -2643,7 +2680,7 @@ export default function InstructorDashboard() {
 
                         return (
                           <div
-                            key={a.id}
+                            key={sub.id}
                             onClick={() => {
                               if (!isQuickCheck && sub) {
                                 setReviewHw({ assignment: a, submission: sub });
@@ -2659,6 +2696,9 @@ export default function InstructorDashboard() {
                               <p className="text-xs font-medium text-foreground">{a.title}</p>
                               <p className="text-[10px] text-muted-foreground">
                                 {fmtName(a.student_name)} · {meta?.label || a.type}
+                                {sub.submitted_at && (
+                                  <span className="ml-1.5">· {fmt(sub.submitted_at)} 제출</span>
+                                )}
                                 {nextSess && (
                                   <span className="ml-1.5 text-[hsl(var(--gold-dark))]">
                                     · 다음 수업 {fmt(nextSess.scheduled_at)}
@@ -2666,7 +2706,7 @@ export default function InstructorDashboard() {
                                 )}
                               </p>
                             </div>
-                            {isQuickCheck && sub ? (
+                            {isQuickCheck ? (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -2705,8 +2745,9 @@ export default function InstructorDashboard() {
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-medium">{olderUncheckedHw.length}</span>
                     </summary>
                     <div className="px-4 pb-3 space-y-1.5">
-                      {olderUncheckedHw.map((a) => {
-                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "submitted");
+                      {olderUncheckedHw.map((entry) => {
+                        const a = entry.assignment;
+                        const sub = entry.submission;
                         const hwType = a.type as HwType;
                         const meta = HW_TYPE_META[hwType];
                         const Icon = meta?.icon || FileText;
@@ -2715,7 +2756,7 @@ export default function InstructorDashboard() {
 
                         return (
                           <div
-                            key={a.id}
+                            key={sub.id}
                             onClick={() => {
                               if (!isQuickCheck && sub) {
                                 setReviewHw({ assignment: a, submission: sub });
@@ -2731,6 +2772,9 @@ export default function InstructorDashboard() {
                               <p className="text-xs font-medium text-foreground">{a.title}</p>
                               <p className="text-[10px] text-muted-foreground">
                                 {fmtName(a.student_name)} · {meta?.label || a.type}
+                                {sub.submitted_at && (
+                                  <span className="ml-1.5">· {fmt(sub.submitted_at)} 제출</span>
+                                )}
                                 {assignmentSession && (
                                   <span className="ml-1.5 text-amber-600">
                                     · {fmt(assignmentSession.scheduled_at)} 수업
@@ -2738,7 +2782,7 @@ export default function InstructorDashboard() {
                                 )}
                               </p>
                             </div>
-                            {isQuickCheck && sub ? (
+                            {isQuickCheck ? (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -2775,15 +2819,16 @@ export default function InstructorDashboard() {
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-medium">{checkedHw.length}</span>
                     </summary>
                     <div className="px-4 pb-4 space-y-1.5">
-                      {checkedHw.map((a) => {
-                        const sub = submissions.find(s => s.assignment_id === a.id && s.status === "reviewed");
+                      {checkedHw.map((entry) => {
+                        const a = entry.assignment;
+                        const sub = entry.submission;
                         const hwType = a.type as HwType;
                         const meta = HW_TYPE_META[hwType];
                         const Icon = meta?.icon || FileText;
                         return (
                           <div
-                            key={a.id}
-                            onClick={() => sub && setViewCheckedHw({ assignment: a, submission: sub })}
+                            key={sub.id}
+                            onClick={() => setViewCheckedHw({ assignment: a, submission: sub })}
                             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border cursor-pointer hover:bg-muted/40 transition-colors"
                           >
                             <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", meta?.color || "text-muted-foreground")} />
@@ -2792,7 +2837,7 @@ export default function InstructorDashboard() {
                               <p className="text-[10px] text-muted-foreground">{fmtName(a.student_name)} · {meta?.label || a.type}</p>
                             </div>
                             <button
-                              onClick={(e) => { e.stopPropagation(); sub && setReviewHw({ assignment: a, submission: sub }); }}
+                              onClick={(e) => { e.stopPropagation(); setReviewHw({ assignment: a, submission: sub }); }}
                               className="text-[10px] px-2 py-1 rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors flex-shrink-0"
                             >
                               재검토
