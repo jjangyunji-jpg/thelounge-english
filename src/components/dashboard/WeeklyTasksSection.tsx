@@ -351,7 +351,6 @@ export default function WeeklyTasksSection({
                     <span className={cn("text-xs font-semibold", weekTestsDone > 0 ? "text-muted-foreground" : "text-foreground")}>
                       {weekNumber ? `${weekNumber}주차 단어 테스트` : "이번주 단어 테스트"}
                     </span>
-                    </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
                       {weekVocabCount}단어
                     </span>
