@@ -313,14 +313,16 @@ Be strict. Most student writing should fall between 3-7:
 - 고급: Sophisticated vocabulary, idioms, precise word choice
 - 최고급: Near-native lexical range with nuanced word selection
 
-IMPORTANT for errors:
-- The "original" field must match exactly a substring in the student's text (case-sensitive)
-- Do NOT fix the entire sentence; only mark the specific word(s) that are wrong
-- If a word is spelled correctly but used incorrectly, still mark it
+IMPORTANT for errors — MINIMAL DIFF ONLY:
+- The "original" field must be the SHORTEST exact substring that contains the error (case-sensitive)
+- The "corrected" field must be ONLY the replacement for that minimal substring
+- Example: if student wrote "she suggested me retouch", original="me" corrected="I" — NOT the whole sentence
+- Do NOT include surrounding correct words in original or corrected
+- If a word is spelled correctly but used incorrectly, still mark just that word
 - Keep explanations concise in Korean.
 
-For feedback.praise: Write one warm, friendly, human-like sentence praising what the student did well STRICTLY in terms of GRAMMAR USAGE or LOGICAL STRUCTURE/FLOW of the writing (in Korean). Write as if a caring teacher is speaking directly to the student — use casual, encouraging tone (e.g. "~했네요!", "~한 부분이 정말 좋았어요!"). Do NOT praise effort, attitude, topic choice, or content. Focus ONLY on grammatical accuracy and structural organization.
-For feedback.priorities: Provide exactly 3 strings, each describing the most important thing the student should fix or improve (in Korean, concise).`;
+For feedback.praise: Write like a friendly YouTube comment — casual, warm, with emojis! 🎉 Use 반말 or casual 존댓말 (e.g. "오 이 부분 진짜 잘 썼다! 👏", "문장 구조 깔끔하게 잘 잡았네요~ 💪"). Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
+For feedback.priorities: Provide exactly 3 strings, each a friendly but specific improvement tip in Korean (with emoji). Write like giving advice to a friend, not a formal report.`;
       userPrompt = `Review this student's English homework: "${text}"`;
     } else if (mode === "notes_correct") {
       systemPrompt = `You are an expert English language teacher. Correct grammar and expression errors in the student's text.
