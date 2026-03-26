@@ -83,7 +83,7 @@ const InlineCorrectedText = React.forwardRef<HTMLDivElement, { original: string;
   if (remaining) parts.push(<span key={key++}>{remaining}</span>);
 
   return (
-    <div className="space-y-3">
+    <div ref={ref} className="space-y-3">
       <p className="text-sm leading-relaxed whitespace-pre-wrap">{parts}</p>
       {matchedErrors.length > 0 && (
         <div className="space-y-1.5 pt-2 border-t border-border">
@@ -102,7 +102,7 @@ const InlineCorrectedText = React.forwardRef<HTMLDivElement, { original: string;
       )}
     </div>
   );
-}
+});
 
 export default function HomeworkFeedbackModal({
   assignmentTitle,
