@@ -122,6 +122,7 @@ interface Student {
   pauses: PauseRecord[];
   studentType: string;
   groupStudents: string[];
+  googleSheetUrl?: string;
 }
 
 // removed old calcMonthlyFee - now using the one at module level
@@ -138,13 +139,14 @@ const levelColors: Record<Level, string> = {
 interface NewStudent {
   name: string;
   englishName: string;
-  
   level: Level | "";
   instructor: string;
   startDate: string;
   extraLessons: number;
   schedules: ScheduleSlot[];
   studentType: string;
+  learningObjective: string;
+  googleSheetUrl: string;
 }
 
 // Pause form sub-component
@@ -285,6 +287,7 @@ export default function StudentManagement() {
       pauses: [],
       studentType: row.student_type || "regular",
       groupStudents: row.group_students || [],
+      googleSheetUrl: (row as any).google_sheet_url || "",
     }));
     setStudents(dbStudents);
 
@@ -348,7 +351,7 @@ export default function StudentManagement() {
 
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
-    name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular",
+    name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular", learningObjective: "", googleSheetUrl: "",
   });
 
   const filtered = students.filter(
@@ -700,7 +703,6 @@ export default function StudentManagement() {
         student_name: newStudent.name,
         english_name: newStudent.englishName.trim() || null,
         instructor_id: instrData?.id ?? null,
-        
         level: newStudent.level,
         start_date: newStudent.startDate || null,
         instructor_name: newStudent.instructor,
@@ -708,6 +710,8 @@ export default function StudentManagement() {
         schedules: newStudent.schedules.length > 0 ? JSON.stringify(newStudent.schedules) : null,
         status: "active",
         student_type: newStudent.studentType,
+        learning_objective: newStudent.learningObjective.trim() || null,
+        google_sheet_url: newStudent.googleSheetUrl.trim() || null,
       } as any)
       .select()
       .single();
@@ -734,16 +738,17 @@ export default function StudentManagement() {
       extraLessons: newStudent.extraLessons,
       presetHomework: [],
       lessonGoal: "",
-      learningObjective: "",
+      learningObjective: newStudent.learningObjective,
       lessonHistory: [],
       reminderEnabled: true,
       meetLink: "",
       schedules: newStudent.schedules,
       studentType: newStudent.studentType,
       groupStudents: [],
+      googleSheetUrl: newStudent.googleSheetUrl,
     };
     setStudents((prev) => [s, ...prev]);
-    setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular" });
+    setNewStudent({ name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular", learningObjective: "", googleSheetUrl: "" });
     setDialogOpen(false);
     toast({ title: `${newStudent.name} 수강생 등록 완료 ✓` });
 
@@ -913,6 +918,28 @@ export default function StudentManagement() {
                       <SelectItem value="corporate">기업 수업 (비정기)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* 최종 학습 목표 */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">최종 학습 목표</Label>
+                  <Textarea
+                    placeholder="예: 비즈니스 영어 회화 능력 향상"
+                    className="min-h-[60px] text-sm"
+                    value={newStudent.learningObjective}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, learningObjective: e.target.value }))}
+                  />
+                </div>
+
+                {/* 구글시트 URL */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">구글시트 URL</Label>
+                  <Input
+                    placeholder="https://docs.google.com/spreadsheets/..."
+                    className="h-9"
+                    value={newStudent.googleSheetUrl}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, googleSheetUrl: e.target.value }))}
+                  />
                 </div>
 
                 {/* 수업 일정 */}
