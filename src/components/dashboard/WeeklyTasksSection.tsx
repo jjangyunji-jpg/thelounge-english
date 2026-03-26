@@ -100,6 +100,11 @@ export default function WeeklyTasksSection({
   // Second-most-recent session (used to filter preset submissions)
   const prevSession = pastSessions[1] ?? null;
 
+  // Calculate week number relative to period start
+  const weekNumber = latestSession && periodStart
+    ? Math.floor((new Date(latestSession.scheduled_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
+    : null;
+
   // Assignments for the latest session (session-specific copies + remaining presets without copies)
   const sessionCopyOriginIds = new Set(
     assignments.filter(a => a.preset_origin_id && a.session_id === latestSessionId)
