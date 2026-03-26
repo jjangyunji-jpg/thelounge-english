@@ -272,23 +272,47 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {pastRequests.length > 0 && step === "type" && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground">이전 신청 내역</p>
-                  {pastRequests.map(r => (
-                    <div key={r.id} className="rounded-lg border border-border bg-muted/30 p-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-foreground">
-                          {r.request_type === "extra" ? "추가 보강" : "일정 변경"}
-                        </p>
-                        <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
-                          r.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
-                          r.status === "rejected" ? "bg-destructive/10 text-destructive" :
-                          "bg-muted text-muted-foreground"
-                        )}>
-                          {r.status === "approved" ? "승인됨" : r.status === "rejected" ? "거절됨" : "취소됨"}
-                        </span>
+                  {pastRequests.map(r => {
+                    const slot = slots.find(s => s.id === r.slot_id) ||
+                      (r as any)._slot; // fallback
+                    const isFutureApproved = r.status === "approved";
+                    return (
+                      <div key={r.id} className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-foreground">
+                            {r.request_type === "extra" ? "추가 보강" : "일정 변경"}
+                          </p>
+                          <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
+                            r.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
+                            r.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                            "bg-muted text-muted-foreground"
+                          )}>
+                            {r.status === "approved" ? "승인됨" : r.status === "rejected" ? "거절됨" : "취소됨"}
+                          </span>
+                        </div>
+                        {r.reject_reason && <p className="text-[10px] text-muted-foreground mt-1">사유: {r.reject_reason}</p>}
+                        {isFutureApproved && (
+                          <button
+                            onClick={async () => {
+                              if (!confirm("승인된 보강을 취소하시겠습니까?")) return;
+                              const { data, error } = await supabase.functions.invoke("handle-makeup-request", {
+                                body: { action: "cancel", request_id: r.id },
+                              });
+                              if (error || data?.error) {
+                                toast({ title: "취소 실패", description: (data?.error || error?.message), variant: "destructive" });
+                              } else {
+                                toast({ title: "보강이 취소되었습니다" });
+                                setMyRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "cancelled" } : x));
+                              }
+                            }}
+                            className="text-[11px] text-destructive hover:underline font-medium"
+                          >
+                            취소하기
+                          </button>
+                        )}
                       </div>
-                      {r.reject_reason && <p className="text-[10px] text-muted-foreground mt-1">사유: {r.reject_reason}</p>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 

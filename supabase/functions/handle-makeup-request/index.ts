@@ -47,7 +47,7 @@ serve(async (req) => {
     const { data: makeupReq, error: reqErr } = await sb
       .from("makeup_requests").select("*").eq("id", request_id).single();
     if (reqErr || !makeupReq) throw new Error("요청을 찾을 수 없습니다.");
-    if (makeupReq.status !== "pending") throw new Error("이미 처리된 요청입니다.");
+    if (action !== "cancel" && makeupReq.status !== "pending") throw new Error("이미 처리된 요청입니다.");
 
     // Get the slot
     const { data: slot } = await sb
@@ -140,6 +140,61 @@ serve(async (req) => {
       }).eq("id", request_id);
 
       return new Response(JSON.stringify({ success: true, action: "rejected" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+
+    } else if (action === "cancel") {
+      // Cancel an approved makeup request — undo session changes and re-open slot
+      if (makeupReq.status !== "approved") throw new Error("승인된 요청만 취소할 수 있습니다.");
+
+      // Get the slot to find the scheduled time
+      const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
+
+      if (makeupReq.request_type === "reschedule" && makeupReq.original_session_id) {
+        // Revert session to original time
+        if (!makeupReq.original_scheduled_at) throw new Error("원래 일정 정보가 없습니다.");
+        const { error: revertErr } = await sb
+          .from("class_sessions")
+          .update({ scheduled_at: makeupReq.original_scheduled_at })
+          .eq("id", makeupReq.original_session_id);
+        if (revertErr) throw new Error("세션 복원 실패: " + revertErr.message);
+
+        // Delete the re-opened original slot (if it exists) — the slot that was created when reschedule was approved
+        const origDate = new Date(makeupReq.original_scheduled_at);
+        const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+        const origHour = origDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
+        await sb.from("instructor_available_slots")
+          .delete()
+          .eq("instructor_id", slot.instructor_id)
+          .eq("slot_date", origDateStr)
+          .eq("slot_time", origHour + ":00")
+          .eq("status", "open");
+
+      } else if (makeupReq.request_type === "extra") {
+        // Delete the extra session that was created
+        // Find session matching student_name + scheduled_at
+        const { data: extraSessions } = await sb
+          .from("class_sessions")
+          .select("id")
+          .eq("student_name", makeupReq.student_name)
+          .eq("scheduled_at", newScheduledAt);
+        if (extraSessions && extraSessions.length > 0) {
+          await sb.from("class_sessions").delete().eq("id", extraSessions[0].id);
+        }
+      }
+
+      // Re-open the booked slot
+      await sb.from("instructor_available_slots")
+        .update({ status: "open" })
+        .eq("id", makeupReq.slot_id);
+
+      // Update request status
+      await sb.from("makeup_requests").update({
+        status: "cancelled",
+        resolved_at: new Date().toISOString(),
+      }).eq("id", request_id);
+
+      return new Response(JSON.stringify({ success: true, action: "cancelled" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
