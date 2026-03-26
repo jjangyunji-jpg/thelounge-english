@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -47,7 +47,7 @@ interface Props {
 }
 
 /** Render inline diff: strikethrough original, colored corrected */
-function InlineCorrectedText({ original, errors }: { original: string; errors: CorrectionItem[] }) {
+const InlineCorrectedText = React.forwardRef<HTMLDivElement, { original: string; errors: CorrectionItem[] }>(function InlineCorrectedText({ original, errors }, ref) {
   if (!errors || errors.length === 0) {
     return <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{original}</p>;
   }
