@@ -1747,7 +1747,7 @@ export default function StudentDashboard() {
               {/* 수업 입장하기 */}
               {(() => {
                 const canEnter = nextClassDate && (
-                  (nextClassDate.getTime() - Date.now()) <= 2 * 60 * 60 * 1000 // 2시간 전부터
+                  (nextClassDate.getTime() - Date.now()) <= 10 * 60 * 1000 // 10분 전부터
                 );
                 return (
                   <button
