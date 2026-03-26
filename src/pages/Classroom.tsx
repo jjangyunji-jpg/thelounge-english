@@ -1606,10 +1606,33 @@ export default function Classroom() {
                             <p className="text-[10px] text-muted-foreground px-0.5">{HW_TYPE_META[editHwType].hint}</p>
                             <Input value={editHwTitle} onChange={(e) => setEditHwTitle(e.target.value)} placeholder="숙제 제목 (필수)" className="h-8 text-sm" onKeyDown={(e) => e.key === "Enter" && handleSaveEditHw()} />
                             <Textarea value={editHwDesc} onChange={(e) => setEditHwDesc(e.target.value)} placeholder="상세 설명 (선택)" className="min-h-[60px] resize-none text-xs" />
-                            <label className="flex items-center gap-2 px-1 cursor-pointer">
-                              <input type="checkbox" checked={editHwPreset} onChange={(e) => setEditHwPreset(e.target.checked)} className="rounded border-border" />
-                              <span className="text-xs text-muted-foreground">정기 숙제로 등록 (모든 수업에 노출)</span>
-                             </label>
+                            {/* Show preset status: if it's a session copy of a preset, allow cancelling preset */}
+                            {editingItem?.presetOriginId ? (
+                              <div className="flex items-center gap-2 px-1">
+                                <span className="text-xs text-muted-foreground">🔁 정기 숙제</span>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!confirm("정기 숙제를 해제하시겠습니까? 다음 수업부터 이 숙제가 자동으로 표시되지 않습니다.")) return;
+                                    // Delete the preset template
+                                    await supabase.from("homework_assignments").delete().eq("id", editingItem.presetOriginId!);
+                                    // Remove preset_origin_id from this copy
+                                    await supabase.from("homework_assignments").update({ preset_origin_id: null }).eq("id", editingHwId);
+                                    setHwList(prev => prev.map(h => h.id === editingHwId ? { ...h, presetOriginId: undefined } : h));
+                                    toast({ title: "정기 숙제 해제됨 ✓" });
+                                    cancelEditHw();
+                                  }}
+                                  className="text-[10px] text-destructive hover:underline"
+                                >
+                                  정기 해제
+                                </button>
+                              </div>
+                            ) : !editingItem?.isPreset ? (
+                              <label className="flex items-center gap-2 px-1 cursor-pointer">
+                                <input type="checkbox" checked={editHwPreset} onChange={(e) => setEditHwPreset(e.target.checked)} className="rounded border-border" />
+                                <span className="text-xs text-muted-foreground">정기 숙제로 등록 (모든 수업에 노출)</span>
+                              </label>
+                            ) : null}
                             {allGroupMembers.length > 0 && (
                               <div className="space-y-1.5 p-2.5 rounded-lg border border-border bg-muted/30">
                                 <div className="flex items-center justify-between">
