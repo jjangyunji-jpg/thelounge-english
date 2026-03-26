@@ -830,6 +830,8 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
               <h3 className="text-xs font-semibold text-muted-foreground">최근 처리 내역</h3>
               {recentProcessed.map(req => {
                 const slot = slots.find(s => s.id === req.slot_id);
+                const isFutureApproved = req.status === "approved" && slot &&
+                  new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).getTime() > Date.now();
                 return (
                   <div key={req.id} className="rounded-lg border border-border bg-card p-3 space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -840,13 +842,15 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                           {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })}
                         </p>
                       </div>
-                      <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
-                        req.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
-                        req.status === "rejected" ? "bg-destructive/10 text-destructive" :
-                        "bg-muted text-muted-foreground"
-                      )}>
-                        {req.status === "approved" ? "승인" : req.status === "rejected" ? "거절" : "취소"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
+                          req.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
+                          req.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                          "bg-muted text-muted-foreground"
+                        )}>
+                          {req.status === "approved" ? "승인" : req.status === "rejected" ? "거절" : "취소"}
+                        </span>
+                      </div>
                     </div>
                     {/* Schedule info */}
                     <div className="text-[11px] text-muted-foreground space-y-0.5">
@@ -869,6 +873,32 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                         <p className="text-destructive/80">사유: {req.reject_reason}</p>
                       )}
                     </div>
+                    {/* Cancel approved future makeup */}
+                    {isFutureApproved && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!confirm(`${req.student_name}의 보강을 취소하시겠습니까? 세션이 원래대로 복원됩니다.`)) return;
+                          setProcessingId(req.id);
+                          const { data, error } = await supabase.functions.invoke("handle-makeup-request", {
+                            body: { action: "cancel", request_id: req.id },
+                          });
+                          if (error || data?.error) {
+                            toast({ title: "취소 실패", description: data?.error || error?.message, variant: "destructive" });
+                          } else {
+                            toast({ title: "보강이 취소되었습니다" });
+                            onSessionChanged?.();
+                          }
+                          await loadData();
+                          setProcessingId(null);
+                        }}
+                        disabled={!!processingId}
+                        className="w-full h-7 text-[11px] text-destructive border-destructive/30 hover:bg-destructive/5"
+                      >
+                        {processingId === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><X className="w-3 h-3 mr-1" /> 보강 취소</>}
+                      </Button>
+                    )}
                   </div>
                 );
               })}
