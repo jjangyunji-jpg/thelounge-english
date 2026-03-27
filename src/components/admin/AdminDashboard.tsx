@@ -73,16 +73,16 @@ export default function AdminDashboard() {
 
     // Top stats
     setActiveInstructors(instructors.length);
-    const activeStudents = students.filter(s => s.status === "active" || !s.status);
+    const activeStudents = students.filter(s => (s.status === "active" || !s.status) && (s as any).student_type !== "corporate");
     setTotalStudents(activeStudents.length);
 
-    // New students this month
-    const newThisMonth = students.filter(s => s.created_at && s.created_at.slice(0, 10) >= monthStartStr).length;
+    // New students this month (exclude corporate)
+    const newThisMonth = students.filter(s => s.created_at && s.created_at.slice(0, 10) >= monthStartStr && (s as any).student_type !== "corporate").length;
     setNewStudentsThisMonth(newThisMonth);
 
     // Per-instructor cards
     const cards: InstructorCard[] = instructors.map(ins => {
-      const insStudents = students.filter(s => s.instructor_id === ins.id && (s.status === "active" || !s.status));
+      const insStudents = students.filter(s => s.instructor_id === ins.id && (s.status === "active" || !s.status) && (s as any).student_type !== "corporate");
       const studentCount = insStudents.length;
 
       // Schedule slot detection from students' schedules
