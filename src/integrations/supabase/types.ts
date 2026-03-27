@@ -599,6 +599,7 @@ export type Database = {
       instructor_students: {
         Row: {
           created_at: string
+          end_date: string | null
           english_name: string | null
           extra_lessons: number | null
           google_sheet_url: string | null
@@ -624,6 +625,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          end_date?: string | null
           english_name?: string | null
           extra_lessons?: number | null
           google_sheet_url?: string | null
@@ -649,6 +651,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          end_date?: string | null
           english_name?: string | null
           extra_lessons?: number | null
           google_sheet_url?: string | null
