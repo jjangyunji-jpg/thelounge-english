@@ -208,11 +208,11 @@ export default function ClassNote() {
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
       <header className="sidebar-gradient text-sidebar-foreground px-4 py-3 flex items-center gap-4 shadow-lg">
         <button
-          onClick={() => navigate("/my/dashboard")}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">대시보드</span>
+          <span className="hidden sm:inline">돌아가기</span>
         </button>
         <div className="w-px h-5 bg-sidebar-border" />
         <div className="flex-1 min-w-0">
