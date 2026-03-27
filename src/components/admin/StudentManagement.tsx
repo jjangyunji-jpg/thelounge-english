@@ -504,6 +504,7 @@ export default function StudentManagement() {
 
   const [editEnglishName, setEditEnglishName] = useState("");
   const [editStudentType, setEditStudentType] = useState<"regular" | "corporate">("regular");
+  const [editGoogleSheetUrl, setEditGoogleSheetUrl] = useState("");
 
   const startInlineEdit = (s: Student) => {
     setEditingStudentId(s.id);
