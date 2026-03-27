@@ -30,6 +30,7 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
   const [showInbox, setShowInbox] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [popupNotification, setPopupNotification] = useState<Notification | null>(null);
+  const [detailNotification, setDetailNotification] = useState<Notification | null>(null);
 
   const targetFilter = role === "instructor" ? ["all", "instructors"] : ["all", "students"];
 
