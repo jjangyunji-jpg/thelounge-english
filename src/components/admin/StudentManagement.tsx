@@ -101,6 +101,14 @@ interface PauseRecord {
   reason: string | null;
 }
 
+interface TransferRecord {
+  fromInstructor: string;
+  toInstructor: string;
+  transferDate: string; // end_date of old record
+  oldSchedules: string;
+  newSchedules: string;
+}
+
 interface Student {
   id: number;
   dbId?: string; // UUID from DB
@@ -124,6 +132,7 @@ interface Student {
   studentType: string;
   groupStudents: string[];
   googleSheetUrl?: string;
+  transferHistory?: TransferRecord[];
 }
 
 // removed old calcMonthlyFee - now using the one at module level
@@ -292,7 +301,53 @@ export default function StudentManagement() {
       groupStudents: row.group_students || [],
       googleSheetUrl: (row as any).google_sheet_url || "",
     }));
-    setStudents(dbStudents);
+
+    // Build transfer history: group all records by student_name
+    const recordsByName: Record<string, any[]> = {};
+    (data || []).forEach((row: any) => {
+      const name = row.student_name;
+      if (!recordsByName[name]) recordsByName[name] = [];
+      recordsByName[name].push(row);
+    });
+
+    // For each student, find previous records (those with end_date) to build transfer history
+    const enriched = dbStudents.map((student) => {
+      const allRecords = recordsByName[student.name] || [];
+      if (allRecords.length <= 1) return student;
+
+      // Sort by start_date ascending to build chronological history
+      const sorted = [...allRecords].sort((a, b) => 
+        (a.start_date || "").localeCompare(b.start_date || "")
+      );
+
+      const transfers: TransferRecord[] = [];
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const prev = sorted[i];
+        const next = sorted[i + 1];
+        // Only count as transfer if the old record has an end_date and different instructor
+        if (prev.end_date && prev.instructor_name !== next.instructor_name) {
+          const formatSchedule = (s: string | null) => {
+            if (!s) return "미설정";
+            try {
+              const slots = JSON.parse(s);
+              if (!Array.isArray(slots) || slots.length === 0) return "미설정";
+              return slots.map((sl: any) => `${sl.day} ${sl.time}`).join(", ");
+            } catch { return "미설정"; }
+          };
+          transfers.push({
+            fromInstructor: prev.instructor_name || "미지정",
+            toInstructor: next.instructor_name || "미지정",
+            transferDate: prev.end_date,
+            oldSchedules: formatSchedule(prev.schedules),
+            newSchedules: formatSchedule(next.schedules),
+          });
+        }
+      }
+
+      return transfers.length > 0 ? { ...student, transferHistory: transfers } : student;
+    });
+
+    setStudents(enriched);
 
     // Load pauses for all students
     if (data && data.length > 0) {
@@ -1221,6 +1276,11 @@ export default function StudentManagement() {
                         </span>
                       ) : null;
                     })()}
+                    {student.transferHistory && student.transferHistory.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-medium flex items-center gap-0.5">
+                        <ArrowRightLeft className="w-3 h-3" /> 이관
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">담당 강사 : {student.instructor || "미지정"}</p>
                 </div>
@@ -1442,6 +1502,38 @@ export default function StudentManagement() {
                       <p className="text-xs text-muted-foreground">링크가 설정되지 않았습니다</p>
                     )}
                   </div>
+
+                  {/* Transfer History (이관 이력) */}
+                  {student.transferHistory && student.transferHistory.length > 0 && (
+                    <div className="p-3 rounded-lg bg-card border border-border space-y-2">
+                      <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <ArrowRightLeft className="w-3.5 h-3.5 text-navy" />
+                        강사 이관 이력
+                      </h4>
+                      <div className="space-y-2">
+                        {student.transferHistory.map((t, idx) => (
+                          <div key={idx} className="p-2.5 rounded-md bg-muted/40 border border-border space-y-1.5">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="font-medium text-foreground">{t.fromInstructor}</span>
+                              <ArrowRightLeft className="w-3 h-3 text-muted-foreground" />
+                              <span className="font-medium text-foreground">{t.toInstructor}</span>
+                              <span className="text-muted-foreground ml-auto">{t.transferDate}</span>
+                            </div>
+                            <div className="flex items-start gap-4 text-[11px] text-muted-foreground">
+                              <div>
+                                <span className="text-muted-foreground/70">이전:</span>{" "}
+                                <span>{t.oldSchedules}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground/70">변경:</span>{" "}
+                                <span>{t.newSchedules}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Pause (휴강) Section */}
                   <div className="p-3 rounded-lg bg-card border border-border space-y-2">
