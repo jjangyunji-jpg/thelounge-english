@@ -1,0 +1,6 @@
+UPDATE guide_documents SET file_url = 'https://teodinvbdgbfnmlwmdks.supabase.co/storage/v1/object/public/guide-files/dashboard_overview.pdf' WHERE id = '2eb75284-43ed-4c83-bc5d-863c17c703aa';
+UPDATE guide_documents SET file_url = 'https://teodinvbdgbfnmlwmdks.supabase.co/storage/v1/object/public/guide-files/class_preparation.pdf' WHERE id = 'dbef261f-6e5d-4d7d-9755-d58fad5edc69';
+UPDATE guide_documents SET file_url = 'https://teodinvbdgbfnmlwmdks.supabase.co/storage/v1/object/public/guide-files/class_session.pdf' WHERE id = '6f406f93-069b-41c6-bcd5-94629e15eaa5';
+UPDATE guide_documents SET file_url = 'https://teodinvbdgbfnmlwmdks.supabase.co/storage/v1/object/public/guide-files/homework_review.pdf' WHERE id = '2f1dcd66-a0df-4589-85a3-c888c4b01906';
+UPDATE guide_documents SET file_url = 'https://teodinvbdgbfnmlwmdks.supabase.co/storage/v1/object/public/guide-files/makeup_management.pdf' WHERE id = '854e3f02-b654-4650-a034-856b11084f85';
+UPDATE guide_documents SET file_url = 'https://teodinvbdgbfnmlwmdks.supabase.co/storage/v1/object/public/guide-files/month_end_tasks.pdf' WHERE id = '8aa71873-ff18-468d-abf8-f3afc4eb4216';
