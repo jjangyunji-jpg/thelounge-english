@@ -74,7 +74,8 @@ export default function AdminDashboard() {
     // Top stats
     setActiveInstructors(instructors.length);
     const activeStudents = students.filter(s => (s.status === "active" || !s.status) && (s as any).student_type !== "corporate");
-    setTotalStudents(activeStudents.length);
+    const uniqueActiveNames = new Set(activeStudents.map(s => s.student_name));
+    setTotalStudents(uniqueActiveNames.size);
 
     // New students this month (exclude corporate)
     const newThisMonth = students.filter(s => s.created_at && s.created_at.slice(0, 10) >= monthStartStr && (s as any).student_type !== "corporate").length;
