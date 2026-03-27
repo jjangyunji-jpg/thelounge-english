@@ -1076,7 +1076,7 @@ export default function StudentDashboard() {
 
   // Period navigation helpers
   const sortedPeriods = [...effectivePeriods]
-    .filter(p => studentRecord?.student_type === "corporate" || !studentRecord?.start_date || p.end_date >= studentRecord.start_date)
+    .filter(p => studentRecord?.student_type === "corporate" || !studentRecord?.earliest_start_date || p.end_date >= studentRecord.earliest_start_date)
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
   const currentPeriodIdx = sortedPeriods.findIndex(p => p.id === selectedPeriodId);
   const canGoPrev = currentPeriodIdx > 0;
