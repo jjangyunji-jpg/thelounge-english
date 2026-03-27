@@ -2267,6 +2267,14 @@ export default function StudentManagement() {
           }}
         />
       )}
+      {/* Transfer Student Modal */}
+      <TransferStudentModal
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        students={students.filter(s => s.status === "active")}
+        instructorNames={instructorNames}
+        onTransferred={loadStudentsFromDB}
+      />
     </div>
   );
 }
