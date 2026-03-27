@@ -137,11 +137,10 @@ export default function WeeklyTasksSection({
     if (!assignment) return undefined;
 
     // For preset templates (fallback — no session copy exists yet), use time-window
+    // Cutoff = latestSession time so that previous-week submissions don't block current week
     if (assignment.is_preset) {
       if (!latestSession) return undefined;
-      const cutoffTime = prevSession
-        ? new Date(prevSession.scheduled_at).getTime()
-        : new Date(latestSession.scheduled_at).getTime();
+      const cutoffTime = new Date(latestSession.scheduled_at).getTime();
       return submissions
         .filter(s => s.assignment_id === aId && s.submitted_at)
         .filter(s => new Date(s.submitted_at!).getTime() >= cutoffTime)
@@ -153,9 +152,7 @@ export default function WeeklyTasksSection({
     const directSub = submissions.find(s => s.assignment_id === aId);
     if (directSub) return directSub;
     if (assignment.preset_origin_id) {
-      const cutoffTime = prevSession
-        ? new Date(prevSession.scheduled_at).getTime()
-        : new Date(latestSession!.scheduled_at).getTime();
+      const cutoffTime = new Date(latestSession!.scheduled_at).getTime();
       return submissions
         .filter(s => s.assignment_id === assignment.preset_origin_id && s.submitted_at)
         .filter(s => new Date(s.submitted_at!).getTime() >= cutoffTime)
