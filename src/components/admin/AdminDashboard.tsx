@@ -51,7 +51,7 @@ export default function AdminDashboard() {
       insRes, studRes, periodRes, holidayRes, sessRes, feedbackRes, meetRes,
     ] = await Promise.all([
       supabase.from("instructors").select("id,name,position,active,lesson_rate,meeting_rate").eq("active", true),
-      supabase.from("instructor_students").select("id,instructor_id,student_name,schedules,created_at,status,instructor_name"),
+      supabase.from("instructor_students").select("id,instructor_id,student_name,schedules,created_at,status,instructor_name,student_type"),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("holiday_notices").select("title,date_start,date_end").gte("date_end", todayStr).order("date_start", { ascending: true }),
       supabase.from("class_sessions").select("id,instructor_name,level,scheduled_at,student_name,ended_at"),
