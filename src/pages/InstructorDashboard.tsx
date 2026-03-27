@@ -68,6 +68,7 @@ interface StudentFull {
   group_students?: string[];
   instructor_id: string;
   instructor_name: string | null;
+  google_sheet_url: string | null;
   pauses: PauseRecord[];
 }
 
@@ -850,6 +851,7 @@ function StudentEditModal({
   const { toast } = useToast();
   const [level, setLevel] = useState(student.level || "B1");
   const [meetLink, setMeetLink] = useState(student.meet_link || "");
+  const [googleSheetUrl, setGoogleSheetUrl] = useState(student.google_sheet_url || "");
   
   const [status, setStatus] = useState(student.status || "active");
   const [saving, setSaving] = useState(false);
@@ -942,9 +944,10 @@ function StudentEditModal({
     const { error } = await supabase.from("instructor_students").update({
       level, schedules: slots.length > 0 ? JSON.stringify(slots) : null,
       meet_link: meetLink.trim() || null,
+      google_sheet_url: googleSheetUrl.trim() || null,
       phone: null, status,
       learning_objective: objectives.length > 0 ? JSON.stringify(objectives) : null,
-    }).eq("id", student.id);
+    } as any).eq("id", student.id);
     if (error) {
       toast({ title: "저장 실패", description: error.message, variant: "destructive" });
     } else {
@@ -1031,7 +1034,15 @@ function StudentEditModal({
 
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Google Meet 링크</Label>
-            <Input value={meetLink} onChange={(e) => setMeetLink(e.target.value)} placeholder="https://meet.google.com/..." className="h-9 text-sm" />
+            <Input value={meetLink} onChange={(e) => setMeetLink(e.target.value)} placeholder="https://meet.google.com/..." className="h-9 text-sm"
+              onFocus={(e) => { if (!e.target.value) setMeetLink("https://"); }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">학생일지 (Google Sheet 링크)</Label>
+            <Input value={googleSheetUrl} onChange={(e) => setGoogleSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/..." className="h-9 text-sm"
+              onFocus={(e) => { if (!e.target.value) setGoogleSheetUrl("https://"); }}
+            />
           </div>
           {/* Learning Goals */}
           <div className="space-y-2 pt-1 border-t border-border">

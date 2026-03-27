@@ -1265,7 +1265,7 @@ export default function StudentManagement() {
                   }}
                 >
                   <FileText className="w-3 h-3" />
-                  수업노트
+                  학생일지
                 </Button>
                 {expandedId === student.id ? (
                   <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
