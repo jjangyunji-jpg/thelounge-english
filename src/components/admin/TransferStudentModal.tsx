@@ -110,7 +110,7 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!saving) onOpenChange(o); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="w-4 h-4 text-[hsl(var(--navy))]" />
@@ -144,12 +144,12 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
             </div>
           )}
 
-          {/* New instructor select */}
+          {/* New instructor select — always visible */}
           <div className="space-y-1.5">
             <Label className="text-xs">새 강사</Label>
-            <Select value={newInstructor} onValueChange={setNewInstructor} disabled={!selectedStudent}>
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="새 강사 선택" />
+            <Select value={newInstructor} onValueChange={setNewInstructor}>
+              <SelectTrigger className={cn("h-9 text-sm", !selectedStudent && "opacity-50 pointer-events-none")}>
+                <SelectValue placeholder={selectedStudent ? "새 강사 선택" : "수강생을 먼저 선택하세요"} />
               </SelectTrigger>
               <SelectContent>
                 {availableInstructors.map(name => (
@@ -164,10 +164,9 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
             <Label className="text-xs">이관일 (새 강사 시작일)</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  disabled={!selectedStudent}
-                  className={cn("h-9 w-full text-sm justify-start", !transferDate && "text-muted-foreground")}
+            <Button
+              variant="outline"
+              className={cn("h-9 w-full text-sm justify-start", !transferDate && "text-muted-foreground", !selectedStudent && "opacity-50 pointer-events-none")}
                 >
                   <CalendarIcon className="w-3.5 h-3.5 mr-2" />
                   {transferDate ? format(transferDate, "yyyy-MM-dd") : "날짜 선택"}
