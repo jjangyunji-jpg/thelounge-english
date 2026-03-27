@@ -456,7 +456,7 @@ export default function StudentDashboard() {
             .from("user_roles")
             .select("role, approved")
             .eq("user_id", session.user.id);
-          const isInstructor = roles?.some(r => r.approved && (r.role === "instructor" || r.role === "admin" || r.role === "manager"));
+          const isInstructor = roles?.some(r => r.approved && (r.role === "instructor" || r.role === "admin" || r.role === "manager" || r.role === "staff"));
 
           if (isInstructor) {
             setIsInstructorView(true);
