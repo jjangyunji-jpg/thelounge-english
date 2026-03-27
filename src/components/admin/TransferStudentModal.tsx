@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { ArrowRightLeft, CalendarIcon, Loader2 } from "lucide-react";
+import { ArrowRightLeft, CalendarIcon, Loader2, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -8,8 +8,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+const DAYS_OF_WEEK = ["월", "화", "수", "목", "금", "토", "일"];
+const HOURS = Array.from({ length: 17 }, (_, i) => {
+  const h = i + 6;
+  return `${h.toString().padStart(2, "0")}:00`;
+});
+
+interface ScheduleSlot {
+  day: string;
+  time: string;
+  frequency?: string;
+}
 
 interface TransferStudentModalProps {
   open: boolean;
@@ -26,17 +39,45 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
   const [transferDate, setTransferDate] = useState<Date | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
-  // Reset on open
+  // Schedule editing
+  const [changeSchedule, setChangeSchedule] = useState(false);
+  const [newSchedules, setNewSchedules] = useState<ScheduleSlot[]>([]);
+  const [schedDay, setSchedDay] = useState("월");
+  const [schedTime, setSchedTime] = useState("09:00");
+
   useEffect(() => {
     if (open) {
       setSelectedStudentDbId("");
       setNewInstructor("");
       setTransferDate(undefined);
+      setChangeSchedule(false);
+      setNewSchedules([]);
     }
   }, [open]);
 
   const selectedStudent = students.find(s => s.dbId === selectedStudentDbId);
-  const availableInstructors = instructorNames.filter(n => n !== selectedStudent?.instructor);
+  const availableInstructors = instructorNames.filter(n => n !== selectedStudent?.instructor).sort((a, b) => a.localeCompare(b, "ko"));
+
+  // When student changes, reset schedule
+  useEffect(() => {
+    if (selectedStudent) {
+      setNewSchedules([...selectedStudent.schedules]);
+    }
+  }, [selectedStudentDbId]);
+
+  // Sort students by Korean name (ㄱ-ㅎ)
+  const transferableStudents = students
+    .filter(s => s.dbId)
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
+  const addScheduleSlot = () => {
+    if (newSchedules.some(s => s.day === schedDay && s.time === schedTime)) return;
+    setNewSchedules(prev => [...prev, { day: schedDay, time: schedTime, frequency: "weekly" }]);
+  };
+
+  const removeScheduleSlot = (idx: number) => {
+    setNewSchedules(prev => prev.filter((_, i) => i !== idx));
+  };
 
   const handleTransfer = async () => {
     if (!selectedStudent?.dbId || !newInstructor || !transferDate) return;
@@ -44,13 +85,13 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
 
     try {
       const transferDateStr = format(transferDate, "yyyy-MM-dd");
+      const finalSchedules = changeSchedule ? newSchedules : selectedStudent.schedules;
 
       // 1. Set end_date on the old record
       const { error: updateError } = await supabase
         .from("instructor_students")
         .update({ end_date: transferDateStr } as any)
         .eq("id", selectedStudent.dbId);
-
       if (updateError) throw updateError;
 
       // 2. Look up the new instructor's ID
@@ -60,7 +101,6 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
         .eq("name", newInstructor)
         .eq("active", true)
         .maybeSingle();
-
       if (!instrData) throw new Error("새 강사를 찾을 수 없습니다");
 
       // 3. Clone the student record for the new instructor
@@ -73,7 +113,7 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
           instructor_name: newInstructor,
           level: selectedStudent.level,
           start_date: transferDateStr,
-          schedules: selectedStudent.schedules.length > 0 ? JSON.stringify(selectedStudent.schedules) : null,
+          schedules: finalSchedules.length > 0 ? JSON.stringify(finalSchedules) : null,
           meet_link: instrData.meet_link || selectedStudent.meetLink || null,
           learning_objective: selectedStudent.learningObjective || null,
           extra_lessons: selectedStudent.extraLessons,
@@ -83,19 +123,28 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
           google_sheet_url: selectedStudent.googleSheetUrl || null,
           reminder_enabled: true,
         } as any);
-
       if (insertError) throw insertError;
 
-      // 4. Update future unstarted sessions after transfer date to new instructor
-      await supabase
+      // 4. Delete future unstarted sessions (after transfer date) for the old instructor
+      //    so the old instructor's dashboard won't show them
+      const transferDateISO = new Date(transferDateStr + "T00:00:00+09:00").toISOString();
+      const { data: futureSessions } = await supabase
         .from("class_sessions")
-        .update({ instructor_name: newInstructor })
+        .select("id")
         .eq("student_name", selectedStudent.name)
         .eq("instructor_name", selectedStudent.instructor)
         .is("started_at", null)
-        .gte("scheduled_at", new Date(transferDateStr + "T00:00:00+09:00").toISOString());
+        .gte("scheduled_at", transferDateISO);
 
-      toast({ title: `${selectedStudent.name} → ${newInstructor} 이관 완료 ✓`, description: `${transferDateStr}부터 적용` });
+      const deleteIds = (futureSessions || []).map(s => s.id);
+      if (deleteIds.length > 0) {
+        await supabase.from("class_sessions").delete().in("id", deleteIds);
+      }
+
+      toast({
+        title: `${selectedStudent.name} → ${newInstructor} 이관 완료 ✓`,
+        description: `${transferDateStr}부터 적용 (미시작 세션 ${deleteIds.length}건 삭제)`,
+      });
       onTransferred();
       onOpenChange(false);
     } catch (e: unknown) {
@@ -104,9 +153,6 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
       setSaving(false);
     }
   };
-
-  // Only show active, non-corporate students
-  const transferableStudents = students.filter(s => s.dbId);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!saving) onOpenChange(o); }}>
@@ -119,7 +165,7 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Student select */}
+          {/* Student select — sorted ㄱ-ㅎ */}
           <div className="space-y-1.5">
             <Label className="text-xs">이관할 수강생</Label>
             <Select value={selectedStudentDbId} onValueChange={setSelectedStudentDbId}>
@@ -141,10 +187,15 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
             <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-3 space-y-1">
               <p>현재 강사: <span className="font-semibold text-foreground">{selectedStudent.instructor}</span></p>
               <p>레벨: <span className="font-semibold text-foreground">{selectedStudent.level}</span></p>
+              {selectedStudent.schedules.length > 0 && (
+                <p>현재 일정: <span className="font-semibold text-foreground">
+                  {selectedStudent.schedules.map((s: any) => `${s.day} ${s.time}`).join(", ")}
+                </span></p>
+              )}
             </div>
           )}
 
-          {/* New instructor select — always visible */}
+          {/* New instructor select */}
           <div className="space-y-1.5">
             <Label className="text-xs">새 강사</Label>
             <Select value={newInstructor} onValueChange={setNewInstructor}>
@@ -164,9 +215,9 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
             <Label className="text-xs">이관일 (새 강사 시작일)</Label>
             <Popover>
               <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn("h-9 w-full text-sm justify-start", !transferDate && "text-muted-foreground", !selectedStudent && "opacity-50 pointer-events-none")}
+                <Button
+                  variant="outline"
+                  className={cn("h-9 w-full text-sm justify-start", !transferDate && "text-muted-foreground", !selectedStudent && "opacity-50 pointer-events-none")}
                 >
                   <CalendarIcon className="w-3.5 h-3.5 mr-2" />
                   {transferDate ? format(transferDate, "yyyy-MM-dd") : "날짜 선택"}
@@ -181,10 +232,57 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
                 />
               </PopoverContent>
             </Popover>
-            <p className="text-[11px] text-muted-foreground">
-              이전 강사 레코드에 종료일이 설정되고, 새 강사에 학생 레코드가 복제됩니다.
-            </p>
           </div>
+
+          {/* Schedule change toggle */}
+          {selectedStudent && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">수업 일정 변경</Label>
+                <Switch checked={changeSchedule} onCheckedChange={setChangeSchedule} />
+              </div>
+
+              {changeSchedule && (
+                <div className="space-y-2 bg-muted/30 rounded-lg p-3">
+                  {/* Current schedule slots */}
+                  {newSchedules.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {newSchedules.map((slot, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 text-xs bg-background border border-border rounded-md px-2 py-1">
+                          {slot.day} {slot.time}
+                          <button onClick={() => removeScheduleSlot(i)} className="text-muted-foreground hover:text-destructive">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Add slot */}
+                  <div className="flex items-center gap-2">
+                    <Select value={schedDay} onValueChange={setSchedDay}>
+                      <SelectTrigger className="h-8 text-xs w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DAYS_OF_WEEK.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={schedTime} onValueChange={setSchedTime}>
+                      <SelectTrigger className="h-8 text-xs w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HOURS.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="sm" className="h-8 px-2" onClick={addScheduleSlot}>
+                      <Plus className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Summary */}
           {selectedStudent && newInstructor && transferDate && (
@@ -192,7 +290,10 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
               <p className="font-semibold text-foreground">이관 요약</p>
               <p>• {selectedStudent.name}: {selectedStudent.instructor} → {newInstructor}</p>
               <p>• 이관일: {format(transferDate, "yyyy-MM-dd")}</p>
-              <p>• 이관일 이후 미시작 세션은 새 강사로 변경됩니다</p>
+              {changeSchedule && newSchedules.length > 0 && (
+                <p>• 새 일정: {newSchedules.map(s => `${s.day} ${s.time}`).join(", ")}</p>
+              )}
+              <p>• 이관일 이후 이전 강사의 미시작 세션은 삭제됩니다</p>
             </div>
           )}
         </div>
