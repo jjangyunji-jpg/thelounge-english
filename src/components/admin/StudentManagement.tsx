@@ -1276,6 +1276,11 @@ export default function StudentManagement() {
                         </span>
                       ) : null;
                     })()}
+                    {student.transferHistory && student.transferHistory.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-medium flex items-center gap-0.5">
+                        <ArrowRightLeft className="w-3 h-3" /> 이관
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">담당 강사 : {student.instructor || "미지정"}</p>
                 </div>
