@@ -1831,6 +1831,32 @@ export default function Classroom() {
       sessionId={session.sessionId}
       onRestore={handleRestoreVersion}
     />
+    {reviewModalHw && reviewSubmission && (
+      <HomeworkReviewModal
+        assignmentTitle={reviewModalHw.title}
+        assignmentType={reviewModalHw.type}
+        studentName={session.dbStudentName}
+        submissionId={reviewSubmission.id}
+        textContent={reviewSubmission.text_content}
+        audioUrl={reviewSubmission.audio_url}
+        fileUrl={reviewSubmission.file_url}
+        onClose={() => { setReviewModalHw(null); setReviewSubmission(null); }}
+        onReviewed={() => {
+          setPrevHwList(prev => prev.map(h => h.id === reviewModalHw.id ? { ...h, status: "reviewed" } : h));
+          setReviewModalHw(null);
+          setReviewSubmission(null);
+        }}
+      />
+    )}
+    {reviewModalHw && !reviewSubmission && !reviewLoading && (
+      <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={() => setReviewModalHw(null)}>
+        <div className="bg-card rounded-xl p-6 max-w-sm text-center space-y-3" onClick={e => e.stopPropagation()}>
+          <p className="text-sm font-semibold text-foreground">제출된 숙제가 없습니다</p>
+          <p className="text-xs text-muted-foreground">학생이 아직 이 숙제를 제출하지 않았습니다.</p>
+          <Button size="sm" onClick={() => setReviewModalHw(null)}>닫기</Button>
+        </div>
+      </div>
+    )}
     </>
   );
 }
