@@ -1842,20 +1842,16 @@ export default function Classroom() {
       onRestore={handleRestoreVersion}
     />
     {reviewModalHw && reviewSubmission && (
-      <HomeworkReviewModal
+      <HomeworkFeedbackModal
         assignmentTitle={reviewModalHw.title}
         assignmentType={reviewModalHw.type}
-        studentName={session.dbStudentName}
-        submissionId={reviewSubmission.id}
         textContent={reviewSubmission.text_content}
         audioUrl={reviewSubmission.audio_url}
         fileUrl={reviewSubmission.file_url}
+        instructorNote={reviewSubmission.instructor_note}
+        reviewedAt={reviewSubmission.reviewed_at}
+        aiCorrection={reviewSubmission.ai_correction as any}
         onClose={() => { setReviewModalHw(null); setReviewSubmission(null); }}
-        onReviewed={() => {
-          setPrevHwList(prev => prev.map(h => h.id === reviewModalHw.id ? { ...h, status: "reviewed" } : h));
-          setReviewModalHw(null);
-          setReviewSubmission(null);
-        }}
       />
     )}
     {reviewModalHw && !reviewSubmission && !reviewLoading && (
