@@ -101,7 +101,7 @@ serve(async (req) => {
     // 2. Get active students with schedules
     let studentQuery = sb
       .from("instructor_students")
-      .select("id, student_name, schedules, level, instructor_name, meet_link, start_date, group_students")
+      .select("id, student_name, schedules, level, instructor_name, meet_link, start_date, end_date, group_students")
       .eq("status", "active");
     if (filterStudentName) {
       studentQuery = studentQuery.eq("student_name", filterStudentName);
@@ -217,6 +217,7 @@ serve(async (req) => {
 
         if (holidayDates.has(dateStr)) continue;
         if (student.start_date && dateStr < student.start_date) continue;
+        if ((student as any).end_date && dateStr > (student as any).end_date) continue;
         if (effective_date && dateStr < effective_date) continue;
         if (student.id && isStudentPausedOn(student.id, dateStr)) continue;
 
