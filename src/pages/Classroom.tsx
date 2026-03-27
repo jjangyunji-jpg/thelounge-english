@@ -1551,36 +1551,6 @@ export default function Classroom() {
                 />
               </div>
 
-              {/* ── REMARKS (비고) ────────────────────────────────────── */}
-              {role === "instructor" && (
-                <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
-                  <div className="px-4 py-3 bg-muted/30 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-gold" />
-                      <span className="font-semibold text-sm text-foreground">비고</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {remarksSaving && <span className="text-[10px] text-muted-foreground">저장 중...</span>}
-                      {remarksSaved && !remarksSaving && <span className="text-[10px] text-[hsl(var(--success))] flex items-center gap-0.5"><Check className="w-3 h-3" />저장됨</span>}
-                      <button
-                        onClick={handleRemarksSave}
-                        disabled={remarksSaving || !session.sessionId}
-                        className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 disabled:opacity-40"
-                      >
-                        저장
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <Textarea
-                      value={remarks}
-                      onChange={e => handleRemarksChange(e.target.value)}
-                      placeholder="다음 수업까지 기억할 사항을 메모하세요... (이전 세션에서 자동으로 이어집니다)"
-                      className="resize-none text-sm min-h-[80px]"
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* ── HOMEWORK (강사용 관리) ────────────────────────────── */}
               <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
