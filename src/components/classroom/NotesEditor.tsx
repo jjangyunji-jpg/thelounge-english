@@ -633,14 +633,6 @@ export default function NotesEditor({
               {aiCorrecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
             </button>
 
-            {/* Dialogue Generator button */}
-            <button
-              title="Dialogue 생성"
-              onMouseDown={(e) => { e.preventDefault(); setDialogueModalOpen(true); }}
-              className="p-1.5 rounded transition-colors text-muted-foreground hover:text-gold hover:bg-muted"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-            </button>
 
             <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">/ 슬래시 명령</span>
             {onAutoCorrectToggle && (

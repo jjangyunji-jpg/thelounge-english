@@ -6,7 +6,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked, Paperclip,
-  Loader2, Monitor, Download, History, Maximize2, Trash2,
+  Loader2, Monitor, Download, History, Maximize2, Trash2, MessageCircle,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import NotesEditor from "@/components/classroom/NotesEditor";
 import MaterialPickerModal from "@/components/classroom/MaterialPickerModal";
 import NoteVersionsModal from "@/components/classroom/NoteVersionsModal";
+import DialogueGeneratorModal from "@/components/classroom/DialogueGeneratorModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
