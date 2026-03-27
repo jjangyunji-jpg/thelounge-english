@@ -352,6 +352,10 @@ export default function StudentManagement() {
   const [editingMeetId, setEditingMeetId] = useState<number | null>(null);
   const [meetLinkInput, setMeetLinkInput] = useState("");
 
+  // Google Sheet link editing
+  const [editingSheetId, setEditingSheetId] = useState<number | null>(null);
+  const [sheetLinkInput, setSheetLinkInput] = useState("");
+
   // New student form
   const [newStudent, setNewStudent] = useState<NewStudent>({
     name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular", learningObjective: "", googleSheetUrl: "", meetLink: "",
@@ -1331,6 +1335,104 @@ export default function StudentManagement() {
                         </a>
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteMeetLink(student.id); }}
+                          className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">링크가 설정되지 않았습니다</p>
+                    )}
+                  </div>
+
+                  {/* Google Sheet (학생일지) Link */}
+                  <div className="p-3 rounded-lg bg-card border border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-navy" />
+                        학생일지 링크
+                      </h4>
+                      {editingSheetId !== student.id && (
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); setEditingSheetId(student.id); setSheetLinkInput(student.googleSheetUrl || "https://"); }}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          {student.googleSheetUrl ? "수정" : "추가"}
+                        </Button>
+                      )}
+                    </div>
+
+                    {editingSheetId === student.id ? (
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 relative">
+                          <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                          <Input
+                            value={sheetLinkInput}
+                            onChange={(e) => setSheetLinkInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const url = sheetLinkInput.trim();
+                                if (url && !url.startsWith("http")) return;
+                                const st = students.find(s => s.id === student.id);
+                                if (st?.dbId) {
+                                  supabase.from("instructor_students").update({ google_sheet_url: url || null } as any).eq("id", st.dbId).then(({ error }) => {
+                                    if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
+                                    toast({ title: "학생일지 링크가 저장됐습니다 ✓" });
+                                    setStudents(prev => prev.map(s => s.id === student.id ? { ...s, googleSheetUrl: url } : s));
+                                    setEditingSheetId(null); setSheetLinkInput("");
+                                  });
+                                }
+                              }
+                              if (e.key === "Escape") { setEditingSheetId(null); setSheetLinkInput(""); }
+                            }}
+                            placeholder="https://docs.google.com/spreadsheets/..."
+                            className="h-8 text-xs pl-8"
+                            autoFocus
+                          />
+                        </div>
+                        <Button size="sm" className="h-8 px-3 text-xs bg-navy hover:bg-navy-light text-primary-foreground" onClick={async () => {
+                          const url = sheetLinkInput.trim();
+                          if (url && !url.startsWith("http")) return;
+                          const st = students.find(s => s.id === student.id);
+                          if (st?.dbId) {
+                            const { error } = await supabase.from("instructor_students").update({ google_sheet_url: url || null } as any).eq("id", st.dbId);
+                            if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
+                            toast({ title: "학생일지 링크가 저장됐습니다 ✓" });
+                            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, googleSheetUrl: url } : s));
+                          }
+                          setEditingSheetId(null); setSheetLinkInput("");
+                        }}>
+                          저장
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => { setEditingSheetId(null); setSheetLinkInput(""); }}>
+                          취소
+                        </Button>
+                      </div>
+                    ) : student.googleSheetUrl ? (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={student.googleSheetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md bg-navy/5 border border-navy/15 text-navy text-xs font-medium hover:bg-navy/10 transition-colors truncate"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="truncate">{student.googleSheetUrl}</span>
+                          <ExternalLink className="w-3 h-3 flex-shrink-0 ml-auto" />
+                        </a>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const st = students.find(s => s.id === student.id);
+                            if (st?.dbId) {
+                              await supabase.from("instructor_students").update({ google_sheet_url: null } as any).eq("id", st.dbId);
+                            }
+                            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, googleSheetUrl: "" } : s));
+                            toast({ title: "학생일지 링크 삭제 완료 ✓" });
+                          }}
                           className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
