@@ -1627,6 +1627,8 @@ export default function Classroom() {
                   disabled={isDisabled}
                   placeholder={`수업 내용을 자유롭게 타이핑하세요...\n\nToday's topic: ${session.topic}`}
                   editorRef={notesEditorRef}
+                  studentName={session.dbStudentName}
+                  level={session.level}
                 />
               </div>
 
