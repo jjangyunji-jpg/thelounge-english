@@ -101,6 +101,14 @@ interface PauseRecord {
   reason: string | null;
 }
 
+interface TransferRecord {
+  fromInstructor: string;
+  toInstructor: string;
+  transferDate: string; // end_date of old record
+  oldSchedules: string;
+  newSchedules: string;
+}
+
 interface Student {
   id: number;
   dbId?: string; // UUID from DB
@@ -124,6 +132,7 @@ interface Student {
   studentType: string;
   groupStudents: string[];
   googleSheetUrl?: string;
+  transferHistory?: TransferRecord[];
 }
 
 // removed old calcMonthlyFee - now using the one at module level
