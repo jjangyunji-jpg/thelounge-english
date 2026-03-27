@@ -71,21 +71,23 @@ export default function Signup() {
       }
 
       const { data, error } = await supabase.functions.invoke("register", { body });
+      // supabase-js may put error body in data even on non-2xx
+      if (data?.error) {
+        throw new Error(data.error);
+      }
       if (error) {
-        // FunctionsHttpError carries the response body in context
         let msg = "다시 시도해주세요.";
         try {
           const ctx = (error as any).context;
           if (ctx && typeof ctx.json === "function") {
-            const body = await ctx.json();
-            if (body?.error) msg = body.error;
+            const errBody = await ctx.json();
+            if (errBody?.error) msg = errBody.error;
           } else if (error.message) {
             msg = error.message;
           }
         } catch { /* fallback */ }
         throw new Error(msg);
       }
-      if (data?.error) throw new Error(data.error);
 
       setDone(true);
     } catch (e: unknown) {
