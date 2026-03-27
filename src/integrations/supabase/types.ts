@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          scheduled_at: string | null
+          sent_at: string | null
+          subject: string
+          target: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          subject: string
+          target?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          subject?: string
+          target?: string
+        }
+        Relationships: []
+      }
       business_meeting_attendees: {
         Row: {
           created_at: string
