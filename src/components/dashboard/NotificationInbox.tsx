@@ -217,6 +217,29 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Detail Modal */}
+      <Dialog open={!!detailNotification} onOpenChange={(open) => { if (!open) setDetailNotification(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">{detailNotification?.subject}</DialogTitle>
+          </DialogHeader>
+          {detailNotification && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {format(new Date(detailNotification.sent_at), "yyyy.MM.dd HH:mm")}
+              </p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/40 p-3 rounded-lg">
+                {detailNotification.body}
+              </p>
+              <Button onClick={() => setDetailNotification(null)} className="w-full bg-navy hover:bg-navy-light text-primary-foreground">
+                닫기
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
