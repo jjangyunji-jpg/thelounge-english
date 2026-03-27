@@ -10,6 +10,7 @@ import {
   Star, MessageSquare, Download, Bug, RotateCcw,
 } from "lucide-react";
 import BugReportModal from "@/components/dashboard/BugReportModal";
+import NotificationInbox from "@/components/dashboard/NotificationInbox";
 import StudentFeedbackModal from "@/components/dashboard/StudentFeedbackModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
 import InstructorGuide from "@/components/dashboard/InstructorGuide";
@@ -1312,6 +1313,7 @@ export default function InstructorDashboard() {
   const viewingInstructorId = searchParams.get("instructor_id");
   const [isViewingAsAdmin, setIsViewingAsAdmin] = useState(false);
   const [user, setUser] = useState<{ email: string } | null>(null);
+  const [authUserId, setAuthUserId] = useState<string>("");
   const [instructor, setInstructor] = useState<Instructor | null>(null);
   const [students, setStudents] = useState<StudentFull[]>([]);
   const [sessions, setSessions] = useState<ClassSession[]>([]);
@@ -1364,6 +1366,7 @@ export default function InstructorDashboard() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { navigate("/login"); return; }
     setUser({ email: user.email ?? "" });
+    setAuthUserId(user.id);
 
     // Check admin/manager/staff role
     const { data: adminRole } = await supabase
@@ -2026,6 +2029,7 @@ export default function InstructorDashboard() {
             <Button size="sm" variant="outline" onClick={() => setShowBugReport(true)} className="h-8 text-xs gap-1 text-muted-foreground px-2 sm:px-3" title="버그 신고 / 개선 제안">
               <Bug className="w-3 h-3" /> <span className="hidden sm:inline">제안/신고</span>
             </Button>
+            {authUserId && <NotificationInbox userId={authUserId} role="instructor" />}
             <Button size="sm" variant="outline" onClick={handleLogout} className="h-8 text-xs gap-1 text-muted-foreground px-2">
               <LogOut className="w-3 h-3" />
             </Button>

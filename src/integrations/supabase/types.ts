@@ -19,6 +19,7 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          read_by: string[]
           scheduled_at: string | null
           sent_at: string | null
           subject: string
@@ -28,6 +29,7 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          read_by?: string[]
           scheduled_at?: string | null
           sent_at?: string | null
           subject: string
@@ -37,6 +39,7 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          read_by?: string[]
           scheduled_at?: string | null
           sent_at?: string | null
           subject?: string
