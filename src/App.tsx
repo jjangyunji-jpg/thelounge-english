@@ -18,7 +18,7 @@ import ClassNote from "./pages/ClassNote";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import Signup from "./pages/Signup";
-import Waitlist from "./pages/Waitlist";
+
 import Vocabulary from "./pages/Vocabulary";
 import MyProfile from "./pages/MyProfile";
 
@@ -34,7 +34,7 @@ const App = () => (
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/waitlist" element={<Waitlist />} />
+          
           <Route path="/set-password" element={<SetPassword />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
