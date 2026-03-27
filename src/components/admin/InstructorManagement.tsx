@@ -404,7 +404,7 @@ export default function InstructorManagement() {
         </div>
       )}
       {(['대표', '매니저', '강사'] as const).map((positionGroup) => {
-        const group = instructors.filter(ins => (ins.position || '강사') === positionGroup);
+        const group = instructors.filter(ins => (ins.position || '강사') === positionGroup).sort((a, b) => a.name.localeCompare(b.name, "ko"));
         if (group.length === 0) return null;
         return (
           <div key={positionGroup} className="space-y-3">
