@@ -554,6 +554,7 @@ export default function StudentManagement() {
         schedules: editSchedules.length > 0 ? JSON.stringify(editSchedules) : null,
         student_type: editStudentType,
         group_students: editGroupStudents,
+        google_sheet_url: editGoogleSheetUrl.trim() || null,
       };
       if (newInstructorId) {
         updatePayload.instructor_id = newInstructorId;
