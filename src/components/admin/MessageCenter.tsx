@@ -1,22 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2, CalendarIcon } from "lucide-react";
+import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2, CalendarIcon, ChevronDown, Clock, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Template {
   id: number;
   name: string;
   content: string;
   type: "homework" | "note" | "general";
+}
+
+interface SentNotification {
+  id: string;
+  target: string;
+  subject: string;
+  body: string;
+  scheduled_at: string | null;
+  sent_at: string;
 }
 
 const mockTemplates: Template[] = [
@@ -55,7 +66,14 @@ const typeBadge: Record<string, string> = {
   general: "bg-muted text-muted-foreground",
 };
 
+const targetLabel: Record<string, string> = {
+  all: "전체",
+  instructors: "강사",
+  students: "학생",
+};
+
 export default function MessageCenter() {
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<Template[]>(mockTemplates);
   const [autoNote, setAutoNote] = useState(true);
   const [autoHomework, setAutoHomework] = useState(true);
@@ -65,6 +83,52 @@ export default function MessageCenter() {
   const [broadcastDate, setBroadcastDate] = useState<Date | undefined>(undefined);
   const [useSchedule, setUseSchedule] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [sending, setSending] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [sentOpen, setSentOpen] = useState(false);
+  const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
+  const [loadingSent, setLoadingSent] = useState(false);
+
+  const fetchSentNotifications = async () => {
+    setLoadingSent(true);
+    const { data } = await supabase
+      .from("admin_notifications")
+      .select("id, target, subject, body, scheduled_at, sent_at")
+      .order("sent_at", { ascending: false })
+      .limit(50);
+    setSentNotifications((data as SentNotification[]) || []);
+    setLoadingSent(false);
+  };
+
+  useEffect(() => {
+    fetchSentNotifications();
+  }, []);
+
+  const handleSend = async () => {
+    setSending(true);
+    try {
+      const payload: any = {
+        target: broadcastTarget,
+        subject: broadcastSubject,
+        body: broadcastBody,
+      };
+      if (useSchedule && broadcastDate) {
+        payload.scheduled_at = broadcastDate.toISOString();
+      }
+      const { error } = await supabase.from("admin_notifications").insert(payload);
+      if (error) throw error;
+      toast({ title: "발송 완료", description: "공지사항이 성공적으로 등록되었습니다." });
+      setBroadcastSubject("");
+      setBroadcastBody("");
+      setBroadcastDate(undefined);
+      setUseSchedule(false);
+      fetchSentNotifications();
+    } catch (err: any) {
+      toast({ title: "발송 실패", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -197,65 +261,120 @@ export default function MessageCenter() {
             </div>
             <Button
               className="w-full bg-navy hover:bg-navy-light text-primary-foreground gap-2"
-              disabled={!broadcastSubject || !broadcastBody || (useSchedule && !broadcastDate)}
+              disabled={!broadcastSubject || !broadcastBody || (useSchedule && !broadcastDate) || sending}
+              onClick={handleSend}
             >
               <Send className="w-4 h-4" />
-              {useSchedule && broadcastDate
-                ? `${format(broadcastDate, "MM/dd")} 예약 발송`
-                : "즉시 발송하기"}
+              {sending
+                ? "발송 중..."
+                : useSchedule && broadcastDate
+                  ? `${format(broadcastDate, "MM/dd")} 예약 발송`
+                  : "즉시 발송하기"}
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* Message Templates */}
-      <Card className="shadow-card border-border">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="w-4 h-4 text-gold" />
-              메시지 템플릿 관리
-            </CardTitle>
-            <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs">
-              <Plus className="w-3 h-3" />
-              템플릿 추가
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {templates.map((tmpl) => (
-            <div key={tmpl.id} className="p-4 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeBadge[tmpl.type]}`}>
-                    {typeLabel[tmpl.type]}
-                  </span>
-                  <p className="text-sm font-semibold text-foreground">{tmpl.name}</p>
-                </div>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => setEditingTemplate(tmpl)}
-                  >
-                    수정
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-destructive hover:text-destructive"
-                    onClick={() => setTemplates((prev) => prev.filter((t) => t.id !== tmpl.id))}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
+      {/* Sent Notifications - Collapsible */}
+      <Collapsible open={sentOpen} onOpenChange={setSentOpen}>
+        <Card className="shadow-card border-border">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-gold" />
+                  발송된 메시지 목록
+                  <span className="text-xs font-normal text-muted-foreground">({sentNotifications.length})</span>
+                </span>
+                <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200", sentOpen && "rotate-180")} />
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-3 pt-0">
+              {loadingSent ? (
+                <p className="text-xs text-muted-foreground text-center py-4">불러오는 중...</p>
+              ) : sentNotifications.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">발송된 메시지가 없습니다.</p>
+              ) : (
+                sentNotifications.map((n) => (
+                  <div key={n.id} className="p-4 rounded-lg border border-border bg-muted/20">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
+                        {targetLabel[n.target] || n.target}
+                      </span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {format(new Date(n.sent_at), "yyyy.MM.dd HH:mm")}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground mb-1">{n.subject}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{n.body}</p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* Message Templates - Collapsible (collapsed by default) */}
+      <Collapsible open={templatesOpen} onOpenChange={setTemplatesOpen}>
+        <Card className="shadow-card border-border">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-gold" />
+                  메시지 템플릿 관리
+                </span>
+                <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200", templatesOpen && "rotate-180")} />
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-3 pt-0">
+              <div className="flex justify-end">
+                <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs">
+                  <Plus className="w-3 h-3" />
+                  템플릿 추가
+                </Button>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">{tmpl.content}</p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+              {templates.map((tmpl) => (
+                <div key={tmpl.id} className="p-4 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeBadge[tmpl.type]}`}>
+                        {typeLabel[tmpl.type]}
+                      </span>
+                      <p className="text-sm font-semibold text-foreground">{tmpl.name}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => setEditingTemplate(tmpl)}
+                      >
+                        수정
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-destructive hover:text-destructive"
+                        onClick={() => setTemplates((prev) => prev.filter((t) => t.id !== tmpl.id))}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{tmpl.content}</p>
+                </div>
+              ))}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 }
