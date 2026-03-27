@@ -1437,10 +1437,12 @@ export default function Classroom() {
                             onClick={async () => {
                               setReviewModalHw({ id: h.id, type: h.type, title: h.title });
                               setReviewLoading(true);
+                              const lookupIds = [h.id];
+                              if (h.presetOriginId) lookupIds.push(h.presetOriginId);
                               const { data: subs } = await supabase
                                 .from("homework_submissions")
                                 .select("*")
-                                .eq("assignment_id", h.id)
+                                .in("assignment_id", lookupIds)
                                 .order("submitted_at", { ascending: false })
                                 .limit(1);
                               const sub = subs?.[0] ?? null;
