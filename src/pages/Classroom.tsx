@@ -1867,6 +1867,19 @@ export default function Classroom() {
       )}
     </div>
 
+    <DialogueGeneratorModal
+      open={dialogueModalOpen}
+      onClose={() => setDialogueModalOpen(false)}
+      defaultLevel={session.level}
+      defaultStudentName={session.dbStudentName}
+      onInsert={(html) => {
+        const editor = notesEditorRef.current;
+        if (editor) {
+          editor.chain().focus().insertContent(html).run();
+          setNotes(editor.getHTML());
+        }
+      }}
+    />
     <MaterialPickerModal
       open={materialPickerOpen}
       onOpenChange={setMaterialPickerOpen}
