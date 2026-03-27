@@ -1568,6 +1568,12 @@ export default function Classroom() {
                     >
                       <Download className="w-3 h-3" />PDF
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => setDialogueModalOpen(true)}
+                      disabled={isDisabled}
+                      className="h-7 text-xs gap-1.5 transition-all border-gold/30 text-gold-dark hover:bg-gold/10"
+                    >
+                      <MessageCircle className="w-3 h-3" />Dialogue
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setMaterialPickerOpen(true)}
                       disabled={isDisabled}
                       className="h-7 text-xs gap-1.5 transition-all border-gold/30 text-gold-dark hover:bg-gold/10"
