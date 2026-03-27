@@ -356,7 +356,10 @@ export default function StudentManagement() {
   });
 
   const filtered = students.filter(
-    (s) => s.status === tab && s.name.includes(search)
+    (s) => s.status === tab && s.studentType !== "corporate" && s.name.includes(search)
+  );
+  const filteredCorporate = students.filter(
+    (s) => s.status === tab && s.studentType === "corporate" && s.name.includes(search)
   );
 
   // 학생의 정기 숙제 DB 로드
