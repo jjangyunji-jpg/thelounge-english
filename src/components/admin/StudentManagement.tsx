@@ -524,6 +524,7 @@ export default function StudentManagement() {
     setEditGroupStudents([...s.groupStudents]);
     setEditSchedDay("월");
     setEditSchedTime("09:00");
+    setEditGoogleSheetUrl(s.googleSheetUrl || "");
   };
 
   const saveInlineEdit = async (id: number) => {
