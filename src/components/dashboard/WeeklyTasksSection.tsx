@@ -110,19 +110,28 @@ export default function WeeklyTasksSection({
     assignments.filter(a => a.preset_origin_id && a.session_id === latestSessionId)
       .map(a => a.preset_origin_id)
   );
+  // Collect titles of session copies to deduplicate manual assignments
+  const sessionCopyTitles = new Map(
+    assignments.filter(a => a.preset_origin_id && a.session_id === latestSessionId)
+      .map(a => [a.title.trim(), a.id])
+  );
   const weekAssignments = assignments.filter(a => {
     // Hide vocab-test presets (단어 테스트 handles separately)
     if (a.is_preset && a.type === "memorizing" && a.title.includes("단어 테스트")) return false;
     // Hide preset templates that have session copies
     if (a.is_preset && sessionCopyOriginIds.has(a.id)) return false;
-    // Show session-specific assignments for latest session
-    if (a.session_id && a.session_id === latestSessionId) return true;
+    // For session-specific assignments
+    if (a.session_id && a.session_id === latestSessionId) {
+      // Hide manual assignments that duplicate a session copy (same title, no preset_origin)
+      if (!a.preset_origin_id && sessionCopyTitles.has(a.title.trim())) return false;
+      return true;
+    }
     // Fallback: show preset templates without copies (instructor hasn't opened classroom yet)
     if (a.is_preset) return true;
     return false;
   });
 
-  // Submission lookup — session copies use direct matching; presets fallback uses time-window
+  // Submission lookup — session copies check both copy ID and preset_origin_id
   const getSub = (aId: string) => {
     const assignment = weekAssignments.find(a => a.id === aId);
     if (!assignment) return undefined;
@@ -139,8 +148,20 @@ export default function WeeklyTasksSection({
         .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())[0];
     }
 
-    // For session-specific assignments (including auto-copies), any submission counts
-    return submissions.find(s => s.assignment_id === aId);
+    // For session-specific assignments (including auto-copies), check both IDs
+    // Students may have submitted against the preset template before the copy was created
+    const directSub = submissions.find(s => s.assignment_id === aId);
+    if (directSub) return directSub;
+    if (assignment.preset_origin_id) {
+      const cutoffTime = prevSession
+        ? new Date(prevSession.scheduled_at).getTime()
+        : new Date(latestSession!.scheduled_at).getTime();
+      return submissions
+        .filter(s => s.assignment_id === assignment.preset_origin_id && s.submitted_at)
+        .filter(s => new Date(s.submitted_at!).getTime() >= cutoffTime)
+        .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())[0];
+    }
+    return undefined;
   };
 
   // Vocab test: use the latest week_label from actual vocab words (not computed from session date)

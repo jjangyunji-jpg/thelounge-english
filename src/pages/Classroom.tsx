@@ -609,12 +609,19 @@ export default function Classroom() {
 
       if (data && data.length > 0) {
         // Auto-create session copies for preset templates that don't have one yet
+        // But skip if a manual assignment with the same title already exists for this session
         const existingCopyOriginIds = new Set(
           data.filter(d => d.preset_origin_id && d.session_id === session.sessionId)
             .map(d => `${d.preset_origin_id}__${d.student_name}`)
         );
+        const existingManualTitles = new Set(
+          data.filter(d => !d.is_preset && !d.preset_origin_id && d.session_id === session.sessionId)
+            .map(d => `${d.title.trim()}__${d.student_name}`)
+        );
         const presetsNeedingCopy = data.filter(d =>
-          d.is_preset && !existingCopyOriginIds.has(`${d.id}__${d.student_name}`)
+          d.is_preset
+          && !existingCopyOriginIds.has(`${d.id}__${d.student_name}`)
+          && !existingManualTitles.has(`${d.title.trim()}__${d.student_name}`)
         );
 
         let newCopies: typeof data = [];
@@ -639,11 +646,18 @@ export default function Classroom() {
           allData.filter(d => d.preset_origin_id && d.session_id === session.sessionId)
             .map(d => d.preset_origin_id)
         );
+        // Collect copy titles for deduplication of manual assignments
+        const copyTitleSet = new Set(
+          allData.filter(d => d.preset_origin_id && d.session_id === session.sessionId)
+            .map(d => `${d.title.trim()}__${d.student_name}`)
+        );
         const filtered = allData.filter(d => {
-          // Hide preset templates (copies exist for them now)
-          if (d.is_preset && sessionCopyOriginIds.has(d.id)) return false;
-          // Hide preset templates without copies (shouldn't happen after auto-copy, but safety)
+          // Hide preset templates
           if (d.is_preset) return false;
+          // Hide manual assignments that duplicate a session copy (same title)
+          if (d.session_id === session.sessionId && !d.preset_origin_id) {
+            if (copyTitleSet.has(`${d.title.trim()}__${d.student_name}`)) return false;
+          }
           return true;
         });
         setHwList(filtered.map((d) => ({
