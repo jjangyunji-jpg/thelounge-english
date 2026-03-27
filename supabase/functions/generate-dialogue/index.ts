@@ -37,6 +37,17 @@ Tone: ${tone || "Casual"}
 
 Format the output EXACTLY like this (use HTML formatting):
 
+<h2>📚 Key Expressions</h2>
+<table>
+<thead><tr><th>Expression</th><th>Meaning (한국어)</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td><strong>(expression 1)</strong></td><td>(Korean meaning)</td><td><em>(short example sentence)</em></td></tr>
+...add 5-8 useful expressions from the dialogue...
+</tbody>
+</table>
+
+<hr>
+
 <h2>📝 Dialogue</h2>
 <p><strong>[Speaker A]:</strong> (English line)</p>
 <p><strong>[Speaker B]:</strong> (English line)</p>
@@ -49,7 +60,7 @@ Format the output EXACTLY like this (use HTML formatting):
 <p><strong>[Speaker B]:</strong> (Korean translation)</p>
 ...continue translations...
 
-Use the actual speaker names from the input. Make the dialogue feel real and natural, not like a textbook exercise.`;
+Pick the most useful, natural expressions from the dialogue for the Key Expressions table. Focus on phrases the student can reuse in real life. Use the actual speaker names from the input. Make the dialogue feel real and natural, not like a textbook exercise.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
