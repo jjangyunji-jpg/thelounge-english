@@ -22,7 +22,6 @@ import {
   MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface NotesEditorProps {
@@ -63,7 +62,6 @@ export default function NotesEditor({
   level = "B1",
 }: NotesEditorProps) {
   const { toast } = useToast();
-  const isUpdatingRef = useRef(false);
   const isUpdatingRef = useRef(false);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number } | null>(null);
