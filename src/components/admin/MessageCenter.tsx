@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2, CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface Template {
   id: number;
@@ -58,6 +62,8 @@ export default function MessageCenter() {
   const [broadcastTarget, setBroadcastTarget] = useState<"all" | "instructors" | "students">("all");
   const [broadcastSubject, setBroadcastSubject] = useState("");
   const [broadcastBody, setBroadcastBody] = useState("");
+  const [broadcastDate, setBroadcastDate] = useState<Date | undefined>(undefined);
+  const [useSchedule, setUseSchedule] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
 
   return (
