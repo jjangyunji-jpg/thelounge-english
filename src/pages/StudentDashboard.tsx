@@ -735,7 +735,7 @@ export default function StudentDashboard() {
     const periods = periodsRes.data || [];
     const todayDate = new Date();
     const allStudentSessions = visibleAllSessions;
-    const studentRec = studentRes.data;
+    const studentRec = activeStudentRec;
     const instrName = studentRec?.instructor_name;
 
     for (const period of periods) {
