@@ -116,26 +116,28 @@ export default function ClassNote() {
       const studentType = (isData as any)?.student_type || "regular";
       const groupStudents: string[] = (isData as any)?.group_students || [];
 
-      // Find representative student: check if this student is listed as a group member of another student
-      let representativeStudent: string | null = null;
-      if (groupStudents.length === 0) {
-        // This student might be a group member — find the representative
-        const { data: repData } = await supabase
-          .from("instructor_students")
-          .select("student_name")
-          .contains("group_students", [student]);
-        if (repData && repData.length > 0) {
-          representativeStudent = repData[0].student_name;
-        }
+      // Collect all related student names (from bidirectional group_students)
+      const relatedNames = new Set<string>([student]);
+      // Add group members from this student's record
+      for (const g of groupStudents) relatedNames.add(g);
+      // Also check if this student appears in another student's group_students
+      const { data: reverseData } = await supabase
+        .from("instructor_students")
+        .select("student_name")
+        .contains("group_students", [student]);
+      if (reverseData) {
+        for (const r of reverseData) relatedNames.add(r.student_name);
       }
 
-      // Query own sessions
+      const allNames = Array.from(relatedNames);
+
+      // Query sessions for all related student names
       let query = supabase
         .from("class_sessions")
         .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
-        .eq("student_name", student)
+        .in("student_name", allNames)
         .order("scheduled_at", { ascending: false })
-        .limit(30);
+        .limit(50);
 
       if (startDate && studentType !== "corporate") {
         query = query.gte("scheduled_at", startDate + "T00:00:00+09:00");
@@ -144,46 +146,20 @@ export default function ClassNote() {
       const { data } = await query;
       let list = (data ?? []) as ClassSession[];
 
-      // If this student is a group member, also fetch the representative's sessions
-      if (representativeStudent) {
-        const { data: repSessions } = await supabase
-          .from("class_sessions")
-          .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
-          .eq("student_name", representativeStudent)
-          .contains("group_students", [student])
-          .order("scheduled_at", { ascending: false })
-          .limit(30);
+      // Also include sessions where this student appears in group_students column
+      const { data: groupSessions } = await supabase
+        .from("class_sessions")
+        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
+        .contains("group_students", [student])
+        .order("scheduled_at", { ascending: false })
+        .limit(50);
 
-        if (repSessions) {
-          // Merge and deduplicate by id
-          const existingIds = new Set(list.map(s => s.id));
-          const merged = [...list];
-          for (const s of repSessions as ClassSession[]) {
-            if (!existingIds.has(s.id)) merged.push(s);
-          }
-          merged.sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-          list = merged;
+      if (groupSessions) {
+        const existingIds = new Set(list.map(s => s.id));
+        for (const s of groupSessions as ClassSession[]) {
+          if (!existingIds.has(s.id)) list.push(s);
         }
-      }
-
-      // Also include sessions where this student appears in group_students (regardless of representative lookup)
-      if (!representativeStudent) {
-        const { data: groupSessions } = await supabase
-          .from("class_sessions")
-          .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
-          .contains("group_students", [student])
-          .order("scheduled_at", { ascending: false })
-          .limit(30);
-
-        if (groupSessions) {
-          const existingIds = new Set(list.map(s => s.id));
-          const merged = [...list];
-          for (const s of groupSessions as ClassSession[]) {
-            if (!existingIds.has(s.id)) merged.push(s);
-          }
-          merged.sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-          list = merged;
-        }
+        list.sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
       }
 
       setSessions(list);
