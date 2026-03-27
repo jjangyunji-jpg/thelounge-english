@@ -301,7 +301,53 @@ export default function StudentManagement() {
       groupStudents: row.group_students || [],
       googleSheetUrl: (row as any).google_sheet_url || "",
     }));
-    setStudents(dbStudents);
+
+    // Build transfer history: group all records by student_name
+    const recordsByName: Record<string, any[]> = {};
+    (data || []).forEach((row: any) => {
+      const name = row.student_name;
+      if (!recordsByName[name]) recordsByName[name] = [];
+      recordsByName[name].push(row);
+    });
+
+    // For each student, find previous records (those with end_date) to build transfer history
+    const enriched = dbStudents.map((student) => {
+      const allRecords = recordsByName[student.name] || [];
+      if (allRecords.length <= 1) return student;
+
+      // Sort by start_date ascending to build chronological history
+      const sorted = [...allRecords].sort((a, b) => 
+        (a.start_date || "").localeCompare(b.start_date || "")
+      );
+
+      const transfers: TransferRecord[] = [];
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const prev = sorted[i];
+        const next = sorted[i + 1];
+        // Only count as transfer if the old record has an end_date and different instructor
+        if (prev.end_date && prev.instructor_name !== next.instructor_name) {
+          const formatSchedule = (s: string | null) => {
+            if (!s) return "미설정";
+            try {
+              const slots = JSON.parse(s);
+              if (!Array.isArray(slots) || slots.length === 0) return "미설정";
+              return slots.map((sl: any) => `${sl.day} ${sl.time}`).join(", ");
+            } catch { return "미설정"; }
+          };
+          transfers.push({
+            fromInstructor: prev.instructor_name || "미지정",
+            toInstructor: next.instructor_name || "미지정",
+            transferDate: prev.end_date,
+            oldSchedules: formatSchedule(prev.schedules),
+            newSchedules: formatSchedule(next.schedules),
+          });
+        }
+      }
+
+      return transfers.length > 0 ? { ...student, transferHistory: transfers } : student;
+    });
+
+    setStudents(enriched);
 
     // Load pauses for all students
     if (data && data.length > 0) {
