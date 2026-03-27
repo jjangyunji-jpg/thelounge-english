@@ -2432,7 +2432,7 @@ export default function StudentManagement() {
                                   {/* Google Sheet URL */}
                                   <div className="space-y-1">
                                     <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <Link2 className="w-3 h-3" /> Google Sheet URL
+                                      <Link2 className="w-3 h-3" /> 학생일지 링크
                                     </Label>
                                     <Input
                                       value={editGoogleSheetUrl}
