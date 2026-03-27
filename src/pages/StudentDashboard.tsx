@@ -668,6 +668,7 @@ export default function StudentDashboard() {
       setStudentRecord({
         schedules,
         start_date: activeStudentRec.start_date,
+        earliest_start_date: earliestStartDate,
         level: activeStudentRec.level,
         instructor_name: activeStudentRec.instructor_name,
         instructor_display_name: instrDisplayName,
