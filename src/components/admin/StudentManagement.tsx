@@ -1942,7 +1942,6 @@ export default function StudentManagement() {
                       </Button>
                     )}
                 </div>
-  const [editGoogleSheetUrl, setEditGoogleSheetUrl] = useState("");
 
                   {/* Lesson history preview */}
                   <div>
