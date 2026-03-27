@@ -1642,19 +1642,14 @@ export default function StudentDashboard() {
               >
                 📝 다이어리 라운지
               </a>
-              <button
-                onClick={async () => {
-                  try {
-                    const { exportStudentGuidePdf } = await import("@/lib/exportStudentGuide");
-                    await exportStudentGuidePdf();
-                  } catch (e) {
-                    console.error("PDF export error:", e);
-                  }
-                }}
+              <a
+                href="https://teodinvbdgbfnmlwmdks.supabase.co/storage/v1/object/public/guide-files/student_classroom_guide.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="px-1.5 sm:px-2 py-1.5 rounded-lg text-[11px] sm:text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
               >
-                가이드
-              </button>
+                프로그램 이용 안내
+              </a>
               <button
                 onClick={() => setShowBugReport(true)}
                 className="px-1.5 sm:px-2 py-1.5 rounded-lg text-[11px] sm:text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
