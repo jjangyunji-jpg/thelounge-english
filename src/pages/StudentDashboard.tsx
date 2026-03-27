@@ -75,6 +75,7 @@ interface PauseRecord {
 interface StudentRecord {
   schedules: ScheduleSlot[];
   start_date: string | null;
+  earliest_start_date: string | null;
   level: string | null;
   instructor_name: string | null;
   instructor_display_name: string | null;
