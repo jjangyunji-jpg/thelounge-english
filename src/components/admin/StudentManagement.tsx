@@ -1252,7 +1252,7 @@ export default function StudentManagement() {
                     navigate(`/t/student-dashboard?student_name=${encodeURIComponent(student.name)}`);
                   }}
                 >
-                  <Activity className="w-3 h-3" />
+                  <ExternalLink className="w-3 h-3" />
                   대시보드
                 </Button>
                 <Button
