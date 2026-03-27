@@ -20,7 +20,7 @@ import { exportNotesPdf } from "@/lib/exportNotesPdf";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
-import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
+import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -684,17 +684,23 @@ export default function Classroom() {
             return d.session_id === prevSessData.id || (d.is_preset && !prevCopyOriginIds.has(d.id));
           });
           const hwIds = filteredPrev.map(h => h.id);
+          // Also collect preset_origin_ids for session copies (students submit against template)
+          const presetOriginIds = filteredPrev
+            .filter(h => h.preset_origin_id)
+            .map(h => h.preset_origin_id as string);
+          const allLookupIds = [...hwIds, ...presetOriginIds];
           const { data: subData } = await supabase
             .from("homework_submissions")
             .select("assignment_id, status")
-            .in("assignment_id", hwIds);
+            .in("assignment_id", allLookupIds);
 
           const subMap = new Map((subData || []).map(s => [s.assignment_id, s.status]));
           setPrevHwList(filteredPrev.map(h => ({
             id: h.id,
             type: h.type as HwType,
             title: h.title,
-            status: subMap.get(h.id) || "not_submitted",
+            presetOriginId: h.preset_origin_id,
+            status: subMap.get(h.id) || (h.preset_origin_id ? subMap.get(h.preset_origin_id) : undefined) || "not_submitted",
           })));
         } else {
           setPrevHwList([]);
