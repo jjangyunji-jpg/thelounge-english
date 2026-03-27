@@ -3169,9 +3169,9 @@ export default function InstructorDashboard() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColor)}>{statusLabel}</span>
-                        {(st as any).google_sheet_url && (
+                        {st.google_sheet_url && (
                           <a
-                            href={(st as any).google_sheet_url}
+                            href={st.google_sheet_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 rounded-lg hover:bg-muted text-gold-dark hover:text-gold transition-colors"
