@@ -37,6 +37,8 @@ interface NotesEditorProps {
   className?: string;
   onScrollRatio?: (ratio: number) => void;
   editorRef?: React.MutableRefObject<any>;
+  studentName?: string;
+  level?: string;
 }
 
 interface SlashMenuItem {
