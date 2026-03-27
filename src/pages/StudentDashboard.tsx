@@ -75,6 +75,7 @@ interface PauseRecord {
 interface StudentRecord {
   schedules: ScheduleSlot[];
   start_date: string | null;
+  earliest_start_date: string | null;
   level: string | null;
   instructor_name: string | null;
   instructor_display_name: string | null;
@@ -667,6 +668,7 @@ export default function StudentDashboard() {
       setStudentRecord({
         schedules,
         start_date: activeStudentRec.start_date,
+        earliest_start_date: earliestStartDate,
         level: activeStudentRec.level,
         instructor_name: activeStudentRec.instructor_name,
         instructor_display_name: instrDisplayName,
@@ -1074,7 +1076,7 @@ export default function StudentDashboard() {
 
   // Period navigation helpers
   const sortedPeriods = [...effectivePeriods]
-    .filter(p => studentRecord?.student_type === "corporate" || !studentRecord?.start_date || p.end_date >= studentRecord.start_date)
+    .filter(p => studentRecord?.student_type === "corporate" || !studentRecord?.earliest_start_date || p.end_date >= studentRecord.earliest_start_date)
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
   const currentPeriodIdx = sortedPeriods.findIndex(p => p.id === selectedPeriodId);
   const canGoPrev = currentPeriodIdx > 0;
