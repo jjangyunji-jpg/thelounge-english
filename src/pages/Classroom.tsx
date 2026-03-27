@@ -681,8 +681,18 @@ export default function Classroom() {
             prevHwData.filter(d => d.preset_origin_id && d.session_id === prevSessData.id)
               .map(d => d.preset_origin_id)
           );
+          // Also collect preset_origin_ids to deduplicate manual assignments
+          const prevCopyTitles = new Map(
+            prevHwData.filter(d => d.preset_origin_id && d.session_id === prevSessData.id)
+              .map(d => [d.title.trim(), d.id])
+          );
           const filteredPrev = prevHwData.filter(d => {
+            // Hide preset templates that have session copies
             if (d.is_preset && prevCopyOriginIds.has(d.id)) return false;
+            // Hide manual assignments that duplicate a session copy (same title, no preset_origin)
+            if (d.session_id === prevSessData.id && !d.preset_origin_id && !d.is_preset) {
+              if (prevCopyTitles.has(d.title.trim())) return false;
+            }
             return d.session_id === prevSessData.id || (d.is_preset && !prevCopyOriginIds.has(d.id));
           });
           const hwIds = filteredPrev.map(h => h.id);
@@ -692,6 +702,7 @@ export default function Classroom() {
           const allLookupIds = [...hwIds, ...presetOriginIds];
 
           // Time-window filter: only count submissions after the session before prevSession
+          // Use generous upper bound — students may submit late (after current session started)
           const cutoffTime = prevPrevSess
             ? new Date(prevPrevSess.scheduled_at).toISOString()
             : new Date(prevSessData.scheduled_at).toISOString();
@@ -700,8 +711,7 @@ export default function Classroom() {
             .from("homework_submissions")
             .select("assignment_id, status, submitted_at")
             .in("assignment_id", allLookupIds)
-            .gte("submitted_at", cutoffTime)
-            .lt("submitted_at", session.scheduledAt.toISOString());
+            .gte("submitted_at", cutoffTime);
 
           const subMap = new Map((subData || []).map(s => [s.assignment_id, s.status]));
           setPrevHwList(filteredPrev.map(h => ({
