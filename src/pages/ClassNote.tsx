@@ -106,15 +106,30 @@ export default function ClassNote() {
     const load = async () => {
       setLoadingSessions(true);
 
-      // Fetch student's start_date and type to filter sessions
+      // Fetch student's start_date, type, and group info
       const { data: isData } = await supabase
         .from("instructor_students")
-        .select("start_date, student_type")
+        .select("start_date, student_type, group_students")
         .eq("student_name", student)
         .maybeSingle();
       const startDate = isData?.start_date;
       const studentType = (isData as any)?.student_type || "regular";
+      const groupStudents: string[] = (isData as any)?.group_students || [];
 
+      // Find representative student: check if this student is listed as a group member of another student
+      let representativeStudent: string | null = null;
+      if (groupStudents.length === 0) {
+        // This student might be a group member — find the representative
+        const { data: repData } = await supabase
+          .from("instructor_students")
+          .select("student_name")
+          .contains("group_students", [student]);
+        if (repData && repData.length > 0) {
+          representativeStudent = repData[0].student_name;
+        }
+      }
+
+      // Query own sessions
       let query = supabase
         .from("class_sessions")
         .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
@@ -127,9 +142,51 @@ export default function ClassNote() {
       }
 
       const { data } = await query;
-      const list = (data ?? []) as ClassSession[];
+      let list = (data ?? []) as ClassSession[];
+
+      // If this student is a group member, also fetch the representative's sessions
+      if (representativeStudent) {
+        const { data: repSessions } = await supabase
+          .from("class_sessions")
+          .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
+          .eq("student_name", representativeStudent)
+          .contains("group_students", [student])
+          .order("scheduled_at", { ascending: false })
+          .limit(30);
+
+        if (repSessions) {
+          // Merge and deduplicate by id
+          const existingIds = new Set(list.map(s => s.id));
+          const merged = [...list];
+          for (const s of repSessions as ClassSession[]) {
+            if (!existingIds.has(s.id)) merged.push(s);
+          }
+          merged.sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+          list = merged;
+        }
+      }
+
+      // Also include sessions where this student appears in group_students (regardless of representative lookup)
+      if (!representativeStudent) {
+        const { data: groupSessions } = await supabase
+          .from("class_sessions")
+          .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
+          .contains("group_students", [student])
+          .order("scheduled_at", { ascending: false })
+          .limit(30);
+
+        if (groupSessions) {
+          const existingIds = new Set(list.map(s => s.id));
+          const merged = [...list];
+          for (const s of groupSessions as ClassSession[]) {
+            if (!existingIds.has(s.id)) merged.push(s);
+          }
+          merged.sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+          list = merged;
+        }
+      }
+
       setSessions(list);
-      // 현재 시간 기준 이미 지난 수업 중 가장 최근 것을 우선 선택
       const now = new Date();
       const pastSession = list.find(s => new Date(s.scheduled_at) <= now);
       setSelectedSession(pastSession || list[0] || null);
