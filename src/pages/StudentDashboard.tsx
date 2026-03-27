@@ -600,8 +600,17 @@ export default function StudentDashboard() {
     setTestHistory(mergedTests);
     setSchedulePeriods(periodsRes.data || []);
 
+    // Derive active record (no end_date) and all records from the array result
+    const allStudentRecords = (studentRes.data || []) as any[];
+    const activeStudentRec = allStudentRecords.find((r: any) => !r.end_date) || allStudentRecords[allStudentRecords.length - 1] || null;
+    // Earliest start_date across all records (so old instructor sessions are visible too)
+    const earliestStartDate = allStudentRecords.reduce((min: string | null, r: any) => {
+      if (!r.start_date) return min;
+      return !min || r.start_date < min ? r.start_date : min;
+    }, null as string | null);
+
     // Auto-select current period
-    const isCorporate = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
+    const isCorporate = (activeStudentRec?.student_type || 'regular') === 'corporate';
     if (!selectedPeriodId) {
       if (isCorporate) {
         // For corporate students, auto-select current month
@@ -617,20 +626,20 @@ export default function StudentDashboard() {
     // 캘린더용은 전체 휴강, 팝업 필터링은 visibleHolidays에서 처리
     setHolidays(holidaysRes.data || []);
 
-    if (studentRes.data) {
+    if (activeStudentRec) {
       let schedules: ScheduleSlot[] = [];
       try {
-        const raw = studentRes.data.schedules;
+        const raw = activeStudentRec.schedules;
         schedules = typeof raw === "string" ? JSON.parse(raw) : (raw as ScheduleSlot[]) || [];
       } catch { schedules = []; }
 
       // Fetch instructor display_name
       let instrDisplayName: string | null = null;
-      if (studentRes.data.instructor_id) {
+      if (activeStudentRec.instructor_id) {
         const { data: insData } = await supabase
           .from("instructors")
           .select("user_id")
-          .eq("id", studentRes.data.instructor_id)
+          .eq("id", activeStudentRec.instructor_id)
           .maybeSingle();
         if (insData?.user_id) {
           const { data: roleData } = await supabase
@@ -643,32 +652,33 @@ export default function StudentDashboard() {
         }
       }
 
-      // Load pauses from student_pauses table
+      // Load pauses from student_pauses table (for all records)
       let pauses: PauseRecord[] = [];
-      if (studentRes.data?.id) {
+      const allRecordIds = allStudentRecords.map((r: any) => r.id).filter(Boolean);
+      if (allRecordIds.length > 0) {
         const { data: pauseData } = await supabase
           .from("student_pauses")
           .select("id,pause_start,pause_end")
-          .eq("student_id", studentRes.data.id)
+          .in("student_id", allRecordIds)
           .order("pause_start", { ascending: true });
         pauses = pauseData || [];
       }
 
       setStudentRecord({
         schedules,
-        start_date: studentRes.data.start_date,
-        level: studentRes.data.level,
-        instructor_name: studentRes.data.instructor_name,
+        start_date: activeStudentRec.start_date,
+        level: activeStudentRec.level,
+        instructor_name: activeStudentRec.instructor_name,
         instructor_display_name: instrDisplayName,
         pauses,
-        student_type: (studentRes.data as any).student_type || 'regular',
-        group_students: Array.isArray((studentRes.data as any).group_students) ? (studentRes.data as any).group_students : [],
+        student_type: activeStudentRec.student_type || 'regular',
+        group_students: Array.isArray(activeStudentRec.group_students) ? activeStudentRec.group_students : [],
       });
 
       const isSessionVisible = (scheduledAt: string) => {
         const d = scheduledAt.slice(0, 10);
-        const isCorporate = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
-        if (!isCorporate && studentRes.data.start_date && d < studentRes.data.start_date) return false;
+        const isCorp = (activeStudentRec?.student_type || 'regular') === 'corporate';
+        if (!isCorp && earliestStartDate && d < earliestStartDate) return false;
         if (pauses.some((p) => d >= p.pause_start && (!p.pause_end || d <= p.pause_end))) return false;
         return true;
       };
