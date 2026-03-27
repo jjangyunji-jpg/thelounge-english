@@ -20,6 +20,7 @@ import { exportNotesPdf } from "@/lib/exportNotesPdf";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
+import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -314,6 +315,10 @@ export default function Classroom() {
   const [remarks, setRemarks] = useState("");
   const [remarksSaving, setRemarksSaving] = useState(false);
   const [remarksSaved, setRemarksSaved] = useState(false);
+  const [remarksOpen, setRemarksOpen] = useState(true);
+  const [reviewModalHw, setReviewModalHw] = useState<{ id: string; type: HwType; title: string } | null>(null);
+  const [reviewSubmission, setReviewSubmission] = useState<any>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
   const remarksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState(false);
@@ -1421,10 +1426,24 @@ export default function Classroom() {
                         const isSubmitted = h.status === "submitted" || h.status === "reviewed";
                         const isReviewed = h.status === "reviewed";
                         return (
-                          <div key={h.id} className={cn(
-                            "flex items-center gap-2 px-2.5 py-1.5 rounded-md border",
-                            isSubmitted ? "border-border bg-card" : "border-dashed border-muted-foreground/20 bg-muted/10"
-                          )}>
+                          <button
+                            key={h.id}
+                            onClick={async () => {
+                              setReviewModalHw({ id: h.id, type: h.type, title: h.title });
+                              setReviewLoading(true);
+                              const { data: sub } = await supabase
+                                .from("homework_submissions")
+                                .select("*")
+                                .eq("assignment_id", h.id)
+                                .maybeSingle();
+                              setReviewSubmission(sub);
+                              setReviewLoading(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left hover:bg-muted/50 transition-colors",
+                              isSubmitted ? "border-border bg-card" : "border-dashed border-muted-foreground/20 bg-muted/10"
+                            )}
+                          >
                             <Icon className={cn("w-3 h-3 flex-shrink-0", meta?.color || "text-muted-foreground")} />
                             <span className="text-[11px] flex-1 truncate">{h.title}</span>
                             {isReviewed ? (
@@ -1434,7 +1453,7 @@ export default function Classroom() {
                             ) : (
                               <span className="text-[9px] text-destructive/70 font-medium flex-shrink-0">미제출</span>
                             )}
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -1442,7 +1461,43 @@ export default function Classroom() {
                 </div>
               )}
 
-              {/* ── NOTES ─────────────────────────────────────────────── */}
+              {/* ── REMARKS (비고) — collapsible ───────────────────────── */}
+              {role === "instructor" && (
+                <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+                  <button
+                    onClick={() => setRemarksOpen(!remarksOpen)}
+                    className="w-full px-4 py-2.5 flex items-center gap-2 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-gold flex-shrink-0" />
+                    <span className="text-xs font-semibold text-foreground">비고</span>
+                    <div className="flex items-center gap-2 ml-auto">
+                      {remarksSaving && <span className="text-[10px] text-muted-foreground">저장 중...</span>}
+                      {remarksSaved && !remarksSaving && <span className="text-[10px] text-[hsl(var(--success))] flex items-center gap-0.5"><Check className="w-3 h-3" />저장됨</span>}
+                      <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", remarksOpen && "rotate-180")} />
+                    </div>
+                  </button>
+                  {remarksOpen && (
+                    <div className="p-3 border-t border-border/50 space-y-2">
+                      <Textarea
+                        value={remarks}
+                        onChange={e => handleRemarksChange(e.target.value)}
+                        placeholder="다음 수업까지 기억할 사항을 메모하세요... (이전 세션에서 자동으로 이어집니다)"
+                        className="resize-none text-sm min-h-[80px]"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          onClick={handleRemarksSave}
+                          disabled={remarksSaving || !session.sessionId}
+                          className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 disabled:opacity-40"
+                        >
+                          저장
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
                 <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30">
                   <div className="flex items-center gap-2">
@@ -1532,36 +1587,6 @@ export default function Classroom() {
                 />
               </div>
 
-              {/* ── REMARKS (비고) ────────────────────────────────────── */}
-              {role === "instructor" && (
-                <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
-                  <div className="px-4 py-3 bg-muted/30 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-gold" />
-                      <span className="font-semibold text-sm text-foreground">비고</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {remarksSaving && <span className="text-[10px] text-muted-foreground">저장 중...</span>}
-                      {remarksSaved && !remarksSaving && <span className="text-[10px] text-[hsl(var(--success))] flex items-center gap-0.5"><Check className="w-3 h-3" />저장됨</span>}
-                      <button
-                        onClick={handleRemarksSave}
-                        disabled={remarksSaving || !session.sessionId}
-                        className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 disabled:opacity-40"
-                      >
-                        저장
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <Textarea
-                      value={remarks}
-                      onChange={e => handleRemarksChange(e.target.value)}
-                      placeholder="다음 수업까지 기억할 사항을 메모하세요... (이전 세션에서 자동으로 이어집니다)"
-                      className="resize-none text-sm min-h-[80px]"
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* ── HOMEWORK (강사용 관리) ────────────────────────────── */}
               <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
@@ -1806,6 +1831,32 @@ export default function Classroom() {
       sessionId={session.sessionId}
       onRestore={handleRestoreVersion}
     />
+    {reviewModalHw && reviewSubmission && (
+      <HomeworkReviewModal
+        assignmentTitle={reviewModalHw.title}
+        assignmentType={reviewModalHw.type}
+        studentName={session.dbStudentName}
+        submissionId={reviewSubmission.id}
+        textContent={reviewSubmission.text_content}
+        audioUrl={reviewSubmission.audio_url}
+        fileUrl={reviewSubmission.file_url}
+        onClose={() => { setReviewModalHw(null); setReviewSubmission(null); }}
+        onReviewed={() => {
+          setPrevHwList(prev => prev.map(h => h.id === reviewModalHw.id ? { ...h, status: "reviewed" } : h));
+          setReviewModalHw(null);
+          setReviewSubmission(null);
+        }}
+      />
+    )}
+    {reviewModalHw && !reviewSubmission && !reviewLoading && (
+      <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={() => setReviewModalHw(null)}>
+        <div className="bg-card rounded-xl p-6 max-w-sm text-center space-y-3" onClick={e => e.stopPropagation()}>
+          <p className="text-sm font-semibold text-foreground">제출된 숙제가 없습니다</p>
+          <p className="text-xs text-muted-foreground">학생이 아직 이 숙제를 제출하지 않았습니다.</p>
+          <Button size="sm" onClick={() => setReviewModalHw(null)}>닫기</Button>
+        </div>
+      </div>
+    )}
     </>
   );
 }
