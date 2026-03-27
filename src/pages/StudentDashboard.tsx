@@ -1214,7 +1214,7 @@ export default function StudentDashboard() {
             size="sm"
             variant="secondary"
             className="h-7 text-xs gap-1"
-            onClick={() => navigate("/t/dashboard")}
+            onClick={() => navigate(-1)}
           >
             <ChevronLeft className="w-3 h-3" />
             돌아가기
