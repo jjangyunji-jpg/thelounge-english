@@ -20,7 +20,7 @@ import { exportNotesPdf } from "@/lib/exportNotesPdf";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
-import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
+import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -309,7 +309,7 @@ export default function Classroom() {
   useEffect(() => { sessionIdRef.current = session.sessionId; }, [session.sessionId]);
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
-  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; status: string }[]>([]);
+  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; status: string; presetOriginId?: string | null }[]>([]);
   const [prevHwOpen, setPrevHwOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
   const [remarks, setRemarks] = useState("");
@@ -684,17 +684,23 @@ export default function Classroom() {
             return d.session_id === prevSessData.id || (d.is_preset && !prevCopyOriginIds.has(d.id));
           });
           const hwIds = filteredPrev.map(h => h.id);
+          // Also collect preset_origin_ids for session copies (students submit against template)
+          const presetOriginIds = filteredPrev
+            .filter(h => h.preset_origin_id)
+            .map(h => h.preset_origin_id as string);
+          const allLookupIds = [...hwIds, ...presetOriginIds];
           const { data: subData } = await supabase
             .from("homework_submissions")
             .select("assignment_id, status")
-            .in("assignment_id", hwIds);
+            .in("assignment_id", allLookupIds);
 
           const subMap = new Map((subData || []).map(s => [s.assignment_id, s.status]));
           setPrevHwList(filteredPrev.map(h => ({
             id: h.id,
             type: h.type as HwType,
             title: h.title,
-            status: subMap.get(h.id) || "not_submitted",
+            presetOriginId: h.preset_origin_id,
+            status: subMap.get(h.id) || (h.preset_origin_id ? subMap.get(h.preset_origin_id) : undefined) || "not_submitted",
           })));
         } else {
           setPrevHwList([]);
@@ -1431,10 +1437,12 @@ export default function Classroom() {
                             onClick={async () => {
                               setReviewModalHw({ id: h.id, type: h.type, title: h.title });
                               setReviewLoading(true);
+                              const lookupIds = [h.id];
+                              if (h.presetOriginId) lookupIds.push(h.presetOriginId);
                               const { data: subs } = await supabase
                                 .from("homework_submissions")
                                 .select("*")
-                                .eq("assignment_id", h.id)
+                                .in("assignment_id", lookupIds)
                                 .order("submitted_at", { ascending: false })
                                 .limit(1);
                               const sub = subs?.[0] ?? null;
@@ -1834,20 +1842,16 @@ export default function Classroom() {
       onRestore={handleRestoreVersion}
     />
     {reviewModalHw && reviewSubmission && (
-      <HomeworkReviewModal
+      <HomeworkFeedbackModal
         assignmentTitle={reviewModalHw.title}
         assignmentType={reviewModalHw.type}
-        studentName={session.dbStudentName}
-        submissionId={reviewSubmission.id}
         textContent={reviewSubmission.text_content}
         audioUrl={reviewSubmission.audio_url}
         fileUrl={reviewSubmission.file_url}
+        instructorNote={reviewSubmission.instructor_note}
+        reviewedAt={reviewSubmission.reviewed_at}
+        aiCorrection={reviewSubmission.ai_correction as any}
         onClose={() => { setReviewModalHw(null); setReviewSubmission(null); }}
-        onReviewed={() => {
-          setPrevHwList(prev => prev.map(h => h.id === reviewModalHw.id ? { ...h, status: "reviewed" } : h));
-          setReviewModalHw(null);
-          setReviewSubmission(null);
-        }}
       />
     )}
     {reviewModalHw && !reviewSubmission && !reviewLoading && (
