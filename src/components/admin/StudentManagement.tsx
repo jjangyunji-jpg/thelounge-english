@@ -504,6 +504,7 @@ export default function StudentManagement() {
 
   const [editEnglishName, setEditEnglishName] = useState("");
   const [editStudentType, setEditStudentType] = useState<"regular" | "corporate">("regular");
+  const [editGoogleSheetUrl, setEditGoogleSheetUrl] = useState("");
 
   const startInlineEdit = (s: Student) => {
     setEditingStudentId(s.id);
@@ -523,6 +524,7 @@ export default function StudentManagement() {
     setEditGroupStudents([...s.groupStudents]);
     setEditSchedDay("월");
     setEditSchedTime("09:00");
+    setEditGoogleSheetUrl(s.googleSheetUrl || "");
   };
 
   const saveInlineEdit = async (id: number) => {
@@ -552,6 +554,7 @@ export default function StudentManagement() {
         schedules: editSchedules.length > 0 ? JSON.stringify(editSchedules) : null,
         student_type: editStudentType,
         group_students: editGroupStudents,
+        google_sheet_url: editGoogleSheetUrl.trim() || null,
       };
       if (newInstructorId) {
         updatePayload.instructor_id = newInstructorId;
@@ -600,6 +603,7 @@ export default function StudentManagement() {
           schedules: [...editSchedules],
           studentType: editStudentType,
           groupStudents: [...editGroupStudents],
+          googleSheetUrl: editGoogleSheetUrl.trim(),
         };
       })
     );
@@ -1939,7 +1943,6 @@ export default function StudentManagement() {
                     )}
                 </div>
 
-
                   {/* Lesson history preview */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -2155,12 +2158,482 @@ export default function StudentManagement() {
                               {student.instructor} · {student.startDate || "시작일 미정"}
                             </p>
                           </div>
-                          {expandedId === student.id ? (
+                      {expandedId === student.id ? (
                             <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           ) : (
                             <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           )}
                         </div>
+
+                        {expandedId === student.id && (
+                          <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+                            {/* Inline edit: level + extra lessons */}
+                            <div className="p-3 rounded-lg bg-card border border-border space-y-3">
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-semibold text-foreground">수강 정보 수정</p>
+                                {!isEditing && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                                    onClick={(e) => { e.stopPropagation(); startInlineEdit(student); }}
+                                  >
+                                    <Edit2 className="w-3 h-3" /> 수정
+                                  </Button>
+                                )}
+                              </div>
+
+                              {isEditing ? (
+                                <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">영어이름</Label>
+                                    <Input
+                                      value={editEnglishName}
+                                      onChange={(e) => setEditEnglishName(e.target.value)}
+                                      placeholder="Joy"
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">수강생 유형</Label>
+                                    <Select value={editStudentType} onValueChange={(v) => setEditStudentType(v as "regular" | "corporate")}>
+                                      <SelectTrigger className="h-8 text-sm">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="regular">정규</SelectItem>
+                                        <SelectItem value="corporate">기업 (비정기)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">레벨</Label>
+                                      <Select value={editLevel} onValueChange={(v) => setEditLevel(v as Level)}>
+                                        <SelectTrigger className="h-8 text-sm">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {LEVELS.map((l) => (
+                                            <SelectItem key={l} value={l}>{l}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-muted-foreground">추가 수업 횟수</Label>
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        value={editExtra}
+                                        onChange={(e) => setEditExtra(Math.max(0, Number(e.target.value)))}
+                                        className="h-8 text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">담당 강사</Label>
+                                    <Select value={editInstructor} onValueChange={setEditInstructor}>
+                                      <SelectTrigger className="h-8 text-sm">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {instructorNames.map((t) => (
+                                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <CalendarIcon className="w-3 h-3" /> 수업 시작일
+                                    </Label>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button variant="outline" className={cn("h-8 w-full text-sm justify-start", !editStartDate && "text-muted-foreground")}>
+                                          <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
+                                          {editStartDate ? format(editStartDate, "yyyy-MM-dd") : "선택"}
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar mode="single" selected={editStartDate} onSelect={setEditStartDate} className={cn("p-3 pointer-events-auto")} />
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
+                                  {/* Schedule editing */}
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Clock className="w-3 h-3" /> 수업 일정
+                                    </Label>
+                                    {editSchedules.length > 0 && (
+                                      <div className="flex flex-wrap gap-1">
+                                        {editSchedules.map((slot, i) => (
+                                          <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">
+                                            {slot.day}요일 {slot.time} {slot.frequency && slot.frequency !== "weekly" ? `(${FREQ_LABELS[slot.frequency]})` : ""}
+                                            <button type="button" onClick={() => setEditSchedules(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                                              <X className="w-3 h-3" />
+                                            </button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="flex gap-1">
+                                      <Select value={editSchedDay} onValueChange={setEditSchedDay}>
+                                        <SelectTrigger className="h-7 text-xs w-20">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {DAYS_OF_WEEK.map((d) => (
+                                            <SelectItem key={d} value={d}>{d}요일</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Select value={editSchedTime} onValueChange={setEditSchedTime}>
+                                        <SelectTrigger className="h-7 text-xs w-[72px]">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {HOURS.map((h) => (
+                                            <SelectItem key={h} value={h}>{h}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Select value={editSchedFreq} onValueChange={(v) => setEditSchedFreq(v as Frequency)}>
+                                        <SelectTrigger className="h-7 text-xs w-[72px]">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {(Object.keys(FREQ_LABELS) as Frequency[]).map((f) => (
+                                            <SelectItem key={f} value={f}>{FREQ_LABELS[f]}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs px-2"
+                                        onClick={() => {
+                                          const exists = editSchedules.some(s => s.day === editSchedDay && s.time === editSchedTime);
+                                          if (!exists) {
+                                            setEditSchedules(prev => [...prev, { day: editSchedDay, time: editSchedTime, frequency: editSchedFreq }]);
+                                          }
+                                        }}
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Target className="w-3 h-3" /> 등록 계기 / 최종 목표
+                                    </Label>
+                                    {editObjectives.length > 0 && (
+                                      <div className="flex flex-wrap gap-1">
+                                        {editObjectives.map((obj, i) => (
+                                          <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-muted text-foreground">
+                                            {obj}
+                                            <button type="button" onClick={() => setEditObjectives(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                                              <X className="w-3 h-3" />
+                                            </button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="flex gap-1">
+                                      <Input
+                                        value={editNewObjective}
+                                        onChange={(e) => setEditNewObjective(e.target.value)}
+                                        placeholder="예: 해외여행 시 자유로운 대화"
+                                        className="h-7 text-xs"
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter" && editNewObjective.trim()) {
+                                            e.preventDefault();
+                                            setEditObjectives(prev => [...prev, editNewObjective.trim()]);
+                                            setEditNewObjective("");
+                                          }
+                                        }}
+                                      />
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs px-2"
+                                        disabled={!editNewObjective.trim()}
+                                        onClick={() => { setEditObjectives(prev => [...prev, editNewObjective.trim()]); setEditNewObjective(""); }}
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  {/* Group students */}
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Users className="w-3 h-3" /> 그룹 수강생
+                                    </Label>
+                                    {editGroupStudents.length > 0 && (
+                                      <div className="flex flex-wrap gap-1">
+                                        {editGroupStudents.map((name, i) => (
+                                          <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-accent/50 text-foreground">
+                                            {name}
+                                            <button type="button" onClick={() => setEditGroupStudents(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive">
+                                              <X className="w-3 h-3" />
+                                            </button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <Select
+                                      value=""
+                                      onValueChange={(v) => {
+                                        if (v && !editGroupStudents.includes(v)) {
+                                          setEditGroupStudents(prev => [...prev, v]);
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-7 text-xs">
+                                        <SelectValue placeholder="수강생 추가..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {students
+                                          .filter(s => s.status === "active" && s.name !== student.name && !editGroupStudents.includes(s.name))
+                                          .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+                                          .map(s => (
+                                            <SelectItem key={s.dbId || s.name} value={s.name}>{s.name}</SelectItem>
+                                          ))
+                                        }
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  {/* Google Sheet URL */}
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Link2 className="w-3 h-3" /> Google Sheet URL
+                                    </Label>
+                                    <Input
+                                      value={editGoogleSheetUrl}
+                                      onChange={(e) => setEditGoogleSheetUrl(e.target.value)}
+                                      placeholder="https://docs.google.com/spreadsheets/..."
+                                      className="h-8 text-xs"
+                                    />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      className="h-7 text-xs bg-navy hover:bg-navy-light text-primary-foreground"
+                                      onClick={() => saveInlineEdit(student.id)}
+                                    >
+                                      저장
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs"
+                                      onClick={() => setEditingStudentId(null)}
+                                    >
+                                      취소
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                    <div>
+                                      <p className="text-muted-foreground">레벨</p>
+                                      <p className="font-semibold text-foreground mt-0.5">{student.level}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground">담당 강사</p>
+                                      <p className="font-semibold text-foreground mt-0.5">{student.instructor}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground">시작일</p>
+                                      <p className="font-semibold text-foreground mt-0.5">{student.startDate || <span className="text-muted-foreground font-normal">미설정</span>}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground">수업 보고서</p>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="mt-1 h-7 text-xs gap-1 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                        disabled={reportLoading === student.name}
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          setReportLoading(student.name);
+                                          try {
+                                            const { prepareReportData } = await import("@/lib/exportCorporateReportPdf");
+                                            const _now = new Date();
+                                            const _y = _now.getFullYear();
+                                            const _m = _now.getMonth();
+                                            const _startDate = `${_y}-${String(_m + 1).padStart(2, "0")}-01`;
+                                            const _lastDay = new Date(_y, _m + 1, 0).getDate();
+                                            const _endDate = `${_y}-${String(_m + 1).padStart(2, "0")}-${String(_lastDay).padStart(2, "0")}`;
+                                            const _label = `${_y}년 ${_m + 1}월`;
+                                            const { data: sessData } = await supabase
+                                              .from("class_sessions")
+                                              .select("scheduled_at,student_name,topic,notes,level,ended_at,group_students")
+                                              .eq("student_name", student.name)
+                                              .gte("scheduled_at", _startDate + "T00:00:00+09:00")
+                                              .lte("scheduled_at", _endDate + "T23:59:59+09:00")
+                                              .order("scheduled_at");
+                                            let objs: string[] = [];
+                                            try { objs = JSON.parse(student.learningObjective || "[]"); } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
+                                            const groupStudents = (sessData || []).find(s => s.group_students && s.group_students.length > 0)?.group_students || [];
+                                            const previewData = await prepareReportData(
+                                              sessData || [],
+                                              { studentName: student.name, instructorName: student.instructor, learningObjective: objs.join(", "), groupStudents },
+                                              { label: _label, start_date: _startDate, end_date: _endDate },
+                                            );
+                                            setReportPreview(previewData);
+                                          } catch (err) {
+                                            toast({ title: "보고서 생성 실패", variant: "destructive" });
+                                          } finally {
+                                            setReportLoading(null);
+                                          }
+                                        }}
+                                      >
+                                        {reportLoading === student.name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                                        {reportLoading === student.name ? "AI 생성 중..." : "보고서 다운로드"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Target className="w-3 h-3" />등록 계기 / 최종 목표</p>
+                                    {(() => {
+                                      let objs: string[] = [];
+                                      try { const p = JSON.parse(student.learningObjective || "[]"); objs = Array.isArray(p) ? p : student.learningObjective ? [student.learningObjective] : []; } catch { objs = student.learningObjective ? [student.learningObjective] : []; }
+                                      return objs.length > 0 ? (
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                          {objs.map((o, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground font-medium">{o}</span>)}
+                                        </div>
+                                      ) : <p className="text-xs text-muted-foreground font-normal mt-0.5">미설정</p>;
+                                    })()}
+                                  </div>
+                                  {student.schedules.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                                        <Clock className="w-3 h-3" />수업 일정
+                                      </p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {student.schedules.map((slot, i) => (
+                                          <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-navy/8 text-navy font-medium">
+                                            {slot.day}요일 {slot.time} {slot.frequency && slot.frequency !== "weekly" ? `(${FREQ_LABELS[slot.frequency]})` : ""}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {student.groupStudents.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                                        <Users className="w-3 h-3" />그룹 수강생
+                                      </p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {student.groupStudents.map((name, i) => (
+                                          <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-accent/50 text-foreground font-medium">{name}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {student.googleSheetUrl && (
+                                    <div>
+                                      <a href={student.googleSheetUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                                        <ExternalLink className="w-3 h-3" /> Google Sheet 열기
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Meet link */}
+                            <div className="p-3 rounded-lg bg-card border border-border">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Video className="w-3.5 h-3.5 text-muted-foreground" />
+                                  <div>
+                                    <p className="text-xs font-semibold text-foreground">수업 링크</p>
+                                    {student.meetLink ? (
+                                      <a href={student.meetLink} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline truncate block max-w-[200px]">
+                                        {student.meetLink}
+                                      </a>
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground">미설정</p>
+                                    )}
+                                  </div>
+                                </div>
+                                {editingMeetId === student.id ? (
+                                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                    <Input
+                                      value={meetLinkInput}
+                                      onChange={(e) => setMeetLinkInput(e.target.value)}
+                                      placeholder="https://meet.google.com/..."
+                                      className="h-7 text-xs w-48"
+                                    />
+                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => saveMeetLink(student.id)}>
+                                      <Check className="w-3 h-3" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingMeetId(null)}>
+                                      <X className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                                    onClick={(e) => { e.stopPropagation(); setEditingMeetId(student.id); setMeetLinkInput(student.meetLink); }}>
+                                    <Edit2 className="w-3 h-3" /> 수정
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Withdraw button */}
+                            {tab === "active" && (
+                              <div className="flex items-center justify-end gap-2 pt-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1.5 h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/5"
+                                  onClick={() => { setWithdrawTarget(student); setWithdrawReason(""); }}
+                                >
+                                  <UserX className="w-3 h-3" />
+                                  퇴원 처리
+                                </Button>
+                              </div>
+                            )}
+
+                            {tab === "graduated" && (
+                              <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-2">
+                                <p className="text-xs font-medium text-muted-foreground">
+                                  ℹ️ 퇴원 처리된 수강생입니다.
+                                </p>
+                                {student.withdrawalReason && (
+                                  <p className="text-xs text-muted-foreground">📝 사유: {student.withdrawalReason}</p>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs gap-1.5 text-[hsl(var(--navy))] border-[hsl(var(--navy))]/30 hover:bg-[hsl(var(--navy))]/10"
+                                  onClick={async () => {
+                                    if (!student.dbId) return;
+                                    const { error } = await supabase.from("instructor_students").update({
+                                      status: "active",
+                                      withdrawal_reason: null,
+                                    }).eq("id", student.dbId);
+                                    if (error) {
+                                      toast({ title: "재등록 실패", description: error.message, variant: "destructive" });
+                                    } else {
+                                      setStudents((prev) => prev.map((s) => s.id === student.id ? { ...s, status: "active" as StudentStatus, withdrawalReason: "" } : s));
+                                      toast({ title: `${student.name} 재등록 완료 ✓` });
+                                    }
+                                  }}
+                                >
+                                  <Play className="w-3 h-3" />
+                                  재등록 (수강 재개)
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </Card>
                     );
                   })}
