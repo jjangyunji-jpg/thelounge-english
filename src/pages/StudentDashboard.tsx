@@ -546,7 +546,7 @@ export default function StudentDashboard() {
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
       supabase.from("instructor_students").select("id,schedules,start_date,level,instructor_name,instructor_id,student_type,group_students")
-        .eq("student_name", student).maybeSingle(),
+        .eq("student_name", student).is("end_date", null).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
       // 휴강 공지 (팝업용은 미래만, 캘린더용은 전체)
