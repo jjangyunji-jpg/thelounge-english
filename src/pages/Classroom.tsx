@@ -333,6 +333,7 @@ export default function Classroom() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notesEditorRef = useRef<any>(null);
+  const [dialogueModalOpen, setDialogueModalOpen] = useState(false);
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
 
   const [versionModalOpen, setVersionModalOpen] = useState(false);
