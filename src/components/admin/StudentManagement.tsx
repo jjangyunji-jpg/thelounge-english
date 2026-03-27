@@ -1246,6 +1246,18 @@ export default function StudentManagement() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="h-7 px-2 text-[10px] gap-1 border-[hsl(var(--navy))]/30 text-[hsl(var(--navy))] hover:bg-[hsl(var(--navy))]/8 flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/t/student-dashboard?student_name=${encodeURIComponent(student.name)}`);
+                  }}
+                >
+                  <Activity className="w-3 h-3" />
+                  대시보드
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   className="h-7 px-2 text-[10px] gap-1 border-gold/40 text-gold-dark hover:bg-gold/8 flex-shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
