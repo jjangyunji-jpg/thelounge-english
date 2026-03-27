@@ -701,6 +701,19 @@ export default function NotesEditor({
           </div>
         )}
       </div>
+
+      <DialogueGeneratorModal
+        open={dialogueModalOpen}
+        onClose={() => setDialogueModalOpen(false)}
+        defaultLevel={level}
+        defaultStudentName={studentName}
+        onInsert={(html) => {
+          if (editor) {
+            editor.chain().focus().insertContent(html).run();
+            onChange(editor.getHTML());
+          }
+        }}
+      />
     </div>
   );
 }
