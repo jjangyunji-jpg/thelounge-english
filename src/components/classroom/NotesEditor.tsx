@@ -19,8 +19,9 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Bold, Underline as UnderlineIcon, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
-  MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon,
+  MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon, MessageCircle,
 } from "lucide-react";
+import DialogueGeneratorModal from "./DialogueGeneratorModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
