@@ -655,14 +655,17 @@ export default function Classroom() {
       }
 
       // Load previous session's homework status
-      const { data: prevSessData } = await supabase
+      // Fetch last 2 sessions before current to determine time window
+      const { data: prevSessArr } = await supabase
         .from("class_sessions")
-        .select("id")
+        .select("id, scheduled_at")
         .eq("student_name", session.dbStudentName)
         .lt("scheduled_at", session.scheduledAt.toISOString())
         .order("scheduled_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(2);
+
+      const prevSessData = prevSessArr?.[0] ?? null;
+      const prevPrevSess = prevSessArr?.[1] ?? null;
 
       if (prevSessData?.id) {
         const { data: prevHwData } = await supabase
@@ -680,19 +683,25 @@ export default function Classroom() {
           );
           const filteredPrev = prevHwData.filter(d => {
             if (d.is_preset && prevCopyOriginIds.has(d.id)) return false;
-            // Also hide pure presets if copies exist (prefer session copies)
             return d.session_id === prevSessData.id || (d.is_preset && !prevCopyOriginIds.has(d.id));
           });
           const hwIds = filteredPrev.map(h => h.id);
-          // Also collect preset_origin_ids for session copies (students submit against template)
           const presetOriginIds = filteredPrev
             .filter(h => h.preset_origin_id)
             .map(h => h.preset_origin_id as string);
           const allLookupIds = [...hwIds, ...presetOriginIds];
+
+          // Time-window filter: only count submissions after the session before prevSession
+          const cutoffTime = prevPrevSess
+            ? new Date(prevPrevSess.scheduled_at).toISOString()
+            : new Date(prevSessData.scheduled_at).toISOString();
+
           const { data: subData } = await supabase
             .from("homework_submissions")
-            .select("assignment_id, status")
-            .in("assignment_id", allLookupIds);
+            .select("assignment_id, status, submitted_at")
+            .in("assignment_id", allLookupIds)
+            .gte("submitted_at", cutoffTime)
+            .lt("submitted_at", session.scheduledAt.toISOString());
 
           const subMap = new Map((subData || []).map(s => [s.assignment_id, s.status]));
           setPrevHwList(filteredPrev.map(h => ({
