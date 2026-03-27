@@ -20,6 +20,7 @@ import { exportNotesPdf } from "@/lib/exportNotesPdf";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
+import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -1425,10 +1426,24 @@ export default function Classroom() {
                         const isSubmitted = h.status === "submitted" || h.status === "reviewed";
                         const isReviewed = h.status === "reviewed";
                         return (
-                          <div key={h.id} className={cn(
-                            "flex items-center gap-2 px-2.5 py-1.5 rounded-md border",
-                            isSubmitted ? "border-border bg-card" : "border-dashed border-muted-foreground/20 bg-muted/10"
-                          )}>
+                          <button
+                            key={h.id}
+                            onClick={async () => {
+                              setReviewModalHw({ id: h.id, type: h.type, title: h.title });
+                              setReviewLoading(true);
+                              const { data: sub } = await supabase
+                                .from("homework_submissions")
+                                .select("*")
+                                .eq("assignment_id", h.id)
+                                .maybeSingle();
+                              setReviewSubmission(sub);
+                              setReviewLoading(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-left hover:bg-muted/50 transition-colors",
+                              isSubmitted ? "border-border bg-card" : "border-dashed border-muted-foreground/20 bg-muted/10"
+                            )}
+                          >
                             <Icon className={cn("w-3 h-3 flex-shrink-0", meta?.color || "text-muted-foreground")} />
                             <span className="text-[11px] flex-1 truncate">{h.title}</span>
                             {isReviewed ? (
@@ -1438,7 +1453,7 @@ export default function Classroom() {
                             ) : (
                               <span className="text-[9px] text-destructive/70 font-medium flex-shrink-0">미제출</span>
                             )}
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
