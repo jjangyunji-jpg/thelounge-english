@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import { useToast } from "@/hooks/use-toast";
 import { autoGenerateSessions } from "@/lib/autoGenerateSessions";
+import TransferStudentModal from "./TransferStudentModal";
 
 type StudentStatus = "active" | "graduated";
 type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
@@ -223,6 +224,7 @@ export default function StudentManagement() {
   const [inviting, setInviting] = useState(false);
   const [reportPreview, setReportPreview] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState<string | null>(null);
+  const [transferOpen, setTransferOpen] = useState(false);
 
   const handleInviteStudent = async () => {
     if (!inviteEmail.trim() || !inviteStudentName.trim()) return;
@@ -785,6 +787,10 @@ export default function StudentManagement() {
           <Button variant="outline" size="sm" className="gap-2 border-gold text-gold-dark hover:bg-gold/8">
             <Download className="w-4 h-4" />
             이번달 수강생 리스트
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2 border-[hsl(var(--navy)/0.5)] text-[hsl(var(--navy))] hover:bg-[hsl(var(--navy)/0.08)]" onClick={() => setTransferOpen(true)}>
+            <ArrowRightLeft className="w-4 h-4" />
+            강사 이관
           </Button>
           {/* 학생 초대 다이얼로그 */}
           <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
