@@ -71,7 +71,20 @@ export default function Signup() {
       }
 
       const { data, error } = await supabase.functions.invoke("register", { body });
-      if (error) throw error;
+      if (error) {
+        // FunctionsHttpError carries the response body in context
+        let msg = "다시 시도해주세요.";
+        try {
+          const ctx = (error as any).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            if (body?.error) msg = body.error;
+          } else if (error.message) {
+            msg = error.message;
+          }
+        } catch { /* fallback */ }
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
 
       setDone(true);
