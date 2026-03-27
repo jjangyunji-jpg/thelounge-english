@@ -1431,11 +1431,13 @@ export default function Classroom() {
                             onClick={async () => {
                               setReviewModalHw({ id: h.id, type: h.type, title: h.title });
                               setReviewLoading(true);
-                              const { data: sub } = await supabase
+                              const { data: subs } = await supabase
                                 .from("homework_submissions")
                                 .select("*")
                                 .eq("assignment_id", h.id)
-                                .maybeSingle();
+                                .order("submitted_at", { ascending: false })
+                                .limit(1);
+                              const sub = subs?.[0] ?? null;
                               setReviewSubmission(sub);
                               setReviewLoading(false);
                             }}
