@@ -30,6 +30,7 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
   const [showInbox, setShowInbox] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [popupNotification, setPopupNotification] = useState<Notification | null>(null);
+  const [detailNotification, setDetailNotification] = useState<Notification | null>(null);
 
   const targetFilter = role === "instructor" ? ["all", "instructors"] : ["all", "students"];
 
@@ -189,48 +190,54 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
                     key={n.id}
                     className={`p-3 rounded-lg border transition-colors cursor-pointer ${
                       isRead
-                        ? "border-border bg-muted/20"
-                        : "border-gold/30 bg-gold/5"
+                        ? "border-border bg-muted/20 hover:bg-muted/40"
+                        : "border-gold/30 bg-gold/5 hover:bg-gold/10"
                     }`}
-                    onClick={() => !isRead && markAsRead(n.id)}
+                    onClick={() => {
+                      setDetailNotification(n);
+                      if (!isRead) markAsRead(n.id);
+                    }}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          {!isRead && (
-                            <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0" />
-                          )}
-                          <p className={`text-sm truncate ${isRead ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
-                            {n.subject}
-                          </p>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                          {n.body}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1">
-                          <Clock className="w-2.5 h-2.5" />
-                          {format(new Date(n.sent_at), "yyyy.MM.dd HH:mm")}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-2">
                       {!isRead && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-[10px] text-muted-foreground flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            markAsRead(n.id);
-                          }}
-                        >
-                          <Check className="w-3 h-3" />
-                        </Button>
+                        <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0" />
                       )}
+                      <p className={`text-sm truncate flex-1 ${isRead ? "text-muted-foreground" : "font-semibold text-foreground"}`}>
+                        {n.subject}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/60 flex items-center gap-1 flex-shrink-0">
+                        <Clock className="w-2.5 h-2.5" />
+                        {format(new Date(n.sent_at), "MM.dd")}
+                      </p>
                     </div>
                   </div>
                 );
               })
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Modal */}
+      <Dialog open={!!detailNotification} onOpenChange={(open) => { if (!open) setDetailNotification(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">{detailNotification?.subject}</DialogTitle>
+          </DialogHeader>
+          {detailNotification && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {format(new Date(detailNotification.sent_at), "yyyy.MM.dd HH:mm")}
+              </p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/40 p-3 rounded-lg">
+                {detailNotification.body}
+              </p>
+              <Button onClick={() => setDetailNotification(null)} className="w-full bg-navy hover:bg-navy-light text-primary-foreground">
+                닫기
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
