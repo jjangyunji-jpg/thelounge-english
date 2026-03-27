@@ -19,9 +19,8 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Bold, Underline as UnderlineIcon, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
-  MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon, MessageCircle,
+  MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon,
 } from "lucide-react";
-import DialogueGeneratorModal from "./DialogueGeneratorModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -63,7 +62,6 @@ export default function NotesEditor({
   level = "B1",
 }: NotesEditorProps) {
   const { toast } = useToast();
-  const [dialogueModalOpen, setDialogueModalOpen] = useState(false);
   const isUpdatingRef = useRef(false);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -633,14 +631,6 @@ export default function NotesEditor({
               {aiCorrecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
             </button>
 
-            {/* Dialogue Generator button */}
-            <button
-              title="Dialogue 생성"
-              onMouseDown={(e) => { e.preventDefault(); setDialogueModalOpen(true); }}
-              className="p-1.5 rounded transition-colors text-muted-foreground hover:text-gold hover:bg-muted"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-            </button>
 
             <span className="ml-auto text-[10px] text-muted-foreground/50 hidden sm:inline">/ 슬래시 명령</span>
             {onAutoCorrectToggle && (
@@ -702,18 +692,6 @@ export default function NotesEditor({
         )}
       </div>
 
-      <DialogueGeneratorModal
-        open={dialogueModalOpen}
-        onClose={() => setDialogueModalOpen(false)}
-        defaultLevel={level}
-        defaultStudentName={studentName}
-        onInsert={(html) => {
-          if (editor) {
-            editor.chain().focus().insertContent(html).run();
-            onChange(editor.getHTML());
-          }
-        }}
-      />
     </div>
   );
 }
