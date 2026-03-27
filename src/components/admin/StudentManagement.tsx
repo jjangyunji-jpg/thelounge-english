@@ -603,6 +603,7 @@ export default function StudentManagement() {
           schedules: [...editSchedules],
           studentType: editStudentType,
           groupStudents: [...editGroupStudents],
+          googleSheetUrl: editGoogleSheetUrl.trim(),
         };
       })
     );
