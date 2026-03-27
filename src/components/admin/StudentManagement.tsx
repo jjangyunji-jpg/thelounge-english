@@ -356,7 +356,10 @@ export default function StudentManagement() {
   });
 
   const filtered = students.filter(
-    (s) => s.status === tab && s.name.includes(search)
+    (s) => s.status === tab && s.studentType !== "corporate" && s.name.includes(search)
+  );
+  const filteredCorporate = students.filter(
+    (s) => s.status === tab && s.studentType === "corporate" && s.name.includes(search)
   );
 
   // 학생의 정기 숙제 DB 로드
@@ -1117,7 +1120,7 @@ export default function StudentManagement() {
               tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t === "active" ? "수강중" : "퇴원생"} ({students.filter((s) => s.status === t).length}명)
+            {t === "active" ? "수강중" : "퇴원생"} ({students.filter((s) => s.status === t && s.studentType !== "corporate").length}명)
           </button>
         ))}
       </div>
@@ -2085,6 +2088,82 @@ export default function StudentManagement() {
           </div>
         )}
       </div>
+
+      {/* Corporate student section */}
+      {filteredCorporate.length > 0 && (
+        <div className="space-y-5 mt-8">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-foreground flex items-center gap-1.5">
+              🏢 기업 수강생
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+              {filteredCorporate.length}명
+            </span>
+            <div className="flex-1 border-t border-border" />
+          </div>
+          {(() => {
+            const grouped: Record<string, Student[]> = {};
+            filteredCorporate.forEach((s) => {
+              const key = s.instructor || "미지정";
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(s);
+            });
+            Object.values(grouped).forEach((arr) =>
+              arr.sort((a, b) => a.name.localeCompare(b.name, "ko"))
+            );
+            const sortedKeys = Object.keys(grouped).sort((a, b) =>
+              a === "미지정" ? 1 : b === "미지정" ? -1 : a.localeCompare(b, "ko")
+            );
+            return sortedKeys.map((instrName) => (
+              <div key={`corp-${instrName}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    👩‍🏫 {instrName}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    ({grouped[instrName].length}명)
+                  </span>
+                  <div className="flex-1 border-t border-border" />
+                </div>
+                <div className="space-y-2">
+                  {grouped[instrName].map((student) => {
+                    const isEditing = editingStudentId === student.id;
+                    return (
+                      <Card key={student.id} className="shadow-card border-border overflow-hidden">
+                        <div
+                          className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                          onClick={() => handleExpandStudent(student.id, student.name)}
+                        >
+                          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <span className="text-blue-700 font-bold text-sm">{student.name.charAt(0)}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-foreground text-sm">{formatStudentName(student.name, student.englishName)}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${levelColors[student.level]}`}>
+                                {student.level}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">기업</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {student.instructor} · {student.startDate || "시작일 미정"}
+                            </p>
+                          </div>
+                          {expandedId === student.id ? (
+                            <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+      )}
 
       {/* Withdrawal reason dialog */}
       <Dialog open={!!withdrawTarget} onOpenChange={(open) => { if (!open) setWithdrawTarget(null); }}>
