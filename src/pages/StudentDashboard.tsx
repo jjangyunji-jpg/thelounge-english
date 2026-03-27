@@ -693,7 +693,7 @@ export default function StudentDashboard() {
 
     // ── 결제 미완료 팝업 체크 ──
     // 수업 완료 후 다음 접속 시 결제가 안된 학생에게 팝업 표시
-    const isCorporateStudent = ((studentRes.data as any)?.student_type || 'regular') === 'corporate';
+    const isCorporateStudent = (activeStudentRec?.student_type || 'regular') === 'corporate';
     if (!isCorporateStudent) {
       const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
       const currentMonth = nowKst.slice(0, 7); // YYYY-MM
