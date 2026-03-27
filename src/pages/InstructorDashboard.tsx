@@ -3169,7 +3169,7 @@ export default function InstructorDashboard() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColor)}>{statusLabel}</span>
-                        {st.google_sheet_url && (
+                        {st.google_sheet_url ? (
                           <a
                             href={st.google_sheet_url}
                             target="_blank"
@@ -3180,6 +3180,13 @@ export default function InstructorDashboard() {
                           >
                             <FileText className="w-3.5 h-3.5" />
                           </a>
+                        ) : (
+                          <span
+                            className="p-1.5 rounded-lg text-muted-foreground/40 cursor-not-allowed"
+                            title="학생일지 미등록"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </span>
                         )}
                         <button
                           onClick={() => navigate(`/t/student-dashboard?student_name=${encodeURIComponent(st.student_name)}`)}
