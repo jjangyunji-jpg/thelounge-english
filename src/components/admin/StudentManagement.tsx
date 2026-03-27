@@ -1498,6 +1498,38 @@ export default function StudentManagement() {
                     )}
                   </div>
 
+                  {/* Transfer History (이관 이력) */}
+                  {student.transferHistory && student.transferHistory.length > 0 && (
+                    <div className="p-3 rounded-lg bg-card border border-border space-y-2">
+                      <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <ArrowRightLeft className="w-3.5 h-3.5 text-navy" />
+                        강사 이관 이력
+                      </h4>
+                      <div className="space-y-2">
+                        {student.transferHistory.map((t, idx) => (
+                          <div key={idx} className="p-2.5 rounded-md bg-muted/40 border border-border space-y-1.5">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="font-medium text-foreground">{t.fromInstructor}</span>
+                              <ArrowRightLeft className="w-3 h-3 text-muted-foreground" />
+                              <span className="font-medium text-foreground">{t.toInstructor}</span>
+                              <span className="text-muted-foreground ml-auto">{t.transferDate}</span>
+                            </div>
+                            <div className="flex items-start gap-4 text-[11px] text-muted-foreground">
+                              <div>
+                                <span className="text-muted-foreground/70">이전:</span>{" "}
+                                <span>{t.oldSchedules}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground/70">변경:</span>{" "}
+                                <span>{t.newSchedules}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Pause (휴강) Section */}
                   <div className="p-3 rounded-lg bg-card border border-border space-y-2">
                     <div className="flex items-center justify-between">
