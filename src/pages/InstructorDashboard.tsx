@@ -65,6 +65,7 @@ interface StudentFull {
   learning_objective: string | null;
   extra_lessons: number | null;
   start_date: string | null;
+  end_date: string | null;
   student_type: string | null;
   group_students?: string[];
   instructor_id: string;
