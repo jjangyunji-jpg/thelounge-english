@@ -521,6 +521,7 @@ export default function StudentManagement() {
   // Withdrawal dialog state
   const [withdrawTarget, setWithdrawTarget] = useState<Student | null>(null);
   const [withdrawReason, setWithdrawReason] = useState("");
+  const [withdrawDate, setWithdrawDate] = useState<Date | undefined>(undefined);
   const [withdrawing, setWithdrawing] = useState(false);
 
   // Schedule change effective-date dialog state
@@ -529,22 +530,31 @@ export default function StudentManagement() {
   const [schedChangeSaving, setSchedChangeSaving] = useState(false);
 
   const graduate = async () => {
-    if (!withdrawTarget) return;
+    if (!withdrawTarget || !withdrawDate) return;
     setWithdrawing(true);
+
+    const withdrawDateStr = format(withdrawDate, "yyyy-MM-dd");
+
     if (withdrawTarget.dbId) {
       await supabase.from("instructor_students").update({
         status: "inactive",
         withdrawal_reason: withdrawReason.trim() || null,
+        end_date: withdrawDateStr,
       }).eq("id", withdrawTarget.dbId);
     }
 
-    // Auto-delete future unstarted sessions with no notes
+    // Delete unstarted sessions with no notes AFTER the withdrawal date
+    // Use KST date for comparison: sessions on or after the day after withdrawDate
+    const cutoffDate = new Date(withdrawDate);
+    cutoffDate.setDate(cutoffDate.getDate() + 1);
+    const cutoffISO = cutoffDate.toISOString().slice(0, 10) + "T00:00:00+09:00";
+
     const { data: futureSessions } = await supabase
       .from("class_sessions")
-      .select("id, started_at, notes")
+      .select("id, started_at, notes, scheduled_at")
       .eq("student_name", withdrawTarget.name)
       .is("started_at", null)
-      .gte("scheduled_at", new Date().toISOString());
+      .gte("scheduled_at", cutoffISO);
 
     const deletableIds = (futureSessions || [])
       .filter(s => !s.notes || s.notes === "")
@@ -555,10 +565,11 @@ export default function StudentManagement() {
     }
 
     setStudents((prev) => prev.map((s) => (s.id === withdrawTarget.id ? { ...s, status: "graduated", withdrawalReason: withdrawReason.trim() } : s)));
-    toast({ title: `${withdrawTarget.name} 퇴원 처리 완료 (미래 수업 ${deletableIds.length}건 삭제)` });
+    toast({ title: `${withdrawTarget.name} 퇴원 처리 완료`, description: `퇴원일: ${withdrawDateStr} / 삭제된 수업: ${deletableIds.length}건` });
     setWithdrawing(false);
     setWithdrawTarget(null);
     setWithdrawReason("");
+    setWithdrawDate(undefined);
   };
 
   const [editEnglishName, setEditEnglishName] = useState("");
@@ -2878,23 +2889,40 @@ export default function StudentManagement() {
           <p className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{withdrawTarget?.name}</span> 님을 퇴원 처리합니다.
           </p>
-          <div className="space-y-2">
-            <Label className="text-xs">퇴원 사유 (선택)</Label>
-            <Textarea
-              value={withdrawReason}
-              onChange={(e) => setWithdrawReason(e.target.value)}
-              placeholder="퇴원 사유를 입력하세요..."
-              className="h-20 text-sm resize-none"
-              maxLength={500}
-            />
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label className="text-xs">퇴원 예정일 <span className="text-destructive">*</span></Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("h-9 w-full text-sm justify-start", !withdrawDate && "text-muted-foreground")}>
+                    <CalendarIcon className="w-3.5 h-3.5 mr-2" />
+                    {withdrawDate ? format(withdrawDate, "yyyy-MM-dd") : "퇴원 예정일 선택"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={withdrawDate} onSelect={setWithdrawDate} className="pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+              <p className="text-xs text-muted-foreground">퇴원일 이후의 미진행 수업 세션은 자동 삭제됩니다.</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">퇴원 사유 (선택)</Label>
+              <Textarea
+                value={withdrawReason}
+                onChange={(e) => setWithdrawReason(e.target.value)}
+                placeholder="퇴원 사유를 입력하세요..."
+                className="h-20 text-sm resize-none"
+                maxLength={500}
+              />
+            </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setWithdrawTarget(null)}>취소</Button>
+            <Button variant="outline" size="sm" onClick={() => { setWithdrawTarget(null); setWithdrawDate(undefined); setWithdrawReason(""); }}>취소</Button>
             <Button
               size="sm"
               variant="destructive"
               onClick={graduate}
-              disabled={withdrawing}
+              disabled={withdrawing || !withdrawDate}
               className="gap-1.5"
             >
               {withdrawing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
