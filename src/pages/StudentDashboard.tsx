@@ -737,45 +737,49 @@ export default function StudentDashboard() {
     const periods = periodsRes.data || [];
     const todayDate = new Date();
     const allStudentSessions = visibleAllSessions;
-    const studentRec = activeStudentRec;
-    const instrName = studentRec?.instructor_name;
-
     for (const period of periods) {
       const periodEnd = new Date(period.end_date + "T23:59:59");
+      const pStart = new Date(period.start_date + "T00:00:00");
 
-      if (instrName) {
-        // 이 기간의 세션 필터링
-        const periodSessions = allStudentSessions.filter(s => {
-          const sDate = new Date(s.scheduled_at);
-          const pStart = new Date(period.start_date + "T00:00:00");
-          return sDate >= pStart && sDate <= periodEnd;
-        });
-        if (periodSessions.length === 0) continue;
+      // 이 기간의 세션 필터링
+      const periodSessions = allStudentSessions.filter(s => {
+        const sDate = new Date(s.scheduled_at);
+        return sDate >= pStart && sDate <= periodEnd;
+      });
+      if (periodSessions.length === 0) continue;
 
-        // 마지막 수업의 scheduled_at이 현재 시각보다 과거인지 확인
-        const lastSession = periodSessions[periodSessions.length - 1]; // ascending order
-        const lastSessionTime = new Date(lastSession.scheduled_at);
-        // 수업 시간 + 1시간 후부터 피드백 팝업 표시
-        const feedbackAvailableAfter = new Date(lastSessionTime.getTime() + 60 * 60 * 1000);
-        const lastSessionPassed = todayDate >= feedbackAvailableAfter;
+      // 해당 기간에 실제로 수업을 진행한 강사를 기준으로 함 (이관 대응)
+      // 가장 많은 수업을 진행한 강사 = 해당 기간 담당 강사
+      const instrCounts: Record<string, number> = {};
+      periodSessions.forEach(s => {
+        instrCounts[s.instructor_name] = (instrCounts[s.instructor_name] || 0) + 1;
+      });
+      const periodInstructorName = Object.entries(instrCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+      if (!periodInstructorName) continue;
 
-        if (lastSessionPassed || todayDate > periodEnd) {
-          // 이미 피드백을 제출했는지 확인
-          const { data: existingFeedback } = await supabase
-            .from("class_feedback")
-            .select("id")
-            .eq("student_name", student)
-            .eq("period_id", period.id)
-            .maybeSingle();
+      // 마지막 수업의 scheduled_at이 현재 시각보다 과거인지 확인
+      const lastSession = periodSessions[periodSessions.length - 1]; // ascending order
+      const lastSessionTime = new Date(lastSession.scheduled_at);
+      // 수업 시간 + 1시간 후부터 피드백 팝업 표시
+      const feedbackAvailableAfter = new Date(lastSessionTime.getTime() + 60 * 60 * 1000);
+      const lastSessionPassed = todayDate >= feedbackAvailableAfter;
 
-          if (!existingFeedback) {
-            setFeedbackNeeded({
-              periodId: period.id,
-              periodLabel: period.label,
-              instructorName: instrName,
-            });
-            break;
-          }
+      if (lastSessionPassed || todayDate > periodEnd) {
+        // 이미 피드백을 제출했는지 확인
+        const { data: existingFeedback } = await supabase
+          .from("class_feedback")
+          .select("id")
+          .eq("student_name", student)
+          .eq("period_id", period.id)
+          .maybeSingle();
+
+        if (!existingFeedback) {
+          setFeedbackNeeded({
+            periodId: period.id,
+            periodLabel: period.label,
+            instructorName: periodInstructorName,
+          });
+          break;
         }
       }
     }
