@@ -87,10 +87,10 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
       const transferDateStr = format(transferDate, "yyyy-MM-dd");
       const finalSchedules = changeSchedule ? newSchedules : selectedStudent.schedules;
 
-      // 1. Set end_date on the old record
+      // 1. Set end_date and deactivate the old record
       const { error: updateError } = await supabase
         .from("instructor_students")
-        .update({ end_date: transferDateStr } as any)
+        .update({ end_date: transferDateStr, status: "inactive" } as any)
         .eq("id", selectedStudent.dbId);
       if (updateError) throw updateError;
 

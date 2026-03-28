@@ -65,6 +65,7 @@ interface StudentFull {
   learning_objective: string | null;
   extra_lessons: number | null;
   start_date: string | null;
+  end_date: string | null;
   student_type: string | null;
   group_students?: string[];
   instructor_id: string;
@@ -277,6 +278,8 @@ function buildVirtualSchedules(students: StudentFull[], year: number, month: num
         if (holidaySet.has(dateStr2)) continue;
         // Skip dates before student's start_date
         if (st.start_date && dateStr2 < st.start_date) continue;
+        // Skip dates on/after student's end_date (transfer/종료 시점 이후 숨김)
+        if (st.end_date && dateStr2 >= st.end_date) continue;
         // Skip dates during any pause period
         if (st.pauses && st.pauses.some(p => dateStr2 >= p.pause_start && (!p.pause_end || dateStr2 <= p.pause_end))) continue;
 
@@ -1466,19 +1469,44 @@ export default function InstructorDashboard() {
       supabase.from("business_meeting_attendees").select("meeting_id,instructor_id").eq("instructor_id", ins.id) as any,
     ]);
 
-    const shouldHideSession = (session: { student_name: string; scheduled_at: string }) => {
-      const st = studentsWithPauses.find((s) => s.student_name === session.student_name);
-      if (!st) return false;
+    const studentsByName = new Map<string, StudentFull[]>();
+    studentsWithPauses.forEach((s) => {
+      const key = s.student_name;
+      if (!studentsByName.has(key)) studentsByName.set(key, []);
+      studentsByName.get(key)!.push(s);
+    });
+
+    const isWithinStudentWindow = (student: StudentFull, dateStr: string) => {
+      if (student.start_date && dateStr < student.start_date) return false;
+      // end_date는 이관일(새 강사 시작일)이므로 당일부터는 제외
+      if (student.end_date && dateStr >= student.end_date) return false;
+      return true;
+    };
+
+    const sessionBelongsToThisInstructor = (session: { student_name: string; scheduled_at: string }) => {
+      const candidates = studentsByName.get(session.student_name) || [];
+      if (candidates.length === 0) return false;
       const dateStr = session.scheduled_at.slice(0, 10);
-      if (st.student_type !== "corporate" && st.start_date && dateStr < st.start_date) return true;
-      return st.pauses?.some((p) => dateStr >= p.pause_start && (!p.pause_end || dateStr <= p.pause_end)) ?? false;
+      return candidates.some((st) => isWithinStudentWindow(st, dateStr));
+    };
+
+    const shouldHideSession = (session: { student_name: string; scheduled_at: string }) => {
+      const candidates = studentsByName.get(session.student_name) || [];
+      const dateStr = session.scheduled_at.slice(0, 10);
+      const matchingStudents = candidates.filter((st) => isWithinStudentWindow(st, dateStr));
+      if (matchingStudents.length === 0) return true;
+      return matchingStudents.some(
+        (st) => st.pauses?.some((p) => dateStr >= p.pause_start && (!p.pause_end || dateStr <= p.pause_end)) ?? false,
+      );
     };
 
     // Merge and deduplicate sessions from both queries
     const sessMap = new Map<string, any>();
     for (const s of (sessRes.data || [])) sessMap.set(s.id, s);
     for (const s of (sessRes2.data || [])) sessMap.set(s.id, s);
-    const filteredSessions = Array.from(sessMap.values()).filter((s) => !shouldHideSession(s));
+    const filteredSessions = Array.from(sessMap.values()).filter(
+      (s) => sessionBelongsToThisInstructor(s) && !shouldHideSession(s),
+    );
 
     setStudents(studentsWithPauses);
     setSessions(filteredSessions);
@@ -1903,9 +1931,17 @@ export default function InstructorDashboard() {
       if (st.status !== "active" || !st.schedules) return;
       if (actualStudents.has(st.student_name)) return;
       if (st.start_date && selDateStr < st.start_date) return;
+      if (st.end_date && selDateStr >= st.end_date) return;
       if (st.pauses?.some((p) => selDateStr >= p.pause_start && (!p.pause_end || selDateStr <= p.pause_end))) return;
+
       let slots: ScheduleSlot[] = [];
+      try {
+        slots = JSON.parse(st.schedules);
+      } catch {
+        return;
+      }
       if (!Array.isArray(slots)) return;
+
       slots.forEach((slot) => {
         if (slot.day === dayName) {
           result.push({ student_name: st.student_name, time: slot.time, meet_link: st.meet_link, level: st.level });
