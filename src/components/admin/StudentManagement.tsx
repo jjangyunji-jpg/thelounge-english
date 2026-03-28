@@ -1323,9 +1323,13 @@ export default function StudentManagement() {
                   size="sm"
                   variant="outline"
                   className="h-7 px-2 text-[10px] gap-1 border-gold/40 text-gold-dark hover:bg-gold/8 flex-shrink-0"
+                  disabled={!student.googleSheetUrl}
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/my/classnote?name=${encodeURIComponent(student.name)}`);
+                    if (student.googleSheetUrl) {
+                      const url = student.googleSheetUrl.startsWith("http") ? student.googleSheetUrl : `https://${student.googleSheetUrl}`;
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }
                   }}
                 >
                   <FileText className="w-3 h-3" />
