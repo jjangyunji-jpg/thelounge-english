@@ -125,18 +125,18 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
         } as any);
       if (insertError) throw insertError;
 
-      // 4. Delete future unstarted sessions (after transfer date) for the old instructor
-      //    so the old instructor's dashboard won't show them
-      const transferDateISO = new Date(transferDateStr + "T00:00:00+09:00").toISOString();
-      const { data: futureSessions } = await supabase
+      // 4. Delete ALL unstarted sessions with no notes for the old instructor
+      //    This covers sessions both before and after the transfer date
+      const { data: oldInstructorSessions } = await supabase
         .from("class_sessions")
-        .select("id")
+        .select("id, notes")
         .eq("student_name", selectedStudent.name)
         .eq("instructor_name", selectedStudent.instructor)
-        .is("started_at", null)
-        .gte("scheduled_at", transferDateISO);
+        .is("started_at", null);
 
-      const deleteIds = (futureSessions || []).map(s => s.id);
+      const deleteIds = (oldInstructorSessions || [])
+        .filter(s => !s.notes || s.notes === "")
+        .map(s => s.id);
       if (deleteIds.length > 0) {
         await supabase.from("class_sessions").delete().in("id", deleteIds);
       }
