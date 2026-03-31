@@ -228,8 +228,7 @@ serve(async (req) => {
           const freq: Frequency = sched.frequency || "weekly";
           if (!isMatchingWeek(dateStr, period.start_date, freq)) continue;
 
-          const isGroup = Array.isArray((student as any).group_students) && (student as any).group_students.length > 0;
-          if (!isGroup && existingSet.has(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`)) continue;
+          if (existingSet.has(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`)) continue;
 
           const [hour, minute] = (sched.time || "10:00").split(":").map(Number);
           const scheduledAt = new Date(
