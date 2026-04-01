@@ -32,6 +32,7 @@ interface PaymentConfirmation {
   student_name: string;
   month: string;
   confirmed: boolean;
+  note: string | null;
 }
 
 interface PrepaidCredit {
