@@ -125,10 +125,10 @@ export default function CashReceiptManagement() {
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
-      // Regular: period-based
-      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
+      // Regular: period-based — also fetch reschedule_origin_dates to attribute rescheduled sessions to their original period
+      supabase.from("class_sessions").select("student_name, scheduled_at, reschedule_origin_dates").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
       // Corporate: calendar month-based
-      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", corpMonthStart).lt("scheduled_at", corpMonthEnd),
+      supabase.from("class_sessions").select("student_name, scheduled_at, reschedule_origin_dates").gte("scheduled_at", corpMonthStart).lt("scheduled_at", corpMonthEnd),
       supabase.from("prepaid_credits" as any).select("*"),
       supabase.from("prepaid_deductions" as any).select("*").eq("month", periodKey),
       supabase.from("support_requests").select("id, user_name, description, status, created_at").eq("category", "attendance").order("created_at", { ascending: false }),
@@ -140,9 +140,24 @@ export default function CashReceiptManagement() {
     setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
     setAttendanceRequests((attendRes.data as any as AttendanceRequest[]) || []);
 
+    // Count sessions per student, but attribute rescheduled sessions to their original period
+    const pStart = currentPeriod.start_date; // "YYYY-MM-DD"
+    const pEnd = currentPeriod.end_date;
     const counts = new Map<string, number>();
     (sessRes.data || []).forEach((s: any) => {
-      counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
+      const origins: string[] = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+      if (origins.length > 0) {
+        // This session was rescheduled — check if its original date was in this period
+        const lastOrigin = origins[origins.length - 1]; // most recent original date
+        if (lastOrigin >= pStart && lastOrigin <= pEnd) {
+          // Original date is within this period, count it here
+          counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
+        }
+        // If original date is outside this period, don't count — it belongs to the original period
+      } else {
+        // Normal session (not rescheduled), count normally
+        counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
+      }
     });
     setSessionCounts(counts);
 
