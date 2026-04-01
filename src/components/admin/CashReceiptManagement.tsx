@@ -399,6 +399,17 @@ export default function CashReceiptManagement() {
           {s.group_students?.length > 0 && (
             <span className="ml-1.5 text-[10px] text-muted-foreground">(그룹 {s.group_students.length + 1}인)</span>
           )}
+          {(() => {
+            const isNew = s.start_date && currentPeriod && s.start_date >= currentPeriod.start_date && s.start_date <= currentPeriod.end_date;
+            if (isNew) return <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-semibold">신규</span>;
+            return null;
+          })()}
+          {(() => {
+            const today = new Date().toISOString().slice(0, 10);
+            const isPaused = s.pause_start && (!s.pause_end || s.pause_end >= today) && s.pause_start <= today;
+            if (isPaused) return <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-warning/15 text-warning font-semibold">휴강</span>;
+            return null;
+          })()}
         </td>
         <td className="px-4 py-3 text-right">
           {isCorporate ? (
