@@ -382,6 +382,74 @@ export default function StudentManagement() {
     }
   };
 
+  const [cancellingTransfer, setCancellingTransfer] = useState(false);
+
+  const handleCancelTransfer = async (studentName: string, transfer: TransferRecord) => {
+    setCancellingTransfer(true);
+    try {
+      // 1. Find the old inactive record (fromInstructor with end_date = transferDate)
+      const { data: oldRecords, error: oldErr } = await supabase
+        .from("instructor_students")
+        .select("id")
+        .eq("student_name", studentName)
+        .eq("instructor_name", transfer.fromInstructor)
+        .eq("end_date", transfer.transferDate)
+        .eq("status", "inactive")
+        .limit(1);
+      if (oldErr) throw oldErr;
+      if (!oldRecords || oldRecords.length === 0) throw new Error("이전 강사 레코드를 찾을 수 없습니다");
+
+      // 2. Find the new active record (toInstructor, active)
+      const { data: newRecords, error: newErr } = await supabase
+        .from("instructor_students")
+        .select("id")
+        .eq("student_name", studentName)
+        .eq("instructor_name", transfer.toInstructor)
+        .eq("status", "active")
+        .limit(1);
+      if (newErr) throw newErr;
+      if (!newRecords || newRecords.length === 0) throw new Error("새 강사 레코드를 찾을 수 없습니다");
+
+      // 3. Reactivate old record
+      const { error: reactivateErr } = await supabase
+        .from("instructor_students")
+        .update({ status: "active", end_date: null } as any)
+        .eq("id", oldRecords[0].id);
+      if (reactivateErr) throw reactivateErr;
+
+      // 4. Delete unstarted sessions for the new instructor (no notes)
+      const { data: newSessions } = await supabase
+        .from("class_sessions")
+        .select("id, notes")
+        .eq("student_name", studentName)
+        .eq("instructor_name", transfer.toInstructor)
+        .is("started_at", null);
+      const deleteSessionIds = (newSessions || [])
+        .filter(s => !s.notes || s.notes === "")
+        .map(s => s.id);
+      if (deleteSessionIds.length > 0) {
+        await supabase.from("class_sessions").delete().in("id", deleteSessionIds);
+      }
+
+      // 5. Delete the new instructor_students record
+      const { error: deleteErr } = await supabase
+        .from("instructor_students")
+        .delete()
+        .eq("id", newRecords[0].id);
+      if (deleteErr) throw deleteErr;
+
+      toast({
+        title: `${studentName} 이관 취소 완료 ✓`,
+        description: `${transfer.fromInstructor} 강사로 복원되었습니다 (미시작 세션 ${deleteSessionIds.length}건 삭제)`,
+      });
+      loadStudentsFromDB();
+    } catch (e: unknown) {
+      toast({ title: "이관 취소 실패", description: e instanceof Error ? e.message : "오류 발생", variant: "destructive" });
+    } finally {
+      setCancellingTransfer(false);
+    }
+  };
+
   // preset homework per student (DB 연동): studentId -> presets
   const [presetMap, setPresetMap] = useState<Record<number, PresetHomework[]>>({});
   const [loadingPresets, setLoadingPresets] = useState<Record<number, boolean>>({});
