@@ -84,6 +84,11 @@ export default function CashReceiptManagement() {
   const [reportPreview, setReportPreview] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState<string | null>(null);
   const [attendanceRequests, setAttendanceRequests] = useState<AttendanceRequest[]>([]);
+  const [feeOverrides, setFeeOverrides] = useState<Map<string, number>>(new Map());
+  const [editingFee, setEditingFee] = useState<string | null>(null);
+  const [editingFeeValue, setEditingFeeValue] = useState("");
+  const [deductModal, setDeductModal] = useState<string | null>(null);
+  const [deductCount, setDeductCount] = useState("");
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
