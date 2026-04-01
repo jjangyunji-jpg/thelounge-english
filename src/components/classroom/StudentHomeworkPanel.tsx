@@ -641,10 +641,26 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
               submission={submissions[a.id] ?? null}
               studentName={studentName}
               onSubmitted={(sub) => handleSubmitted(a.id, sub)}
+              onViewFeedback={(asgn, sub) => setFeedbackTarget({ assignment: asgn, submission: sub })}
             />
           ))
         )}
       </div>
+
+      {/* Feedback Modal */}
+      {feedbackTarget && (
+        <HomeworkFeedbackModal
+          assignmentTitle={feedbackTarget.assignment.title}
+          assignmentType={feedbackTarget.assignment.type}
+          textContent={feedbackTarget.submission.text_content}
+          audioUrl={feedbackTarget.submission.audio_url}
+          fileUrl={feedbackTarget.submission.file_url}
+          instructorNote={feedbackTarget.submission.instructor_note}
+          reviewedAt={feedbackTarget.submission.reviewed_at}
+          aiCorrection={feedbackTarget.submission.ai_correction}
+          onClose={() => setFeedbackTarget(null)}
+        />
+      )}
     </div>
   );
 }
