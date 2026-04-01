@@ -113,6 +113,7 @@ interface Assignment {
   is_preset: boolean;
   session_id: string | null;
   preset_origin_id?: string | null;
+  created_at?: string | null;
 }
 
 interface Submission {
