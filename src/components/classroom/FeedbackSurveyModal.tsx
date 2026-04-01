@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Star, Loader2, MessageSquare } from "lucide-react";
+import { Star, Loader2, MessageSquare, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -119,7 +119,16 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
+      <div className="w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border overflow-hidden relative">
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={onComplete}
+          className="absolute top-3 right-3 z-10 rounded-full p-1.5 text-primary-foreground/70 hover:text-primary-foreground hover:bg-white/10 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
         {/* Header */}
         <div className="bg-gradient-to-r from-navy to-navy-light p-5">
           <div className="flex items-center gap-2 mb-1">
@@ -198,30 +207,39 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
         </div>
 
         {/* Actions */}
-        <div className="px-5 pb-5 flex gap-2">
-          {step > 0 && (
-            <Button variant="outline" onClick={() => setStep(s => s - 1)} className="flex-1">
-              이전
-            </Button>
-          )}
-          {step < totalSteps - 1 ? (
-            <Button
-              onClick={() => setStep(s => s + 1)}
-              disabled={currentCategory ? (ratings[currentCategory.key] || 0) === 0 : false}
-              className="flex-1 bg-navy hover:bg-navy-light text-primary-foreground"
-            >
-              다음
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={saving || !allRated}
-              className="flex-1 bg-gold hover:bg-gold/90 text-foreground font-bold"
-            >
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              제출하기
-            </Button>
-          )}
+        <div className="px-5 pb-5 space-y-2">
+          <div className="flex gap-2">
+            {step > 0 && (
+              <Button variant="outline" onClick={() => setStep(s => s - 1)} className="flex-1">
+                이전
+              </Button>
+            )}
+            {step < totalSteps - 1 ? (
+              <Button
+                onClick={() => setStep(s => s + 1)}
+                disabled={currentCategory ? (ratings[currentCategory.key] || 0) === 0 : false}
+                className="flex-1 bg-navy hover:bg-navy-light text-primary-foreground"
+              >
+                다음
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={saving || !allRated}
+                className="flex-1 bg-gold hover:bg-gold/90 text-foreground font-bold"
+              >
+                {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                제출하기
+              </Button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onComplete}
+            className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+          >
+            참여하지 않기
+          </button>
         </div>
       </div>
     </div>
