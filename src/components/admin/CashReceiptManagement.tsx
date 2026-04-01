@@ -228,16 +228,15 @@ export default function CashReceiptManagement() {
     loadData();
   };
 
-  // Deduct this month's sessions from prepaid balance
-  const deductMonth = async (studentName: string) => {
+  // Deduct specified sessions from prepaid balance
+  const deductMonth = async (studentName: string, customCount?: number) => {
     const credit = creditMap.get(studentName);
     if (!credit) return;
-    const scheduleBased = calcBaseLessons(students.find(s => s.student_name === studentName)?.schedules || null);
     const remaining = credit.total_sessions - credit.used_sessions;
-    const toDeduct = Math.min(scheduleBased, remaining);
+    const toDeduct = customCount ?? Math.min(calcBaseLessons(students.find(s => s.student_name === studentName)?.schedules || null), remaining);
     if (toDeduct <= 0) { toast({ title: "차감 불가", description: "잔여 횟수가 없습니다.", variant: "destructive" }); return; }
+    if (toDeduct > remaining) { toast({ title: "차감 불가", description: `잔여 ${remaining}회보다 많습니다.`, variant: "destructive" }); return; }
 
-    // Upsert deduction record
     const existingDed = dedMap.get(studentName);
     if (existingDed) {
       toast({ title: "이미 차감됨", description: `${periodLabel} 이미 ${existingDed.deducted_sessions}회 차감됨` }); return;
@@ -245,6 +244,8 @@ export default function CashReceiptManagement() {
     await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: periodKey, deducted_sessions: toDeduct } as any);
     await supabase.from("prepaid_credits" as any).update({ used_sessions: credit.used_sessions + toDeduct, updated_at: new Date().toISOString() } as any).eq("id", credit.id);
     toast({ title: `${toDeduct}회 차감 완료` });
+    setDeductModal(null);
+    setDeductCount("");
     loadData();
   };
 
