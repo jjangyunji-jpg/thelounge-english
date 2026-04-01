@@ -207,30 +207,39 @@ export default function FeedbackSurveyModal({ studentName, instructorName, perio
         </div>
 
         {/* Actions */}
-        <div className="px-5 pb-5 flex gap-2">
-          {step > 0 && (
-            <Button variant="outline" onClick={() => setStep(s => s - 1)} className="flex-1">
-              이전
-            </Button>
-          )}
-          {step < totalSteps - 1 ? (
-            <Button
-              onClick={() => setStep(s => s + 1)}
-              disabled={currentCategory ? (ratings[currentCategory.key] || 0) === 0 : false}
-              className="flex-1 bg-navy hover:bg-navy-light text-primary-foreground"
-            >
-              다음
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={saving || !allRated}
-              className="flex-1 bg-gold hover:bg-gold/90 text-foreground font-bold"
-            >
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              제출하기
-            </Button>
-          )}
+        <div className="px-5 pb-5 space-y-2">
+          <div className="flex gap-2">
+            {step > 0 && (
+              <Button variant="outline" onClick={() => setStep(s => s - 1)} className="flex-1">
+                이전
+              </Button>
+            )}
+            {step < totalSteps - 1 ? (
+              <Button
+                onClick={() => setStep(s => s + 1)}
+                disabled={currentCategory ? (ratings[currentCategory.key] || 0) === 0 : false}
+                className="flex-1 bg-navy hover:bg-navy-light text-primary-foreground"
+              >
+                다음
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={saving || !allRated}
+                className="flex-1 bg-gold hover:bg-gold/90 text-foreground font-bold"
+              >
+                {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                제출하기
+              </Button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onComplete}
+            className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+          >
+            참여하지 않기
+          </button>
         </div>
       </div>
     </div>
