@@ -705,6 +705,53 @@ export default function CashReceiptManagement() {
         </div>
       )}
 
+      {/* Deduction Count Modal */}
+      {deductModal && (() => {
+        const credit = creditMap.get(deductModal);
+        const remaining = credit ? credit.total_sessions - credit.used_sessions : 0;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDeductModal(null)}>
+            <div className="bg-card rounded-xl shadow-xl border border-border w-[300px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <h3 className="text-sm font-bold text-foreground">선결제 차감 — {deductModal}</h3>
+                <button onClick={() => setDeductModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="p-5 space-y-3">
+                <p className="text-xs text-muted-foreground">잔여 <span className="font-semibold text-foreground">{remaining}회</span> 중 차감할 횟수를 입력하세요.</p>
+                <input
+                  type="number"
+                  value={deductCount}
+                  onChange={e => setDeductCount(e.target.value)}
+                  min={1}
+                  max={remaining}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="차감 횟수"
+                  autoFocus
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      const val = parseInt(deductCount);
+                      if (!isNaN(val) && val > 0) deductMonth(deductModal, val);
+                    }
+                  }}
+                />
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setDeductModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">취소</button>
+                  <button
+                    onClick={() => {
+                      const val = parseInt(deductCount);
+                      if (!isNaN(val) && val > 0) deductMonth(deductModal, val);
+                    }}
+                    className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    {deductCount ? `${deductCount}회 차감` : "차감"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Prepaid Credit Modal */}
       {creditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setCreditModal(null)}>
