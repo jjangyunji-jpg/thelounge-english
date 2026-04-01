@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
