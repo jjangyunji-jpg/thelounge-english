@@ -31,6 +31,8 @@ interface Submission {
   file_url: string | null;
   submitted_at: string;
   instructor_note: string | null;
+  reviewed_at: string | null;
+  ai_correction: any | null;
 }
 
 const HW_META: Record<HwType, {
