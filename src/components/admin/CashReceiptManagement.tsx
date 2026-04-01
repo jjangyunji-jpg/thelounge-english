@@ -131,7 +131,7 @@ export default function CashReceiptManagement() {
     if (!currentPeriod) return;
     setLoading(true);
     const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes] = await Promise.all([
-      supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
+      supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based — also fetch reschedule_origin_dates
