@@ -259,14 +259,15 @@ serve(async (req) => {
     if (sessionsToInsert.length > 0) {
       for (let i = 0; i < sessionsToInsert.length; i += 100) {
         const batch = sessionsToInsert.slice(i, i + 100);
-        const { error: insertErr } = await sb
+        const { data: inserted, error: insertErr } = await sb
           .from("class_sessions")
-          .insert(batch);
+          .upsert(batch, { onConflict: "student_name,scheduled_at", ignoreDuplicates: true })
+          .select("id");
         if (insertErr) {
           console.error("Insert error:", insertErr);
           throw new Error("세션 생성 중 오류가 발생했습니다.");
         }
-        created += batch.length;
+        created += (inserted || []).length;
       }
     }
 
