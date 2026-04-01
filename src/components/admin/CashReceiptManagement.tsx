@@ -145,10 +145,25 @@ export default function CashReceiptManagement() {
     ]);
     setStudents((studRes.data || []) as StudentRecord[]);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
-    setConfirmations((confRes.data as any as PaymentConfirmation[]) || []);
+    const confs = (confRes.data as any as PaymentConfirmation[]) || [];
+    setConfirmations(confs);
     setPrepaidCredits((creditRes.data as any as PrepaidCredit[]) || []);
     setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
     setAttendanceRequests((attendRes.data as any as AttendanceRequest[]) || []);
+
+    // Extract fee overrides from confirmation notes
+    const overrides = new Map<string, number>();
+    confs.forEach(c => {
+      if (c.note) {
+        try {
+          const parsed = JSON.parse(c.note);
+          if (typeof parsed.fee_override === "number") {
+            overrides.set(c.student_name, parsed.fee_override);
+          }
+        } catch { /* not JSON, ignore */ }
+      }
+    });
+    setFeeOverrides(overrides);
 
     // Count sessions per student, attributing rescheduled sessions to their original period
     const pStart = currentPeriod.start_date;
