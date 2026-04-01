@@ -113,6 +113,7 @@ interface Assignment {
   is_preset: boolean;
   session_id: string | null;
   preset_origin_id?: string | null;
+  created_at?: string | null;
 }
 
 interface Submission {
@@ -538,7 +539,7 @@ export default function StudentDashboard() {
         .contains("group_students", [student]).order("scheduled_at", { ascending: false }).limit(20),
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
         .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
-      supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id,preset_origin_id")
+      supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id,preset_origin_id,created_at")
         .eq("student_name", student).order("created_at", { ascending: false }),
       supabase.from("homework_submissions").select("id,assignment_id,status,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction,submitted_at")
         .eq("student_name", student),
@@ -1065,9 +1066,12 @@ export default function StudentDashboard() {
     // For period sessions WITHOUT session copies, generate placeholder entries
     for (const a of presetAssignments) {
       const coveredSessions = coveredSessionsByPreset.get(a.id) ?? new Set();
+      const presetCreatedAt = a.created_at ? new Date(a.created_at).getTime() : 0;
       for (const sess of periodSessions) {
         if (coveredSessions.has(sess.id)) continue; // already has a session copy
         if (new Date(sess.scheduled_at) > new Date()) continue; // future session — skip
+        // Only show preset for sessions scheduled AFTER the preset was created
+        if (new Date(sess.scheduled_at).getTime() < presetCreatedAt) continue;
         const wk = periodStart
           ? Math.floor((new Date(sess.scheduled_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
           : null;
