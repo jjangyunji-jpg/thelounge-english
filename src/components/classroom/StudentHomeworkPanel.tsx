@@ -506,6 +506,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [loading, setLoading] = useState(true);
+  const [feedbackTarget, setFeedbackTarget] = useState<{ assignment: Assignment; submission: Submission } | null>(null);
 
   useEffect(() => {
     const load = async () => {
