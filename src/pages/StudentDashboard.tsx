@@ -1027,31 +1027,69 @@ export default function StudentDashboard() {
       entries.push({ assignment: a, submission: sub, weekNumber: wk, sortKey: sub?.submitted_at ? new Date(sub.submitted_at).getTime() : (linkedSession ? new Date(linkedSession.scheduled_at).getTime() : 0) });
     }
 
-    // 2. Preset templates — show one entry per submission in the period
+    // 2. Preset templates — for each period session, show preset homework entries
+    // This ensures ALL weeks appear even if the instructor didn't open the classroom
     const presetAssignments = assignments.filter(a => a.is_preset && vocabTestFilter(a));
-    // Collect IDs of presets that already have session copies shown
-    const coveredPresetIds = new Set(sessionAssignments.filter(a => a.preset_origin_id).map(a => a.preset_origin_id));
-    for (const a of presetAssignments) {
-      // Get all submissions for this preset in the period
-      const presetSubs = submissions.filter(s => {
-        if (s.assignment_id !== a.id) return false;
-        if (!s.submitted_at) return false;
-        if (selectedPeriod) {
-          const d = new Date(s.submitted_at);
-          return d >= periodStart! && d <= periodEnd!;
-        }
-        return true;
-      });
-      if (presetSubs.length === 0 && !coveredPresetIds.has(a.id)) {
-        // No submissions — skip (don't show empty presets in history)
-        continue;
+    // Map: preset_id -> set of session_ids that already have copies
+    const coveredSessionsByPreset = new Map<string, Set<string>>();
+    for (const a of sessionAssignments) {
+      if (a.preset_origin_id) {
+        if (!coveredSessionsByPreset.has(a.preset_origin_id)) coveredSessionsByPreset.set(a.preset_origin_id, new Set());
+        coveredSessionsByPreset.get(a.preset_origin_id)!.add(a.session_id!);
       }
-      for (const sub of presetSubs) {
-        // Derive week from submission date relative to period start
-        const wk = periodStart && sub.submitted_at
-          ? Math.floor((new Date(sub.submitted_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
+    }
+    // For session copies, also check submissions against the preset template ID
+    for (const entry of entries) {
+      if (!entry.submission && entry.assignment.preset_origin_id) {
+        const linkedSession = allSessions.find(s => s.id === entry.assignment.session_id);
+        if (linkedSession) {
+          const cutoffTime = new Date(linkedSession.scheduled_at).getTime();
+          const nextSessionTime = periodSessions
+            .filter(s => new Date(s.scheduled_at).getTime() > cutoffTime)
+            .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
+          const upperBound = nextSessionTime ? new Date(nextSessionTime.scheduled_at).getTime() : Infinity;
+          const presetSub = submissions
+            .filter(s => s.assignment_id === entry.assignment.preset_origin_id && s.submitted_at)
+            .filter(s => {
+              const t = new Date(s.submitted_at!).getTime();
+              return t >= cutoffTime && t < upperBound;
+            })
+            .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())[0];
+          if (presetSub) {
+            entry.submission = presetSub;
+            entry.sortKey = new Date(presetSub.submitted_at!).getTime();
+          }
+        }
+      }
+    }
+    // For period sessions WITHOUT session copies, generate placeholder entries
+    for (const a of presetAssignments) {
+      const coveredSessions = coveredSessionsByPreset.get(a.id) ?? new Set();
+      for (const sess of periodSessions) {
+        if (coveredSessions.has(sess.id)) continue; // already has a session copy
+        if (new Date(sess.scheduled_at) > new Date()) continue; // future session — skip
+        const wk = periodStart
+          ? Math.floor((new Date(sess.scheduled_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
           : null;
-        entries.push({ assignment: a, submission: sub, weekNumber: wk, sortKey: new Date(sub.submitted_at!).getTime() });
+        // Check if a submission exists against the preset in this session's time window
+        const cutoffTime = new Date(sess.scheduled_at).getTime();
+        const nextSessionTime = periodSessions
+          .filter(s => new Date(s.scheduled_at).getTime() > cutoffTime)
+          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
+        const upperBound = nextSessionTime ? new Date(nextSessionTime.scheduled_at).getTime() : Infinity;
+        const matchingSub = submissions
+          .filter(s => s.assignment_id === a.id && s.submitted_at)
+          .filter(s => {
+            const t = new Date(s.submitted_at!).getTime();
+            return t >= cutoffTime && t < upperBound;
+          })
+          .sort((x, y) => new Date(y.submitted_at!).getTime() - new Date(x.submitted_at!).getTime())[0] ?? null;
+        entries.push({
+          assignment: a,
+          submission: matchingSub,
+          weekNumber: wk,
+          sortKey: matchingSub?.submitted_at ? new Date(matchingSub.submitted_at).getTime() : new Date(sess.scheduled_at).getTime(),
+        });
       }
     }
 
