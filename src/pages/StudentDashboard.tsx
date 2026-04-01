@@ -1979,68 +1979,95 @@ export default function StudentDashboard() {
               <span className="text-[10px] text-muted-foreground">{periodHwEntries.length}개 전체</span>
             </button>
             {hwOpen && (
-              <div className="divide-y divide-border/50">
+              <div>
                 {periodHwEntries.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">이 기간에 배정된 숙제가 없습니다</p>
-                ) : (
-                  periodHwEntries.map((entry, idx) => {
-                    const a = entry.assignment;
-                    const sub = entry.submission;
-                    const status = sub?.status || "pending";
-                    const meta = HW_META[a.type as HwType];
-                    const Icon = meta?.icon ?? Brain;
-                    const weekPrefix = entry.weekNumber ? `${entry.weekNumber}회차` : null;
-                    const isQuickType = a.type === "memorizing" || a.type === "speaking";
-                    const isPending = status === "pending";
+                ) : (() => {
+                  // Group entries by weekNumber
+                  const weekGroups = new Map<number | null, typeof periodHwEntries>();
+                  for (const entry of periodHwEntries) {
+                    const wk = entry.weekNumber;
+                    if (!weekGroups.has(wk)) weekGroups.set(wk, []);
+                    weekGroups.get(wk)!.push(entry);
+                  }
+                  // Sort weeks descending (most recent first), null last
+                  const sortedWeeks = [...weekGroups.keys()].sort((a, b) => {
+                    if (a === null) return 1;
+                    if (b === null) return -1;
+                    return b - a;
+                  });
+                  return sortedWeeks.map(wk => {
+                    const entries = weekGroups.get(wk)!;
+                    const allDone = entries.every(e => e.submission && (e.submission.status === "submitted" || e.submission.status === "reviewed"));
                     return (
-                      <div key={sub?.id ?? `${a.id}-${idx}`} className="flex items-center gap-2.5 px-3 py-2.5">
-                        <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0",
-                          status === "reviewed" ? "bg-success/10" : status === "submitted" ? "bg-gold/10" : "bg-muted"
-                        )}>
-                          <Icon className={cn("w-3.5 h-3.5", meta?.color)} />
+                      <div key={wk ?? "none"}>
+                        <div className="px-3 py-1.5 bg-muted/20 border-b border-border/50 flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-muted-foreground">
+                            {wk ? `${wk}회차` : "기타"}
+                          </span>
+                          {allDone && entries.length > 0 && (
+                            <span className="text-[10px] text-[hsl(var(--success))] font-medium flex items-center gap-0.5">
+                              <Check className="w-3 h-3" /> 완료
+                            </span>
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            {weekPrefix && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold flex-shrink-0">{weekPrefix}</span>
-                            )}
-                            <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
-                          </div>
-                          {sub?.submitted_at && <p className="text-[10px] text-muted-foreground">{fmtDate(sub.submitted_at)}</p>}
+                        <div className="divide-y divide-border/50">
+                          {entries.map((entry, idx) => {
+                            const a = entry.assignment;
+                            const sub = entry.submission;
+                            const status = sub?.status || "pending";
+                            const meta = HW_META[a.type as HwType];
+                            const Icon = meta?.icon ?? Brain;
+                            const isQuickType = a.type === "memorizing" || a.type === "speaking";
+                            const isPending = status === "pending";
+                            return (
+                              <div key={sub?.id ?? `${a.id}-${idx}`} className="flex items-center gap-2.5 px-3 py-2.5">
+                                <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0",
+                                  status === "reviewed" ? "bg-success/10" : status === "submitted" ? "bg-gold/10" : "bg-muted"
+                                )}>
+                                  <Icon className={cn("w-3.5 h-3.5", meta?.color)} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
+                                  {sub?.submitted_at && <p className="text-[10px] text-muted-foreground">{fmtDate(sub.submitted_at)}</p>}
+                                </div>
+                                {status === "reviewed" && sub && (
+                                  <button
+                                    onClick={() => setHwFeedback({ assignment: a, submission: sub })}
+                                    className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0 hover:bg-[hsl(var(--success)/0.2)] transition-colors cursor-pointer"
+                                  >검토됨 →</button>
+                                )}
+                                {status === "submitted" && sub && (
+                                  <button
+                                    onClick={() => setHwFeedback({ assignment: a, submission: sub })}
+                                    className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold-dark font-semibold flex-shrink-0 hover:bg-gold/20 transition-colors cursor-pointer"
+                                  >제출됨 →</button>
+                                )}
+                                {isPending && isQuickType && (
+                                  <button
+                                    onClick={() => handleQuickComplete(a)}
+                                    disabled={hwCompletingId === a.id}
+                                    className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 flex-shrink-0"
+                                  >
+                                    {hwCompletingId === a.id ? "..." : "완료"}
+                                  </button>
+                                )}
+                                {isPending && !isQuickType && (
+                                  <button
+                                    onClick={() => setHwModalAssignment(a)}
+                                    className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 flex-shrink-0"
+                                  >
+                                    제출하기
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                        {status === "reviewed" && sub && (
-                          <button
-                            onClick={() => setHwFeedback({ assignment: a, submission: sub })}
-                            className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0 hover:bg-[hsl(var(--success)/0.2)] transition-colors cursor-pointer"
-                          >검토됨 →</button>
-                        )}
-                        {status === "submitted" && sub && (
-                          <button
-                            onClick={() => setHwFeedback({ assignment: a, submission: sub })}
-                            className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold-dark font-semibold flex-shrink-0 hover:bg-gold/20 transition-colors cursor-pointer"
-                          >제출됨 →</button>
-                        )}
-                        {isPending && isQuickType && (
-                          <button
-                            onClick={() => handleQuickComplete(a)}
-                            disabled={hwCompletingId === a.id}
-                            className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 flex-shrink-0"
-                          >
-                            {hwCompletingId === a.id ? "..." : "완료"}
-                          </button>
-                        )}
-                        {isPending && !isQuickType && (
-                          <button
-                            onClick={() => setHwModalAssignment(a)}
-                            className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 flex-shrink-0"
-                          >
-                            제출하기
-                          </button>
-                        )}
                       </div>
                     );
-                  })
-                )}
+                  });
+                })()}
               </div>
             )}
           </div>
