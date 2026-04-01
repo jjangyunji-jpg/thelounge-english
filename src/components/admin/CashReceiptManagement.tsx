@@ -477,7 +477,7 @@ export default function CashReceiptManagement() {
                   </span>
                 ) : (
                   <button
-                    onClick={() => deductMonth(s.student_name)}
+                    onClick={() => { setDeductModal(s.student_name); setDeductCount(String(calcBaseLessons(s.schedules))); }}
                     className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                   >
                     차감
