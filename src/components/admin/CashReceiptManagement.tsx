@@ -371,6 +371,7 @@ export default function CashReceiptManagement() {
     const isConfirmed = conf?.confirmed || false;
     const count = isCorporate ? (corpSessionCounts.get(s.student_name) || 0) : (sessionCounts.get(s.student_name) || 0);
     const fee = isCorporate ? null : getFee(s);
+    const isOverridden = !isCorporate && hasOverride(s.student_name);
     const credit = creditMap.get(s.student_name);
     const ded = dedMap.get(s.student_name);
     const hasPrepaid = !!credit && (credit.total_sessions - credit.used_sessions) > 0;
@@ -402,10 +403,58 @@ export default function CashReceiptManagement() {
               <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{getCorpFee(s).toLocaleString()}</span>
               <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
             </div>
+          ) : editingFee === s.student_name ? (
+            <div className="flex items-center gap-1 justify-end">
+              <input
+                type="number"
+                value={editingFeeValue}
+                onChange={e => setEditingFeeValue(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    const val = parseInt(editingFeeValue);
+                    if (!isNaN(val) && val >= 0) saveFeeOverride(s.student_name, val);
+                  }
+                  if (e.key === "Escape") { setEditingFee(null); setEditingFeeValue(""); }
+                }}
+                autoFocus
+                className="w-24 rounded border border-primary/50 bg-background px-2 py-1 text-xs text-right text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                placeholder="수업료"
+              />
+              <button
+                onClick={() => {
+                  const val = parseInt(editingFeeValue);
+                  if (!isNaN(val) && val >= 0) saveFeeOverride(s.student_name, val);
+                }}
+                className="text-primary hover:text-primary/80"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => { setEditingFee(null); setEditingFeeValue(""); }} className="text-muted-foreground hover:text-foreground">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           ) : (
-            <div>
-              <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{fee!.toLocaleString()}</span>
-              <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
+            <div className="flex items-center gap-1.5 justify-end group/fee">
+              <div>
+                <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{fee!.toLocaleString()}</span>
+                <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
+              </div>
+              {isOverridden && (
+                <span
+                  className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 font-semibold cursor-pointer"
+                  title="수동 수정됨 — 클릭하여 초기화"
+                  onClick={() => clearFeeOverride(s.student_name)}
+                >
+                  수정
+                </span>
+              )}
+              <button
+                onClick={() => { setEditingFee(s.student_name); setEditingFeeValue(String(fee || 0)); }}
+                className="opacity-0 group-hover/fee:opacity-100 text-muted-foreground hover:text-primary transition-opacity"
+                title="수업료 수정"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
             </div>
           )}
         </td>
