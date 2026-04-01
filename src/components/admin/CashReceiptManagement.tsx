@@ -121,17 +121,21 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     if (!currentPeriod) return;
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes] = await Promise.all([
+    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes] = await Promise.all([
       supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
-      // Regular: period-based
-      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
+      // Regular: period-based — also fetch reschedule_origin_dates
+      supabase.from("class_sessions").select("student_name, scheduled_at, reschedule_origin_dates").gte("scheduled_at", periodStart).lte("scheduled_at", periodEnd),
       // Corporate: calendar month-based
-      supabase.from("class_sessions").select("student_name, scheduled_at").gte("scheduled_at", corpMonthStart).lt("scheduled_at", corpMonthEnd),
+      supabase.from("class_sessions").select("student_name, scheduled_at, reschedule_origin_dates").gte("scheduled_at", corpMonthStart).lt("scheduled_at", corpMonthEnd),
       supabase.from("prepaid_credits" as any).select("*"),
       supabase.from("prepaid_deductions" as any).select("*").eq("month", periodKey),
       supabase.from("support_requests").select("id, user_name, description, status, created_at").eq("category", "attendance").order("created_at", { ascending: false }),
+      // Sessions rescheduled OUT of this period (scheduled outside but origin date possibly in this period)
+      supabase.from("class_sessions").select("student_name, scheduled_at, reschedule_origin_dates")
+        .not("reschedule_origin_dates", "eq", "{}")
+        .or(`scheduled_at.lt.${periodStart},scheduled_at.gt.${periodEnd}`),
     ]);
     setStudents((studRes.data || []) as StudentRecord[]);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
@@ -140,10 +144,36 @@ export default function CashReceiptManagement() {
     setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
     setAttendanceRequests((attendRes.data as any as AttendanceRequest[]) || []);
 
+    // Count sessions per student, attributing rescheduled sessions to their original period
+    const pStart = currentPeriod.start_date;
+    const pEnd = currentPeriod.end_date;
     const counts = new Map<string, number>();
+
+    // 1) Sessions scheduled within this period
     (sessRes.data || []).forEach((s: any) => {
-      counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
+      const origins: string[] = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+      if (origins.length > 0) {
+        const lastOrigin = origins[origins.length - 1];
+        if (lastOrigin >= pStart && lastOrigin <= pEnd) {
+          counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
+        }
+        // Original date outside this period — skip, belongs to another period
+      } else {
+        counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
+      }
     });
+
+    // 2) Sessions rescheduled OUT (scheduled outside this period but origin in this period)
+    (rescheduledOutRes.data || []).forEach((s: any) => {
+      const origins: string[] = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+      if (origins.length > 0) {
+        const lastOrigin = origins[origins.length - 1];
+        if (lastOrigin >= pStart && lastOrigin <= pEnd) {
+          counts.set(s.student_name, (counts.get(s.student_name) || 0) + 1);
+        }
+      }
+    });
+
     setSessionCounts(counts);
 
     const corpCounts = new Map<string, number>();
