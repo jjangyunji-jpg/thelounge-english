@@ -266,7 +266,13 @@ function SubmissionCard({
       {/* Header */}
       <button
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-left"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (reviewed && submission) {
+            onViewFeedback(assignment, submission);
+          } else {
+            setOpen((v) => !v);
+          }
+        }}
       >
         <div className={cn("flex-shrink-0", meta.color)}>
           <Icon className="w-4 h-4" />
