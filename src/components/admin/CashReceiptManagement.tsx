@@ -286,8 +286,33 @@ export default function CashReceiptManagement() {
   };
 
   const getFee = (s: StudentRecord) => {
+    const override = feeOverrides.get(s.student_name);
+    if (override !== undefined) return override;
     const count = sessionCounts.get(s.student_name) || 0;
     return count * LESSON_PRICE;
+  };
+
+  const hasOverride = (name: string) => feeOverrides.has(name);
+
+  const saveFeeOverride = async (studentName: string, fee: number) => {
+    const existing = confMap.get(studentName);
+    const noteData = JSON.stringify({ fee_override: fee });
+    if (existing) {
+      await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
+    } else {
+      await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: false, note: noteData } as any);
+    }
+    setEditingFee(null);
+    setEditingFeeValue("");
+    loadData();
+  };
+
+  const clearFeeOverride = async (studentName: string) => {
+    const existing = confMap.get(studentName);
+    if (existing) {
+      await supabase.from("payment_confirmations" as any).update({ note: null } as any).eq("id", existing.id);
+    }
+    loadData();
   };
 
   const getCorpFee = (s: StudentRecord) => {
