@@ -1065,9 +1065,12 @@ export default function StudentDashboard() {
     // For period sessions WITHOUT session copies, generate placeholder entries
     for (const a of presetAssignments) {
       const coveredSessions = coveredSessionsByPreset.get(a.id) ?? new Set();
+      const presetCreatedAt = a.created_at ? new Date(a.created_at).getTime() : 0;
       for (const sess of periodSessions) {
         if (coveredSessions.has(sess.id)) continue; // already has a session copy
         if (new Date(sess.scheduled_at) > new Date()) continue; // future session — skip
+        // Only show preset for sessions scheduled AFTER the preset was created
+        if (new Date(sess.scheduled_at).getTime() < presetCreatedAt) continue;
         const wk = periodStart
           ? Math.floor((new Date(sess.scheduled_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
           : null;
