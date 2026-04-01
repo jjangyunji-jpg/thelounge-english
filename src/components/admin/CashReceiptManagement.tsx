@@ -15,6 +15,9 @@ interface StudentRecord {
   student_type: string;
   status: string | null;
   group_students: string[];
+  start_date: string | null;
+  pause_start: string | null;
+  pause_end: string | null;
 }
 
 interface ScheduleSlot { day: string; time: string; frequency?: string; }
@@ -128,7 +131,7 @@ export default function CashReceiptManagement() {
     if (!currentPeriod) return;
     setLoading(true);
     const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes] = await Promise.all([
-      supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students").eq("status", "active"),
+      supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based — also fetch reschedule_origin_dates
@@ -396,6 +399,17 @@ export default function CashReceiptManagement() {
           {s.group_students?.length > 0 && (
             <span className="ml-1.5 text-[10px] text-muted-foreground">(그룹 {s.group_students.length + 1}인)</span>
           )}
+          {(() => {
+            const isNew = s.start_date && currentPeriod && s.start_date >= currentPeriod.start_date && s.start_date <= currentPeriod.end_date;
+            if (isNew) return <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-semibold">신규</span>;
+            return null;
+          })()}
+          {(() => {
+            const today = new Date().toISOString().slice(0, 10);
+            const isPaused = s.pause_start && (!s.pause_end || s.pause_end >= today) && s.pause_start <= today;
+            if (isPaused) return <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-warning/15 text-warning font-semibold">휴강</span>;
+            return null;
+          })()}
         </td>
         <td className="px-4 py-3 text-right">
           {isCorporate ? (
