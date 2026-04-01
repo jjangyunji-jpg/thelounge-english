@@ -161,11 +161,13 @@ function SubmissionCard({
   submission,
   studentName,
   onSubmitted,
+  onViewFeedback,
 }: {
   assignment: Assignment;
   submission: Submission | null;
   studentName: string;
   onSubmitted: (sub: Submission) => void;
+  onViewFeedback: (assignment: Assignment, submission: Submission) => void;
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
