@@ -1605,7 +1605,9 @@ export default function StudentManagement() {
                         강사 이관 이력
                       </h4>
                       <div className="space-y-2">
-                        {student.transferHistory.map((t, idx) => (
+                        {student.transferHistory.map((t, idx) => {
+                          const isLatest = idx === student.transferHistory!.length - 1;
+                          return (
                           <div key={idx} className="p-2.5 rounded-md bg-muted/40 border border-border space-y-1.5">
                             <div className="flex items-center gap-2 text-xs">
                               <span className="font-medium text-foreground">{t.fromInstructor}</span>
@@ -1623,8 +1625,44 @@ export default function StudentManagement() {
                                 <span>{t.newSchedules}</span>
                               </div>
                             </div>
+                            {isLatest && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-[11px] text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                                    disabled={cancellingTransfer}
+                                  >
+                                    <Undo2 className="w-3 h-3" />
+                                    이관 취소
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>이관 취소 확인</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {student.name} 수강생의 이관을 취소하시겠습니까?
+                                      <br />• {t.toInstructor} → {t.fromInstructor} 강사로 복원됩니다
+                                      <br />• 새 강사의 미시작 세션이 삭제됩니다
+                                      <br />• 이미 진행된 수업은 유지됩니다
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>취소</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      onClick={() => handleCancelTransfer(student.name, t)}
+                                    >
+                                      이관 취소 실행
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
