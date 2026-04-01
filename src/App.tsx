@@ -84,27 +84,27 @@ const App = () => (
             </ProtectedRoute>
           } />
           <Route path="/my/classroom" element={
-            <ProtectedRoute allowedRoles={["student"]}>
+            <ProtectedRoute allowedRoles={["student", "instructor", "admin", "manager", "staff"]}>
               <Classroom />
             </ProtectedRoute>
           } />
           <Route path="/my/vocabulary" element={
-            <ProtectedRoute allowedRoles={["student"]}>
+            <ProtectedRoute allowedRoles={["student", "instructor", "admin", "manager", "staff"]}>
               <Vocabulary />
             </ProtectedRoute>
           } />
           <Route path="/my/classnote" element={
-            <ProtectedRoute allowedRoles={["student"]}>
+            <ProtectedRoute allowedRoles={["student", "instructor", "admin", "manager", "staff"]}>
               <ClassNote />
             </ProtectedRoute>
           } />
           <Route path="/my/dashboard" element={
-            <ProtectedRoute allowedRoles={["student"]}>
+            <ProtectedRoute allowedRoles={["student", "instructor", "admin", "manager", "staff"]}>
               <StudentDashboard />
             </ProtectedRoute>
           } />
           <Route path="/my/makeup" element={
-            <ProtectedRoute allowedRoles={["student"]}>
+            <ProtectedRoute allowedRoles={["student", "instructor", "admin", "manager", "staff"]}>
               <MakeupRequest />
             </ProtectedRoute>
           } />
