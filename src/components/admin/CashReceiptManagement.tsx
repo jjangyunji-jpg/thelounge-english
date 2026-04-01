@@ -15,6 +15,9 @@ interface StudentRecord {
   student_type: string;
   status: string | null;
   group_students: string[];
+  start_date: string | null;
+  pause_start: string | null;
+  pause_end: string | null;
 }
 
 interface ScheduleSlot { day: string; time: string; frequency?: string; }
