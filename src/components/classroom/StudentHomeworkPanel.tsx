@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
@@ -30,6 +31,8 @@ interface Submission {
   file_url: string | null;
   submitted_at: string;
   instructor_note: string | null;
+  reviewed_at: string | null;
+  ai_correction: any | null;
 }
 
 const HW_META: Record<HwType, {
@@ -158,11 +161,13 @@ function SubmissionCard({
   submission,
   studentName,
   onSubmitted,
+  onViewFeedback,
 }: {
   assignment: Assignment;
   submission: Submission | null;
   studentName: string;
   onSubmitted: (sub: Submission) => void;
+  onViewFeedback: (assignment: Assignment, submission: Submission) => void;
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -261,7 +266,13 @@ function SubmissionCard({
       {/* Header */}
       <button
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-left"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (reviewed && submission) {
+            onViewFeedback(assignment, submission);
+          } else {
+            setOpen((v) => !v);
+          }
+        }}
       >
         <div className={cn("flex-shrink-0", meta.color)}>
           <Icon className="w-4 h-4" />
@@ -327,8 +338,21 @@ function SubmissionCard({
           {submission?.instructor_note && (
             <div className="mt-3 px-3 py-2 rounded-lg bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)]">
               <p className="text-xs font-semibold text-[hsl(var(--success))] mb-0.5">강사 피드백</p>
-              <p className="text-xs text-foreground">{submission.instructor_note}</p>
+              <p className="text-xs text-foreground line-clamp-2">{submission.instructor_note}</p>
             </div>
+          )}
+
+          {/* View full feedback button */}
+          {submission && (submission.status === "reviewed" || submission.ai_correction) && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2 w-full h-8 text-xs gap-1.5"
+              onClick={(e) => { e.stopPropagation(); onViewFeedback(assignment, submission); }}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              검토 결과 보기
+            </Button>
           )}
 
           {/* Previous submission playback */}
@@ -488,6 +512,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [loading, setLoading] = useState(true);
+  const [feedbackTarget, setFeedbackTarget] = useState<{ assignment: Assignment; submission: Submission } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -622,10 +647,26 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
               submission={submissions[a.id] ?? null}
               studentName={studentName}
               onSubmitted={(sub) => handleSubmitted(a.id, sub)}
+              onViewFeedback={(asgn, sub) => setFeedbackTarget({ assignment: asgn, submission: sub })}
             />
           ))
         )}
       </div>
+
+      {/* Feedback Modal */}
+      {feedbackTarget && (
+        <HomeworkFeedbackModal
+          assignmentTitle={feedbackTarget.assignment.title}
+          assignmentType={feedbackTarget.assignment.type}
+          textContent={feedbackTarget.submission.text_content}
+          audioUrl={feedbackTarget.submission.audio_url}
+          fileUrl={feedbackTarget.submission.file_url}
+          instructorNote={feedbackTarget.submission.instructor_note}
+          reviewedAt={feedbackTarget.submission.reviewed_at}
+          aiCorrection={feedbackTarget.submission.ai_correction}
+          onClose={() => setFeedbackTarget(null)}
+        />
+      )}
     </div>
   );
 }
