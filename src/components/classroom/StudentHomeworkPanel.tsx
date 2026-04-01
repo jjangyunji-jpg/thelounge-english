@@ -332,8 +332,21 @@ function SubmissionCard({
           {submission?.instructor_note && (
             <div className="mt-3 px-3 py-2 rounded-lg bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)]">
               <p className="text-xs font-semibold text-[hsl(var(--success))] mb-0.5">강사 피드백</p>
-              <p className="text-xs text-foreground">{submission.instructor_note}</p>
+              <p className="text-xs text-foreground line-clamp-2">{submission.instructor_note}</p>
             </div>
+          )}
+
+          {/* View full feedback button */}
+          {submission && (submission.status === "reviewed" || submission.ai_correction) && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2 w-full h-8 text-xs gap-1.5"
+              onClick={(e) => { e.stopPropagation(); onViewFeedback(assignment, submission); }}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              검토 결과 보기
+            </Button>
           )}
 
           {/* Previous submission playback */}
