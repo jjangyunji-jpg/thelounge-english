@@ -95,6 +95,7 @@ interface HomeworkAssignment {
   student_name: string;
   session_id: string | null;
   is_preset: boolean;
+  preset_origin_id: string | null;
 }
 
 interface HomeworkSubmission {
@@ -1459,7 +1460,7 @@ export default function InstructorDashboard() {
       studentNames.length > 0
         ? supabase.from("class_sessions").select("*").in("student_name", studentNames).order("scheduled_at", { ascending: false })
         : Promise.resolve({ data: [] }),
-      supabase.from("homework_assignments").select("id,title,type,student_name,session_id,is_preset"),
+      supabase.from("homework_assignments").select("id,title,type,student_name,session_id,is_preset,preset_origin_id"),
       supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
@@ -2453,7 +2454,16 @@ export default function InstructorDashboard() {
                                   const sSessions = sessions.filter(ss => ss.student_name === s.student_name);
                                   const pastSess = sSessions.filter(ss => new Date(ss.scheduled_at) <= nowTs).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
                                   const latestPast = pastSess[0] || null;
-                                  const studentAssignments = assignments.filter(a => a.student_name === s.student_name && (a.is_preset || (latestPast && a.session_id === latestPast.id)));
+                                   const studentAssignments = assignments.filter(a => {
+                                     if (a.student_name !== s.student_name) return false;
+                                     if (a.is_preset) {
+                                       // Only show preset template if no session copy exists for the latest past session
+                                       if (!latestPast) return true;
+                                       const hasCopy = assignments.some(c => c.preset_origin_id === a.id && c.session_id === latestPast.id);
+                                       return !hasCopy;
+                                     }
+                                     return latestPast && a.session_id === latestPast.id;
+                                   });
                                   const stVocabAll = vocabTests.filter(v => v.student_name === s.student_name);
                                   const hasVocab = stVocabAll.length > 0;
                                   const vocabDone = stVocabAll.some(v => v.completed_at);
@@ -2919,7 +2929,16 @@ export default function InstructorDashboard() {
                         const latestPast = pastSessions[0] || null;
                         const futureSessions = sSessions.filter(s => new Date(s.scheduled_at) > nowTs).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
                         const nextSession = futureSessions[0] || null;
-                        const sessionAssignments = assignments.filter(a => a.student_name === st.student_name && (a.is_preset || (latestPast && a.session_id === latestPast.id)));
+                         const sessionAssignments = assignments.filter(a => {
+                           if (a.student_name !== st.student_name) return false;
+                           if (a.is_preset) {
+                             // Only show preset template if no session copy exists for the latest past session
+                             if (!latestPast) return true;
+                             const hasCopy = assignments.some(c => c.preset_origin_id === a.id && c.session_id === latestPast.id);
+                             return !hasCopy;
+                           }
+                           return latestPast && a.session_id === latestPast.id;
+                         });
                         const stVocabAll = vocabTests.filter(v => v.student_name === st.student_name);
                         const hasVocab = stVocabAll.length > 0;
                         const vocabDone = stVocabAll.some(v => v.completed_at);
