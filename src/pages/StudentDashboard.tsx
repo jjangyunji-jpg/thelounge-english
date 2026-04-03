@@ -496,9 +496,21 @@ export default function StudentDashboard() {
             navigate("/student-setup");
             return;
           }
-          // Profile exists but no linked instructor_students record → 준비 중
-          setAuthNickname(profile.nickname || null);
-          setNotLinked(true);
+          // Fallback: check instructor_students by student_name (e.g. group accounts sharing same student_name)
+          const { data: linkedByName } = await supabase
+            .from("instructor_students")
+            .select("student_name")
+            .eq("student_name", profile.student_name)
+            .eq("status", "active")
+            .maybeSingle();
+          if (linkedByName) {
+            setAuthStudent(linkedByName.student_name);
+            setAuthNickname(profile.nickname || null);
+          } else {
+            // Profile exists but no linked instructor_students record → 준비 중
+            setAuthNickname(profile.nickname || null);
+            setNotLinked(true);
+          }
         }
       }
       setAuthLoading(false);
