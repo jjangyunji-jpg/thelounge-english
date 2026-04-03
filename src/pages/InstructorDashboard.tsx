@@ -2928,7 +2928,16 @@ export default function InstructorDashboard() {
                         const latestPast = pastSessions[0] || null;
                         const futureSessions = sSessions.filter(s => new Date(s.scheduled_at) > nowTs).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
                         const nextSession = futureSessions[0] || null;
-                        const sessionAssignments = assignments.filter(a => a.student_name === st.student_name && (a.is_preset || (latestPast && a.session_id === latestPast.id)));
+                         const sessionAssignments = assignments.filter(a => {
+                           if (a.student_name !== st.student_name) return false;
+                           if (a.is_preset) {
+                             // Only show preset template if no session copy exists for the latest past session
+                             if (!latestPast) return true;
+                             const hasCopy = assignments.some(c => c.preset_origin_id === a.id && c.session_id === latestPast.id);
+                             return !hasCopy;
+                           }
+                           return latestPast && a.session_id === latestPast.id;
+                         });
                         const stVocabAll = vocabTests.filter(v => v.student_name === st.student_name);
                         const hasVocab = stVocabAll.length > 0;
                         const vocabDone = stVocabAll.some(v => v.completed_at);
