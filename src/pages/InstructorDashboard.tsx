@@ -95,6 +95,7 @@ interface HomeworkAssignment {
   student_name: string;
   session_id: string | null;
   is_preset: boolean;
+  preset_origin_id: string | null;
 }
 
 interface HomeworkSubmission {
