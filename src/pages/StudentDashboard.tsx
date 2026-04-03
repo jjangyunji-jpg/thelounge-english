@@ -1013,10 +1013,15 @@ export default function StudentDashboard() {
     const vocabTestFilter = (a: typeof assignments[0]) => !(a.type === "memorizing" && a.title.includes("단어 테스트"));
 
     // 1. Session-specific assignments (non-preset, has session_id in period)
+    // Skip copies for future sessions — they haven't been assigned yet
+    const nowTs = new Date();
     const sessionAssignments = assignments.filter(a => {
       if (a.is_preset) return false;
       if (!a.session_id) return false;
       if (selectedPeriod && !periodSessionIds.has(a.session_id)) return false;
+      // Don't include assignments for sessions that haven't happened yet
+      const linkedSession = allSessions.find(s => s.id === a.session_id);
+      if (linkedSession && new Date(linkedSession.scheduled_at) > nowTs) return false;
       return vocabTestFilter(a);
     });
     for (const a of sessionAssignments) {
