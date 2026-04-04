@@ -316,7 +316,7 @@ serve(async (req) => {
       }
     }
 
-    // 6. Bulk insert
+    // 7. Bulk insert
     let created = 0;
     if (sessionsToInsert.length > 0) {
       for (let i = 0; i < sessionsToInsert.length; i += 100) {
@@ -336,6 +336,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         created,
+        cleaned: totalCleaned,
         period: period.label,
         students: students.length,
         skipped_holidays: holidayDates.size,
