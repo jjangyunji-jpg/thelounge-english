@@ -2457,8 +2457,14 @@ export default function InstructorDashboard() {
                               .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0];
 
                             const isCompleted = !!s.ended_at;
+                            const isCancelled = !!s.cancellation_type;
+                            const cancelMeta = s.cancellation_type ? CANCELLATION_META[s.cancellation_type] : null;
                             return (
-                              <div key={s.id} className={cn("rounded-lg border px-3 py-2.5", isCompleted ? "border-success/30 bg-success/5" : "border-border bg-muted/20")}>
+                              <div key={s.id} className={cn(
+                                "rounded-lg border px-3 py-2.5",
+                                isCancelled ? "border-muted-foreground/20 bg-muted/30 opacity-70" :
+                                isCompleted ? "border-success/30 bg-success/5" : "border-border bg-muted/20"
+                              )}>
                                 {(() => {
                                   const nowTs = new Date();
                                   const sSessions = sessions.filter(ss => ss.student_name === s.student_name);
