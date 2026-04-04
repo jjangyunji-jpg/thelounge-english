@@ -61,12 +61,14 @@ export function buildSettlementRows(sessions: Session[], meetings: Meeting[], pe
   sessions.forEach((s) => {
     const d = new Date(s.scheduled_at);
     if (d >= start && d <= end && d <= now) {
+      // Skip cancellation types that don't count for settlement
+      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel') return;
       const levelRate = LEVEL_RATES[s.level] || 19000;
       const pay = flatRate ? flatRate : (BASE_PAY + levelRate);
       rows.push({
         date: d,
         type: "수업",
-        description: `${s.student_name} (${getLevelCategory(s.level)})`,
+        description: `${s.student_name} (${getLevelCategory(s.level)})${s.cancellation_type === 'no_show' ? ' [노쇼]' : ''}`,
         durationHours: 1,
         pay,
       });
