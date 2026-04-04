@@ -1863,7 +1863,7 @@ export default function InstructorDashboard() {
       key,
       date: new Date(s.scheduled_at),
       type: 'lesson',
-      description: `${fmtName(s.student_name)} 수업 (${getLevelCategory(s.level)})`,
+      description: `${fmtName(s.student_name)} 수업 (${getLevelCategory(s.level)})${s.cancellation_type === 'no_show' ? ' [노쇼]' : ''}`,
       durationHours,
       payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate),
     });
