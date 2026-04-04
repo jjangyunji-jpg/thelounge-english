@@ -1835,7 +1835,16 @@ export default function InstructorDashboard() {
     const d = new Date(s.scheduled_at);
     return d >= sStart && d <= sEnd && !isSessionHidden(s);
   });
-  const completedSettlementSessions = settlementSessions.filter((s) => !!s.ended_at);
+  // Settlement: completed sessions + no_show (instructor gets paid for no-show)
+  // Exclude: student_cancel, sick, instructor_cancel (no pay for instructor)
+  const completedSettlementSessions = settlementSessions.filter((s) => {
+    // Cancelled types that don't count for settlement
+    if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel') return false;
+    // no_show counts for settlement even without ended_at
+    if (s.cancellation_type === 'no_show') return true;
+    // Normal: must be completed
+    return !!s.ended_at;
+  });
   const settlementMeetings = meetings.filter((m) => {
     const d = new Date(m.scheduled_at);
     return d >= sStart && d <= sEnd;
