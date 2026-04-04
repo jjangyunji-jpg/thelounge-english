@@ -283,7 +283,7 @@ serve(async (req) => {
         if (effective_date && dateStr < effective_date) continue;
         if (student.id && isStudentPausedOn(student.id, dateStr)) continue;
 
-        for (const sched of schedules) {
+      for (const sched of schedules) {
           const schedDay = DAY_MAP[sched.day];
           if (schedDay === undefined || schedDay !== dayOfWeek) continue;
 
