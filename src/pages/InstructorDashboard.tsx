@@ -2529,18 +2529,49 @@ export default function InstructorDashboard() {
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        {!isCancelled && (
                                         <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
                                           <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2">
                                             <FileText className="w-3 h-3" /> 이번 수업
                                           </Button>
                                         </a>
+                                        )}
                                         {(() => {
+                                          if (isCancelled) {
+                                            // Allow undoing cancellation within 12h
+                                            const scheduledKst = new Date(s.scheduled_at);
+                                            const diffMs = Date.now() - scheduledKst.getTime();
+                                            const within12h = diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000;
+                                            if (within12h) return (
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 text-[10px] gap-1 border-muted-foreground/30 text-muted-foreground px-2"
+                                                onClick={async () => {
+                                                  const { error } = await supabase.from("class_sessions").update({
+                                                    cancellation_type: null,
+                                                  } as any).eq("id", s.id);
+                                                  if (error) {
+                                                    toast({ title: "복원 실패", description: error.message, variant: "destructive" });
+                                                  } else {
+                                                    toast({ title: "취소 상태가 복원되었습니다" });
+                                                    setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null } : sess));
+                                                  }
+                                                }}
+                                              >
+                                                <RotateCcw className="w-3 h-3" /> 복원
+                                              </Button>
+                                            );
+                                            return null;
+                                          }
+
                                           const scheduledKst = new Date(s.scheduled_at);
                                           const nowMs = Date.now();
                                           const diffMs = nowMs - scheduledKst.getTime();
                                           const after30min = diffMs >= 30 * 60 * 1000;
                                           const within12h = diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000;
                                           if (!isCompleted && after30min && within12h) return (
+                                            <>
                                             <Button
                                               size="sm"
                                               className="h-7 text-[10px] gap-1 bg-success hover:bg-success/90 text-success-foreground px-2"
@@ -2597,6 +2628,33 @@ export default function InstructorDashboard() {
                                             >
                                               <Check className="w-3 h-3" /> 수업 완료
                                             </Button>
+                                            {/* Cancellation dropdown */}
+                                            <Select
+                                              value=""
+                                              onValueChange={async (val) => {
+                                                const cancelType = val as CancellationType;
+                                                const { error } = await supabase.from("class_sessions").update({
+                                                  cancellation_type: cancelType,
+                                                } as any).eq("id", s.id);
+                                                if (error) {
+                                                  toast({ title: "처리 실패", description: error.message, variant: "destructive" });
+                                                } else {
+                                                  toast({ title: `${CANCELLATION_META[cancelType].label} 처리됨` });
+                                                  setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: cancelType } : sess));
+                                                }
+                                              }}
+                                            >
+                                              <SelectTrigger className="h-7 w-auto min-w-0 text-[10px] gap-0.5 border-destructive/30 text-destructive px-1.5 [&>svg]:w-3 [&>svg]:h-3">
+                                                <X className="w-3 h-3" />
+                                              </SelectTrigger>
+                                              <SelectContent align="end">
+                                                <SelectItem value="student_cancel">당일취소 (환불❌ 정산❌)</SelectItem>
+                                                <SelectItem value="no_show">노쇼 (환불❌ 정산✅)</SelectItem>
+                                                <SelectItem value="sick">병결 (보강가능)</SelectItem>
+                                                <SelectItem value="instructor_cancel">강사취소 (보강/환불)</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                            </>
                                           );
                                           if (isCompleted && within12h) return (
                                             <Button
