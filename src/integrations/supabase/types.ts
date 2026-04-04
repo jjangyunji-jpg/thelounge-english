@@ -241,6 +241,7 @@ export type Database = {
       }
       class_sessions: {
         Row: {
+          cancellation_type: string | null
           created_at: string
           ended_at: string | null
           group_students: string[]
@@ -258,6 +259,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancellation_type?: string | null
           created_at?: string
           ended_at?: string | null
           group_students?: string[]
@@ -275,6 +277,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancellation_type?: string | null
           created_at?: string
           ended_at?: string | null
           group_students?: string[]

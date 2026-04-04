@@ -74,6 +74,15 @@ interface StudentFull {
   pauses: PauseRecord[];
 }
 
+type CancellationType = 'student_cancel' | 'no_show' | 'sick' | 'instructor_cancel';
+
+const CANCELLATION_META: Record<CancellationType, { label: string; color: string; bgColor: string }> = {
+  student_cancel: { label: "당일취소", color: "text-destructive", bgColor: "bg-destructive/10" },
+  no_show: { label: "노쇼", color: "text-[hsl(var(--gold-dark))]", bgColor: "bg-[hsl(var(--gold)/0.12)]" },
+  sick: { label: "병결", color: "text-blue-600", bgColor: "bg-blue-50" },
+  instructor_cancel: { label: "강사취소", color: "text-purple-600", bgColor: "bg-purple-50" },
+};
+
 interface ClassSession {
   id: string;
   scheduled_at: string;
@@ -86,6 +95,7 @@ interface ClassSession {
   ended_at: string | null;
   notes: string | null;
   reschedule_origin_dates?: string[];
+  cancellation_type?: CancellationType | null;
 }
 
 interface HomeworkAssignment {
@@ -463,12 +473,14 @@ function BigCalendar({
 
           // Combined entries for display (max 2)
           const now = new Date();
-          const displayItems: { label: string; type: "actual" | "completed" | "virtual" | "meeting" }[] = [];
+          const displayItems: { label: string; type: "actual" | "completed" | "virtual" | "meeting" | "cancelled" }[] = [];
           daySessions.slice(0, 2).forEach(s => {
+            const isCancelled = !!s.cancellation_type;
             const isCompleted = !!s.ended_at;
+            const cancelLabel = s.cancellation_type ? CANCELLATION_META[s.cancellation_type as CancellationType]?.label : '';
             displayItems.push({
-              label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })} ${s.student_name}`,
-              type: isCompleted ? "completed" : "actual",
+              label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })} ${s.student_name}${isCancelled ? ` [${cancelLabel}]` : ''}`,
+              type: isCancelled ? "cancelled" : isCompleted ? "completed" : "actual",
             });
           });
           if (displayItems.length < 2) {
@@ -500,6 +512,7 @@ function BigCalendar({
                 {displayItems.map((item, i) => (
                   <div key={i} className={cn(
                     "w-full truncate text-[9px] leading-tight px-1 py-0.5 rounded font-medium",
+                    item.type === "cancelled" ? "bg-muted text-muted-foreground/60 border border-muted-foreground/20 line-through" :
                     item.type === "completed" ? "bg-navy text-primary-foreground border border-navy shadow-sm" :
                     item.type === "actual" ? "bg-navy/10 text-navy border border-navy/25" :
                     "bg-navy/5 text-navy/60 border border-dashed border-navy/20",
@@ -1825,7 +1838,16 @@ export default function InstructorDashboard() {
     const d = new Date(s.scheduled_at);
     return d >= sStart && d <= sEnd && !isSessionHidden(s);
   });
-  const completedSettlementSessions = settlementSessions.filter((s) => !!s.ended_at);
+  // Settlement: completed sessions + no_show (instructor gets paid for no-show)
+  // Exclude: student_cancel, sick, instructor_cancel (no pay for instructor)
+  const completedSettlementSessions = settlementSessions.filter((s) => {
+    // Cancelled types that don't count for settlement
+    if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel') return false;
+    // no_show counts for settlement even without ended_at
+    if (s.cancellation_type === 'no_show') return true;
+    // Normal: must be completed
+    return !!s.ended_at;
+  });
   const settlementMeetings = meetings.filter((m) => {
     const d = new Date(m.scheduled_at);
     return d >= sStart && d <= sEnd;
@@ -1844,7 +1866,7 @@ export default function InstructorDashboard() {
       key,
       date: new Date(s.scheduled_at),
       type: 'lesson',
-      description: `${fmtName(s.student_name)} 수업 (${getLevelCategory(s.level)})`,
+      description: `${fmtName(s.student_name)} 수업 (${getLevelCategory(s.level)})${s.cancellation_type === 'no_show' ? ' [노쇼]' : ''}`,
       durationHours,
       payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate),
     });
@@ -1880,7 +1902,10 @@ export default function InstructorDashboard() {
     let total = 0;
     sessions.filter(s => {
       const d = new Date(s.scheduled_at);
-      return d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s) && !!s.ended_at;
+      if (!(d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s))) return false;
+      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel') return false;
+      if (s.cancellation_type === 'no_show') return true;
+      return !!s.ended_at;
     }).forEach(s => {
       const levelRate = LEVEL_RATES[s.level] || 19000;
       const pay = isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate);
@@ -2447,8 +2472,14 @@ export default function InstructorDashboard() {
                               .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0];
 
                             const isCompleted = !!s.ended_at;
+                            const isCancelled = !!s.cancellation_type;
+                            const cancelMeta = s.cancellation_type ? CANCELLATION_META[s.cancellation_type] : null;
                             return (
-                              <div key={s.id} className={cn("rounded-lg border px-3 py-2.5", isCompleted ? "border-success/30 bg-success/5" : "border-border bg-muted/20")}>
+                              <div key={s.id} className={cn(
+                                "rounded-lg border px-3 py-2.5",
+                                isCancelled ? "border-muted-foreground/20 bg-muted/30 opacity-70" :
+                                isCompleted ? "border-success/30 bg-success/5" : "border-border bg-muted/20"
+                              )}>
                                 {(() => {
                                   const nowTs = new Date();
                                   const sSessions = sessions.filter(ss => ss.student_name === s.student_name);
@@ -2482,8 +2513,13 @@ export default function InstructorDashboard() {
                                         <p className="text-xs font-bold text-primary w-12 text-center flex-shrink-0 pt-0.5">{fmtTime(s.scheduled_at)}</p>
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-1.5">
-                                            <p className="text-sm font-medium text-foreground truncate">{fmtName(s.student_name)}</p>
-                                            {isCompleted && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
+                                            <p className={cn("text-sm font-medium truncate", isCancelled ? "line-through text-muted-foreground" : "text-foreground")}>{fmtName(s.student_name)}</p>
+                                            {isCancelled && cancelMeta && (
+                                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0", cancelMeta.bgColor, cancelMeta.color)}>
+                                                {cancelMeta.label}
+                                              </span>
+                                            )}
+                                            {isCompleted && !isCancelled && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
                                             {totalHw > 0 && (
                                               <button
                                                 onClick={(e) => { e.stopPropagation(); setExpandedTodayHwSession(isTodayExpanded ? null : s.id); }}
@@ -2508,18 +2544,49 @@ export default function InstructorDashboard() {
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        {!isCancelled && (
                                         <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
                                           <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2">
                                             <FileText className="w-3 h-3" /> 이번 수업
                                           </Button>
                                         </a>
+                                        )}
                                         {(() => {
+                                          if (isCancelled) {
+                                            // Allow undoing cancellation within 12h
+                                            const scheduledKst = new Date(s.scheduled_at);
+                                            const diffMs = Date.now() - scheduledKst.getTime();
+                                            const within12h = diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000;
+                                            if (within12h) return (
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 text-[10px] gap-1 border-muted-foreground/30 text-muted-foreground px-2"
+                                                onClick={async () => {
+                                                  const { error } = await supabase.from("class_sessions").update({
+                                                    cancellation_type: null,
+                                                  } as any).eq("id", s.id);
+                                                  if (error) {
+                                                    toast({ title: "복원 실패", description: error.message, variant: "destructive" });
+                                                  } else {
+                                                    toast({ title: "취소 상태가 복원되었습니다" });
+                                                    setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null } : sess));
+                                                  }
+                                                }}
+                                              >
+                                                <RotateCcw className="w-3 h-3" /> 복원
+                                              </Button>
+                                            );
+                                            return null;
+                                          }
+
                                           const scheduledKst = new Date(s.scheduled_at);
                                           const nowMs = Date.now();
                                           const diffMs = nowMs - scheduledKst.getTime();
                                           const after30min = diffMs >= 30 * 60 * 1000;
                                           const within12h = diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000;
                                           if (!isCompleted && after30min && within12h) return (
+                                            <>
                                             <Button
                                               size="sm"
                                               className="h-7 text-[10px] gap-1 bg-success hover:bg-success/90 text-success-foreground px-2"
@@ -2576,6 +2643,33 @@ export default function InstructorDashboard() {
                                             >
                                               <Check className="w-3 h-3" /> 수업 완료
                                             </Button>
+                                            {/* Cancellation dropdown */}
+                                            <Select
+                                              value=""
+                                              onValueChange={async (val) => {
+                                                const cancelType = val as CancellationType;
+                                                const { error } = await supabase.from("class_sessions").update({
+                                                  cancellation_type: cancelType,
+                                                } as any).eq("id", s.id);
+                                                if (error) {
+                                                  toast({ title: "처리 실패", description: error.message, variant: "destructive" });
+                                                } else {
+                                                  toast({ title: `${CANCELLATION_META[cancelType].label} 처리됨` });
+                                                  setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: cancelType } : sess));
+                                                }
+                                              }}
+                                            >
+                                              <SelectTrigger className="h-7 w-auto min-w-0 text-[10px] gap-0.5 border-destructive/30 text-destructive px-1.5 [&>svg]:w-3 [&>svg]:h-3">
+                                                <X className="w-3 h-3" />
+                                              </SelectTrigger>
+                                              <SelectContent align="end">
+                                                <SelectItem value="student_cancel">당일취소 (환불❌ 정산❌)</SelectItem>
+                                                <SelectItem value="no_show">노쇼 (환불❌ 정산✅)</SelectItem>
+                                                <SelectItem value="sick">병결 (보강가능)</SelectItem>
+                                                <SelectItem value="instructor_cancel">강사취소 (보강/환불)</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                            </>
                                           );
                                           if (isCompleted && within12h) return (
                                             <Button
