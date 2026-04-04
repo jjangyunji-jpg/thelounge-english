@@ -185,7 +185,69 @@ serve(async (req) => {
       }
     }
 
-    // 5. Generate sessions
+    // 5. Clean up stale future sessions (schedule changed → old day-of-week sessions)
+    const todayKst = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+    const todayStr = `${todayKst.getUTCFullYear()}-${String(todayKst.getUTCMonth() + 1).padStart(2, "0")}-${String(todayKst.getUTCDate()).padStart(2, "0")}`;
+    let totalCleaned = 0;
+
+    for (const student of students) {
+      let parsedSchedules: ScheduleSlot[] = [];
+      try {
+        parsedSchedules =
+          typeof student.schedules === "string"
+            ? JSON.parse(student.schedules)
+            : student.schedules || [];
+      } catch {
+        continue;
+      }
+      if (!Array.isArray(parsedSchedules) || parsedSchedules.length === 0) continue;
+
+      // Build set of valid day-of-week numbers from current schedule
+      const validDays = new Set<number>();
+      for (const s of parsedSchedules) {
+        const d = DAY_MAP[s.day];
+        if (d !== undefined) validDays.add(d);
+      }
+
+      // Find future un-started sessions for this student in this period that don't match current schedule
+      const { data: futureSessions } = await sb
+        .from("class_sessions")
+        .select("id, scheduled_at, reschedule_origin_dates, notes, started_at")
+        .eq("student_name", student.student_name)
+        .eq("instructor_name", student.instructor_name || "")
+        .gte("scheduled_at", todayStr + "T00:00:00+09:00")
+        .gte("scheduled_at", period.start_date + "T00:00:00+09:00")
+        .lte("scheduled_at", period.end_date + "T23:59:59+09:00")
+        .is("started_at", null);
+
+      const idsToDelete: string[] = [];
+      for (const sess of futureSessions || []) {
+        // Skip sessions with notes (has data)
+        if (sess.notes && sess.notes !== "") continue;
+        // Skip rescheduled sessions (manually moved)
+        const origins = Array.isArray(sess.reschedule_origin_dates) ? sess.reschedule_origin_dates : [];
+        if (origins.length > 0) continue;
+
+        const sessKstDate = toKstDateStr(sess.scheduled_at);
+        const sp = sessKstDate.split("-").map(Number);
+        const sessDow = new Date(sp[0], sp[1] - 1, sp[2]).getDay();
+
+        if (!validDays.has(sessDow)) {
+          idsToDelete.push(sess.id);
+        }
+      }
+
+      if (idsToDelete.length > 0) {
+        const { error: delErr } = await sb
+          .from("class_sessions")
+          .delete()
+          .in("id", idsToDelete);
+        if (!delErr) totalCleaned += idsToDelete.length;
+        else console.error("Stale session cleanup error:", delErr);
+      }
+    }
+
+    // 6. Generate sessions
     const sessionsToInsert: any[] = [];
     const psParts = period.start_date.split("-").map(Number);
     const peParts = period.end_date.split("-").map(Number);
@@ -221,7 +283,7 @@ serve(async (req) => {
         if (effective_date && dateStr < effective_date) continue;
         if (student.id && isStudentPausedOn(student.id, dateStr)) continue;
 
-        for (const sched of schedules) {
+      for (const sched of schedules) {
           const schedDay = DAY_MAP[sched.day];
           if (schedDay === undefined || schedDay !== dayOfWeek) continue;
 
@@ -254,7 +316,7 @@ serve(async (req) => {
       }
     }
 
-    // 6. Bulk insert
+    // 7. Bulk insert
     let created = 0;
     if (sessionsToInsert.length > 0) {
       for (let i = 0; i < sessionsToInsert.length; i += 100) {
@@ -274,6 +336,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         created,
+        cleaned: totalCleaned,
         period: period.label,
         students: students.length,
         skipped_holidays: holidayDates.size,
