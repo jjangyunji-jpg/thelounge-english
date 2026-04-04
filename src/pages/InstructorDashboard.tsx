@@ -2498,8 +2498,13 @@ export default function InstructorDashboard() {
                                         <p className="text-xs font-bold text-primary w-12 text-center flex-shrink-0 pt-0.5">{fmtTime(s.scheduled_at)}</p>
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-1.5">
-                                            <p className="text-sm font-medium text-foreground truncate">{fmtName(s.student_name)}</p>
-                                            {isCompleted && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
+                                            <p className={cn("text-sm font-medium truncate", isCancelled ? "line-through text-muted-foreground" : "text-foreground")}>{fmtName(s.student_name)}</p>
+                                            {isCancelled && cancelMeta && (
+                                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0", cancelMeta.bgColor, cancelMeta.color)}>
+                                                {cancelMeta.label}
+                                              </span>
+                                            )}
+                                            {isCompleted && !isCancelled && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
                                             {totalHw > 0 && (
                                               <button
                                                 onClick={(e) => { e.stopPropagation(); setExpandedTodayHwSession(isTodayExpanded ? null : s.id); }}
