@@ -473,12 +473,14 @@ function BigCalendar({
 
           // Combined entries for display (max 2)
           const now = new Date();
-          const displayItems: { label: string; type: "actual" | "completed" | "virtual" | "meeting" }[] = [];
+          const displayItems: { label: string; type: "actual" | "completed" | "virtual" | "meeting" | "cancelled" }[] = [];
           daySessions.slice(0, 2).forEach(s => {
+            const isCancelled = !!s.cancellation_type;
             const isCompleted = !!s.ended_at;
+            const cancelLabel = s.cancellation_type ? CANCELLATION_META[s.cancellation_type as CancellationType]?.label : '';
             displayItems.push({
-              label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })} ${s.student_name}`,
-              type: isCompleted ? "completed" : "actual",
+              label: `${new Date(s.scheduled_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })} ${s.student_name}${isCancelled ? ` [${cancelLabel}]` : ''}`,
+              type: isCancelled ? "cancelled" : isCompleted ? "completed" : "actual",
             });
           });
           if (displayItems.length < 2) {
