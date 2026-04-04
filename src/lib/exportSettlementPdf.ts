@@ -19,6 +19,7 @@ interface Session {
   scheduled_at: string;
   student_name: string;
   level: string;
+  cancellation_type?: string | null;
 }
 
 interface Meeting {
