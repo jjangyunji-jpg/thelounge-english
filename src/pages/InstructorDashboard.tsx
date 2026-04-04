@@ -1899,7 +1899,10 @@ export default function InstructorDashboard() {
     let total = 0;
     sessions.filter(s => {
       const d = new Date(s.scheduled_at);
-      return d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s) && !!s.ended_at;
+      if (!(d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s))) return false;
+      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel') return false;
+      if (s.cancellation_type === 'no_show') return true;
+      return !!s.ended_at;
     }).forEach(s => {
       const levelRate = LEVEL_RATES[s.level] || 19000;
       const pay = isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate);
