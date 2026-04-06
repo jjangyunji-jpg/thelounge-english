@@ -656,6 +656,9 @@ export type Database = {
           status: string | null
           student_name: string
           student_type: string
+          transfer_date: string | null
+          transfer_from_id: string | null
+          transfer_status: string | null
           user_id: string | null
           withdrawal_reason: string | null
         }
@@ -682,6 +685,9 @@ export type Database = {
           status?: string | null
           student_name: string
           student_type?: string
+          transfer_date?: string | null
+          transfer_from_id?: string | null
+          transfer_status?: string | null
           user_id?: string | null
           withdrawal_reason?: string | null
         }
@@ -708,6 +714,9 @@ export type Database = {
           status?: string | null
           student_name?: string
           student_type?: string
+          transfer_date?: string | null
+          transfer_from_id?: string | null
+          transfer_status?: string | null
           user_id?: string | null
           withdrawal_reason?: string | null
         }
@@ -717,6 +726,13 @@ export type Database = {
             columns: ["instructor_id"]
             isOneToOne: false
             referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_students_transfer_from_id_fkey"
+            columns: ["transfer_from_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_students"
             referencedColumns: ["id"]
           },
         ]

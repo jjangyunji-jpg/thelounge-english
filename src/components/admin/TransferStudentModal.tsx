@@ -87,14 +87,7 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
       const transferDateStr = format(transferDate, "yyyy-MM-dd");
       const finalSchedules = changeSchedule ? newSchedules : selectedStudent.schedules;
 
-      // 1. Set end_date and deactivate the old record
-      const { error: updateError } = await supabase
-        .from("instructor_students")
-        .update({ end_date: transferDateStr, status: "inactive" } as any)
-        .eq("id", selectedStudent.dbId);
-      if (updateError) throw updateError;
-
-      // 2. Look up the new instructor's ID
+      // 1. Look up the new instructor's ID
       const { data: instrData } = await supabase
         .from("instructors")
         .select("id, meet_link")
@@ -103,7 +96,14 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
         .maybeSingle();
       if (!instrData) throw new Error("새 강사를 찾을 수 없습니다");
 
-      // 3. Clone the student record for the new instructor
+      // 2. Update old record: set end_date but keep active until transfer date
+      const { error: updateError } = await supabase
+        .from("instructor_students")
+        .update({ end_date: transferDateStr } as any)
+        .eq("id", selectedStudent.dbId);
+      if (updateError) throw updateError;
+
+      // 3. Create new instructor record with pending transfer status
       const { error: insertError } = await supabase
         .from("instructor_students")
         .insert({
@@ -122,17 +122,20 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
           group_students: selectedStudent.groupStudents,
           google_sheet_url: selectedStudent.googleSheetUrl || null,
           reminder_enabled: true,
+          transfer_from_id: selectedStudent.dbId,
+          transfer_date: transferDateStr,
+          transfer_status: "pending",
         } as any);
       if (insertError) throw insertError;
 
-      // 4. Delete ALL unstarted sessions with no notes for the old instructor
-      //    This covers sessions both before and after the transfer date
+      // 4. Delete only unstarted/no-notes sessions AFTER transfer date for old instructor
       const { data: oldInstructorSessions } = await supabase
         .from("class_sessions")
-        .select("id, notes")
+        .select("id, notes, scheduled_at")
         .eq("student_name", selectedStudent.name)
         .eq("instructor_name", selectedStudent.instructor)
-        .is("started_at", null);
+        .is("started_at", null)
+        .gte("scheduled_at", `${transferDateStr}T00:00:00+09:00`);
 
       const deleteIds = (oldInstructorSessions || [])
         .filter(s => !s.notes || s.notes === "")
@@ -141,9 +144,13 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
         await supabase.from("class_sessions").delete().in("id", deleteIds);
       }
 
+      // 5. Auto-generate sessions for new instructor from transfer date
+      const { autoGenerateSessions } = await import("@/lib/autoGenerateSessions");
+      const { totalCreated } = await autoGenerateSessions(transferDateStr, selectedStudent.name);
+
       toast({
-        title: `${selectedStudent.name} → ${newInstructor} 이관 완료 ✓`,
-        description: `${transferDateStr}부터 적용 (미시작 세션 ${deleteIds.length}건 삭제)`,
+        title: `${selectedStudent.name} → ${newInstructor} 이관 예약 완료 ✓`,
+        description: `${transferDateStr}부터 적용 (기존 세션 ${deleteIds.length}건 삭제, 신규 ${totalCreated}건 생성)`,
       });
       onTransferred();
       onOpenChange(false);
@@ -293,7 +300,8 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
               {changeSchedule && newSchedules.length > 0 && (
                 <p>• 새 일정: {newSchedules.map(s => `${s.day} ${s.time}`).join(", ")}</p>
               )}
-              <p>• 이관일 이후 이전 강사의 미시작 세션은 삭제됩니다</p>
+              <p>• 이관일 이후 기존 강사의 미시작 세션 삭제 → 신규 강사 세션 자동 생성</p>
+              <p>• 이관일 전까지 기존 강사가 수업 진행, 신규 강사는 노트 읽기 가능</p>
             </div>
           )}
         </div>
