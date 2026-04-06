@@ -300,7 +300,8 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
               {changeSchedule && newSchedules.length > 0 && (
                 <p>• 새 일정: {newSchedules.map(s => `${s.day} ${s.time}`).join(", ")}</p>
               )}
-              <p>• 이관일 이후 이전 강사의 미시작 세션은 삭제됩니다</p>
+              <p>• 이관일 이후 기존 강사의 미시작 세션 삭제 → 신규 강사 세션 자동 생성</p>
+              <p>• 이관일 전까지 기존 강사가 수업 진행, 신규 강사는 노트 읽기 가능</p>
             </div>
           )}
         </div>
