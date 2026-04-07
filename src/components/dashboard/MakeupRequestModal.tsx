@@ -90,7 +90,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     (async () => {
       if (!instructorName) { setLoading(false); return; }
       const now = new Date();
-      const [slotsRes, sessionsRes, reqsRes, groupSessRes] = await Promise.all([
+      const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes] = await Promise.all([
         supabase.from("instructor_available_slots").select("*")
           .eq("instructor_name", instructorName).eq("status", "open")
           .gte("slot_date", todayStr).order("slot_date").order("slot_time"),
@@ -102,6 +102,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students")
           .contains("group_students", [studentName]).gte("scheduled_at", now.toISOString())
           .is("started_at", null).order("scheduled_at"),
+        // Cancelled sessions needing makeup
+        supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students, cancellation_type, cancellation_resolution")
+          .eq("student_name", studentName)
+          .eq("cancellation_resolution", "makeup")
+          .order("scheduled_at", { ascending: false })
+          .limit(20),
       ]);
 
       const sessionMap = new Map<string, ClassSession>();
@@ -113,6 +119,19 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
       ));
       setMyRequests((reqsRes.data || []) as MakeupReq[]);
+
+      // Filter cancelled sessions: exclude those that already have a pending/approved makeup request
+      const allReqs = (reqsRes.data || []) as MakeupReq[];
+      const linkedSessionIds = new Set(
+        allReqs
+          .filter(r => r.status === "pending" || r.status === "approved")
+          .map(r => r.original_session_id)
+          .filter(Boolean)
+      );
+      const filteredCancelled = ((cancelledRes.data || []) as ClassSession[])
+        .filter(s => !linkedSessionIds.has(s.id));
+      setCancelledSessions(filteredCancelled);
+
       setLoading(false);
     })();
   }, []);
