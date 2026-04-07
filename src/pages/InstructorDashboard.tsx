@@ -2139,6 +2139,38 @@ export default function InstructorDashboard() {
         />
       )}
 
+      {/* Session Cancellation Modal */}
+      {cancellationModal && (
+        <SessionCancellationModal
+          sessionId={cancellationModal.session.id}
+          studentName={cancellationModal.session.student_name}
+          scheduledAt={cancellationModal.session.scheduled_at}
+          open={true}
+          onClose={() => setCancellationModal(null)}
+          onConfirm={async (type, resolution, remark) => {
+            const updateData: any = {
+              cancellation_type: type,
+              cancellation_resolution: resolution,
+            };
+            if (remark) {
+              updateData.remarks = remark;
+            }
+            const { error } = await supabase.from("class_sessions").update(updateData).eq("id", cancellationModal.session.id);
+            if (error) {
+              toast({ title: "처리 실패", description: error.message, variant: "destructive" });
+            } else {
+              toast({ title: `${CANCELLATION_META[type].label} 처리됨` });
+              setSessions(prev => prev.map(sess =>
+                sess.id === cancellationModal.session.id
+                  ? { ...sess, cancellation_type: type, cancellation_resolution: resolution }
+                  : sess
+              ));
+            }
+            setCancellationModal(null);
+          }}
+        />
+      )}
+
       {/* Tab Nav */}
       <div className="border-b border-border bg-card px-2 sm:px-5 overflow-x-auto scrollbar-none">
         <div className="flex gap-0 max-w-5xl mx-auto min-w-max">
