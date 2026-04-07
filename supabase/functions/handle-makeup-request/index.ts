@@ -111,6 +111,13 @@ serve(async (req) => {
         });
       }
 
+      // If this makeup request is linked to a cancelled session, mark it as resolved
+      if (makeupReq.original_session_id && makeupReq.request_type === "extra") {
+        await sb.from("class_sessions").update({
+          cancellation_resolution: "makeup_completed",
+        }).eq("id", makeupReq.original_session_id);
+      }
+
       // Close the booked slot
       await sb.from("instructor_available_slots")
         .update({ status: "booked" })
