@@ -91,13 +91,28 @@ serve(async (req) => {
         }).select();
         // Ignore conflict if slot already exists
 
-      } else if (makeupReq.request_type === "extra") {
+    } else if (makeupReq.request_type === "extra") {
         // Create new session
         const { data: studentRec } = await sb.from("instructor_students")
           .select("level, meet_link, group_students")
           .eq("student_name", makeupReq.student_name)
           .eq("status", "active")
           .maybeSingle();
+
+        // Check if original cancelled session has notes/topic to transfer
+        let transferNotes: string | null = null;
+        let transferTopic: string | null = null;
+        let transferRemarks: string | null = null;
+        if (makeupReq.original_session_id) {
+          const { data: origSession } = await sb
+            .from("class_sessions").select("notes, topic, remarks")
+            .eq("id", makeupReq.original_session_id).single();
+          if (origSession) {
+            transferNotes = origSession.notes || null;
+            transferTopic = origSession.topic || null;
+            transferRemarks = origSession.remarks || null;
+          }
+        }
 
         await sb.from("class_sessions").insert({
           student_name: makeupReq.student_name,
@@ -108,7 +123,20 @@ serve(async (req) => {
           group_students: Array.isArray(makeupReq.group_students) && makeupReq.group_students.length > 0
             ? makeupReq.group_students
             : (studentRec?.group_students || []),
+          notes: transferNotes,
+          topic: transferTopic,
+          remarks: transferRemarks,
         });
+
+        // Clear notes/topic from original cancelled session (moved, not copied)
+        if (makeupReq.original_session_id && (transferNotes || transferTopic)) {
+          // Use direct SQL-like approach: set notes to empty to avoid trigger blocking null
+          await sb.from("class_sessions").update({
+            notes: null,
+            topic: null,
+            remarks: null,
+          }).eq("id", makeupReq.original_session_id);
+        }
       }
 
       // If this makeup request is linked to a cancelled session, mark it as resolved
