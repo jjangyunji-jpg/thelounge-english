@@ -26,12 +26,10 @@ function isMatchingWeek(dateStr: string, periodStartStr: string, frequency: Freq
   const pp = periodStartStr.split("-").map(Number);
   const date = new Date(dp[0], dp[1] - 1, dp[2]);
   const periodStart = new Date(pp[0], pp[1] - 1, pp[2]);
-  const diffDays = Math.floor((date.getTime() - periodStart.getTime()) / (86400000));
+  const diffDays = Math.floor((date.getTime() - periodStart.getTime()) / 86400000);
   const weekNum = Math.floor(diffDays / 7);
 
-  if (frequency === "biweekly") {
-    return weekNum % 2 === 0;
-  }
+  if (frequency === "biweekly") return weekNum % 2 === 0;
 
   if (frequency === "monthly2") {
     const dayOfWeek = date.getDay();
@@ -46,12 +44,33 @@ function isMatchingWeek(dateStr: string, periodStartStr: string, frequency: Freq
   return true;
 }
 
+function toKstDateStr(isoDate: string): string {
+  const d = new Date(isoDate);
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, "0")}-${String(kst.getUTCDate()).padStart(2, "0")}`;
+}
+
+function formatDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Get ISO week key (Mon-based) for a date string YYYY-MM-DD */
+function weekKey(dateStr: string): string {
+  const parts = dateStr.split("-").map(Number);
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  // Shift to Monday-based week: Mon=0..Sun=6
+  const dayOffset = (d.getDay() + 6) % 7;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - dayOffset);
+  return formatDate(monday);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
 
   try {
-    // Auth check - admin or instructor only
+    // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
@@ -114,7 +133,7 @@ serve(async (req) => {
       );
     }
 
-    // 2.1 Get pause periods for active students
+    // 2.1 Get pause periods
     const studentIds = students.map((s: any) => s.id).filter(Boolean);
     const pausesByStudent = new Map<string, { pause_start: string; pause_end: string | null }[]>();
     if (studentIds.length > 0) {
@@ -123,13 +142,11 @@ serve(async (req) => {
         .select("student_id, pause_start, pause_end")
         .in("student_id", studentIds)
         .order("pause_start", { ascending: true });
-
       for (const p of pauses || []) {
         if (!pausesByStudent.has(p.student_id)) pausesByStudent.set(p.student_id, []);
         pausesByStudent.get(p.student_id)!.push({ pause_start: p.pause_start, pause_end: p.pause_end });
       }
     }
-
     const isStudentPausedOn = (studentId: string, dateStr: string) => {
       const pauses = pausesByStudent.get(studentId) || [];
       return pauses.some((p) => dateStr >= p.pause_start && (!p.pause_end || dateStr <= p.pause_end));
@@ -149,10 +166,7 @@ serve(async (req) => {
       const start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
       const end = new Date(endParts[0], endParts[1] - 1, endParts[2]);
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        holidayDates.add(`${yyyy}-${mm}-${dd}`);
+        holidayDates.add(formatDate(d));
       }
     }
 
@@ -164,16 +178,18 @@ serve(async (req) => {
       .lte("scheduled_at", period.end_date + "T23:59:59+09:00");
 
     const existingSet = new Set<string>();
-    const toKstDateStr = (isoDate: string) => {
-      const d = new Date(isoDate);
-      const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-      return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, "0")}-${String(kst.getUTCDate()).padStart(2, "0")}`;
-    };
+    // Track sessions per student per week (for weekly cap check)
+    const weeklySessionCount = new Map<string, number>();
 
     for (const s of existingSessions || []) {
       const dateStr = toKstDateStr(s.scheduled_at);
       const instructorKey = s.instructor_name || "";
       existingSet.add(`${s.student_name}|${instructorKey}|${dateStr}`);
+
+      // Count sessions per student per week
+      const wk = weekKey(dateStr);
+      const countKey = `${s.student_name}|${instructorKey}|${wk}`;
+      weeklySessionCount.set(countKey, (weeklySessionCount.get(countKey) || 0) + 1);
 
       const originDates = Array.isArray(s.reschedule_origin_dates)
         ? s.reschedule_origin_dates
@@ -185,9 +201,9 @@ serve(async (req) => {
       }
     }
 
-    // 5. Clean up stale future sessions (schedule changed → old day-of-week sessions)
-    const todayKst = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
-    const todayStr = `${todayKst.getUTCFullYear()}-${String(todayKst.getUTCMonth() + 1).padStart(2, "0")}-${String(todayKst.getUTCDate()).padStart(2, "0")}`;
+    // 5. Clean up stale sessions (schedule changed → old day-of-week sessions)
+    // NOTE: Clean ALL stale sessions in the period, not just future ones.
+    // Only sessions with no notes, not started, and not rescheduled are eligible.
     let totalCleaned = 0;
 
     for (const student of students) {
@@ -202,29 +218,32 @@ serve(async (req) => {
       }
       if (!Array.isArray(parsedSchedules) || parsedSchedules.length === 0) continue;
 
-      // Build set of valid day-of-week numbers from current schedule
+      // Build set of valid (day, time) combos from current schedule
+      const validDayTimes = new Set<string>();
       const validDays = new Set<number>();
       for (const s of parsedSchedules) {
         const d = DAY_MAP[s.day];
-        if (d !== undefined) validDays.add(d);
+        if (d !== undefined) {
+          validDays.add(d);
+          validDayTimes.add(`${d}|${s.time || "10:00"}`);
+        }
       }
 
-      // Find future un-started sessions for this student in this period that don't match current schedule
-      const { data: futureSessions } = await sb
+      // Find ALL sessions in this period that don't match current schedule
+      const { data: periodSessions } = await sb
         .from("class_sessions")
         .select("id, scheduled_at, reschedule_origin_dates, notes, started_at")
         .eq("student_name", student.student_name)
         .eq("instructor_name", student.instructor_name || "")
-        .gte("scheduled_at", todayStr + "T00:00:00+09:00")
         .gte("scheduled_at", period.start_date + "T00:00:00+09:00")
         .lte("scheduled_at", period.end_date + "T23:59:59+09:00")
         .is("started_at", null);
 
       const idsToDelete: string[] = [];
-      for (const sess of futureSessions || []) {
-        // Skip sessions with notes (has data)
+      for (const sess of periodSessions || []) {
+        // Skip sessions with notes
         if (sess.notes && sess.notes !== "") continue;
-        // Skip rescheduled sessions (manually moved)
+        // Skip rescheduled sessions
         const origins = Array.isArray(sess.reschedule_origin_dates) ? sess.reschedule_origin_dates : [];
         if (origins.length > 0) continue;
 
@@ -242,12 +261,27 @@ serve(async (req) => {
           .from("class_sessions")
           .delete()
           .in("id", idsToDelete);
-        if (!delErr) totalCleaned += idsToDelete.length;
-        else console.error("Stale session cleanup error:", delErr);
+        if (!delErr) {
+          totalCleaned += idsToDelete.length;
+          // Remove deleted sessions from existingSet and weeklySessionCount
+          for (const sess of periodSessions || []) {
+            if (idsToDelete.includes(sess.id)) {
+              const dateStr = toKstDateStr(sess.scheduled_at);
+              const key = `${student.student_name}|${student.instructor_name || ""}|${dateStr}`;
+              existingSet.delete(key);
+              const wk = weekKey(dateStr);
+              const countKey = `${student.student_name}|${student.instructor_name || ""}|${wk}`;
+              const current = weeklySessionCount.get(countKey) || 0;
+              if (current > 0) weeklySessionCount.set(countKey, current - 1);
+            }
+          }
+        } else {
+          console.error("Stale session cleanup error:", delErr);
+        }
       }
     }
 
-    // 6. Generate sessions
+    // 6. Generate sessions with weekly cap enforcement
     const sessionsToInsert: any[] = [];
     const psParts = period.start_date.split("-").map(Number);
     const peParts = period.end_date.split("-").map(Number);
@@ -266,16 +300,15 @@ serve(async (req) => {
       }
       if (!Array.isArray(schedules) || schedules.length === 0) continue;
 
+      const expectedPerWeek = schedules.length;
+
       for (
         let d = new Date(periodStart);
         d <= periodEnd;
         d.setDate(d.getDate() + 1)
       ) {
         const dayOfWeek = d.getDay();
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const dateStr = formatDate(d);
 
         if (holidayDates.has(dateStr)) continue;
         if (student.start_date && dateStr < student.start_date) continue;
@@ -283,7 +316,7 @@ serve(async (req) => {
         if (effective_date && dateStr < effective_date) continue;
         if (student.id && isStudentPausedOn(student.id, dateStr)) continue;
 
-      for (const sched of schedules) {
+        for (const sched of schedules) {
           const schedDay = DAY_MAP[sched.day];
           if (schedDay === undefined || schedDay !== dayOfWeek) continue;
 
@@ -292,11 +325,15 @@ serve(async (req) => {
 
           if (existingSet.has(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`)) continue;
 
+          // Weekly cap check: don't exceed expected sessions per week
+          const wk = weekKey(dateStr);
+          const countKey = `${student.student_name}|${student.instructor_name || ""}|${wk}`;
+          const currentWeekCount = weeklySessionCount.get(countKey) || 0;
+          if (currentWeekCount >= expectedPerWeek) continue;
+
           const [hour, minute] = (sched.time || "10:00").split(":").map(Number);
           const scheduledAt = new Date(
-            `${dateStr}T${String(hour).padStart(2, "0")}:${String(
-              minute
-            ).padStart(2, "0")}:00+09:00`
+            `${dateStr}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00+09:00`
           );
 
           const groupStudents = Array.isArray((student as any).group_students) ? (student as any).group_students : [];
@@ -312,6 +349,7 @@ serve(async (req) => {
           });
 
           existingSet.add(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`);
+          weeklySessionCount.set(countKey, currentWeekCount + 1);
         }
       }
     }
