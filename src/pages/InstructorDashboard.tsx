@@ -2601,12 +2601,13 @@ export default function InstructorDashboard() {
                                                 onClick={async () => {
                                                   const { error } = await supabase.from("class_sessions").update({
                                                     cancellation_type: null,
+                                                    cancellation_resolution: null,
                                                   } as any).eq("id", s.id);
                                                   if (error) {
                                                     toast({ title: "복원 실패", description: error.message, variant: "destructive" });
                                                   } else {
                                                     toast({ title: "취소 상태가 복원되었습니다" });
-                                                    setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null } : sess));
+                                                    setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null } : sess));
                                                   }
                                                 }}
                                               >
