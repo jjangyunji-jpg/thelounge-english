@@ -102,6 +102,8 @@ interface ClassSession {
   started_at: string | null;
   ended_at: string | null;
   reschedule_origin_dates?: string[];
+  cancellation_type?: string | null;
+  cancellation_resolution?: string | null;
 }
 
 interface Assignment {
