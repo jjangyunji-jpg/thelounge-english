@@ -21,6 +21,8 @@ interface ClassSession {
   topic: string | null;
   instructor_name: string;
   group_students: string[];
+  cancellation_type?: string | null;
+  cancellation_resolution?: string | null;
 }
 
 interface MakeupReq {
@@ -67,12 +69,14 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [loading, setLoading] = useState(true);
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [sessions, setSessions] = useState<ClassSession[]>([]);
+  const [cancelledSessions, setCancelledSessions] = useState<ClassSession[]>([]);
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
 
   const [step, setStep] = useState<"type" | "checklist" | "session" | "calendar" | "confirm">("type");
   const [checkedItems, setCheckedItems] = useState<boolean[]>([false, false, false, false]);
-  const [requestType, setRequestType] = useState<"reschedule" | "extra">("reschedule");
+  const [requestType, setRequestType] = useState<"reschedule" | "extra" | "makeup">("reschedule");
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
+  const [selectedCancelledSession, setSelectedCancelledSession] = useState<ClassSession | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -86,7 +90,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     (async () => {
       if (!instructorName) { setLoading(false); return; }
       const now = new Date();
-      const [slotsRes, sessionsRes, reqsRes, groupSessRes] = await Promise.all([
+      const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes] = await Promise.all([
         supabase.from("instructor_available_slots").select("*")
           .eq("instructor_name", instructorName).eq("status", "open")
           .gte("slot_date", todayStr).order("slot_date").order("slot_time"),
@@ -98,6 +102,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students")
           .contains("group_students", [studentName]).gte("scheduled_at", now.toISOString())
           .is("started_at", null).order("scheduled_at"),
+        // Cancelled sessions needing makeup
+        supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students, cancellation_type, cancellation_resolution")
+          .eq("student_name", studentName)
+          .eq("cancellation_resolution", "makeup")
+          .order("scheduled_at", { ascending: false })
+          .limit(20),
       ]);
 
       const sessionMap = new Map<string, ClassSession>();
@@ -109,6 +119,19 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
       ));
       setMyRequests((reqsRes.data || []) as MakeupReq[]);
+
+      // Filter cancelled sessions: exclude those that already have a pending/approved makeup request
+      const allReqs = (reqsRes.data || []) as MakeupReq[];
+      const linkedSessionIds = new Set(
+        allReqs
+          .filter(r => r.status === "pending" || r.status === "approved")
+          .map(r => r.original_session_id)
+          .filter(Boolean)
+      );
+      const filteredCancelled = ((cancelledRes.data || []) as ClassSession[])
+        .filter(s => !linkedSessionIds.has(s.id));
+      setCancelledSessions(filteredCancelled);
+
       setLoading(false);
     })();
   }, []);
@@ -166,6 +189,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const handleSubmit = async () => {
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
+    if (requestType === "makeup" && !selectedCancelledSession) return;
     setSubmitting(true);
     try {
       // Atomically book the slot: only update if still "open"
@@ -189,14 +213,24 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         return;
       }
 
-      const { error } = await supabase.from("makeup_requests").insert({
+      const insertData: any = {
         student_name: studentName,
         instructor_name: instructorName,
-        original_session_id: requestType === "reschedule" ? selectedSession!.id : null,
+        original_session_id: requestType === "reschedule"
+          ? selectedSession!.id
+          : requestType === "makeup"
+          ? selectedCancelledSession!.id
+          : null,
         slot_id: selectedSlot.id,
-        request_type: requestType,
+        request_type: requestType === "makeup" ? "extra" : requestType,
         group_students: groupStudents,
-      } as any);
+      };
+      // Store original_scheduled_at for makeup requests (for history)
+      if (requestType === "makeup" && selectedCancelledSession) {
+        insertData.original_scheduled_at = selectedCancelledSession.scheduled_at;
+      }
+
+      const { error } = await supabase.from("makeup_requests").insert(insertData as any);
       if (error) throw error;
       toast({ title: "보강 신청 완료!", description: "강사의 승인을 기다려주세요." });
       onClose();
@@ -226,7 +260,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
             {step !== "type" && (
               <button onClick={() => {
                 if (step === "confirm") setStep("calendar");
-                else if (step === "calendar") setStep(requestType === "reschedule" ? "session" : "type");
+                else if (step === "calendar") {
+                  if (requestType === "reschedule") setStep("session");
+                  else { setSelectedCancelledSession(null); setStep("type"); }
+                }
                 else if (step === "session") setStep("checklist");
                 else if (step === "checklist") { setCheckedItems([false, false, false, false]); setStep("type"); }
               }} className="text-muted-foreground hover:text-foreground">
@@ -320,6 +357,46 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "type" && (
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">보강 유형을 선택해주세요</p>
+
+                  {/* Cancelled sessions needing makeup - shown prominently */}
+                  {cancelledSessions.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-[hsl(var(--gold-dark))] flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5" /> 보강이 필요한 수업
+                      </p>
+                      {cancelledSessions.map(s => {
+                        const cancelLabel = s.cancellation_type === 'sick' ? '병결' :
+                          s.cancellation_type === 'instructor_cancel' ? '강사취소' :
+                          s.cancellation_type === 'advance_cancel' ? '사전취소' : '취소';
+                        return (
+                          <button key={s.id}
+                            onClick={() => {
+                              setRequestType("makeup");
+                              setSelectedCancelledSession(s);
+                              setStep("calendar");
+                            }}
+                            className="w-full rounded-xl border border-[hsl(var(--gold)/0.4)] bg-[hsl(var(--gold)/0.05)] p-4 text-left hover:border-[hsl(var(--gold)/0.7)] transition-colors space-y-1"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                                  <RotateCcw className="w-4 h-4 text-[hsl(var(--gold-dark))]" />
+                                  {fmtSessionDate(s.scheduled_at)} 보강
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {fmtSessionTime(s.scheduled_at)} · {cancelLabel}
+                                </p>
+                              </div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))] font-semibold">
+                                보강 신청 →
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   <button
                     onClick={() => { setRequestType("reschedule"); setCheckedItems([false, false, false, false]); setStep("checklist"); }}
                     className="w-full rounded-xl border border-border p-4 text-left hover:border-primary/50 transition-colors space-y-1"
@@ -527,9 +604,11 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   <p className="text-sm font-bold text-foreground">신청 확인</p>
                   <div className="rounded-xl border border-border p-4 space-y-3">
                     <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold inline-block",
-                      requestType === "reschedule" ? "bg-primary/10 text-primary" : "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
+                      requestType === "reschedule" ? "bg-primary/10 text-primary" :
+                      requestType === "makeup" ? "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]" :
+                      "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
                     )}>
-                      {requestType === "reschedule" ? "일정 변경" : "추가 보강"}
+                      {requestType === "reschedule" ? "일정 변경" : requestType === "makeup" ? "취소 수업 보강" : "추가 보강"}
                     </span>
 
                     {requestType === "reschedule" && selectedSession && (
@@ -537,6 +616,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                         <p className="text-[10px] text-muted-foreground font-semibold">기존 수업</p>
                         <p className="text-xs text-foreground">
                           {fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)}
+                        </p>
+                      </div>
+                    )}
+
+                    {requestType === "makeup" && selectedCancelledSession && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground font-semibold">취소된 수업</p>
+                        <p className="text-xs text-foreground">
+                          {fmtSessionDate(selectedCancelledSession.scheduled_at)} {fmtSessionTime(selectedCancelledSession.scheduled_at)}
                         </p>
                       </div>
                     )}
