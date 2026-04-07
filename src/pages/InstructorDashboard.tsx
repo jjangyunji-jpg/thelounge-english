@@ -2741,7 +2741,7 @@ export default function InstructorDashboard() {
                                             >
                                               <Check className="w-3 h-3" /> 수업 완료
                                             </Button>
-                                            {/* Cancellation button → modal */}
+                                           {/* Cancellation button → modal */}
                                             <Button
                                               size="sm"
                                               variant="outline"
@@ -2751,6 +2751,17 @@ export default function InstructorDashboard() {
                                               <X className="w-3 h-3" /> 취소
                                             </Button>
                                             </>
+                                          );
+                                          // Allow cancellation even before 30min mark (without complete button)
+                                          if (!isCompleted && !after30min) return (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-7 text-[10px] gap-0.5 border-destructive/30 text-destructive px-1.5"
+                                              onClick={() => setCancellationModal({ session: s })}
+                                            >
+                                              <X className="w-3 h-3" /> 취소
+                                            </Button>
                                           );
                                           if (isCompleted && within12h) return (
                                             <Button
