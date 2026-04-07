@@ -2647,32 +2647,15 @@ export default function InstructorDashboard() {
                                             >
                                               <Check className="w-3 h-3" /> 수업 완료
                                             </Button>
-                                            {/* Cancellation dropdown */}
-                                            <Select
-                                              value=""
-                                              onValueChange={async (val) => {
-                                                const cancelType = val as CancellationType;
-                                                const { error } = await supabase.from("class_sessions").update({
-                                                  cancellation_type: cancelType,
-                                                } as any).eq("id", s.id);
-                                                if (error) {
-                                                  toast({ title: "처리 실패", description: error.message, variant: "destructive" });
-                                                } else {
-                                                  toast({ title: `${CANCELLATION_META[cancelType].label} 처리됨` });
-                                                  setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: cancelType } : sess));
-                                                }
-                                              }}
+                                            {/* Cancellation button → modal */}
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-7 text-[10px] gap-0.5 border-destructive/30 text-destructive px-1.5"
+                                              onClick={() => setCancellationModal({ session: s })}
                                             >
-                                              <SelectTrigger className="h-7 w-auto min-w-0 text-[10px] gap-0.5 border-destructive/30 text-destructive px-1.5 [&>svg]:w-3 [&>svg]:h-3">
-                                                <X className="w-3 h-3" />
-                                              </SelectTrigger>
-                                              <SelectContent align="end">
-                                                <SelectItem value="student_cancel">당일취소 (환불❌ 정산❌)</SelectItem>
-                                                <SelectItem value="no_show">노쇼 (환불❌ 정산✅)</SelectItem>
-                                                <SelectItem value="sick">병결 (보강가능)</SelectItem>
-                                                <SelectItem value="instructor_cancel">강사취소 (보강/환불)</SelectItem>
-                                              </SelectContent>
-                                            </Select>
+                                              <X className="w-3 h-3" /> 취소
+                                            </Button>
                                             </>
                                           );
                                           if (isCompleted && within12h) return (
