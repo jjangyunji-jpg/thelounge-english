@@ -79,6 +79,7 @@ interface StudentRecord {
   level: string | null;
   instructor_name: string | null;
   instructor_display_name: string | null;
+  meet_link: string | null;
   pauses: PauseRecord[];
   student_type: string;
   group_students: string[];
@@ -561,7 +562,7 @@ export default function StudentDashboard() {
         .eq("student_name", student).gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).order("week_label", { ascending: false }).order("created_at", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,week_label,type,score,total,completed_at")
         .eq("student_name", student).not("completed_at", "is", null).order("completed_at", { ascending: false }).limit(20),
-      supabase.from("instructor_students").select("id,schedules,start_date,end_date,level,instructor_name,instructor_id,student_type,group_students")
+      supabase.from("instructor_students").select("id,schedules,start_date,end_date,level,instructor_name,instructor_id,student_type,group_students,meet_link")
         .eq("student_name", student).order("start_date", { ascending: true }),
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
@@ -687,6 +688,7 @@ export default function StudentDashboard() {
         level: activeStudentRec.level,
         instructor_name: activeStudentRec.instructor_name,
         instructor_display_name: instrDisplayName,
+        meet_link: activeStudentRec.meet_link || null,
         pauses,
         student_type: activeStudentRec.student_type || 'regular',
         group_students: Array.isArray(activeStudentRec.group_students) ? activeStudentRec.group_students : [],
@@ -1829,12 +1831,11 @@ export default function StudentDashboard() {
                   <button
                     onClick={() => {
                       if (!canEnter) return;
-                      if (nextSessionFromDB?.meet_link) {
-                        window.open(nextSessionFromDB.meet_link, "_blank");
-                      } else if (nextSessionFromDB?.id) {
-                        navigate(`/my/classroom?sessionId=${nextSessionFromDB.id}&role=student`);
+                      const meetLink = nextSessionFromDB?.meet_link || studentRecord?.meet_link;
+                      if (meetLink) {
+                        window.open(meetLink, "_blank", "noopener,noreferrer");
                       } else {
-                        navigate("/my/classroom?role=student");
+                        toast({ title: "Google Meet 링크가 설정되지 않았습니다", description: "담당 강사에게 문의해주세요.", variant: "destructive" });
                       }
                     }}
                     disabled={!canEnter}
