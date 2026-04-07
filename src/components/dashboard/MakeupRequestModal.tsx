@@ -69,6 +69,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [loading, setLoading] = useState(true);
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [sessions, setSessions] = useState<ClassSession[]>([]);
+  const [cancelledSessions, setCancelledSessions] = useState<ClassSession[]>([]);
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
 
   const [step, setStep] = useState<"type" | "checklist" | "session" | "calendar" | "confirm">("type");
