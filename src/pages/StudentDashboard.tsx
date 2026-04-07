@@ -102,6 +102,8 @@ interface ClassSession {
   started_at: string | null;
   ended_at: string | null;
   reschedule_origin_dates?: string[];
+  cancellation_type?: string | null;
+  cancellation_resolution?: string | null;
 }
 
 interface Assignment {
@@ -542,14 +544,14 @@ export default function StudentDashboard() {
   const loadAll = async () => {
     setLoading(true);
     const [sessRes, allSessRes, groupSessRes, groupAllSessRes, hwRes, subRes, vocRes, testRes, studentRes, periodsRes, holidaysRes] = await Promise.all([
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution")
         .eq("student_name", student).order("scheduled_at", { ascending: false }).limit(20),
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution")
         .eq("student_name", student).order("scheduled_at", { ascending: true }),
       // Group sessions: where student is in group_students array
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,student_name")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,student_name")
         .contains("group_students", [student]).order("scheduled_at", { ascending: false }).limit(20),
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution")
         .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
       supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id,preset_origin_id,created_at")
         .eq("student_name", student).order("created_at", { ascending: false }),
@@ -1999,6 +2001,39 @@ export default function StudentDashboard() {
               <p className="text-xs text-muted-foreground text-center py-2">예정된 수업이 없습니다</p>
             )}
           </RSection>
+
+          {/* Makeup Alert Banner */}
+          {(() => {
+            const makeupSessions = allSessions.filter(s =>
+              s.cancellation_resolution === 'makeup' &&
+              s.cancellation_type &&
+              s.cancellation_type !== 'no_show'
+            );
+            if (makeupSessions.length === 0) return null;
+            return (
+              <div className="rounded-lg border border-[hsl(var(--gold)/0.4)] bg-[hsl(var(--gold)/0.08)] px-3 py-2.5">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-[hsl(var(--gold-dark))] flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-[hsl(var(--gold-dark))]">
+                      보강이 필요한 수업이 {makeupSessions.length}건 있습니다
+                    </p>
+                    {makeupSessions.map(s => (
+                      <p key={s.id} className="text-[10px] text-muted-foreground">
+                        {new Date(s.scheduled_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })} 수업 →{" "}
+                        <button
+                          onClick={() => navigate("/my/dashboard?tab=makeup")}
+                          className="text-[hsl(var(--navy))] font-semibold hover:underline"
+                        >
+                          보강 신청하기
+                        </button>
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Weekly Tasks */}
           <WeeklyTasksSection

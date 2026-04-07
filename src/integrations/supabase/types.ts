@@ -241,6 +241,7 @@ export type Database = {
       }
       class_sessions: {
         Row: {
+          cancellation_resolution: string | null
           cancellation_type: string | null
           created_at: string
           ended_at: string | null
@@ -259,6 +260,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancellation_resolution?: string | null
           cancellation_type?: string | null
           created_at?: string
           ended_at?: string | null
@@ -277,6 +279,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancellation_resolution?: string | null
           cancellation_type?: string | null
           created_at?: string
           ended_at?: string | null

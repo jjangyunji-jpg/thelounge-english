@@ -74,13 +74,15 @@ interface StudentFull {
   pauses: PauseRecord[];
 }
 
-type CancellationType = 'student_cancel' | 'no_show' | 'sick' | 'instructor_cancel';
+import SessionCancellationModal from "@/components/dashboard/SessionCancellationModal";
+import type { CancellationType, CancellationResolution } from "@/components/dashboard/SessionCancellationModal";
 
 const CANCELLATION_META: Record<CancellationType, { label: string; color: string; bgColor: string }> = {
   student_cancel: { label: "당일취소", color: "text-destructive", bgColor: "bg-destructive/10" },
   no_show: { label: "노쇼", color: "text-[hsl(var(--gold-dark))]", bgColor: "bg-[hsl(var(--gold)/0.12)]" },
   sick: { label: "병결", color: "text-blue-600", bgColor: "bg-blue-50" },
   instructor_cancel: { label: "강사취소", color: "text-purple-600", bgColor: "bg-purple-50" },
+  advance_cancel: { label: "사전취소", color: "text-emerald-600", bgColor: "bg-emerald-50" },
 };
 
 interface ClassSession {
@@ -96,6 +98,7 @@ interface ClassSession {
   notes: string | null;
   reschedule_origin_dates?: string[];
   cancellation_type?: CancellationType | null;
+  cancellation_resolution?: CancellationResolution | null;
 }
 
 interface HomeworkAssignment {
@@ -1376,6 +1379,7 @@ export default function InstructorDashboard() {
   const [expandedHwStudent, setExpandedHwStudent] = useState<string | null>(null);
   const [expandedTodayHwSession, setExpandedTodayHwSession] = useState<string | null>(null);
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
+  const [cancellationModal, setCancellationModal] = useState<{ session: ClassSession } | null>(null);
 
   useEffect(() => { init(); }, [viewingInstructorId]);
 
@@ -1842,7 +1846,7 @@ export default function InstructorDashboard() {
   // Exclude: student_cancel, sick, instructor_cancel (no pay for instructor)
   const completedSettlementSessions = settlementSessions.filter((s) => {
     // Cancelled types that don't count for settlement
-    if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel') return false;
+    if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return false;
     // no_show counts for settlement even without ended_at
     if (s.cancellation_type === 'no_show') return true;
     // Normal: must be completed
@@ -1903,7 +1907,7 @@ export default function InstructorDashboard() {
     sessions.filter(s => {
       const d = new Date(s.scheduled_at);
       if (!(d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s))) return false;
-      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel') return false;
+      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return false;
       if (s.cancellation_type === 'no_show') return true;
       return !!s.ended_at;
     }).forEach(s => {
@@ -2132,6 +2136,38 @@ export default function InstructorDashboard() {
           periodEndDate={studentFeedbackModal.periodEndDate}
           onComplete={() => { setStudentFeedbackModal(null); }}
           onClose={() => setStudentFeedbackModal(null)}
+        />
+      )}
+
+      {/* Session Cancellation Modal */}
+      {cancellationModal && (
+        <SessionCancellationModal
+          sessionId={cancellationModal.session.id}
+          studentName={cancellationModal.session.student_name}
+          scheduledAt={cancellationModal.session.scheduled_at}
+          open={true}
+          onClose={() => setCancellationModal(null)}
+          onConfirm={async (type, resolution, remark) => {
+            const updateData: any = {
+              cancellation_type: type,
+              cancellation_resolution: resolution,
+            };
+            if (remark) {
+              updateData.remarks = remark;
+            }
+            const { error } = await supabase.from("class_sessions").update(updateData).eq("id", cancellationModal.session.id);
+            if (error) {
+              toast({ title: "처리 실패", description: error.message, variant: "destructive" });
+            } else {
+              toast({ title: `${CANCELLATION_META[type].label} 처리됨` });
+              setSessions(prev => prev.map(sess =>
+                sess.id === cancellationModal.session.id
+                  ? { ...sess, cancellation_type: type, cancellation_resolution: resolution }
+                  : sess
+              ));
+            }
+            setCancellationModal(null);
+          }}
         />
       )}
 
@@ -2517,6 +2553,9 @@ export default function InstructorDashboard() {
                                             {isCancelled && cancelMeta && (
                                               <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0", cancelMeta.bgColor, cancelMeta.color)}>
                                                 {cancelMeta.label}
+                                                {s.cancellation_resolution === 'makeup' && ' · 보강'}
+                                                {s.cancellation_resolution === 'carry_over' && ' · 이월'}
+                                                {s.cancellation_resolution === 'refund' && ' · 환불'}
                                               </span>
                                             )}
                                             {isCompleted && !isCancelled && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
@@ -2565,12 +2604,13 @@ export default function InstructorDashboard() {
                                                 onClick={async () => {
                                                   const { error } = await supabase.from("class_sessions").update({
                                                     cancellation_type: null,
+                                                    cancellation_resolution: null,
                                                   } as any).eq("id", s.id);
                                                   if (error) {
                                                     toast({ title: "복원 실패", description: error.message, variant: "destructive" });
                                                   } else {
                                                     toast({ title: "취소 상태가 복원되었습니다" });
-                                                    setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null } : sess));
+                                                    setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null } : sess));
                                                   }
                                                 }}
                                               >
@@ -2643,32 +2683,15 @@ export default function InstructorDashboard() {
                                             >
                                               <Check className="w-3 h-3" /> 수업 완료
                                             </Button>
-                                            {/* Cancellation dropdown */}
-                                            <Select
-                                              value=""
-                                              onValueChange={async (val) => {
-                                                const cancelType = val as CancellationType;
-                                                const { error } = await supabase.from("class_sessions").update({
-                                                  cancellation_type: cancelType,
-                                                } as any).eq("id", s.id);
-                                                if (error) {
-                                                  toast({ title: "처리 실패", description: error.message, variant: "destructive" });
-                                                } else {
-                                                  toast({ title: `${CANCELLATION_META[cancelType].label} 처리됨` });
-                                                  setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: cancelType } : sess));
-                                                }
-                                              }}
+                                            {/* Cancellation button → modal */}
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-7 text-[10px] gap-0.5 border-destructive/30 text-destructive px-1.5"
+                                              onClick={() => setCancellationModal({ session: s })}
                                             >
-                                              <SelectTrigger className="h-7 w-auto min-w-0 text-[10px] gap-0.5 border-destructive/30 text-destructive px-1.5 [&>svg]:w-3 [&>svg]:h-3">
-                                                <X className="w-3 h-3" />
-                                              </SelectTrigger>
-                                              <SelectContent align="end">
-                                                <SelectItem value="student_cancel">당일취소 (환불❌ 정산❌)</SelectItem>
-                                                <SelectItem value="no_show">노쇼 (환불❌ 정산✅)</SelectItem>
-                                                <SelectItem value="sick">병결 (보강가능)</SelectItem>
-                                                <SelectItem value="instructor_cancel">강사취소 (보강/환불)</SelectItem>
-                                              </SelectContent>
-                                            </Select>
+                                              <X className="w-3 h-3" /> 취소
+                                            </Button>
                                             </>
                                           );
                                           if (isCompleted && within12h) return (
