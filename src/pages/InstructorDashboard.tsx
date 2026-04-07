@@ -2553,6 +2553,9 @@ export default function InstructorDashboard() {
                                             {isCancelled && cancelMeta && (
                                               <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0", cancelMeta.bgColor, cancelMeta.color)}>
                                                 {cancelMeta.label}
+                                                {s.cancellation_resolution === 'makeup' && ' · 보강'}
+                                                {s.cancellation_resolution === 'carry_over' && ' · 이월'}
+                                                {s.cancellation_resolution === 'refund' && ' · 환불'}
                                               </span>
                                             )}
                                             {isCompleted && !isCancelled && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
