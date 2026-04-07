@@ -604,9 +604,11 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   <p className="text-sm font-bold text-foreground">신청 확인</p>
                   <div className="rounded-xl border border-border p-4 space-y-3">
                     <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold inline-block",
-                      requestType === "reschedule" ? "bg-primary/10 text-primary" : "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
+                      requestType === "reschedule" ? "bg-primary/10 text-primary" :
+                      requestType === "makeup" ? "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]" :
+                      "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
                     )}>
-                      {requestType === "reschedule" ? "일정 변경" : "추가 보강"}
+                      {requestType === "reschedule" ? "일정 변경" : requestType === "makeup" ? "취소 수업 보강" : "추가 보강"}
                     </span>
 
                     {requestType === "reschedule" && selectedSession && (
@@ -614,6 +616,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                         <p className="text-[10px] text-muted-foreground font-semibold">기존 수업</p>
                         <p className="text-xs text-foreground">
                           {fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)}
+                        </p>
+                      </div>
+                    )}
+
+                    {requestType === "makeup" && selectedCancelledSession && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground font-semibold">취소된 수업</p>
+                        <p className="text-xs text-foreground">
+                          {fmtSessionDate(selectedCancelledSession.scheduled_at)} {fmtSessionTime(selectedCancelledSession.scheduled_at)}
                         </p>
                       </div>
                     )}
