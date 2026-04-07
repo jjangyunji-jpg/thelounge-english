@@ -62,7 +62,7 @@ export function buildSettlementRows(sessions: Session[], meetings: Meeting[], pe
     const d = new Date(s.scheduled_at);
     if (d >= start && d <= end && d <= now) {
       // Skip cancellation types that don't count for settlement
-      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel') return;
+      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return;
       const levelRate = LEVEL_RATES[s.level] || 19000;
       const pay = flatRate ? flatRate : (BASE_PAY + levelRate);
       rows.push({
