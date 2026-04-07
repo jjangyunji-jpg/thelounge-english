@@ -354,6 +354,46 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "type" && (
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">보강 유형을 선택해주세요</p>
+
+                  {/* Cancelled sessions needing makeup - shown prominently */}
+                  {cancelledSessions.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-[hsl(var(--gold-dark))] flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5" /> 보강이 필요한 수업
+                      </p>
+                      {cancelledSessions.map(s => {
+                        const cancelLabel = s.cancellation_type === 'sick' ? '병결' :
+                          s.cancellation_type === 'instructor_cancel' ? '강사취소' :
+                          s.cancellation_type === 'advance_cancel' ? '사전취소' : '취소';
+                        return (
+                          <button key={s.id}
+                            onClick={() => {
+                              setRequestType("makeup");
+                              setSelectedCancelledSession(s);
+                              setStep("calendar");
+                            }}
+                            className="w-full rounded-xl border border-[hsl(var(--gold)/0.4)] bg-[hsl(var(--gold)/0.05)] p-4 text-left hover:border-[hsl(var(--gold)/0.7)] transition-colors space-y-1"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                                  <RotateCcw className="w-4 h-4 text-[hsl(var(--gold-dark))]" />
+                                  {fmtSessionDate(s.scheduled_at)} 보강
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {fmtSessionTime(s.scheduled_at)} · {cancelLabel}
+                                </p>
+                              </div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))] font-semibold">
+                                보강 신청 →
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   <button
                     onClick={() => { setRequestType("reschedule"); setCheckedItems([false, false, false, false]); setStep("checklist"); }}
                     className="w-full rounded-xl border border-border p-4 text-left hover:border-primary/50 transition-colors space-y-1"
