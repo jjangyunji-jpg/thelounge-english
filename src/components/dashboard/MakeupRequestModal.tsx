@@ -261,6 +261,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               <button onClick={() => {
                 if (step === "confirm") setStep("calendar");
                 else if (step === "calendar") setStep(requestType === "reschedule" ? "session" : "type");
+                else if (step === "calendar" && requestType === "makeup") { setSelectedCancelledSession(null); setStep("type"); }
                 else if (step === "session") setStep("checklist");
                 else if (step === "checklist") { setCheckedItems([false, false, false, false]); setStep("type"); }
               }} className="text-muted-foreground hover:text-foreground">
