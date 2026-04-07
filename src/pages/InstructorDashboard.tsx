@@ -2287,13 +2287,33 @@ export default function InstructorDashboard() {
                     ) : (
                       <div className="space-y-2">
                         {/* Actual sessions */}
-                        {selectedDaySessions.map((s) => (
-                          <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors">
+                        {selectedDaySessions.map((s) => {
+                          const isCancelled = !!s.cancellation_type;
+                          const isCompleted = !!s.ended_at;
+                          const cancelMeta = s.cancellation_type ? CANCELLATION_META[s.cancellation_type as CancellationType] : null;
+                          return (
+                          <div key={s.id} className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors",
+                            isCancelled ? "border-muted-foreground/20 bg-muted/30 opacity-70" :
+                            isCompleted ? "border-success/30 bg-success/5 hover:bg-success/10" :
+                            "border-border bg-muted/20 hover:bg-muted/40"
+                          )}>
                             <div className="text-center w-12 flex-shrink-0">
                               <p className="text-xs font-bold text-navy">{fmtTime(s.scheduled_at)}</p>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground">{fmtName(s.student_name)}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className={cn("text-sm font-medium", isCancelled ? "line-through text-muted-foreground" : "text-foreground")}>{fmtName(s.student_name)}</p>
+                                {isCancelled && cancelMeta && (
+                                  <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0", cancelMeta.bgColor, cancelMeta.color)}>
+                                    {cancelMeta.label}
+                                    {s.cancellation_resolution === 'makeup' && ' · 보강'}
+                                    {s.cancellation_resolution === 'carry_over' && ' · 이월'}
+                                    {s.cancellation_resolution === 'refund' && ' · 환불'}
+                                  </span>
+                                )}
+                                {isCompleted && !isCancelled && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
+                              </div>
                               <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
                               {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
                                 <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
@@ -2303,6 +2323,41 @@ export default function InstructorDashboard() {
                               )}
                             </div>
                             <div className="flex items-center gap-1.5">
+                              {!isCancelled && !isCompleted && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-[10px] gap-0.5 border-destructive/30 text-destructive px-1.5"
+                                  onClick={() => setCancellationModal({ session: s })}
+                                >
+                                  <X className="w-3 h-3" /> 취소
+                                </Button>
+                              )}
+                              {isCancelled && (() => {
+                                const diffMs = Date.now() - new Date(s.scheduled_at).getTime();
+                                if (diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000) return (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-[10px] gap-0.5 border-muted-foreground/30 text-muted-foreground px-1.5"
+                                    onClick={async () => {
+                                      const { error } = await supabase.from("class_sessions").update({
+                                        cancellation_type: null,
+                                        cancellation_resolution: null,
+                                      } as any).eq("id", s.id);
+                                      if (error) {
+                                        toast({ title: "복원 실패", description: error.message, variant: "destructive" });
+                                      } else {
+                                        toast({ title: "취소 상태가 복원되었습니다" });
+                                        setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null } : sess));
+                                      }
+                                    }}
+                                  >
+                                    <RotateCcw className="w-3 h-3" /> 복원
+                                  </Button>
+                                );
+                                return null;
+                              })()}
                               <button
                                 onClick={() => setRescheduleSession(s)}
                                 className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-1 rounded hover:bg-muted"
@@ -2334,14 +2389,17 @@ export default function InstructorDashboard() {
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
+                              {!isCancelled && (
                               <a href={`/t/classroom?sessionId=${s.id}`}>
                                 <Button size="sm" className="h-6 text-[10px] gap-1 bg-navy hover:bg-navy-light text-primary-foreground px-2">
                                   <FileText className="w-3 h-3" /> 수업노트
                                 </Button>
                               </a>
+                              )}
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                         {/* Virtual (planned) sessions */}
                         {selectedDayVirtual.map((v, i) => (
                           <div key={`v${i}`} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-navy/20 bg-navy/5 hover:bg-navy/10 transition-colors">
@@ -2683,7 +2741,7 @@ export default function InstructorDashboard() {
                                             >
                                               <Check className="w-3 h-3" /> 수업 완료
                                             </Button>
-                                            {/* Cancellation button → modal */}
+                                           {/* Cancellation button → modal */}
                                             <Button
                                               size="sm"
                                               variant="outline"
@@ -2693,6 +2751,17 @@ export default function InstructorDashboard() {
                                               <X className="w-3 h-3" /> 취소
                                             </Button>
                                             </>
+                                          );
+                                          // Allow cancellation even before 30min mark (without complete button)
+                                          if (!isCompleted && !after30min) return (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-7 text-[10px] gap-0.5 border-destructive/30 text-destructive px-1.5"
+                                              onClick={() => setCancellationModal({ session: s })}
+                                            >
+                                              <X className="w-3 h-3" /> 취소
+                                            </Button>
                                           );
                                           if (isCompleted && within12h) return (
                                             <Button
