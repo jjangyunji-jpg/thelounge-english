@@ -21,6 +21,8 @@ interface ClassSession {
   topic: string | null;
   instructor_name: string;
   group_students: string[];
+  cancellation_type?: string | null;
+  cancellation_resolution?: string | null;
 }
 
 interface MakeupReq {
