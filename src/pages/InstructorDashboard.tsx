@@ -98,7 +98,7 @@ interface ClassSession {
   notes: string | null;
   reschedule_origin_dates?: string[];
   cancellation_type?: CancellationType | null;
-}
+  cancellation_resolution?: CancellationResolution | null;
 
 interface HomeworkAssignment {
   id: string;
