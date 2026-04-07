@@ -189,6 +189,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const handleSubmit = async () => {
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
+    if (requestType === "makeup" && !selectedCancelledSession) return;
     setSubmitting(true);
     try {
       // Atomically book the slot: only update if still "open"
@@ -212,14 +213,24 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         return;
       }
 
-      const { error } = await supabase.from("makeup_requests").insert({
+      const insertData: any = {
         student_name: studentName,
         instructor_name: instructorName,
-        original_session_id: requestType === "reschedule" ? selectedSession!.id : null,
+        original_session_id: requestType === "reschedule"
+          ? selectedSession!.id
+          : requestType === "makeup"
+          ? selectedCancelledSession!.id
+          : null,
         slot_id: selectedSlot.id,
-        request_type: requestType,
+        request_type: requestType === "makeup" ? "extra" : requestType,
         group_students: groupStudents,
-      } as any);
+      };
+      // Store original_scheduled_at for makeup requests (for history)
+      if (requestType === "makeup" && selectedCancelledSession) {
+        insertData.original_scheduled_at = selectedCancelledSession.scheduled_at;
+      }
+
+      const { error } = await supabase.from("makeup_requests").insert(insertData as any);
       if (error) throw error;
       toast({ title: "보강 신청 완료!", description: "강사의 승인을 기다려주세요." });
       onClose();
