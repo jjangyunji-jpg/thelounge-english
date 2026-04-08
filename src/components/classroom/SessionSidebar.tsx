@@ -130,9 +130,16 @@ export default function SessionSidebar({
           onClick={() => onSelect(s.id)}
           className="w-full text-left"
         >
-          <p className="text-[11px] font-semibold text-foreground leading-tight pr-5">
-            {fmtDate(s.scheduled_at)}
-          </p>
+          <div className="flex items-center gap-1.5 pr-5">
+            <p className="text-[11px] font-semibold text-foreground leading-tight">
+              {fmtDate(s.scheduled_at)}
+            </p>
+            {s.cancellation_type && (
+              <span className="inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold bg-destructive/15 text-destructive leading-relaxed flex-shrink-0">
+                취소
+              </span>
+            )}
+          </div>
           {s.topic && (
             <p className="text-[10px] text-muted-foreground mt-0.5 truncate pr-5">
               {s.topic}
