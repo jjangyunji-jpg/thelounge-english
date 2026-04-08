@@ -9,6 +9,7 @@ interface SessionItem {
   notes?: string | null;
   started_at?: string | null;
   ended_at?: string | null;
+  cancellation_type?: string | null;
 }
 
 interface SessionSidebarProps {
