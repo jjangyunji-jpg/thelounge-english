@@ -215,27 +215,17 @@ export default function Classroom() {
         if (data) setGroupStudents(Array.isArray((data as any).group_students) ? (data as any).group_students : []);
       }
       if (sessionData) {
-        // If session has no meet_link, fall back to instructor_students meet_link
-        let meetLink = sessionData.meet_link || "";
+        // Always fetch latest meet_link from instructor_students (source of truth)
+        let meetLink = "";
         let englishName = "";
-        if (!meetLink) {
-          const { data: isData } = await supabase
-            .from("instructor_students")
-            .select("meet_link, english_name")
-            .eq("student_name", sessionData.student_name)
-            .eq("status", "active")
-            .maybeSingle();
-          meetLink = isData?.meet_link ?? "";
-          englishName = isData?.english_name ?? "";
-        } else {
-          const { data: isData } = await supabase
-            .from("instructor_students")
-            .select("english_name")
-            .eq("student_name", sessionData.student_name)
-            .eq("status", "active")
-            .maybeSingle();
-          englishName = isData?.english_name ?? "";
-        }
+        const { data: isData } = await supabase
+          .from("instructor_students")
+          .select("meet_link, english_name")
+          .eq("student_name", sessionData.student_name)
+          .eq("status", "active")
+          .maybeSingle();
+        meetLink = isData?.meet_link || sessionData.meet_link || "";
+        englishName = isData?.english_name ?? "";
         setSession({
           sessionId: sessionData.id,
           studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
@@ -814,10 +804,12 @@ export default function Classroom() {
 
   const msUntilClass = session.scheduledAt.getTime() - now;
 
+  const ensureHttps = (url: string) => url && !/^https?:\/\//i.test(url) ? `https://${url}` : url;
+
   const handleStartClass = () => {
     setClassState("active");
     if (session.meetLink) {
-      window.open(session.meetLink, "_blank", "noopener,noreferrer");
+      window.open(ensureHttps(session.meetLink), "_blank", "noopener,noreferrer");
     }
     setMeetConnected(true);
   };
@@ -826,7 +818,7 @@ export default function Classroom() {
   const handleLeaveClass = () => { setMeetConnected(false); setClassState("ready"); };
   const handleJoinMeet = () => {
     if (session.meetLink) {
-      const w = window.open(session.meetLink, "_blank", "noopener,noreferrer");
+      const w = window.open(ensureHttps(session.meetLink), "_blank", "noopener,noreferrer");
       if (!w) {
         toast({ title: "팝업이 차단됐습니다", description: "아래 Meet 링크를 직접 복사해서 새 탭에 붙여넣어주세요.", variant: "destructive" });
       }
