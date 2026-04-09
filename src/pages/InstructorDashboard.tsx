@@ -1535,7 +1535,7 @@ export default function InstructorDashboard() {
 
     // Load student feedback history for all students of this instructor
     const fbStudentNames = studentsWithPauses.map(s => s.student_name);
-    if (studentNames.length > 0) {
+    if (fbStudentNames.length > 0) {
       const { data: fbHistory } = await supabase
         .from("instructor_student_feedback" as any)
         .select("student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
