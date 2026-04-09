@@ -60,11 +60,55 @@ serve(async (req) => {
       );
     }
 
+    // Strip images, styles, scripts and extract meaningful text
+    function stripHtml(html: string): string {
+      let text = html;
+      // Remove base64 images and img tags entirely
+      text = text.replace(/<img[^>]*>/gi, "");
+      // Remove style/script blocks
+      text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+      text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
+      // Remove SVG blocks
+      text = text.replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, "");
+      // Remove data URIs that might appear in attributes
+      text = text.replace(/data:[^"'\s)]+/gi, "");
+      // Preserve table structure with delimiters
+      text = text.replace(/<\/th>/gi, " | ");
+      text = text.replace(/<\/td>/gi, " | ");
+      text = text.replace(/<\/tr>/gi, "\n");
+      // Preserve line breaks
+      text = text.replace(/<br\s*\/?>/gi, "\n");
+      text = text.replace(/<\/p>/gi, "\n");
+      text = text.replace(/<\/div>/gi, "\n");
+      text = text.replace(/<\/li>/gi, "\n");
+      text = text.replace(/<\/h[1-6]>/gi, "\n");
+      // Remove remaining HTML tags
+      text = text.replace(/<[^>]+>/g, " ");
+      // Decode HTML entities
+      text = text.replace(/&amp;/g, "&");
+      text = text.replace(/&lt;/g, "<");
+      text = text.replace(/&gt;/g, ">");
+      text = text.replace(/&quot;/g, '"');
+      text = text.replace(/&#39;/g, "'");
+      text = text.replace(/&nbsp;/g, " ");
+      // Collapse whitespace
+      text = text.replace(/[ \t]+/g, " ");
+      text = text.replace(/\n{3,}/g, "\n\n");
+      return text.trim();
+    }
+
+    let cleanedNotes = stripHtml(notes);
+
+    // Truncate to ~60k chars to stay within AI model limits
+    const MAX_CHARS = 60000;
+    if (cleanedNotes.length > MAX_CHARS) {
+      cleanedNotes = cleanedNotes.slice(0, MAX_CHARS) + "\n\n[...truncated]";
+    }
+
     const systemPrompt = `You are an English vocabulary extractor for Korean learners.
-Analyze the class notes (which may contain HTML including tables) and extract English-Korean vocabulary pairs.
+Analyze the class notes and extract English-Korean vocabulary pairs.
 
 RULES:
-- The notes are HTML content. Parse tables (<table>, <tr>, <td>, <th>), lists, and inline text thoroughly.
 - Extract items where BOTH an English word/phrase AND its Korean meaning appear together — in the same table row, list item, paragraph, or nearby context.
 - Patterns to detect: "word 한국어", "word / word 한국어", "word: 한국어", "word (한국어)", "word — 한국어", or table columns with English in one cell and Korean in another cell of the same row.
 - Include single words, phrasal verbs, idioms, and short phrases.
@@ -86,7 +130,7 @@ Return ONLY a valid JSON object:
 
 If no clear English-Korean pairs are found, return { "words": [] }.`;
 
-    const userPrompt = `Extract English-Korean vocabulary pairs from these class notes:\n\n${notes}`;
+    const userPrompt = `Extract English-Korean vocabulary pairs from these class notes:\n\n${cleanedNotes}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
