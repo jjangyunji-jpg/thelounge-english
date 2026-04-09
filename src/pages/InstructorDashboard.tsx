@@ -1533,6 +1533,21 @@ export default function InstructorDashboard() {
     setSubmissions((subRes.data || []) as HomeworkSubmission[]);
     setAllInstructors((allInsRes.data || []) as { id: string; name: string }[]);
 
+    // Load student feedback history for all students of this instructor
+    const studentNames = studentsWithPauses.map(s => s.student_name);
+    if (studentNames.length > 0) {
+      const { data: fbHistory } = await supabase
+        .from("instructor_student_feedback" as any)
+        .select("student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
+        .in("student_name", studentNames)
+        .order("created_at", { ascending: false });
+      const fbMap: Record<string, any[]> = {};
+      (fbHistory || []).forEach((fb: any) => {
+        if (!fbMap[fb.student_name]) fbMap[fb.student_name] = [];
+        fbMap[fb.student_name].push(fb);
+      });
+      setStudentFeedbackHistory(fbMap);
+    }
     // Merge own meetings + attended meetings (avoid duplicates)
     const ownMeetings = meetRes.data || [];
     const attendedMeetingIds = new Set((attendedRes.data || []).map((a: any) => a.meeting_id));
