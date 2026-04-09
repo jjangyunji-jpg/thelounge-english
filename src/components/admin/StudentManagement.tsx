@@ -237,7 +237,7 @@ export default function StudentManagement() {
   const [students, setStudents] = useState<Student[]>([]);
   const [instructorNames, setInstructorNames] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"active" | "graduated">("active");
+  const [tab, setTab] = useState<"active" | "paused" | "graduated">("active");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -503,24 +503,34 @@ export default function StudentManagement() {
 
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
 
+  // Helper: check if student is currently on pause
+  const isOnPause = (s: Student) => {
+    return s.pauses.some((p) => p.pause_start <= todayStr && (!p.pause_end || p.pause_end >= todayStr));
+  };
+
   const filtered = students.filter(
     (s) => {
       if (s.studentType === "corporate" || !s.name.includes(search)) return false;
-      if (s.status !== tab) return false;
       // Hide transferred-out records after end_date has passed
-      if (s.endDate && s.endDate <= todayStr && s.status === "active") {
-        // This is an old instructor record whose end_date has passed — hide it
-        return false;
+      if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+
+      if (tab === "paused") {
+        return s.status === "active" && isOnPause(s);
       }
-      return true;
+      if (tab === "active") {
+        return s.status === "active" && !isOnPause(s);
+      }
+      // graduated
+      return s.status === "graduated";
     }
   );
   const filteredCorporate = students.filter(
     (s) => {
       if (s.studentType !== "corporate" || !s.name.includes(search)) return false;
-      if (s.status !== tab) return false;
       if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
-      return true;
+      if (tab === "paused") return s.status === "active" && isOnPause(s);
+      if (tab === "active") return s.status === "active" && !isOnPause(s);
+      return s.status === "graduated";
     }
   );
 
@@ -1294,17 +1304,27 @@ export default function StudentManagement() {
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        {(["active", "graduated"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t === "active" ? "수강중" : "퇴원생"} ({students.filter((s) => s.status === t && s.studentType !== "corporate").length}명)
-          </button>
-        ))}
+        {(["active", "paused", "graduated"] as const).map((t) => {
+          const countForTab = students.filter((s) => {
+            if (s.studentType === "corporate") return false;
+            if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+            if (t === "paused") return s.status === "active" && isOnPause(s);
+            if (t === "active") return s.status === "active" && !isOnPause(s);
+            return s.status === "graduated";
+          }).length;
+          const label = t === "active" ? "수강중" : t === "paused" ? "휴강중" : "퇴원생";
+          return (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label} ({countForTab}명)
+            </button>
+          );
+        })}
       </div>
 
       {/* Search */}
