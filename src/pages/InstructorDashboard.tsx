@@ -10,6 +10,7 @@ import {
   Star, MessageSquare, Download, Bug, RotateCcw,
 } from "lucide-react";
 import BugReportModal from "@/components/dashboard/BugReportModal";
+import FeedbackHistoryModal from "@/components/dashboard/FeedbackHistoryModal";
 import NotificationInbox from "@/components/dashboard/NotificationInbox";
 import StudentFeedbackModal from "@/components/dashboard/StudentFeedbackModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
@@ -1381,7 +1382,7 @@ export default function InstructorDashboard() {
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
   const [cancellationModal, setCancellationModal] = useState<{ session: ClassSession } | null>(null);
   const [studentFeedbackHistory, setStudentFeedbackHistory] = useState<Record<string, { period_label: string; checklist: any; comment: string | null; suggested_goals: string | null; created_at: string; instructor_name: string }[]>>({});
-  const [expandedFeedbackStudent, setExpandedFeedbackStudent] = useState<string | null>(null);
+  const [feedbackHistoryModalStudent, setFeedbackHistoryModalStudent] = useState<string | null>(null);
   useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
@@ -2125,6 +2126,15 @@ export default function InstructorDashboard() {
         userName={instructor.name}
         role="instructor"
       />
+
+      {feedbackHistoryModalStudent && (
+        <FeedbackHistoryModal
+          open={!!feedbackHistoryModalStudent}
+          onOpenChange={(open) => { if (!open) setFeedbackHistoryModalStudent(null); }}
+          studentName={feedbackHistoryModalStudent}
+          feedbacks={studentFeedbackHistory[feedbackHistoryModalStudent] || []}
+        />
+      )}
 
       {showAddSession && instructor && (
         <AddSessionModal
@@ -3506,38 +3516,16 @@ export default function InstructorDashboard() {
                         />
                       )}
 
-                      {/* Feedback history - collapsible */}
+                      {/* Feedback history - modal trigger */}
                       {(studentFeedbackHistory[st.student_name] || []).length > 0 && (
-                        <div className="space-y-1">
-                          <button
-                            onClick={() => setExpandedFeedbackStudent(expandedFeedbackStudent === st.student_name ? null : st.student_name)}
-                            className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <MessageSquare className="w-3 h-3" />
-                            피드백 히스토리 ({(studentFeedbackHistory[st.student_name] || []).length}건)
-                            <ChevronDown className={cn("w-3 h-3 transition-transform", expandedFeedbackStudent === st.student_name && "rotate-180")} />
-                          </button>
-                          {expandedFeedbackStudent === st.student_name && (
-                            <div className="space-y-2 pt-1">
-                              {(studentFeedbackHistory[st.student_name] || []).map((fb, idx) => (
-                                <div key={idx} className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-semibold text-foreground">{fb.period_label}</span>
-                                    <span className="text-[10px] text-muted-foreground">{fb.instructor_name} · {new Date(fb.created_at).toLocaleDateString("ko-KR")}</span>
-                                  </div>
-                                  {fb.comment && (
-                                    <p className="text-xs text-foreground">{fb.comment}</p>
-                                  )}
-                                  {fb.suggested_goals && (
-                                    <p className="text-[10px] text-muted-foreground">
-                                      <span className="font-medium text-primary">목표 제안:</span> {fb.suggested_goals}
-                                    </p>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <button
+                          onClick={() => setFeedbackHistoryModalStudent(st.student_name)}
+                          className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          피드백 히스토리 ({(studentFeedbackHistory[st.student_name] || []).length}건)
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
                       )}
                     </div>
                   </div>
