@@ -501,11 +501,27 @@ export default function StudentManagement() {
     name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular", learningObjective: "", googleSheetUrl: "", meetLink: "",
   });
 
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+
   const filtered = students.filter(
-    (s) => s.status === tab && s.studentType !== "corporate" && s.name.includes(search)
+    (s) => {
+      if (s.studentType === "corporate" || !s.name.includes(search)) return false;
+      if (s.status !== tab) return false;
+      // Hide transferred-out records after end_date has passed
+      if (s.endDate && s.endDate <= todayStr && s.status === "active") {
+        // This is an old instructor record whose end_date has passed — hide it
+        return false;
+      }
+      return true;
+    }
   );
   const filteredCorporate = students.filter(
-    (s) => s.status === tab && s.studentType === "corporate" && s.name.includes(search)
+    (s) => {
+      if (s.studentType !== "corporate" || !s.name.includes(search)) return false;
+      if (s.status !== tab) return false;
+      if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+      return true;
+    }
   );
 
   // 학생의 정기 숙제 DB 로드
