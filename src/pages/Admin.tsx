@@ -31,9 +31,12 @@ export default function Admin() {
 
   useEffect(() => {
     (async () => {
-      // ProtectedRoute already verified auth + role, just determine admin level
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate("/login"); return; }
+
+      // Only the owner account can access admin dashboard
+      const OWNER_EMAIL = "reinainbiz@gmail.com";
+      if (session.user.email !== OWNER_EMAIL) { navigate("/login"); return; }
 
       const { data } = await supabase
         .from("user_roles")
@@ -41,6 +44,8 @@ export default function Admin() {
         .eq("user_id", session.user.id);
       const roles = (data || []).map((r) => r.role);
       const isManagerOrAbove = roles.includes("admin") || roles.includes("manager");
+      const isStaff = roles.includes("staff");
+      if (!isManagerOrAbove && !isStaff) { navigate("/login"); return; }
       const level = isManagerOrAbove ? "manager" : "staff";
       setAdminLevel(level);
       setActiveTab(level === "staff" ? "materials" : "dashboard");
