@@ -127,6 +127,7 @@ interface Student {
   englishName: string;
   level: Level;
   startDate: string;
+  endDate: string;
   instructor: string;
   status: StudentStatus;
   totalLessons: number;
@@ -144,6 +145,8 @@ interface Student {
   groupStudents: string[];
   googleSheetUrl?: string;
   transferHistory?: TransferRecord[];
+  transferDate?: string;
+  transferStatus?: string;
 }
 
 // removed old calcMonthlyFee - now using the one at module level
@@ -295,6 +298,7 @@ export default function StudentManagement() {
       
       level: (row.level as Level) || "B1",
       startDate: row.start_date || "",
+      endDate: row.end_date || "",
       instructor: row.instructor_name || "",
       status: (row.status as StudentStatus) || "active",
       totalLessons: row.total_lessons || 0,
@@ -311,6 +315,8 @@ export default function StudentManagement() {
       studentType: row.student_type || "regular",
       groupStudents: row.group_students || [],
       googleSheetUrl: (row as any).google_sheet_url || "",
+      transferDate: row.transfer_date || "",
+      transferStatus: row.transfer_status || "",
     }));
 
     // Build transfer history: group all records by student_name
@@ -495,11 +501,27 @@ export default function StudentManagement() {
     name: "", englishName: "", level: "", instructor: "", startDate: "", extraLessons: 0, schedules: [], studentType: "regular", learningObjective: "", googleSheetUrl: "", meetLink: "",
   });
 
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+
   const filtered = students.filter(
-    (s) => s.status === tab && s.studentType !== "corporate" && s.name.includes(search)
+    (s) => {
+      if (s.studentType === "corporate" || !s.name.includes(search)) return false;
+      if (s.status !== tab) return false;
+      // Hide transferred-out records after end_date has passed
+      if (s.endDate && s.endDate <= todayStr && s.status === "active") {
+        // This is an old instructor record whose end_date has passed — hide it
+        return false;
+      }
+      return true;
+    }
   );
   const filteredCorporate = students.filter(
-    (s) => s.status === tab && s.studentType === "corporate" && s.name.includes(search)
+    (s) => {
+      if (s.studentType !== "corporate" || !s.name.includes(search)) return false;
+      if (s.status !== tab) return false;
+      if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+      return true;
+    }
   );
 
   // 학생의 정기 숙제 DB 로드
@@ -892,6 +914,7 @@ export default function StudentManagement() {
       
       level: newStudent.level as Level,
       startDate: newStudent.startDate,
+      endDate: "",
       instructor: newStudent.instructor,
       status: "active",
       totalLessons: 0,
@@ -1366,11 +1389,21 @@ export default function StudentManagement() {
                         </span>
                       ) : null;
                     })()}
-                    {student.transferHistory && student.transferHistory.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-medium flex items-center gap-0.5">
-                        <ArrowRightLeft className="w-3 h-3" /> 이관
-                      </span>
-                    )}
+                    {(() => {
+                      // Show transfer badge for 1 month after the latest transfer date
+                      const latestTransfer = student.transferHistory?.[student.transferHistory.length - 1];
+                      if (!latestTransfer) return null;
+                      const transferDateObj = new Date(latestTransfer.transferDate + "T00:00:00+09:00");
+                      const badgeExpiry = new Date(transferDateObj);
+                      badgeExpiry.setMonth(badgeExpiry.getMonth() + 1);
+                      if (new Date() > badgeExpiry) return null;
+                      const isPending = todayStr < latestTransfer.transferDate;
+                      return (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-medium flex items-center gap-0.5">
+                          <ArrowRightLeft className="w-3 h-3" /> {isPending ? "곧 이관" : "이관"}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">담당 강사 : {student.instructor || "미지정"}</p>
                 </div>
