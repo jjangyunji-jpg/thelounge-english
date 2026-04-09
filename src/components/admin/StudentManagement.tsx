@@ -2496,7 +2496,7 @@ export default function StudentManagement() {
       </div>
 
       {/* Corporate student section */}
-      {filteredCorporate.length > 0 && (
+      {tab !== "corporate" && filteredCorporate.length > 0 && (
         <div className="space-y-5 mt-8">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-foreground flex items-center gap-1.5">
