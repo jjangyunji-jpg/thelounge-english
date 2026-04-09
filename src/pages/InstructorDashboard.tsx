@@ -3505,6 +3505,40 @@ export default function InstructorDashboard() {
                           }}
                         />
                       )}
+
+                      {/* Feedback history - collapsible */}
+                      {(studentFeedbackHistory[st.student_name] || []).length > 0 && (
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => setExpandedFeedbackStudent(expandedFeedbackStudent === st.student_name ? null : st.student_name)}
+                            className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            피드백 히스토리 ({(studentFeedbackHistory[st.student_name] || []).length}건)
+                            <ChevronDown className={cn("w-3 h-3 transition-transform", expandedFeedbackStudent === st.student_name && "rotate-180")} />
+                          </button>
+                          {expandedFeedbackStudent === st.student_name && (
+                            <div className="space-y-2 pt-1">
+                              {(studentFeedbackHistory[st.student_name] || []).map((fb, idx) => (
+                                <div key={idx} className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-semibold text-foreground">{fb.period_label}</span>
+                                    <span className="text-[10px] text-muted-foreground">{fb.instructor_name} · {new Date(fb.created_at).toLocaleDateString("ko-KR")}</span>
+                                  </div>
+                                  {fb.comment && (
+                                    <p className="text-xs text-foreground">{fb.comment}</p>
+                                  )}
+                                  {fb.suggested_goals && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      <span className="font-medium text-primary">목표 제안:</span> {fb.suggested_goals}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
