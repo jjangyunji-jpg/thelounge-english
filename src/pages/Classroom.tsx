@@ -804,10 +804,12 @@ export default function Classroom() {
 
   const msUntilClass = session.scheduledAt.getTime() - now;
 
+  const ensureHttps = (url: string) => url && !/^https?:\/\//i.test(url) ? `https://${url}` : url;
+
   const handleStartClass = () => {
     setClassState("active");
     if (session.meetLink) {
-      window.open(session.meetLink, "_blank", "noopener,noreferrer");
+      window.open(ensureHttps(session.meetLink), "_blank", "noopener,noreferrer");
     }
     setMeetConnected(true);
   };
@@ -816,7 +818,7 @@ export default function Classroom() {
   const handleLeaveClass = () => { setMeetConnected(false); setClassState("ready"); };
   const handleJoinMeet = () => {
     if (session.meetLink) {
-      const w = window.open(session.meetLink, "_blank", "noopener,noreferrer");
+      const w = window.open(ensureHttps(session.meetLink), "_blank", "noopener,noreferrer");
       if (!w) {
         toast({ title: "팝업이 차단됐습니다", description: "아래 Meet 링크를 직접 복사해서 새 탭에 붙여넣어주세요.", variant: "destructive" });
       }
