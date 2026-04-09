@@ -1892,6 +1892,18 @@ export default function Classroom() {
         }
       }}
     />
+    <NewsLessonGeneratorModal
+      open={newsLessonModalOpen}
+      onClose={() => setNewsLessonModalOpen(false)}
+      defaultLevel={session.level}
+      onInsert={(html) => {
+        const editor = notesEditorRef.current;
+        if (editor) {
+          editor.chain().focus().insertContent(html).run();
+          setNotes(editor.getHTML());
+        }
+      }}
+    />
     <MaterialPickerModal
       open={materialPickerOpen}
       onOpenChange={setMaterialPickerOpen}
