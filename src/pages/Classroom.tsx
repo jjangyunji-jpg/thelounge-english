@@ -6,7 +6,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked, Paperclip,
-  Loader2, Monitor, Download, History, Maximize2, Trash2, MessageCircle,
+  Loader2, Monitor, Download, History, Maximize2, Trash2, MessageCircle, Newspaper,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import NotesEditor from "@/components/classroom/NotesEditor";
 import MaterialPickerModal from "@/components/classroom/MaterialPickerModal";
 import NoteVersionsModal from "@/components/classroom/NoteVersionsModal";
 import DialogueGeneratorModal from "@/components/classroom/DialogueGeneratorModal";
+import NewsLessonGeneratorModal from "@/components/classroom/NewsLessonGeneratorModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
@@ -338,6 +339,7 @@ export default function Classroom() {
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notesEditorRef = useRef<any>(null);
   const [dialogueModalOpen, setDialogueModalOpen] = useState(false);
+  const [newsLessonModalOpen, setNewsLessonModalOpen] = useState(false);
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
 
   const [versionModalOpen, setVersionModalOpen] = useState(false);
@@ -1578,6 +1580,12 @@ export default function Classroom() {
                     >
                       <MessageCircle className="w-3 h-3" />Dialogue
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => setNewsLessonModalOpen(true)}
+                      disabled={isDisabled}
+                      className="h-7 text-xs gap-1.5 transition-all border-navy/30 text-navy hover:bg-navy/10"
+                    >
+                      <Newspaper className="w-3 h-3" />News Talk
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setMaterialPickerOpen(true)}
                       disabled={isDisabled}
                       className="h-7 text-xs gap-1.5 transition-all border-gold/30 text-gold-dark hover:bg-gold/10"
@@ -1876,6 +1884,18 @@ export default function Classroom() {
       onClose={() => setDialogueModalOpen(false)}
       defaultLevel={session.level}
       defaultStudentName={session.dbStudentName}
+      onInsert={(html) => {
+        const editor = notesEditorRef.current;
+        if (editor) {
+          editor.chain().focus().insertContent(html).run();
+          setNotes(editor.getHTML());
+        }
+      }}
+    />
+    <NewsLessonGeneratorModal
+      open={newsLessonModalOpen}
+      onClose={() => setNewsLessonModalOpen(false)}
+      defaultLevel={session.level}
       onInsert={(html) => {
         const editor = notesEditorRef.current;
         if (editor) {
