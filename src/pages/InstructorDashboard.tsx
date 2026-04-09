@@ -2127,7 +2127,15 @@ export default function InstructorDashboard() {
         role="instructor"
       />
 
-      {showAddSession && instructor && (
+      {feedbackHistoryModalStudent && (
+        <FeedbackHistoryModal
+          open={!!feedbackHistoryModalStudent}
+          onOpenChange={(open) => { if (!open) setFeedbackHistoryModalStudent(null); }}
+          studentName={feedbackHistoryModalStudent}
+          feedbacks={studentFeedbackHistory[feedbackHistoryModalStudent] || []}
+        />
+      )}
+
         <AddSessionModal
           students={students.filter(s => s.status === "active" && s.student_type !== "corporate").map(s => ({
             student_name: s.student_name,
