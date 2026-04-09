@@ -298,6 +298,7 @@ export default function StudentManagement() {
       
       level: (row.level as Level) || "B1",
       startDate: row.start_date || "",
+      endDate: row.end_date || "",
       instructor: row.instructor_name || "",
       status: (row.status as StudentStatus) || "active",
       totalLessons: row.total_lessons || 0,
@@ -314,6 +315,8 @@ export default function StudentManagement() {
       studentType: row.student_type || "regular",
       groupStudents: row.group_students || [],
       googleSheetUrl: (row as any).google_sheet_url || "",
+      transferDate: row.transfer_date || "",
+      transferStatus: row.transfer_status || "",
     }));
 
     // Build transfer history: group all records by student_name
@@ -895,6 +898,7 @@ export default function StudentManagement() {
       
       level: newStudent.level as Level,
       startDate: newStudent.startDate,
+      endDate: "",
       instructor: newStudent.instructor,
       status: "active",
       totalLessons: 0,
