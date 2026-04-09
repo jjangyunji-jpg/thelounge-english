@@ -1389,11 +1389,21 @@ export default function StudentManagement() {
                         </span>
                       ) : null;
                     })()}
-                    {student.transferHistory && student.transferHistory.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-medium flex items-center gap-0.5">
-                        <ArrowRightLeft className="w-3 h-3" /> 이관
-                      </span>
-                    )}
+                    {(() => {
+                      // Show transfer badge for 1 month after the latest transfer date
+                      const latestTransfer = student.transferHistory?.[student.transferHistory.length - 1];
+                      if (!latestTransfer) return null;
+                      const transferDateObj = new Date(latestTransfer.transferDate + "T00:00:00+09:00");
+                      const badgeExpiry = new Date(transferDateObj);
+                      badgeExpiry.setMonth(badgeExpiry.getMonth() + 1);
+                      if (new Date() > badgeExpiry) return null;
+                      const isPending = todayStr < latestTransfer.transferDate;
+                      return (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-medium flex items-center gap-0.5">
+                          <ArrowRightLeft className="w-3 h-3" /> {isPending ? "곧 이관" : "이관"}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">담당 강사 : {student.instructor || "미지정"}</p>
                 </div>
