@@ -1304,17 +1304,27 @@ export default function StudentManagement() {
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        {(["active", "graduated"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t === "active" ? "수강중" : "퇴원생"} ({students.filter((s) => s.status === t && s.studentType !== "corporate").length}명)
-          </button>
-        ))}
+        {(["active", "paused", "graduated"] as const).map((t) => {
+          const countForTab = students.filter((s) => {
+            if (s.studentType === "corporate") return false;
+            if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+            if (t === "paused") return s.status === "active" && isOnPause(s);
+            if (t === "active") return s.status === "active" && !isOnPause(s);
+            return s.status === "graduated";
+          }).length;
+          const label = t === "active" ? "수강중" : t === "paused" ? "휴강중" : "퇴원생";
+          return (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label} ({countForTab}명)
+            </button>
+          );
+        })}
       </div>
 
       {/* Search */}
