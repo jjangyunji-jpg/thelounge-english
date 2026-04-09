@@ -6,7 +6,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked, Paperclip,
-  Loader2, Monitor, Download, History, Maximize2, Trash2, MessageCircle,
+  Loader2, Monitor, Download, History, Maximize2, Trash2, MessageCircle, Newspaper,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
