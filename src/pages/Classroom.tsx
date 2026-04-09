@@ -181,6 +181,7 @@ export default function Classroom() {
             .from("instructor_students")
             .select("level, instructor_name, meet_link")
             .eq("student_name", urlStudentName)
+            .eq("status", "active")
             .maybeSingle();
           // Get instructor name from auth session
           let instrName = isData?.instructor_name || "";
