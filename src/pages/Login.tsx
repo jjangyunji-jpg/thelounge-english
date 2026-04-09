@@ -43,7 +43,6 @@ export default function Login() {
       }
 
       if (!roleData.approved) {
-        // Students go to waitlist page; instructors just see a message
         if (roleData.role === "student") {
           navigate("/waitlist");
           return;
@@ -55,20 +54,6 @@ export default function Login() {
           variant: "destructive",
         });
         return;
-      }
-
-      // Only check waitlist for unapproved students
-      if (roleData.role === "student" && !roleData.approved) {
-        const { data: waitlistEntry } = await supabase
-          .from("waitlist_entries")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("status", "waiting")
-          .maybeSingle();
-        if (waitlistEntry) {
-          navigate("/waitlist");
-          return;
-        }
       }
 
       // Redirect based on role
