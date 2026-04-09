@@ -215,27 +215,17 @@ export default function Classroom() {
         if (data) setGroupStudents(Array.isArray((data as any).group_students) ? (data as any).group_students : []);
       }
       if (sessionData) {
-        // If session has no meet_link, fall back to instructor_students meet_link
-        let meetLink = sessionData.meet_link || "";
+        // Always fetch latest meet_link from instructor_students (source of truth)
+        let meetLink = "";
         let englishName = "";
-        if (!meetLink) {
-          const { data: isData } = await supabase
-            .from("instructor_students")
-            .select("meet_link, english_name")
-            .eq("student_name", sessionData.student_name)
-            .eq("status", "active")
-            .maybeSingle();
-          meetLink = isData?.meet_link ?? "";
-          englishName = isData?.english_name ?? "";
-        } else {
-          const { data: isData } = await supabase
-            .from("instructor_students")
-            .select("english_name")
-            .eq("student_name", sessionData.student_name)
-            .eq("status", "active")
-            .maybeSingle();
-          englishName = isData?.english_name ?? "";
-        }
+        const { data: isData } = await supabase
+          .from("instructor_students")
+          .select("meet_link, english_name")
+          .eq("student_name", sessionData.student_name)
+          .eq("status", "active")
+          .maybeSingle();
+        meetLink = isData?.meet_link || sessionData.meet_link || "";
+        englishName = isData?.english_name ?? "";
         setSession({
           sessionId: sessionData.id,
           studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
