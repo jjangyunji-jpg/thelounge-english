@@ -127,6 +127,7 @@ interface Student {
   englishName: string;
   level: Level;
   startDate: string;
+  endDate: string;
   instructor: string;
   status: StudentStatus;
   totalLessons: number;
@@ -144,6 +145,8 @@ interface Student {
   groupStudents: string[];
   googleSheetUrl?: string;
   transferHistory?: TransferRecord[];
+  transferDate?: string;
+  transferStatus?: string;
 }
 
 // removed old calcMonthlyFee - now using the one at module level
