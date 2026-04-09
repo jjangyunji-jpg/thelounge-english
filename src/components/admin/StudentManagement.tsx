@@ -503,24 +503,34 @@ export default function StudentManagement() {
 
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
 
+  // Helper: check if student is currently on pause
+  const isOnPause = (s: Student) => {
+    return s.pauses.some((p) => p.pause_start <= todayStr && (!p.pause_end || p.pause_end >= todayStr));
+  };
+
   const filtered = students.filter(
     (s) => {
       if (s.studentType === "corporate" || !s.name.includes(search)) return false;
-      if (s.status !== tab) return false;
       // Hide transferred-out records after end_date has passed
-      if (s.endDate && s.endDate <= todayStr && s.status === "active") {
-        // This is an old instructor record whose end_date has passed — hide it
-        return false;
+      if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+
+      if (tab === "paused") {
+        return s.status === "active" && isOnPause(s);
       }
-      return true;
+      if (tab === "active") {
+        return s.status === "active" && !isOnPause(s);
+      }
+      // graduated
+      return s.status === "graduated";
     }
   );
   const filteredCorporate = students.filter(
     (s) => {
       if (s.studentType !== "corporate" || !s.name.includes(search)) return false;
-      if (s.status !== tab) return false;
       if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
-      return true;
+      if (tab === "paused") return s.status === "active" && isOnPause(s);
+      if (tab === "active") return s.status === "active" && !isOnPause(s);
+      return s.status === "graduated";
     }
   );
 
