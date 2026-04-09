@@ -1380,7 +1380,8 @@ export default function InstructorDashboard() {
   const [expandedTodayHwSession, setExpandedTodayHwSession] = useState<string | null>(null);
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
   const [cancellationModal, setCancellationModal] = useState<{ session: ClassSession } | null>(null);
-
+  const [studentFeedbackHistory, setStudentFeedbackHistory] = useState<Record<string, { period_label: string; checklist: any; comment: string | null; suggested_goals: string | null; created_at: string; instructor_name: string }[]>>({});
+  const [expandedFeedbackStudent, setExpandedFeedbackStudent] = useState<string | null>(null);
   useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
