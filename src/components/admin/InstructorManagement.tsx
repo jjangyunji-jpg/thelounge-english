@@ -98,6 +98,7 @@ export default function InstructorManagement() {
   const [periodLabels, setPeriodLabels] = useState<string[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
   const [staffUserIds, setStaffUserIds] = useState<Set<string>>(new Set());
+  const [instrTab, setInstrTab] = useState<"active" | "inactive">("active");
   const [togglingStaff, setTogglingStaff] = useState<string | null>(null);
 
   useEffect(() => {
@@ -397,14 +398,32 @@ export default function InstructorManagement() {
         </Card>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+        {(["active", "inactive"] as const).map((t) => {
+          const count = instructors.filter((i) => t === "active" ? i.active : !i.active).length;
+          return (
+            <button
+              key={t}
+              onClick={() => setInstrTab(t)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                instrTab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t === "active" ? "재직중" : "퇴사"} ({count}명)
+            </button>
+          );
+        })}
+      </div>
+
       {/* Instructor List by Position */}
-      {instructors.length === 0 && (
+      {instructors.filter(i => instrTab === "active" ? i.active : !i.active).length === 0 && (
         <div className="text-center py-12 text-muted-foreground text-sm">
-          등록된 강사가 없습니다. 강사 추가 버튼을 눌러 첫 번째 강사를 등록하세요.
+          {instrTab === "active" ? "등록된 강사가 없습니다. 강사 추가 버튼을 눌러 첫 번째 강사를 등록하세요." : "퇴사한 강사가 없습니다."}
         </div>
       )}
       {(['대표', '매니저', '강사'] as const).map((positionGroup) => {
-        const group = instructors.filter(ins => (ins.position || '강사') === positionGroup).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+        const group = instructors.filter(ins => (ins.position || '강사') === positionGroup && (instrTab === "active" ? ins.active : !ins.active)).sort((a, b) => a.name.localeCompare(b.name, "ko"));
         if (group.length === 0) return null;
         return (
           <div key={positionGroup} className="space-y-3">
