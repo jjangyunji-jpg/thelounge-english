@@ -3525,17 +3525,6 @@ export default function InstructorDashboard() {
                         />
                       )}
 
-                      {/* Feedback history - modal trigger */}
-                      {(studentFeedbackHistory[st.student_name] || []).length > 0 && (
-                        <button
-                          onClick={() => setFeedbackHistoryModalStudent(st.student_name)}
-                          className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <MessageSquare className="w-3 h-3" />
-                          피드백 히스토리 ({(studentFeedbackHistory[st.student_name] || []).length}건)
-                          <ChevronRight className="w-3 h-3" />
-                        </button>
-                      )}
                     </div>
                   </div>
                 );
