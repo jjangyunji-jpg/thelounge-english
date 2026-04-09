@@ -181,6 +181,7 @@ export default function Classroom() {
             .from("instructor_students")
             .select("level, instructor_name, meet_link")
             .eq("student_name", urlStudentName)
+            .eq("status", "active")
             .maybeSingle();
           // Get instructor name from auth session
           let instrName = isData?.instructor_name || "";
@@ -221,6 +222,7 @@ export default function Classroom() {
             .from("instructor_students")
             .select("meet_link, english_name")
             .eq("student_name", sessionData.student_name)
+            .eq("status", "active")
             .maybeSingle();
           meetLink = isData?.meet_link ?? "";
           englishName = isData?.english_name ?? "";
@@ -229,6 +231,7 @@ export default function Classroom() {
             .from("instructor_students")
             .select("english_name")
             .eq("student_name", sessionData.student_name)
+            .eq("status", "active")
             .maybeSingle();
           englishName = isData?.english_name ?? "";
         }
@@ -281,6 +284,7 @@ export default function Classroom() {
             .from("instructor_students")
             .select("level, instructor_name, meet_link")
             .eq("student_name", studentName)
+            .eq("status", "active")
             .maybeSingle();
           setSession(prev => ({
             ...prev,

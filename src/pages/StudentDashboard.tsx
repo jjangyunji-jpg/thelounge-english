@@ -619,7 +619,9 @@ export default function StudentDashboard() {
 
     // Derive active record (no end_date) and all records from the array result
     const allStudentRecords = (studentRes.data || []) as any[];
-    const activeStudentRec = allStudentRecords.find((r: any) => !r.end_date) || allStudentRecords[allStudentRecords.length - 1] || null;
+    const activeStudentRec = allStudentRecords.find((r: any) => r.status === "active" && !r.end_date)
+      || allStudentRecords.find((r: any) => r.status === "active")
+      || allStudentRecords[allStudentRecords.length - 1] || null;
     // Earliest start_date across all records (so old instructor sessions are visible too)
     const earliestStartDate = allStudentRecords.reduce((min: string | null, r: any) => {
       if (!r.start_date) return min;
