@@ -3384,8 +3384,11 @@ export default function InstructorDashboard() {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 const stats = getStudentStats(st.student_name, st.schedules, selectedPeriod);
                 // goals variable removed - lesson goals are now per-session topics
-                const statusLabel = st.status === "active" ? "수강 중" : st.status === "paused" ? "휴강" : "수료";
-                const statusColor = st.status === "active" ? "bg-success/10 text-success" : st.status === "paused" ? "bg-gold/10 text-gold-dark" : "bg-muted text-muted-foreground";
+                const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                const currentlyOnPause = st.pauses?.some(p => p.pause_start <= todayStr && (!p.pause_end || p.pause_end >= todayStr)) ?? false;
+                const effectiveStatus = currentlyOnPause && st.status === "active" ? "paused" : st.status;
+                const statusLabel = effectiveStatus === "active" ? "수강 중" : effectiveStatus === "paused" ? "휴강 중" : "수료";
+                const statusColor = effectiveStatus === "active" ? "bg-success/10 text-success" : effectiveStatus === "paused" ? "bg-gold/10 text-gold-dark" : "bg-muted text-muted-foreground";
 
                 // Sessions within selected period for this student
                 const pStart = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00") : null;
