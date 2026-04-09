@@ -1308,16 +1308,17 @@ export default function StudentManagement() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        {(["active", "paused", "graduated"] as const).map((t) => {
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit flex-wrap">
+        {(["active", "paused", "graduated", "corporate"] as const).map((t) => {
           const countForTab = students.filter((s) => {
-            if (s.studentType === "corporate") return false;
             if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+            if (t === "corporate") return s.studentType === "corporate" && s.status === "active";
+            if (s.studentType === "corporate") return false;
             if (t === "paused") return s.status === "active" && isOnPause(s);
             if (t === "active") return s.status === "active" && !isOnPause(s);
             return s.status === "graduated";
           }).length;
-          const label = t === "active" ? "수강중" : t === "paused" ? "휴강중" : "퇴원생";
+          const label = t === "active" ? "수강중" : t === "paused" ? "휴강중" : t === "corporate" ? "기업수강생" : "퇴원생";
           return (
             <button
               key={t}
