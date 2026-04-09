@@ -98,6 +98,7 @@ export default function InstructorManagement() {
   const [periodLabels, setPeriodLabels] = useState<string[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
   const [staffUserIds, setStaffUserIds] = useState<Set<string>>(new Set());
+  const [instrTab, setInstrTab] = useState<"active" | "inactive">("active");
   const [togglingStaff, setTogglingStaff] = useState<string | null>(null);
 
   useEffect(() => {
