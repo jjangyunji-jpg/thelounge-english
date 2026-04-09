@@ -1380,7 +1380,8 @@ export default function InstructorDashboard() {
   const [expandedTodayHwSession, setExpandedTodayHwSession] = useState<string | null>(null);
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
   const [cancellationModal, setCancellationModal] = useState<{ session: ClassSession } | null>(null);
-
+  const [studentFeedbackHistory, setStudentFeedbackHistory] = useState<Record<string, { period_label: string; checklist: any; comment: string | null; suggested_goals: string | null; created_at: string; instructor_name: string }[]>>({});
+  const [expandedFeedbackStudent, setExpandedFeedbackStudent] = useState<string | null>(null);
   useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
@@ -1532,6 +1533,21 @@ export default function InstructorDashboard() {
     setSubmissions((subRes.data || []) as HomeworkSubmission[]);
     setAllInstructors((allInsRes.data || []) as { id: string; name: string }[]);
 
+    // Load student feedback history for all students of this instructor
+    const fbStudentNames = studentsWithPauses.map(s => s.student_name);
+    if (fbStudentNames.length > 0) {
+      const { data: fbHistory } = await supabase
+        .from("instructor_student_feedback" as any)
+        .select("student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
+        .in("student_name", studentNames)
+        .order("created_at", { ascending: false });
+      const fbMap: Record<string, any[]> = {};
+      (fbHistory || []).forEach((fb: any) => {
+        if (!fbMap[fb.student_name]) fbMap[fb.student_name] = [];
+        fbMap[fb.student_name].push(fb);
+      });
+      setStudentFeedbackHistory(fbMap);
+    }
     // Merge own meetings + attended meetings (avoid duplicates)
     const ownMeetings = meetRes.data || [];
     const attendedMeetingIds = new Set((attendedRes.data || []).map((a: any) => a.meeting_id));
@@ -3384,8 +3400,11 @@ export default function InstructorDashboard() {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 const stats = getStudentStats(st.student_name, st.schedules, selectedPeriod);
                 // goals variable removed - lesson goals are now per-session topics
-                const statusLabel = st.status === "active" ? "수강 중" : st.status === "paused" ? "휴강" : "수료";
-                const statusColor = st.status === "active" ? "bg-success/10 text-success" : st.status === "paused" ? "bg-gold/10 text-gold-dark" : "bg-muted text-muted-foreground";
+                const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                const currentlyOnPause = st.pauses?.some(p => p.pause_start <= todayStr && (!p.pause_end || p.pause_end >= todayStr)) ?? false;
+                const effectiveStatus = currentlyOnPause && st.status === "active" ? "paused" : st.status;
+                const statusLabel = effectiveStatus === "active" ? "수강 중" : effectiveStatus === "paused" ? "휴강 중" : "수료";
+                const statusColor = effectiveStatus === "active" ? "bg-success/10 text-success" : effectiveStatus === "paused" ? "bg-gold/10 text-gold-dark" : "bg-muted text-muted-foreground";
 
                 // Sessions within selected period for this student
                 const pStart = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00") : null;
@@ -3485,6 +3504,40 @@ export default function InstructorDashboard() {
                             setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, topic } : s));
                           }}
                         />
+                      )}
+
+                      {/* Feedback history - collapsible */}
+                      {(studentFeedbackHistory[st.student_name] || []).length > 0 && (
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => setExpandedFeedbackStudent(expandedFeedbackStudent === st.student_name ? null : st.student_name)}
+                            className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            피드백 히스토리 ({(studentFeedbackHistory[st.student_name] || []).length}건)
+                            <ChevronDown className={cn("w-3 h-3 transition-transform", expandedFeedbackStudent === st.student_name && "rotate-180")} />
+                          </button>
+                          {expandedFeedbackStudent === st.student_name && (
+                            <div className="space-y-2 pt-1">
+                              {(studentFeedbackHistory[st.student_name] || []).map((fb, idx) => (
+                                <div key={idx} className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-semibold text-foreground">{fb.period_label}</span>
+                                    <span className="text-[10px] text-muted-foreground">{fb.instructor_name} · {new Date(fb.created_at).toLocaleDateString("ko-KR")}</span>
+                                  </div>
+                                  {fb.comment && (
+                                    <p className="text-xs text-foreground">{fb.comment}</p>
+                                  )}
+                                  {fb.suggested_goals && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      <span className="font-medium text-primary">목표 제안:</span> {fb.suggested_goals}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
