@@ -2136,6 +2136,7 @@ export default function InstructorDashboard() {
         />
       )}
 
+      {showAddSession && instructor && (
         <AddSessionModal
           students={students.filter(s => s.status === "active" && s.student_type !== "corporate").map(s => ({
             student_name: s.student_name,
