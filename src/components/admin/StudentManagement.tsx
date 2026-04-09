@@ -237,7 +237,7 @@ export default function StudentManagement() {
   const [students, setStudents] = useState<Student[]>([]);
   const [instructorNames, setInstructorNames] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"active" | "paused" | "graduated">("active");
+  const [tab, setTab] = useState<"active" | "paused" | "graduated" | "corporate">("active");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -510,9 +510,14 @@ export default function StudentManagement() {
 
   const filtered = students.filter(
     (s) => {
-      if (s.studentType === "corporate" || !s.name.includes(search)) return false;
+      if (!s.name.includes(search)) return false;
       // Hide transferred-out records after end_date has passed
       if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+
+      if (tab === "corporate") {
+        return s.studentType === "corporate" && s.status === "active";
+      }
+      if (s.studentType === "corporate") return false;
 
       if (tab === "paused") {
         return s.status === "active" && isOnPause(s);
@@ -1303,16 +1308,17 @@ export default function StudentManagement() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        {(["active", "paused", "graduated"] as const).map((t) => {
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit flex-wrap">
+        {(["active", "paused", "graduated", "corporate"] as const).map((t) => {
           const countForTab = students.filter((s) => {
-            if (s.studentType === "corporate") return false;
             if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+            if (t === "corporate") return s.studentType === "corporate" && s.status === "active";
+            if (s.studentType === "corporate") return false;
             if (t === "paused") return s.status === "active" && isOnPause(s);
             if (t === "active") return s.status === "active" && !isOnPause(s);
             return s.status === "graduated";
           }).length;
-          const label = t === "active" ? "수강중" : t === "paused" ? "휴강중" : "퇴원생";
+          const label = t === "active" ? "수강중" : t === "paused" ? "휴강중" : t === "corporate" ? "기업수강생" : "퇴원생";
           return (
             <button
               key={t}
@@ -2490,7 +2496,7 @@ export default function StudentManagement() {
       </div>
 
       {/* Corporate student section */}
-      {filteredCorporate.length > 0 && (
+      {tab !== "corporate" && filteredCorporate.length > 0 && (
         <div className="space-y-5 mt-8">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-foreground flex items-center gap-1.5">
