@@ -237,7 +237,7 @@ export default function StudentManagement() {
   const [students, setStudents] = useState<Student[]>([]);
   const [instructorNames, setInstructorNames] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"active" | "graduated">("active");
+  const [tab, setTab] = useState<"active" | "paused" | "graduated">("active");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
