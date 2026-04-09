@@ -510,9 +510,14 @@ export default function StudentManagement() {
 
   const filtered = students.filter(
     (s) => {
-      if (s.studentType === "corporate" || !s.name.includes(search)) return false;
+      if (!s.name.includes(search)) return false;
       // Hide transferred-out records after end_date has passed
       if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+
+      if (tab === "corporate") {
+        return s.studentType === "corporate" && s.status === "active";
+      }
+      if (s.studentType === "corporate") return false;
 
       if (tab === "paused") {
         return s.status === "active" && isOnPause(s);
