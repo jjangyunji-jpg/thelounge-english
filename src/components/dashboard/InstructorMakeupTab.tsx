@@ -967,6 +967,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
             )}
             {processedByMonth.map(req => {
                 const slot = slots.find(s => s.id === req.slot_id);
+                const displayStatus = getDisplayStatus(req);
                 const isFutureApproved = req.status === "approved" && slot &&
                   new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).getTime() > Date.now();
                 return (
@@ -981,11 +982,9 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
-                          req.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
-                          req.status === "rejected" ? "bg-destructive/10 text-destructive" :
-                          "bg-muted text-muted-foreground"
+                          statusStyle(displayStatus)
                         )}>
-                          {req.status === "approved" ? "승인" : req.status === "rejected" ? "거절" : "취소"}
+                          {statusLabel(displayStatus)}
                         </span>
                       </div>
                     </div>
