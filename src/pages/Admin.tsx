@@ -17,7 +17,8 @@ import CurriculumGuideEditor from "@/components/admin/CurriculumGuideEditor";
 import CashReceiptManagement from "@/components/admin/CashReceiptManagement";
 import SupportRequestManagement from "@/components/admin/SupportRequestManagement";
 
-import { Menu, X, Loader2 } from "lucide-react";
+import { Menu, X, Loader2, ArrowLeft } from "lucide-react";
+import { useNavigate as useNav2 } from "react-router-dom";
 
 export type AdminLevel = "manager" | "staff";
 
