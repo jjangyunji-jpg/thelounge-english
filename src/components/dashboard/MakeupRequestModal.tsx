@@ -213,6 +213,46 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         return;
       }
 
+      // Mark any existing pending requests for the same original session as "changed"
+      const targetSessionId = requestType === "reschedule"
+        ? selectedSession!.id
+        : requestType === "makeup"
+        ? selectedCancelledSession!.id
+        : null;
+
+      if (targetSessionId) {
+        // Find existing pending requests for same student + same original session
+        const existingPending = myRequests.filter(r =>
+          r.status === "pending" && r.original_session_id === targetSessionId
+        );
+        for (const existing of existingPending) {
+          // Mark as "changed" and release the old slot
+          await supabase.from("makeup_requests")
+            .update({ status: "changed", resolved_at: new Date().toISOString() } as any)
+            .eq("id", existing.id);
+          if (existing.slot_id) {
+            await supabase.from("instructor_available_slots")
+              .update({ status: "open" })
+              .eq("id", existing.slot_id);
+          }
+        }
+      } else {
+        // For extra requests without original session, mark any pending extra requests as "changed"
+        const existingPendingExtra = myRequests.filter(r =>
+          r.status === "pending" && r.request_type === "extra" && !r.original_session_id
+        );
+        for (const existing of existingPendingExtra) {
+          await supabase.from("makeup_requests")
+            .update({ status: "changed", resolved_at: new Date().toISOString() } as any)
+            .eq("id", existing.id);
+          if (existing.slot_id) {
+            await supabase.from("instructor_available_slots")
+              .update({ status: "open" })
+              .eq("id", existing.slot_id);
+          }
+        }
+      }
+
       const insertData: any = {
         student_name: studentName,
         instructor_name: instructorName,
