@@ -280,16 +280,18 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
   };
 
   const handleDeleteSlot = async (slotId: string) => {
-    // First try to delete (works if no makeup_requests reference this slot)
-    const { error: delError } = await supabase.from("instructor_available_slots").delete().eq("id", slotId).eq("status", "open");
-    if (delError) {
-      // If FK constraint prevents deletion, just mark as deleted by removing it
-      // This happens when a past makeup_request references this slot
-      if (delError.message.includes("foreign key") || delError.message.includes("violates")) {
-        // Can't delete due to FK, so we update status to a neutral state or just inform user
-        toast({ title: "이 슬롯은 보강 신청 이력이 있어 삭제할 수 없습니다", description: "신청 관리에서 해당 건을 먼저 처리해주세요.", variant: "destructive" });
+    // Unlink any resolved (non-pending) makeup requests referencing this slot
+    await supabase.from("makeup_requests")
+      .update({ slot_id: null } as any)
+      .eq("slot_id", slotId)
+      .neq("status", "pending");
+
+    const { error } = await supabase.from("instructor_available_slots").delete().eq("id", slotId).eq("status", "open");
+    if (error) {
+      if (error.message.includes("foreign key") || error.message.includes("violates")) {
+        toast({ title: "진행 중인 보강 신청이 있어 삭제할 수 없습니다", variant: "destructive" });
       } else {
-        toast({ title: "시간 삭제 실패", description: delError.message, variant: "destructive" });
+        toast({ title: "시간 삭제 실패", description: error.message, variant: "destructive" });
       }
       return;
     }

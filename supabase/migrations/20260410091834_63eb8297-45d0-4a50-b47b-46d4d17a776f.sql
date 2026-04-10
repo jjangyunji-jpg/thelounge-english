@@ -1,0 +1,1 @@
+ALTER TABLE public.makeup_requests ALTER COLUMN slot_id DROP NOT NULL;
