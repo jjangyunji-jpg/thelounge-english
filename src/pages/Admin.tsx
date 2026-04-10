@@ -18,7 +18,6 @@ import CashReceiptManagement from "@/components/admin/CashReceiptManagement";
 import SupportRequestManagement from "@/components/admin/SupportRequestManagement";
 
 import { Menu, X, Loader2, ArrowLeft } from "lucide-react";
-import { useNavigate as useNav2 } from "react-router-dom";
 
 export type AdminLevel = "manager" | "staff";
 
@@ -136,7 +135,14 @@ export default function Admin() {
           <button onClick={() => setSidebarOpen(true)} className="text-foreground">
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-semibold text-sm text-foreground">The Lounge English Admin</span>
+          <span className="font-semibold text-sm text-foreground flex-1">Admin</span>
+          <button
+            onClick={() => navigate("/t/dashboard")}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gold border border-gold/30 hover:bg-gold/10 transition-colors"
+          >
+            <ArrowLeft className="w-3 h-3" />
+            강사 대시보드
+          </button>
         </div>
 
         <main className="flex-1 p-3 sm:p-6 overflow-auto">
