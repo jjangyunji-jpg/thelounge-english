@@ -528,7 +528,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                                 else if (!slot && !hasClass) togglePending(date, hour);
                               }}
                               className={cn(
-                                "w-full h-9 rounded-md text-[11px] font-semibold transition-all border",
+                                "w-full h-9 rounded-md text-[9px] font-semibold transition-all border leading-tight",
                                 isPast && "opacity-20 cursor-not-allowed border-transparent bg-muted/30",
                                 !isPast && hasClass && !slot && "bg-muted/50 border-border text-muted-foreground/50 cursor-not-allowed",
                                 !isPast && isBooked && "bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] cursor-not-allowed",
@@ -536,8 +536,13 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                                 !isPast && !slot && !hasClass && isPending && "bg-primary border-primary text-primary-foreground",
                                 !isPast && !slot && !hasClass && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
                               )}
+                              title={hasClass && !slot ? classStudentAt(date, hour) : isBooked && slot ? (bookedSlotStudentMap.get(slot.id) || "") : ""}
                             >
-                              {hasClass && !slot ? "수업" : isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
+                              {hasClass && !slot ? (
+                                <span className="truncate block px-0.5">{classStudentAt(date, hour)}</span>
+                              ) : isBooked && slot ? (
+                                <span className="truncate block px-0.5">{bookedSlotStudentMap.get(slot.id) || "예약"}</span>
+                              ) : isOpen ? "✓" : isPending ? "✓" : ""}
                             </button>
                           </td>
                         );
