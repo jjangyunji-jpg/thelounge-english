@@ -111,6 +111,12 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Month navigation for requests view
+  const [requestMonth, setRequestMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+
   const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 
   const loadData = useCallback(async () => {
