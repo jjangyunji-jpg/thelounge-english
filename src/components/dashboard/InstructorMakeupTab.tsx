@@ -343,6 +343,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
   const getDisplayStatus = useCallback((req: MakeupReq): "approved" | "rejected" | "cancelled" | "changed" => {
     if (req.status === "approved") return "approved";
     if (req.status === "rejected") return "rejected";
+    if (req.status === "changed") return "changed";
     if (req.status === "cancelled") {
       // Check if there's a newer request from the same student (same original session or just newer)
       const hasNewer = requests.some(r =>
@@ -352,7 +353,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
         (
           // Same original session
           (req.original_session_id && r.original_session_id === req.original_session_id) ||
-          // Or same request type and created close in time (within 1 hour)
+          // Or same request type and created close in time (within 24 hours)
           (!req.original_session_id && r.request_type === req.request_type &&
             Math.abs(new Date(r.created_at).getTime() - new Date(req.created_at).getTime()) < 24 * 60 * 60 * 1000)
         )

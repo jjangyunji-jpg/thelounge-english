@@ -213,6 +213,46 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         return;
       }
 
+      // Mark any existing pending requests for the same original session as "changed"
+      const targetSessionId = requestType === "reschedule"
+        ? selectedSession!.id
+        : requestType === "makeup"
+        ? selectedCancelledSession!.id
+        : null;
+
+      if (targetSessionId) {
+        // Find existing pending requests for same student + same original session
+        const existingPending = myRequests.filter(r =>
+          r.status === "pending" && r.original_session_id === targetSessionId
+        );
+        for (const existing of existingPending) {
+          // Mark as "changed" and release the old slot
+          await supabase.from("makeup_requests")
+            .update({ status: "changed", resolved_at: new Date().toISOString() } as any)
+            .eq("id", existing.id);
+          if (existing.slot_id) {
+            await supabase.from("instructor_available_slots")
+              .update({ status: "open" })
+              .eq("id", existing.slot_id);
+          }
+        }
+      } else {
+        // For extra requests without original session, mark any pending extra requests as "changed"
+        const existingPendingExtra = myRequests.filter(r =>
+          r.status === "pending" && r.request_type === "extra" && !r.original_session_id
+        );
+        for (const existing of existingPendingExtra) {
+          await supabase.from("makeup_requests")
+            .update({ status: "changed", resolved_at: new Date().toISOString() } as any)
+            .eq("id", existing.id);
+          if (existing.slot_id) {
+            await supabase.from("instructor_available_slots")
+              .update({ status: "open" })
+              .eq("id", existing.slot_id);
+          }
+        }
+      }
+
       const insertData: any = {
         student_name: studentName,
         instructor_name: instructorName,
@@ -322,9 +362,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                           <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
                             r.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
                             r.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                            r.status === "changed" ? "bg-primary/10 text-primary" :
                             "bg-muted text-muted-foreground"
                           )}>
-                            {r.status === "approved" ? "승인됨" : r.status === "rejected" ? "거절됨" : "취소됨"}
+                            {r.status === "approved" ? "보강 확정" : r.status === "rejected" ? "강사 거절" : r.status === "changed" ? "일정 변경" : "취소됨"}
                           </span>
                         </div>
                         {r.reject_reason && <p className="text-[10px] text-muted-foreground mt-1">사유: {r.reject_reason}</p>}
