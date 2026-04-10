@@ -129,8 +129,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
       supabase.from("makeup_requests")
         .select("*")
         .eq("instructor_name", instructorName)
-        .order("created_at", { ascending: false })
-        .limit(50),
+        .order("created_at", { ascending: false }),
       supabase.from("schedule_periods")
         .select("*")
         .order("start_date", { ascending: false }),
