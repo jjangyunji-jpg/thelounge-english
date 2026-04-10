@@ -281,10 +281,12 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
 
   const handleDeleteSlot = async (slotId: string) => {
     const { error } = await supabase.from("instructor_available_slots").delete().eq("id", slotId).eq("status", "open");
-    if (!error) {
-      setSlots(prev => prev.filter(s => s.id !== slotId));
-      toast({ title: "시간 삭제됨" });
+    if (error) {
+      toast({ title: "시간 삭제 실패", description: error.message, variant: "destructive" });
+      return;
     }
+    setSlots(prev => prev.filter(s => s.id !== slotId));
+    toast({ title: "시간 삭제됨" });
   };
 
   const handleApprove = async (reqId: string) => {
