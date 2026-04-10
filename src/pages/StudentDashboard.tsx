@@ -393,6 +393,7 @@ export default function StudentDashboard() {
   const { toast } = useToast();
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [allSessions, setAllSessions] = useState<ClassSession[]>([]);
+  const [instructorCancelledDates, setInstructorCancelledDates] = useState<Set<string>>(new Set());
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [vocabWords, setVocabWords] = useState<VocabWord[]>([]);
