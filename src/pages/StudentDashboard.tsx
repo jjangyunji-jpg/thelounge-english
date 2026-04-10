@@ -970,7 +970,7 @@ export default function StudentDashboard() {
     ...recurringDates
       .filter((d) => {
         const dateKey = toLocalDateKey(d);
-        return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey) && !rescheduledOriginDateStrings.has(d.toDateString());
+        return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey) && !rescheduledOriginDateStrings.has(d.toDateString()) && !instructorCancelledDates.has(d.toDateString());
       })
       .map((d) => d.toDateString()),
   ]);
