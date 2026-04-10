@@ -68,6 +68,20 @@ serve(async (req) => {
           original_scheduled_at: origSession.scheduled_at,
         }).eq("id", request_id);
 
+        // Release any previously booked makeup slot for the session's CURRENT time
+        // (handles the case where the session was moved here by a prior makeup request)
+        const curDate = new Date(origSession.scheduled_at);
+        const curDateStr = curDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+        const curTimeStr = curDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }) + ":00";
+        
+        // Find and release booked slots at the session's current time for this instructor
+        await sb.from("instructor_available_slots")
+          .update({ status: "open" })
+          .eq("instructor_name", slot.instructor_name)
+          .eq("slot_date", curDateStr)
+          .eq("slot_time", curTimeStr)
+          .eq("status", "booked");
+
         // Extract original session's date and time for re-opening as available slot
         const origDate = new Date(origSession.scheduled_at);
         const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
@@ -80,16 +94,29 @@ serve(async (req) => {
           .eq("id", makeupReq.original_session_id);
         if (updateErr) throw new Error("세션 업데이트 실패: " + updateErr.message);
 
-        // Re-open original time slot for other students
-        // Get instructor_id from the slot
-        await sb.from("instructor_available_slots").insert({
-          instructor_id: slot.instructor_id,
-          instructor_name: slot.instructor_name,
-          slot_date: origDateStr,
-          slot_time: origHour + ":00",
-          status: "open",
-        }).select();
-        // Ignore conflict if slot already exists
+        // Re-open original time slot for other students (only if not already exists)
+        const { data: existingSlot } = await sb.from("instructor_available_slots")
+          .select("id")
+          .eq("instructor_id", slot.instructor_id)
+          .eq("slot_date", origDateStr)
+          .eq("slot_time", origHour + ":00")
+          .maybeSingle();
+        
+        if (!existingSlot) {
+          await sb.from("instructor_available_slots").insert({
+            instructor_id: slot.instructor_id,
+            instructor_name: slot.instructor_name,
+            slot_date: origDateStr,
+            slot_time: origHour + ":00",
+            status: "open",
+          }).select();
+        } else {
+          // If slot exists but is booked, release it
+          await sb.from("instructor_available_slots")
+            .update({ status: "open" })
+            .eq("id", existingSlot.id)
+            .eq("status", "booked");
+        }
 
     } else if (makeupReq.request_type === "extra") {
         // Create new session
