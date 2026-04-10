@@ -1393,6 +1393,12 @@ export default function StudentManagement() {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${levelColors[student.level]}`}>
                       {student.level}
                     </span>
+                    {(() => {
+                      const thirtyDaysAgo = new Date();
+                      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                      const isNew = student.startDate && new Date(student.startDate) >= thirtyDaysAgo;
+                      return isNew ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-semibold">신규</span> : null;
+                    })()}
                     {student.studentType === "corporate" && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">기업</span>
                     )}
@@ -2549,6 +2555,12 @@ export default function StudentManagement() {
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${levelColors[student.level]}`}>
                                 {student.level}
                               </span>
+                              {(() => {
+                                const thirtyDaysAgo = new Date();
+                                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                                const isNew = student.startDate && new Date(student.startDate) >= thirtyDaysAgo;
+                                return isNew ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-semibold">신규</span> : null;
+                              })()}
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">기업</span>
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5 truncate">
