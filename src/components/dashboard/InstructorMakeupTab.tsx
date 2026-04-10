@@ -996,9 +996,8 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                     )}
                   </div>
                 );
-              })}
-            </div>
-          )}
+            })}
+          </div>
         </div>
       )}
     </div>
