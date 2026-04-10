@@ -168,19 +168,31 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
 
   const getSlot = (date: string, hour: number) => slotMap.get(date)?.get(hour);
 
-  // Build class session lookup: "date|hour" -> true (for blocking slot registration)
-  const classSessionTimeSet = useMemo(() => {
-    const set = new Set<string>();
+  // Build class session lookup: "date|hour" -> student_name (for blocking slot registration)
+  const classSessionTimeMap = useMemo(() => {
+    const map = new Map<string, string>();
     for (const s of classSessions) {
       const d = new Date(s.scheduled_at);
       const dateStr = d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
       const hour = parseInt(d.toLocaleTimeString("en-GB", { hour: "2-digit", timeZone: "Asia/Seoul" }));
-      set.add(`${dateStr}|${hour}`);
+      map.set(`${dateStr}|${hour}`, s.student_name);
     }
-    return set;
+    return map;
   }, [classSessions]);
 
-  const hasClassAt = (date: string, hour: number) => classSessionTimeSet.has(`${date}|${hour}`);
+  const hasClassAt = (date: string, hour: number) => classSessionTimeMap.has(`${date}|${hour}`);
+  const classStudentAt = (date: string, hour: number) => classSessionTimeMap.get(`${date}|${hour}`) || "";
+
+  // Build booked slot -> student name lookup from makeup requests
+  const bookedSlotStudentMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of requests) {
+      if ((r.status === "pending" || r.status === "approved") && r.slot_id) {
+        map.set(r.slot_id, r.student_name);
+      }
+    }
+    return map;
+  }, [requests]);
 
   // Build session map by ID for processed requests
   const sessionById = useMemo(() => {
@@ -516,7 +528,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                                 else if (!slot && !hasClass) togglePending(date, hour);
                               }}
                               className={cn(
-                                "w-full h-9 rounded-md text-[11px] font-semibold transition-all border",
+                                "w-full h-9 rounded-md text-[9px] font-semibold transition-all border leading-tight",
                                 isPast && "opacity-20 cursor-not-allowed border-transparent bg-muted/30",
                                 !isPast && hasClass && !slot && "bg-muted/50 border-border text-muted-foreground/50 cursor-not-allowed",
                                 !isPast && isBooked && "bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] cursor-not-allowed",
@@ -524,8 +536,13 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                                 !isPast && !slot && !hasClass && isPending && "bg-primary border-primary text-primary-foreground",
                                 !isPast && !slot && !hasClass && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
                               )}
+                              title={hasClass && !slot ? classStudentAt(date, hour) : isBooked && slot ? (bookedSlotStudentMap.get(slot.id) || "") : ""}
                             >
-                              {hasClass && !slot ? "수업" : isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
+                              {hasClass && !slot ? (
+                                <span className="truncate block px-0.5">{classStudentAt(date, hour)}</span>
+                              ) : isBooked && slot ? (
+                                <span className="truncate block px-0.5">{bookedSlotStudentMap.get(slot.id) || "예약"}</span>
+                              ) : isOpen ? "✓" : isPending ? "✓" : ""}
                             </button>
                           </td>
                         );
@@ -567,7 +584,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                                 else if (!slot && !hasClass) togglePending(date, hour);
                               }}
                               className={cn(
-                                "w-full h-9 rounded-md text-[11px] font-semibold transition-all border",
+                                "w-full h-9 rounded-md text-[9px] font-semibold transition-all border leading-tight",
                                 isPast && "opacity-20 cursor-not-allowed border-transparent bg-muted/30",
                                 !isPast && hasClass && !slot && "bg-muted/50 border-border text-muted-foreground/50 cursor-not-allowed",
                                 !isPast && isBooked && "bg-[hsl(var(--warning))]/10 border-[hsl(var(--warning))]/20 text-[hsl(var(--warning))] cursor-not-allowed",
@@ -575,8 +592,13 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                                 !isPast && !slot && !hasClass && isPending && "bg-primary border-primary text-primary-foreground",
                                 !isPast && !slot && !hasClass && !isPending && "bg-card border-border text-muted-foreground hover:border-primary/40",
                               )}
+                              title={hasClass && !slot ? classStudentAt(date, hour) : isBooked && slot ? (bookedSlotStudentMap.get(slot.id) || "") : ""}
                             >
-                              {hasClass && !slot ? "수업" : isOpen ? "✓" : isBooked ? "예약" : isPending ? "✓" : ""}
+                              {hasClass && !slot ? (
+                                <span className="truncate block px-0.5">{classStudentAt(date, hour)}</span>
+                              ) : isBooked && slot ? (
+                                <span className="truncate block px-0.5">{bookedSlotStudentMap.get(slot.id) || "예약"}</span>
+                              ) : isOpen ? "✓" : isPending ? "✓" : ""}
                             </button>
                           </td>
                         );
