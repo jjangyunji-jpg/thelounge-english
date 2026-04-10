@@ -111,6 +111,12 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Month navigation for requests view
+  const [requestMonth, setRequestMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+
   const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 
   const loadData = useCallback(async () => {
@@ -123,8 +129,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
       supabase.from("makeup_requests")
         .select("*")
         .eq("instructor_name", instructorName)
-        .order("created_at", { ascending: false })
-        .limit(50),
+        .order("created_at", { ascending: false }),
       supabase.from("schedule_periods")
         .select("*")
         .order("start_date", { ascending: false }),
@@ -332,7 +337,39 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
   };
 
   const pendingRequests = requests.filter(r => r.status === "pending");
-  const recentProcessed = requests.filter(r => r.status !== "pending").slice(0, 10);
+
+  // Filter processed requests by selected month
+  const processedByMonth = useMemo(() => {
+    return requests
+      .filter(r => r.status !== "pending")
+      .filter(r => {
+        const d = new Date(r.created_at);
+        const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        return m === requestMonth;
+      });
+  }, [requests, requestMonth]);
+
+  // Available months from all processed requests
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    for (const r of requests) {
+      if (r.status === "pending") continue;
+      const d = new Date(r.created_at);
+      months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    return Array.from(months).sort().reverse();
+  }, [requests]);
+
+  const navigateMonth = (dir: -1 | 1) => {
+    const [y, m] = requestMonth.split("-").map(Number);
+    const d = new Date(y, m - 1 + dir, 1);
+    setRequestMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const requestMonthLabel = (() => {
+    const [y, m] = requestMonth.split("-").map(Number);
+    return `${y}년 ${m}월`;
+  })();
 
   // Calendar view weeks
   const calendarWeeks = useMemo(() => {
@@ -859,10 +896,34 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
             </div>
           )}
 
-          {recentProcessed.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground">최근 처리 내역</h3>
-              {recentProcessed.map(req => {
+          {/* Month navigation for processed requests */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-muted-foreground">처리 내역</h3>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => navigateMonth(-1)}
+                  className="p-1 rounded-md hover:bg-muted transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+                <span className="text-xs font-semibold text-foreground min-w-[70px] text-center">
+                  {requestMonthLabel}
+                </span>
+                <button
+                  onClick={() => navigateMonth(1)}
+                  className="p-1 rounded-md hover:bg-muted transition-colors"
+                >
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+            {processedByMonth.length === 0 && (
+              <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                <p className="text-xs text-muted-foreground">이 달의 처리 내역이 없습니다</p>
+              </div>
+            )}
+            {processedByMonth.map(req => {
                 const slot = slots.find(s => s.id === req.slot_id);
                 const isFutureApproved = req.status === "approved" && slot &&
                   new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).getTime() > Date.now();
@@ -935,9 +996,8 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                     )}
                   </div>
                 );
-              })}
-            </div>
-          )}
+            })}
+          </div>
         </div>
       )}
     </div>
