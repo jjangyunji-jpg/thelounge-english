@@ -577,9 +577,13 @@ export default function StudentDashboard() {
       for (const s of group) map.set(s.id, s);
       return Array.from(map.values());
     };
+    // 강사 사유 취소 세션은 학생 대시보드에서 숨김
+    const hideInstructorCancelled = (s: any) => s.cancellation_type !== 'instructor_cancel';
     let visibleRecentSessions = mergeAndDedup(sessRes.data || [], groupSessRes.data || [])
+      .filter(hideInstructorCancelled)
       .sort((a: any, b: any) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()).slice(0, 20);
     let visibleAllSessions = mergeAndDedup(allSessRes.data || [], groupAllSessRes.data || [])
+      .filter(hideInstructorCancelled)
       .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
     setAssignments(hwRes.data || []);
