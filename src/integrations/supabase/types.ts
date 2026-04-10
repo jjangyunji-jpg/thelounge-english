@@ -814,7 +814,7 @@ export type Database = {
           reject_reason: string | null
           request_type: string
           resolved_at: string | null
-          slot_id: string
+          slot_id: string | null
           status: string
           student_name: string
         }
@@ -828,7 +828,7 @@ export type Database = {
           reject_reason?: string | null
           request_type?: string
           resolved_at?: string | null
-          slot_id: string
+          slot_id?: string | null
           status?: string
           student_name: string
         }
@@ -842,7 +842,7 @@ export type Database = {
           reject_reason?: string | null
           request_type?: string
           resolved_at?: string | null
-          slot_id?: string
+          slot_id?: string | null
           status?: string
           student_name?: string
         }
