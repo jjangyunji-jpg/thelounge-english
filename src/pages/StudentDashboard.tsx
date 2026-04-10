@@ -955,7 +955,7 @@ export default function StudentDashboard() {
       .filter((s) => {
         const d = new Date(s.scheduled_at);
         const dateKey = s.scheduled_at.slice(0, 10);
-        return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey);
+        return s.cancellation_type !== 'instructor_cancel' && !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey);
       })
       .map((s) => new Date(s.scheduled_at).toDateString()),
     ...recurringDates
