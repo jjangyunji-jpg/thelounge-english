@@ -524,7 +524,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                         return (
                           <td key={di} className="p-0.5">
                             <button
-                              disabled={isBooked || isPast || hasClass}
+                              disabled={isBooked || isPast}
                               onClick={() => {
                                 if (isOpen && slot) handleDeleteSlot(slot.id);
                                 else if (!slot && !hasClass) togglePending(date, hour);
@@ -580,7 +580,7 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                         return (
                           <td key={di} className="p-0.5">
                             <button
-                              disabled={isBooked || isPast || hasClass}
+                              disabled={isBooked || isPast}
                               onClick={() => {
                                 if (isOpen && slot) handleDeleteSlot(slot.id);
                                 else if (!slot && !hasClass) togglePending(date, hour);
