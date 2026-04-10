@@ -2199,7 +2199,35 @@ export default function InstructorDashboard() {
         />
       )}
 
-      {/* Tab Nav */}
+      {/* Pre-Class Checklist Modal */}
+      {preClassChecklist && (
+        <PreClassChecklistModal
+          session={preClassChecklist}
+          allSessions={sessions}
+          assignments={assignments}
+          submissions={submissions}
+          vocabTests={vocabTests}
+          onClose={() => setPreClassChecklist(null)}
+          onReviewHw={(a, sub) => {
+            setPreClassChecklist(null);
+            setReviewHw({ assignment: a, submission: sub });
+          }}
+          onViewCheckedHw={(a, sub) => {
+            setPreClassChecklist(null);
+            setViewCheckedHw({ assignment: a, submission: sub });
+          }}
+          onQuickReview={async (submissionId) => {
+            await supabase.from("homework_submissions").update({
+              status: "reviewed",
+              reviewed_at: new Date().toISOString(),
+            }).eq("id", submissionId);
+            toast({ title: "확인 완료 ✓" });
+            setSubmissions(prev => prev.map(sb => sb.id === submissionId ? { ...sb, status: "reviewed", reviewed_at: new Date().toISOString() } : sb));
+          }}
+        />
+      )}
+
+
       <div className="border-b border-border bg-card px-2 sm:px-5 overflow-x-auto scrollbar-none">
         <div className="flex gap-0 max-w-5xl mx-auto min-w-max">
           {[
