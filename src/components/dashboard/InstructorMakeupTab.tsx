@@ -338,6 +338,48 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
 
   const pendingRequests = requests.filter(r => r.status === "pending");
 
+  // Determine display status: distinguish "cancelled" vs "changed"
+  // "changed" = cancelled request where the same student has a newer request for the same original session
+  const getDisplayStatus = useCallback((req: MakeupReq): "approved" | "rejected" | "cancelled" | "changed" => {
+    if (req.status === "approved") return "approved";
+    if (req.status === "rejected") return "rejected";
+    if (req.status === "cancelled") {
+      // Check if there's a newer request from the same student (same original session or just newer)
+      const hasNewer = requests.some(r =>
+        r.id !== req.id &&
+        r.student_name === req.student_name &&
+        new Date(r.created_at).getTime() > new Date(req.created_at).getTime() &&
+        (
+          // Same original session
+          (req.original_session_id && r.original_session_id === req.original_session_id) ||
+          // Or same request type and created close in time (within 1 hour)
+          (!req.original_session_id && r.request_type === req.request_type &&
+            Math.abs(new Date(r.created_at).getTime() - new Date(req.created_at).getTime()) < 24 * 60 * 60 * 1000)
+        )
+      );
+      return hasNewer ? "changed" : "cancelled";
+    }
+    return "cancelled";
+  }, [requests]);
+
+  const statusLabel = (status: "approved" | "rejected" | "cancelled" | "changed") => {
+    switch (status) {
+      case "approved": return "보강 확정";
+      case "rejected": return "강사 거절";
+      case "cancelled": return "학생 취소";
+      case "changed": return "일정 변경";
+    }
+  };
+
+  const statusStyle = (status: "approved" | "rejected" | "cancelled" | "changed") => {
+    switch (status) {
+      case "approved": return "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]";
+      case "rejected": return "bg-destructive/10 text-destructive";
+      case "cancelled": return "bg-muted text-muted-foreground";
+      case "changed": return "bg-primary/10 text-primary";
+    }
+  };
+
   // Filter processed requests by selected month
   const processedByMonth = useMemo(() => {
     return requests
