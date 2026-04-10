@@ -18,6 +18,7 @@ import InstructorGuide from "@/components/dashboard/InstructorGuide";
 import HomeworkReviewModal from "@/components/dashboard/HomeworkReviewModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import AddSessionModal from "@/components/dashboard/AddSessionModal";
+import PreClassChecklistModal from "@/components/dashboard/PreClassChecklistModal";
 import InstructorMakeupTab from "@/components/dashboard/InstructorMakeupTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1381,6 +1382,7 @@ export default function InstructorDashboard() {
   const [expandedTodayHwSession, setExpandedTodayHwSession] = useState<string | null>(null);
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
   const [cancellationModal, setCancellationModal] = useState<{ session: ClassSession } | null>(null);
+  const [preClassChecklist, setPreClassChecklist] = useState<ClassSession | null>(null);
   const [studentFeedbackHistory, setStudentFeedbackHistory] = useState<Record<string, { period_label: string; checklist: any; comment: string | null; suggested_goals: string | null; created_at: string; instructor_name: string }[]>>({});
   const [feedbackHistoryModalStudent, setFeedbackHistoryModalStudent] = useState<string | null>(null);
   useEffect(() => { init(); }, [viewingInstructorId]);
@@ -2197,7 +2199,35 @@ export default function InstructorDashboard() {
         />
       )}
 
-      {/* Tab Nav */}
+      {/* Pre-Class Checklist Modal */}
+      {preClassChecklist && (
+        <PreClassChecklistModal
+          session={preClassChecklist}
+          allSessions={sessions}
+          assignments={assignments}
+          submissions={submissions}
+          vocabTests={vocabTests}
+          onClose={() => setPreClassChecklist(null)}
+          onReviewHw={(a, sub) => {
+            setPreClassChecklist(null);
+            setReviewHw({ assignment: a, submission: sub });
+          }}
+          onViewCheckedHw={(a, sub) => {
+            setPreClassChecklist(null);
+            setViewCheckedHw({ assignment: a, submission: sub });
+          }}
+          onQuickReview={async (submissionId) => {
+            await supabase.from("homework_submissions").update({
+              status: "reviewed",
+              reviewed_at: new Date().toISOString(),
+            }).eq("id", submissionId);
+            toast({ title: "확인 완료 ✓" });
+            setSubmissions(prev => prev.map(sb => sb.id === submissionId ? { ...sb, status: "reviewed", reviewed_at: new Date().toISOString() } : sb));
+          }}
+        />
+      )}
+
+
       <div className="border-b border-border bg-card px-2 sm:px-5 overflow-x-auto scrollbar-none">
         <div className="flex gap-0 max-w-5xl mx-auto min-w-max">
           {[
@@ -2667,10 +2697,19 @@ export default function InstructorDashboard() {
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                                        {!isCancelled && (
+                                        {!isCancelled && !isCompleted && (
+                                          <Button
+                                            size="sm"
+                                            className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2"
+                                            onClick={() => setPreClassChecklist(s)}
+                                          >
+                                            <ClipboardCheck className="w-3 h-3" /> 이번 수업
+                                          </Button>
+                                        )}
+                                        {!isCancelled && isCompleted && (
                                         <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
                                           <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2">
-                                            <FileText className="w-3 h-3" /> 이번 수업
+                                            <FileText className="w-3 h-3" /> 수업 노트
                                           </Button>
                                         </a>
                                         )}
