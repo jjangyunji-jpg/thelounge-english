@@ -362,9 +362,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                           <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
                             r.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
                             r.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                            r.status === "changed" ? "bg-primary/10 text-primary" :
                             "bg-muted text-muted-foreground"
                           )}>
-                            {r.status === "approved" ? "승인됨" : r.status === "rejected" ? "거절됨" : "취소됨"}
+                            {r.status === "approved" ? "보강 확정" : r.status === "rejected" ? "강사 거절" : r.status === "changed" ? "일정 변경" : "취소됨"}
                           </span>
                         </div>
                         {r.reject_reason && <p className="text-[10px] text-muted-foreground mt-1">사유: {r.reject_reason}</p>}
