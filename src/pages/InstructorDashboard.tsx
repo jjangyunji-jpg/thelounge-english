@@ -2697,10 +2697,19 @@ export default function InstructorDashboard() {
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                                        {!isCancelled && (
+                                        {!isCancelled && !isCompleted && (
+                                          <Button
+                                            size="sm"
+                                            className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2"
+                                            onClick={() => setPreClassChecklist(s)}
+                                          >
+                                            <ClipboardCheck className="w-3 h-3" /> 이번 수업
+                                          </Button>
+                                        )}
+                                        {!isCancelled && isCompleted && (
                                         <a href={`/t/classroom?sessionId=${s.id}`} target="_blank" rel="noopener noreferrer">
                                           <Button size="sm" className="h-7 text-[10px] gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-2">
-                                            <FileText className="w-3 h-3" /> 이번 수업
+                                            <FileText className="w-3 h-3" /> 수업 노트
                                           </Button>
                                         </a>
                                         )}
