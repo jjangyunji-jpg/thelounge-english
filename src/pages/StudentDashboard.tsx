@@ -580,10 +580,17 @@ export default function StudentDashboard() {
     };
     // 강사 사유 취소 세션은 학생 대시보드에서 숨김
     const hideInstructorCancelled = (s: any) => s.cancellation_type !== 'instructor_cancel';
+    const allMerged = mergeAndDedup(allSessRes.data || [], groupAllSessRes.data || []);
+    // 강사 취소 세션 날짜를 먼저 기록 (반복 일정에서 제외하기 위해)
+    const cancelledDates = new Set<string>();
+    allMerged.filter((s: any) => s.cancellation_type === 'instructor_cancel').forEach((s: any) => {
+      cancelledDates.add(new Date(s.scheduled_at).toDateString());
+    });
+    setInstructorCancelledDates(cancelledDates);
     let visibleRecentSessions = mergeAndDedup(sessRes.data || [], groupSessRes.data || [])
       .filter(hideInstructorCancelled)
       .sort((a: any, b: any) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()).slice(0, 20);
-    let visibleAllSessions = mergeAndDedup(allSessRes.data || [], groupAllSessRes.data || [])
+    let visibleAllSessions = allMerged
       .filter(hideInstructorCancelled)
       .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
