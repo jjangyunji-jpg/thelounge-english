@@ -896,10 +896,34 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
             </div>
           )}
 
-          {recentProcessed.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground">최근 처리 내역</h3>
-              {recentProcessed.map(req => {
+          {/* Month navigation for processed requests */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-muted-foreground">처리 내역</h3>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => navigateMonth(-1)}
+                  className="p-1 rounded-md hover:bg-muted transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+                <span className="text-xs font-semibold text-foreground min-w-[70px] text-center">
+                  {requestMonthLabel}
+                </span>
+                <button
+                  onClick={() => navigateMonth(1)}
+                  className="p-1 rounded-md hover:bg-muted transition-colors"
+                >
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+            {processedByMonth.length === 0 && (
+              <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                <p className="text-xs text-muted-foreground">이 달의 처리 내역이 없습니다</p>
+              </div>
+            )}
+            {processedByMonth.map(req => {
                 const slot = slots.find(s => s.id === req.slot_id);
                 const isFutureApproved = req.status === "approved" && slot &&
                   new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).getTime() > Date.now();
