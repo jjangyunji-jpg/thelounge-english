@@ -751,8 +751,24 @@ export default function Classroom() {
         } else {
           setPrevHwList([]);
         }
+
+        // Fetch vocab tests between prevPrev and prev session
+        const vocabQuery = supabase
+          .from("vocabulary_tests")
+          .select("id, score, total, started_at, completed_at")
+          .eq("student_name", session.dbStudentName)
+          .not("completed_at", "is", null);
+
+        if (prevPrevSess) {
+          vocabQuery.gte("started_at", prevPrevSess.scheduled_at);
+        }
+        vocabQuery.lte("started_at", prevSessData.scheduled_at);
+
+        const { data: vocabData } = await vocabQuery.order("started_at", { ascending: false });
+        setPrevVocabTests(vocabData || []);
       } else {
         setPrevHwList([]);
+        setPrevVocabTests([]);
       }
 
       setSessionTopic(session.topic);
