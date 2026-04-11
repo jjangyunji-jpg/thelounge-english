@@ -1696,7 +1696,7 @@ export default function InstructorDashboard() {
     const futureSessions = sessions
       .filter((s) => {
         const d = new Date(s.scheduled_at);
-        return d.toDateString() !== todayStr && d.getTime() > Date.now();
+        return d.toDateString() !== todayStr && d.getTime() > Date.now() && !s.cancellation_type;
       })
       .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
     if (futureSessions.length === 0) return [];
