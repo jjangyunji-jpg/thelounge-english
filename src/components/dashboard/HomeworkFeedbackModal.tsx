@@ -33,6 +33,7 @@ interface AIResult {
 interface Props {
   assignmentTitle: string;
   assignmentType: string;
+  assignmentDescription?: string | null;
   textContent: string | null;
   audioUrl: string | null;
   fileUrl: string | null;
@@ -107,6 +108,7 @@ const InlineCorrectedText = React.forwardRef<HTMLDivElement, { original: string;
 export default function HomeworkFeedbackModal({
   assignmentTitle,
   assignmentType,
+  assignmentDescription,
   textContent,
   audioUrl,
   fileUrl,
