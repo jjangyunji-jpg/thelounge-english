@@ -124,6 +124,8 @@ export default function Classroom() {
   // Ref to hold current notes for flush before session switch
   const notesRef = useRef("");
   const sessionIdRef = useRef("");
+  // Guard: true while switching sessions to prevent localStorage backup with stale notes + new sessionId
+  const isTransitioningRef = useRef(false);
 
   // Load session from DB if sessionId provided
   useEffect(() => {
