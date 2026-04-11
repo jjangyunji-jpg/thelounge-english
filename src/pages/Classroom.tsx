@@ -312,7 +312,7 @@ export default function Classroom() {
   const [remarksSaving, setRemarksSaving] = useState(false);
   const [remarksSaved, setRemarksSaved] = useState(false);
   const [remarksOpen, setRemarksOpen] = useState(true);
-  const [reviewModalHw, setReviewModalHw] = useState<{ id: string; type: HwType; title: string } | null>(null);
+  const [reviewModalHw, setReviewModalHw] = useState<{ id: string; type: HwType; title: string; description?: string | null } | null>(null);
   const [reviewSubmission, setReviewSubmission] = useState<any>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const remarksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

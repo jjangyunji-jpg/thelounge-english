@@ -107,6 +107,7 @@ interface HomeworkAssignment {
   id: string;
   title: string;
   type: string;
+  description: string | null;
   student_name: string;
   session_id: string | null;
   is_preset: boolean;
