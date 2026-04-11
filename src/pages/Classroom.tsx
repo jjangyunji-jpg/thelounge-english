@@ -681,12 +681,14 @@ export default function Classroom() {
       }
 
       // Load previous session's homework status
-      // Fetch last 2 sessions before current to determine time window
+      // Fetch recent non-cancelled sessions before current to determine time window
+      // Use higher limit to skip cancelled sessions
       const { data: prevSessArr } = await supabase
         .from("class_sessions")
-        .select("id, scheduled_at")
+        .select("id, scheduled_at, cancellation_type")
         .eq("student_name", session.dbStudentName)
         .lt("scheduled_at", session.scheduledAt.toISOString())
+        .is("cancellation_type", null)
         .order("scheduled_at", { ascending: false })
         .limit(2);
 
