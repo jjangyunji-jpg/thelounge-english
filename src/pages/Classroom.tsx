@@ -305,7 +305,7 @@ export default function Classroom() {
   useEffect(() => { sessionIdRef.current = session.sessionId; }, [session.sessionId]);
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
-  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; status: string; presetOriginId?: string | null }[]>([]);
+  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; description?: string | null; status: string; presetOriginId?: string | null }[]>([]);
   const [prevHwOpen, setPrevHwOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
   const [remarks, setRemarks] = useState("");
@@ -743,6 +743,7 @@ export default function Classroom() {
             id: h.id,
             type: h.type as HwType,
             title: h.title,
+            description: h.description,
             presetOriginId: h.preset_origin_id,
             status: subMap.get(h.id) || (h.preset_origin_id ? subMap.get(h.preset_origin_id) : undefined) || "not_submitted",
           })));
