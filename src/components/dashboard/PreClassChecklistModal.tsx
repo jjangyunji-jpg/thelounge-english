@@ -133,7 +133,7 @@ export default function PreClassChecklistModal({
   const completedVocab = studentVocab.filter(v => v.completed_at);
 
   // Prep checklist state
-  const [materialsUploaded, setMaterialsUploaded] = useState(false);
+  const [materialsUploaded, setMaterialsUploaded] = useState(true);
   const [hwReviewed, setHwReviewed] = useState(false);
 
   // Auto-check hw reviewed if all submitted are reviewed
