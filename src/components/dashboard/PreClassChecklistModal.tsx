@@ -52,7 +52,7 @@ interface ClassSession {
   started_at: string | null;
   ended_at: string | null;
   notes: string | null;
-  cancellation_type: string | null;
+  cancellation_type?: string | null;
 }
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
