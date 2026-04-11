@@ -403,7 +403,8 @@ export default function Classroom() {
 
   // Save to localStorage on every change as safety net
   useEffect(() => {
-    if (!session.sessionId || !notes.trim()) return;
+    // Skip backup during session transitions to prevent writing stale notes with new sessionId
+    if (!session.sessionId || !notes.trim() || isTransitioningRef.current) return;
     const stripped = notes.replace(/<[^>]*>/g, "").trim();
     if (!stripped || stripped === "Homework Feedback /Small Talk /") return;
     try {
