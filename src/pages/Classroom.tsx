@@ -1481,7 +1481,7 @@ export default function Classroom() {
                           <button
                             key={h.id}
                             onClick={async () => {
-                              setReviewModalHw({ id: h.id, type: h.type, title: h.title });
+                              setReviewModalHw({ id: h.id, type: h.type, title: h.title, description: h.description });
                               setReviewLoading(true);
                               const lookupIds = [h.id];
                               if (h.presetOriginId) lookupIds.push(h.presetOriginId);
