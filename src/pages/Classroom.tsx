@@ -306,6 +306,7 @@ export default function Classroom() {
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
   const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; description?: string | null; status: string; presetOriginId?: string | null }[]>([]);
+  const [prevVocabTests, setPrevVocabTests] = useState<{ id: string; score: number | null; total: number | null; started_at: string; completed_at: string | null }[]>([]);
   const [prevHwOpen, setPrevHwOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
   const [remarks, setRemarks] = useState("");
@@ -750,8 +751,24 @@ export default function Classroom() {
         } else {
           setPrevHwList([]);
         }
+
+        // Fetch vocab tests between prevPrev and prev session
+        const vocabQuery = supabase
+          .from("vocabulary_tests")
+          .select("id, score, total, started_at, completed_at")
+          .eq("student_name", session.dbStudentName)
+          .not("completed_at", "is", null);
+
+        if (prevPrevSess) {
+          vocabQuery.gte("started_at", prevPrevSess.scheduled_at);
+        }
+        vocabQuery.lte("started_at", prevSessData.scheduled_at);
+
+        const { data: vocabData } = await vocabQuery.order("started_at", { ascending: false });
+        setPrevVocabTests(vocabData || []);
       } else {
         setPrevHwList([]);
+        setPrevVocabTests([]);
       }
 
       setSessionTopic(session.topic);
@@ -1445,7 +1462,7 @@ export default function Classroom() {
             <div className="flex-1 flex flex-col gap-5 min-w-0">
 
               {/* ── PREVIOUS HOMEWORK STATUS ───────────────────────── */}
-              {prevHwList.length > 0 && (
+              {(prevHwList.length > 0 || prevVocabTests.length > 0) && (
                 <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
                   <button
                     onClick={() => setPrevHwOpen(!prevHwOpen)}
@@ -1456,9 +1473,9 @@ export default function Classroom() {
                     {(() => {
                       const submitted = prevHwList.filter(h => h.status === "submitted" || h.status === "reviewed").length;
                       const total = prevHwList.length;
-                      const allDone = submitted === total;
-                      const noneDone = submitted === 0;
-                      return (
+                      const allDone = submitted === total && total > 0;
+                      const noneDone = submitted === 0 && total > 0;
+                      return total > 0 ? (
                         <span className={cn(
                           "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
                           allDone ? "bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))]" :
@@ -1467,7 +1484,7 @@ export default function Classroom() {
                         )}>
                           {submitted}/{total}
                         </span>
-                      );
+                      ) : null;
                     })()}
                     <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground ml-auto transition-transform", prevHwOpen && "rotate-180")} />
                   </button>
@@ -1513,6 +1530,51 @@ export default function Classroom() {
                           </button>
                         );
                       })}
+
+                      {/* Vocab test results */}
+                      {prevVocabTests.length > 0 && (
+                        <>
+                          {prevHwList.length > 0 && <div className="border-t border-border/50 my-1.5" />}
+                          <div className="flex items-center gap-1.5 px-1 pt-0.5">
+                            <Brain className="w-3 h-3 text-purple-500" />
+                            <span className="text-[10px] font-semibold text-muted-foreground">단어 테스트</span>
+                          </div>
+                          {prevVocabTests.map(v => {
+                            const pct = v.total ? Math.round(((v.score || 0) / v.total) * 100) : 0;
+                            return (
+                              <div
+                                key={v.id}
+                                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-card"
+                              >
+                                <Brain className="w-3 h-3 text-purple-400 flex-shrink-0" />
+                                <span className="text-[11px] flex-1">
+                                  {v.score !== null && v.total !== null ? `${v.score}/${v.total}` : "—"}
+                                  <span className={cn(
+                                    "ml-1 text-[10px] font-bold",
+                                    pct >= 80 ? "text-[hsl(var(--success))]" :
+                                    pct >= 50 ? "text-[hsl(var(--gold-dark))]" :
+                                    "text-destructive"
+                                  )}>
+                                    ({pct}%)
+                                  </span>
+                                </span>
+                                <span className="text-[9px] text-muted-foreground flex-shrink-0">
+                                  {new Date(v.started_at).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" })}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+                      {prevVocabTests.length === 0 && prevHwList.length > 0 && (
+                        <>
+                          <div className="border-t border-border/50 my-1.5" />
+                          <div className="flex items-center gap-1.5 px-1 pt-0.5">
+                            <Brain className="w-3 h-3 text-purple-500" />
+                            <span className="text-[10px] text-muted-foreground">단어 테스트 기록 없음</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
