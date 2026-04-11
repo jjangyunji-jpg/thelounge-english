@@ -548,6 +548,19 @@ export default function Classroom() {
   const [selectedEditHwStudents, setSelectedEditHwStudents] = useState<string[]>([]);
   const [savingEditHw, setSavingEditHw] = useState(false);
 
+  // Listen for remarks updates from popup window
+  useEffect(() => {
+    if (!session.sessionId) return;
+    const channel = supabase
+      .channel(`remarks-popup-sync-${session.sessionId}`)
+      .on("broadcast", { event: "remarks" }, (payload) => {
+        const text = payload?.payload?.text;
+        if (typeof text === "string") setRemarks(text);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session.sessionId]);
+
   const dataLoadedForRef = useRef<string | null>(null);
   useEffect(() => {
     if (sessionLoading || !session.sessionId) return;
@@ -1516,6 +1529,23 @@ export default function Classroom() {
                     <div className="flex items-center gap-2 ml-auto">
                       {remarksSaving && <span className="text-[10px] text-muted-foreground">저장 중...</span>}
                       {remarksSaved && !remarksSaving && <span className="text-[10px] text-[hsl(var(--success))] flex items-center gap-0.5"><Check className="w-3 h-3" />저장됨</span>}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(
+                            `/t/classroom/remarks?sessionId=${session.sessionId}`,
+                            `remarks-${session.sessionId}`,
+                            "width=480,height=600,scrollbars=yes,resizable=yes"
+                          );
+                        }}
+                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
+                        className="p-0.5 rounded hover:bg-muted transition-colors cursor-pointer"
+                        title="새 창에서 열기"
+                      >
+                        <ExternalLink className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                      </span>
                       <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", remarksOpen && "rotate-180")} />
                     </div>
                   </button>

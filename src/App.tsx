@@ -7,6 +7,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Admin from "./pages/Admin";
 import Classroom from "./pages/Classroom";
 import ClassroomNotesMirror from "./pages/ClassroomNotesMirror";
+import RemarksPopup from "./pages/RemarksPopup";
 import ClassroomEditorFullscreen from "./pages/ClassroomEditorFullscreen";
 import StudentDashboard from "./pages/StudentDashboard";
 import InstructorDashboard from "./pages/InstructorDashboard";
@@ -69,6 +70,11 @@ const App = () => (
           <Route path="/t/classroom/editor" element={
             <ProtectedRoute allowedRoles={["instructor"]}>
               <ClassroomEditorFullscreen />
+            </ProtectedRoute>
+          } />
+          <Route path="/t/classroom/remarks" element={
+            <ProtectedRoute allowedRoles={["instructor"]}>
+              <RemarksPopup />
             </ProtectedRoute>
           } />
           <Route path="/t/profile" element={
