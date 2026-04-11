@@ -124,10 +124,14 @@ export default function Classroom() {
   // Ref to hold current notes for flush before session switch
   const notesRef = useRef("");
   const sessionIdRef = useRef("");
+  // Guard: true while switching sessions to prevent localStorage backup with stale notes + new sessionId
+  const isTransitioningRef = useRef(false);
 
   // Load session from DB if sessionId provided
   useEffect(() => {
     const loadSession = async () => {
+      // Mark transition to prevent localStorage backup from writing stale notes with new sessionId
+      isTransitioningRef.current = true;
       // Flush current notes before switching sessions
       if (autoSaveTimer.current) {
         clearTimeout(autoSaveTimer.current);
@@ -141,6 +145,8 @@ export default function Classroom() {
           await supabase.from("class_sessions").update({ notes: prevNotes.trim() }).eq("id", prevSessionId);
         }
       }
+      // Clear localStorage backup to prevent cross-session contamination
+      localStorage.removeItem(LOCAL_BACKUP_KEY);
       setSessionLoading(true);
       setNotes("");
       setHwList([]);
@@ -203,6 +209,7 @@ export default function Classroom() {
             meetLink: isData?.meet_link ?? "",
           }));
           setSessionLoading(false);
+          isTransitioningRef.current = false;
           return;
         }
       } else {
@@ -288,6 +295,7 @@ export default function Classroom() {
         }
       }
       setSessionLoading(false);
+      isTransitioningRef.current = false;
     };
     loadSession();
   }, [urlSessionId, urlStudentName]);
@@ -395,7 +403,8 @@ export default function Classroom() {
 
   // Save to localStorage on every change as safety net
   useEffect(() => {
-    if (!session.sessionId || !notes.trim()) return;
+    // Skip backup during session transitions to prevent writing stale notes with new sessionId
+    if (!session.sessionId || !notes.trim() || isTransitioningRef.current) return;
     const stripped = notes.replace(/<[^>]*>/g, "").trim();
     if (!stripped || stripped === "Homework Feedback /Small Talk /") return;
     try {
@@ -1346,6 +1355,9 @@ export default function Classroom() {
             sessions={sidebarSessions}
             selectedId={session.sessionId}
             onSelect={async (id) => {
+              // Mark transition to prevent localStorage backup race condition
+              isTransitioningRef.current = true;
+              localStorage.removeItem(LOCAL_BACKUP_KEY);
               // Flush current notes before switching
               if (autoSaveTimer.current) {
                 clearTimeout(autoSaveTimer.current);
