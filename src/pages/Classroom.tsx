@@ -548,6 +548,19 @@ export default function Classroom() {
   const [selectedEditHwStudents, setSelectedEditHwStudents] = useState<string[]>([]);
   const [savingEditHw, setSavingEditHw] = useState(false);
 
+  // Listen for remarks updates from popup window
+  useEffect(() => {
+    if (!session.sessionId) return;
+    const channel = supabase
+      .channel(`remarks-popup-sync-${session.sessionId}`)
+      .on("broadcast", { event: "remarks" }, (payload) => {
+        const text = payload?.payload?.text;
+        if (typeof text === "string") setRemarks(text);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session.sessionId]);
+
   const dataLoadedForRef = useRef<string | null>(null);
   useEffect(() => {
     if (sessionLoading || !session.sessionId) return;
