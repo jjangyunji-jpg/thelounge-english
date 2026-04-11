@@ -130,6 +130,8 @@ export default function Classroom() {
   // Load session from DB if sessionId provided
   useEffect(() => {
     const loadSession = async () => {
+      // Mark transition to prevent localStorage backup from writing stale notes with new sessionId
+      isTransitioningRef.current = true;
       // Flush current notes before switching sessions
       if (autoSaveTimer.current) {
         clearTimeout(autoSaveTimer.current);
@@ -143,6 +145,8 @@ export default function Classroom() {
           await supabase.from("class_sessions").update({ notes: prevNotes.trim() }).eq("id", prevSessionId);
         }
       }
+      // Clear localStorage backup to prevent cross-session contamination
+      localStorage.removeItem(LOCAL_BACKUP_KEY);
       setSessionLoading(true);
       setNotes("");
       setHwList([]);
