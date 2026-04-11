@@ -695,7 +695,7 @@ export default function Classroom() {
       if (prevSessData?.id) {
         const { data: prevHwData } = await supabase
           .from("homework_assignments")
-          .select("id, type, title, is_preset, preset_origin_id, session_id")
+          .select("id, type, title, description, is_preset, preset_origin_id, session_id")
           .eq("student_name", session.dbStudentName)
           .or(`session_id.eq.${prevSessData.id},is_preset.eq.true`)
           .order("created_at", { ascending: true });
