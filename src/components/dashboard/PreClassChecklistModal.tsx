@@ -366,11 +366,15 @@ export default function PreClassChecklistModal({
           </div>
 
           {/* Go to classroom */}
-          <a href={`/t/classroom?sessionId=${session.id}`} target="_blank" rel="noopener noreferrer" className="block">
-            <Button className="w-full h-10 text-sm gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
-              <FileText className="w-4 h-4" /> 수업 노트 열기
-            </Button>
-          </a>
+          <Button
+            className="w-full h-10 text-sm gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => {
+              window.open(`/t/classroom?sessionId=${session.id}`, "_blank", "noopener,noreferrer");
+              onClose();
+            }}
+          >
+            <FileText className="w-4 h-4" /> 수업 노트 열기
+          </Button>
         </div>
       </div>
     </div>
