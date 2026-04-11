@@ -33,6 +33,7 @@ interface AIResult {
 interface Props {
   assignmentTitle: string;
   assignmentType: string;
+  assignmentDescription?: string | null;
   textContent: string | null;
   audioUrl: string | null;
   fileUrl: string | null;
@@ -107,6 +108,7 @@ const InlineCorrectedText = React.forwardRef<HTMLDivElement, { original: string;
 export default function HomeworkFeedbackModal({
   assignmentTitle,
   assignmentType,
+  assignmentDescription,
   textContent,
   audioUrl,
   fileUrl,
@@ -184,6 +186,19 @@ export default function HomeworkFeedbackModal({
         </div>
 
         <div className="p-5 space-y-4">
+          {/* Assignment description */}
+          {assignmentDescription && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                <BookOpen className="w-3 h-3" />
+                숙제 내용
+              </p>
+              <div className="rounded-lg border border-border bg-muted/10 p-3">
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{assignmentDescription}</p>
+              </div>
+            </div>
+          )}
+
           {/* Submission with inline corrections */}
           <div className="space-y-2">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">내 제출물</p>

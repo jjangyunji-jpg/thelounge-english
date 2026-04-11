@@ -414,6 +414,7 @@ export default function WeeklyTasksSection({
         <HomeworkFeedbackModal
           assignmentTitle={feedbackAssignment.assignment.title}
           assignmentType={feedbackAssignment.assignment.type}
+          assignmentDescription={feedbackAssignment.assignment.description}
           textContent={feedbackAssignment.submission.text_content}
           audioUrl={feedbackAssignment.submission.audio_url}
           fileUrl={feedbackAssignment.submission.file_url}

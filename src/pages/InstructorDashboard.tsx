@@ -107,6 +107,7 @@ interface HomeworkAssignment {
   id: string;
   title: string;
   type: string;
+  description: string | null;
   student_name: string;
   session_id: string | null;
   is_preset: boolean;
@@ -1481,7 +1482,7 @@ export default function InstructorDashboard() {
       studentNames.length > 0
         ? supabase.from("class_sessions").select("*").in("student_name", studentNames).order("scheduled_at", { ascending: false })
         : Promise.resolve({ data: [] }),
-      supabase.from("homework_assignments").select("id,title,type,student_name,session_id,is_preset,preset_origin_id"),
+      supabase.from("homework_assignments").select("id,title,type,description,student_name,session_id,is_preset,preset_origin_id"),
       supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
@@ -4091,6 +4092,7 @@ export default function InstructorDashboard() {
           <HomeworkFeedbackModal
             assignmentTitle={viewCheckedHw.assignment.title}
             assignmentType={viewCheckedHw.assignment.type}
+            assignmentDescription={viewCheckedHw.assignment.description}
             textContent={sub.text_content}
             audioUrl={sub.audio_url}
             fileUrl={sub.file_url}

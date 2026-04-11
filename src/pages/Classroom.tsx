@@ -305,14 +305,14 @@ export default function Classroom() {
   useEffect(() => { sessionIdRef.current = session.sessionId; }, [session.sessionId]);
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
-  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; status: string; presetOriginId?: string | null }[]>([]);
+  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; description?: string | null; status: string; presetOriginId?: string | null }[]>([]);
   const [prevHwOpen, setPrevHwOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
   const [remarks, setRemarks] = useState("");
   const [remarksSaving, setRemarksSaving] = useState(false);
   const [remarksSaved, setRemarksSaved] = useState(false);
   const [remarksOpen, setRemarksOpen] = useState(true);
-  const [reviewModalHw, setReviewModalHw] = useState<{ id: string; type: HwType; title: string } | null>(null);
+  const [reviewModalHw, setReviewModalHw] = useState<{ id: string; type: HwType; title: string; description?: string | null } | null>(null);
   const [reviewSubmission, setReviewSubmission] = useState<any>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const remarksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -695,7 +695,7 @@ export default function Classroom() {
       if (prevSessData?.id) {
         const { data: prevHwData } = await supabase
           .from("homework_assignments")
-          .select("id, type, title, is_preset, preset_origin_id, session_id")
+          .select("id, type, title, description, is_preset, preset_origin_id, session_id")
           .eq("student_name", session.dbStudentName)
           .or(`session_id.eq.${prevSessData.id},is_preset.eq.true`)
           .order("created_at", { ascending: true });
@@ -743,6 +743,7 @@ export default function Classroom() {
             id: h.id,
             type: h.type as HwType,
             title: h.title,
+            description: h.description,
             presetOriginId: h.preset_origin_id,
             status: subMap.get(h.id) || (h.preset_origin_id ? subMap.get(h.preset_origin_id) : undefined) || "not_submitted",
           })));
@@ -1481,7 +1482,7 @@ export default function Classroom() {
                           <button
                             key={h.id}
                             onClick={async () => {
-                              setReviewModalHw({ id: h.id, type: h.type, title: h.title });
+                              setReviewModalHw({ id: h.id, type: h.type, title: h.title, description: h.description });
                               setReviewLoading(true);
                               const lookupIds = [h.id];
                               if (h.presetOriginId) lookupIds.push(h.presetOriginId);
@@ -1947,6 +1948,7 @@ export default function Classroom() {
       <HomeworkFeedbackModal
         assignmentTitle={reviewModalHw.title}
         assignmentType={reviewModalHw.type}
+        assignmentDescription={reviewModalHw.description}
         textContent={reviewSubmission.text_content}
         audioUrl={reviewSubmission.audio_url}
         fileUrl={reviewSubmission.file_url}
