@@ -209,6 +209,7 @@ export default function Classroom() {
             meetLink: isData?.meet_link ?? "",
           }));
           setSessionLoading(false);
+          isTransitioningRef.current = false;
           return;
         }
       } else {
@@ -294,6 +295,7 @@ export default function Classroom() {
         }
       }
       setSessionLoading(false);
+      isTransitioningRef.current = false;
     };
     loadSession();
   }, [urlSessionId, urlStudentName]);
