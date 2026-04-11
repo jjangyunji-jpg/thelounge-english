@@ -1947,6 +1947,7 @@ export default function Classroom() {
       <HomeworkFeedbackModal
         assignmentTitle={reviewModalHw.title}
         assignmentType={reviewModalHw.type}
+        assignmentDescription={reviewModalHw.description}
         textContent={reviewSubmission.text_content}
         audioUrl={reviewSubmission.audio_url}
         fileUrl={reviewSubmission.file_url}

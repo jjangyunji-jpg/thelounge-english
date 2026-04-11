@@ -2333,6 +2333,7 @@ export default function StudentDashboard() {
       <HomeworkFeedbackModal
         assignmentTitle={hwFeedback.assignment.title}
         assignmentType={hwFeedback.assignment.type}
+        assignmentDescription={hwFeedback.assignment.description}
         textContent={hwFeedback.submission.text_content}
         audioUrl={hwFeedback.submission.audio_url}
         fileUrl={hwFeedback.submission.file_url}

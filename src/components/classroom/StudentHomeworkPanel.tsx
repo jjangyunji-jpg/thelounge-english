@@ -658,6 +658,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
         <HomeworkFeedbackModal
           assignmentTitle={feedbackTarget.assignment.title}
           assignmentType={feedbackTarget.assignment.type}
+          assignmentDescription={feedbackTarget.assignment.description}
           textContent={feedbackTarget.submission.text_content}
           audioUrl={feedbackTarget.submission.audio_url}
           fileUrl={feedbackTarget.submission.file_url}

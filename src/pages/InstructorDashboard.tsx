@@ -4091,6 +4091,7 @@ export default function InstructorDashboard() {
           <HomeworkFeedbackModal
             assignmentTitle={viewCheckedHw.assignment.title}
             assignmentType={viewCheckedHw.assignment.type}
+            assignmentDescription={viewCheckedHw.assignment.description}
             textContent={sub.text_content}
             audioUrl={sub.audio_url}
             fileUrl={sub.file_url}
