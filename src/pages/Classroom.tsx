@@ -1355,6 +1355,9 @@ export default function Classroom() {
             sessions={sidebarSessions}
             selectedId={session.sessionId}
             onSelect={async (id) => {
+              // Mark transition to prevent localStorage backup race condition
+              isTransitioningRef.current = true;
+              localStorage.removeItem(LOCAL_BACKUP_KEY);
               // Flush current notes before switching
               if (autoSaveTimer.current) {
                 clearTimeout(autoSaveTimer.current);
