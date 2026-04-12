@@ -129,8 +129,14 @@ export default function PreClassChecklistModal({
   }).length;
   const totalHw = studentAssignments.length;
 
-  // Vocab tests for this student
-  const studentVocab = vocabTests.filter(v => v.student_name === session.student_name);
+  // Vocab tests for this student — scoped to between previous and current session
+  const latestPastTime = latestPast ? new Date(latestPast.scheduled_at).getTime() : 0;
+  const currentSessionTime = new Date(session.scheduled_at).getTime();
+  const studentVocab = vocabTests.filter(v => {
+    if (v.student_name !== session.student_name) return false;
+    const t = new Date(v.started_at).getTime();
+    return t >= latestPastTime && t < currentSessionTime;
+  });
   const completedVocab = studentVocab.filter(v => v.completed_at);
 
   // Prep checklist state
