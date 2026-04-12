@@ -2923,7 +2923,7 @@ export default function InstructorDashboard() {
                                           })}
                                           {/* Vocab test */}
                                           {(() => {
-                                            const stVocab = vocabTests.filter(v => v.student_name === s.student_name && v.completed_at);
+                                            const stVocab = stVocabScoped.filter(v => v.completed_at);
                                             if (stVocab.length === 0 && !hasVocab) return null;
                                             if (stVocab.length === 0) return (
                                               <div className="flex items-center gap-2 px-2 py-1 rounded-md border border-dashed border-muted-foreground/20 bg-muted/10">
