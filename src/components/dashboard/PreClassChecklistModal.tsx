@@ -90,7 +90,7 @@ export default function PreClassChecklistModal({
   allSessions,
   assignments,
   submissions,
-  vocabTests,
+  vocabTests: initialVocabTests,
   onClose,
   onReviewHw,
   onViewCheckedHw,
@@ -98,6 +98,21 @@ export default function PreClassChecklistModal({
 }: Props) {
   const [hwExpanded, setHwExpanded] = useState(true);
   const [vocabExpanded, setVocabExpanded] = useState(true);
+  const [liveVocabTests, setLiveVocabTests] = useState(initialVocabTests);
+
+  // Refresh vocab tests on mount to get latest data
+  useEffect(() => {
+    const refresh = async () => {
+      const { data } = await supabase
+        .from("vocabulary_tests")
+        .select("id,student_name,started_at,completed_at,score,total")
+        .eq("student_name", session.student_name);
+      if (data) setLiveVocabTests(data);
+    };
+    refresh();
+  }, [session.student_name]);
+
+  const vocabTests = liveVocabTests;
 
   // Find the session immediately before the clicked session for this student
   const clickedTime = new Date(session.scheduled_at).getTime();
@@ -129,8 +144,14 @@ export default function PreClassChecklistModal({
   }).length;
   const totalHw = studentAssignments.length;
 
-  // Vocab tests for this student
-  const studentVocab = vocabTests.filter(v => v.student_name === session.student_name);
+  // Vocab tests for this student — scoped to between previous and current session
+  const latestPastTime = latestPast ? new Date(latestPast.scheduled_at).getTime() : 0;
+  const currentSessionTime = new Date(session.scheduled_at).getTime();
+  const studentVocab = vocabTests.filter(v => {
+    if (v.student_name !== session.student_name) return false;
+    const t = new Date(v.started_at).getTime();
+    return t >= latestPastTime && t < currentSessionTime;
+  });
   const completedVocab = studentVocab.filter(v => v.completed_at);
 
   // Prep checklist state
