@@ -2646,9 +2646,19 @@ export default function InstructorDashboard() {
                                      }
                                      return latestPast && a.session_id === latestPast.id;
                                    });
-                                  const stVocabAll = vocabTests.filter(v => v.student_name === s.student_name);
-                                  const hasVocab = stVocabAll.length > 0;
-                                  const vocabDone = stVocabAll.some(v => v.completed_at);
+                                   // Time-scope vocab tests: between previous non-cancelled session and this session
+                                   const prevNonCancelled = sSessions
+                                     .filter(ss => !ss.cancellation_type && new Date(ss.scheduled_at) < new Date(s.scheduled_at))
+                                     .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0];
+                                   const prevTime = prevNonCancelled ? new Date(prevNonCancelled.scheduled_at).getTime() : 0;
+                                   const thisTime = new Date(s.scheduled_at).getTime();
+                                   const stVocabAll = vocabTests.filter(v => v.student_name === s.student_name);
+                                   const stVocabScoped = stVocabAll.filter(v => {
+                                     const t = new Date(v.started_at).getTime();
+                                     return t >= prevTime && t < thisTime;
+                                   });
+                                   const hasVocab = stVocabAll.length > 0;
+                                   const vocabDone = stVocabScoped.some(v => v.completed_at);
                                   const totalHw = studentAssignments.length + (hasVocab ? 1 : 0);
                                   const submittedCount = studentAssignments.filter(a => {
                                     const sub = submissions.find(sb => sb.assignment_id === a.id);
