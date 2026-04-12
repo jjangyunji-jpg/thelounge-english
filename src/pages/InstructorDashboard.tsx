@@ -3201,9 +3201,21 @@ export default function InstructorDashboard() {
                            }
                            return latestPast && a.session_id === latestPast.id;
                          });
-                        const stVocabAll = vocabTests.filter(v => v.student_name === st.student_name);
-                        const hasVocab = stVocabAll.length > 0;
-                        const vocabDone = stVocabAll.some(v => v.completed_at);
+                         const stVocabAll = vocabTests.filter(v => v.student_name === st.student_name);
+                         // Time-scope: between previous non-cancelled session and next session
+                         const prevNonCancelled = sSessions
+                           .filter(ss => !ss.cancellation_type && new Date(ss.scheduled_at) <= nowTs)
+                           .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+                         const secondLatest = prevNonCancelled[1] || null;
+                         const latestPastForVocab = prevNonCancelled[0] || null;
+                         const vocabStart = secondLatest ? new Date(secondLatest.scheduled_at).getTime() : 0;
+                         const vocabEnd = nextSession ? new Date(nextSession.scheduled_at).getTime() : Date.now();
+                         const stVocabScoped = stVocabAll.filter(v => {
+                           const t = new Date(v.started_at).getTime();
+                           return t >= vocabStart && t < vocabEnd;
+                         });
+                         const hasVocab = stVocabAll.length > 0;
+                         const vocabDone = stVocabScoped.some(v => v.completed_at);
                         const totalHw = sessionAssignments.length + (hasVocab ? 1 : 0);
                         const submittedCount = sessionAssignments.filter(a => {
                           const sub = submissions.find(s => s.assignment_id === a.id);
@@ -3323,7 +3335,8 @@ export default function InstructorDashboard() {
                                 )}
                                 {/* Vocab test stats */}
                                 {(() => {
-                                  const stVocab = vocabTests.filter(v => v.student_name === st.student_name && v.completed_at);
+                                   // Show recent vocab test (most recent completed, not all-time)
+                                   const stVocab = vocabTests.filter(v => v.student_name === st.student_name && v.completed_at);
                                   if (stVocab.length === 0) return null;
                                   const sorted = [...stVocab].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
                                   const latest = sorted[0];
