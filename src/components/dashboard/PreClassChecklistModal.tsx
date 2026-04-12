@@ -90,7 +90,7 @@ export default function PreClassChecklistModal({
   allSessions,
   assignments,
   submissions,
-  vocabTests,
+  vocabTests: initialVocabTests,
   onClose,
   onReviewHw,
   onViewCheckedHw,
@@ -98,6 +98,21 @@ export default function PreClassChecklistModal({
 }: Props) {
   const [hwExpanded, setHwExpanded] = useState(true);
   const [vocabExpanded, setVocabExpanded] = useState(true);
+  const [liveVocabTests, setLiveVocabTests] = useState(initialVocabTests);
+
+  // Refresh vocab tests on mount to get latest data
+  useEffect(() => {
+    const refresh = async () => {
+      const { data } = await supabase
+        .from("vocabulary_tests")
+        .select("id,student_name,started_at,completed_at,score,total")
+        .eq("student_name", session.student_name);
+      if (data) setLiveVocabTests(data);
+    };
+    refresh();
+  }, [session.student_name]);
+
+  const vocabTests = liveVocabTests;
 
   // Find the session immediately before the clicked session for this student
   const clickedTime = new Date(session.scheduled_at).getTime();
