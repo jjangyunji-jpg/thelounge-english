@@ -162,13 +162,14 @@ export default function WeeklyTasksSection({
     return undefined;
   };
 
-  // Vocab test: use the latest week_label from actual vocab words (not computed from session date)
-  // This ensures the test shows even when session week and vocab week_label differ
-  const latestWeekLabel = vocabWords.length > 0
-    ? vocabWords.reduce((latest, w) => w.week_label > latest ? w.week_label : latest, vocabWords[0].week_label)
+  // Vocab test: compute week_label from the latest session date
+  // This prevents showing previous session's vocab when current session hasn't had words extracted yet
+  const latestSessionWeekLabel = latestSession
+    ? getWeekLabelFromDate(new Date(latestSession.scheduled_at))
     : null;
-  const weekVocabCount = latestWeekLabel ? vocabWords.filter(w => w.week_label === latestWeekLabel).length : 0;
-  const weekTestsDone = latestWeekLabel ? testHistory.filter(t => t.week_label === latestWeekLabel && t.completed_at).length : 0;
+  // Use session-based week label; only show vocab if words actually exist for this week
+  const weekVocabCount = latestSessionWeekLabel ? vocabWords.filter(w => w.week_label === latestSessionWeekLabel).length : 0;
+  const weekTestsDone = latestSessionWeekLabel ? testHistory.filter(t => t.week_label === latestSessionWeekLabel && t.completed_at).length : 0;
 
   const completedCount = weekAssignments.filter(a => {
     const sub = getSub(a.id);
