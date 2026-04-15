@@ -162,13 +162,14 @@ export default function WeeklyTasksSection({
     return undefined;
   };
 
-  // Vocab test: use the latest week_label from actual vocab words (not computed from session date)
-  // This ensures the test shows even when session week and vocab week_label differ
-  const latestWeekLabel = vocabWords.length > 0
-    ? vocabWords.reduce((latest, w) => w.week_label > latest ? w.week_label : latest, vocabWords[0].week_label)
+  // Vocab test: compute week_label from the latest session date
+  // This prevents showing previous session's vocab when current session hasn't had words extracted yet
+  const latestSessionWeekLabel = latestSession
+    ? getWeekLabelFromDate(new Date(latestSession.scheduled_at))
     : null;
-  const weekVocabCount = latestWeekLabel ? vocabWords.filter(w => w.week_label === latestWeekLabel).length : 0;
-  const weekTestsDone = latestWeekLabel ? testHistory.filter(t => t.week_label === latestWeekLabel && t.completed_at).length : 0;
+  // Use session-based week label; only show vocab if words actually exist for this week
+  const weekVocabCount = latestSessionWeekLabel ? vocabWords.filter(w => w.week_label === latestSessionWeekLabel).length : 0;
+  const weekTestsDone = latestSessionWeekLabel ? testHistory.filter(t => t.week_label === latestSessionWeekLabel && t.completed_at).length : 0;
 
   const completedCount = weekAssignments.filter(a => {
     const sub = getSub(a.id);
@@ -384,9 +385,9 @@ export default function WeeklyTasksSection({
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0">
                     {weekTestsDone}회 완료
                   </span>
-                ) : latestWeekLabel ? (
+                ) : latestSessionWeekLabel && weekVocabCount > 0 ? (
                   <button
-                    onClick={() => navigate(`/my/vocabulary?startTest=${encodeURIComponent(latestWeekLabel)}`)}
+                    onClick={() => navigate(`/my/vocabulary?startTest=${encodeURIComponent(latestSessionWeekLabel)}`)}
                     className="flex-shrink-0 text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10"
                   >
                     테스트하기
