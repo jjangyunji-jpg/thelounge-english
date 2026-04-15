@@ -1846,7 +1846,7 @@ export default function StudentDashboard() {
                   <button
                     onClick={() => {
                       if (!canEnter) return;
-                      const meetLink = nextSessionFromDB?.meet_link || studentRecord?.meet_link;
+                      const meetLink = studentRecord?.meet_link || nextSessionFromDB?.meet_link;
                       if (meetLink) {
                         window.open(meetLink, "_blank", "noopener,noreferrer");
                       } else {
