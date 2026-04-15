@@ -385,9 +385,9 @@ export default function WeeklyTasksSection({
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-semibold flex-shrink-0">
                     {weekTestsDone}회 완료
                   </span>
-                ) : latestWeekLabel ? (
+                ) : latestSessionWeekLabel && weekVocabCount > 0 ? (
                   <button
-                    onClick={() => navigate(`/my/vocabulary?startTest=${encodeURIComponent(latestWeekLabel)}`)}
+                    onClick={() => navigate(`/my/vocabulary?startTest=${encodeURIComponent(latestSessionWeekLabel)}`)}
                     className="flex-shrink-0 text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10"
                   >
                     테스트하기
