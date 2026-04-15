@@ -1,0 +1,1 @@
+UPDATE public.class_sessions SET meet_link = 'https://meet.google.com/kaz-xfws-mbt' WHERE student_name = '임정은' AND meet_link = 'https://meet.google.com/hxx-mspk-oxh' AND scheduled_at >= now();
