@@ -261,7 +261,12 @@ export default function StudentExpressionPanel({
             title="테스트 기록"
           >
             <History className="w-3 h-3" />
-            {completedTests}회
+            {sessionCount}회
+            {attemptedCount > 0 && (
+              <span className="ml-1 text-muted-foreground/70">
+                · 최근 {latestCorrect}/{attemptedCount}
+              </span>
+            )}
           </button>
         </div>
 
