@@ -288,23 +288,50 @@ export default function HomeworkReviewModal({
   const handleReview = async () => {
     setSaving(true);
     try {
+      // Build paraphrase payload (only include if user kept it enabled and it exists)
+      const paraphrasePayload = (paraphrase && includeParaphrase) ? {
+        ...paraphrase,
+        paraphrased: editedParaphrase.trim() || paraphrase.paraphrased,
+      } : null;
+
+      // Build the final ai_correction object
+      let finalAiCorrection: any = null;
+      if (aiResult) {
+        finalAiCorrection = {
+          ...aiResult,
+          errors: [
+            ...aiResult.errors
+              .map((e, i) => editedAICorrections.has(i) ? editedAICorrections.get(i)! : e)
+              .filter((_, i) => !dismissedIndices.has(i)),
+            ...manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
+          ],
+          paraphrase: paraphrasePayload,
+        };
+      } else if (paraphrasePayload) {
+        // Paraphrase only, no other corrections
+        finalAiCorrection = {
+          errors: manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
+          score: null,
+          corrected: null,
+          feedback: null,
+          paraphrase: paraphrasePayload,
+        };
+      } else if (manualCorrections.filter(c => c.original.trim() && c.corrected.trim()).length > 0) {
+        finalAiCorrection = {
+          errors: manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
+          score: null,
+          corrected: null,
+          feedback: null,
+        };
+      }
+
       const { error } = await supabase
         .from("homework_submissions")
         .update({
           status: "reviewed",
           instructor_note: instructorNote.trim() || null,
           reviewed_at: new Date().toISOString(),
-          ai_correction: aiResult ? JSON.parse(JSON.stringify({
-            ...aiResult,
-            errors: [
-              ...aiResult.errors
-                .map((e, i) => editedAICorrections.has(i) ? editedAICorrections.get(i)! : e)
-                .filter((_, i) => !dismissedIndices.has(i)),
-              ...manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
-            ],
-          })) : manualCorrections.filter(c => c.original.trim() && c.corrected.trim()).length > 0
-            ? { errors: manualCorrections.filter(c => c.original.trim() && c.corrected.trim()), score: null, corrected: null, feedback: null }
-            : null,
+          ai_correction: finalAiCorrection ? JSON.parse(JSON.stringify(finalAiCorrection)) : null,
         })
         .eq("id", submissionId);
       if (error) throw error;
