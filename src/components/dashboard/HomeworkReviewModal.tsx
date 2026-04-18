@@ -256,6 +256,35 @@ export default function HomeworkReviewModal({
     }
   };
 
+  const runParaphrase = async () => {
+    if (!textContent?.trim()) {
+      toast({ title: "Paraphrase할 텍스트가 없습니다", variant: "destructive" });
+      return;
+    }
+    setParaphraseLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-correct", {
+        body: { text: textContent, mode: "paraphrase" },
+      });
+      if (error) throw error;
+      setParaphrase(data);
+      setEditedParaphrase(data.paraphrased || "");
+      // Auto-populate instructor note with the friendly comment + key improvements
+      const lines: string[] = [];
+      if (data.instructor_comment) lines.push(data.instructor_comment);
+      if (data.key_improvements?.length) {
+        lines.push("");
+        lines.push("📌 모델 에세이의 핵심 개선점:");
+        data.key_improvements.forEach((imp: string, i: number) => lines.push(`${i + 1}. ${imp}`));
+      }
+      setInstructorNote(lines.join("\n").trim());
+    } catch (e: any) {
+      toast({ title: "Paraphrase 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setParaphraseLoading(false);
+    }
+  };
+
   const handleReview = async () => {
     setSaving(true);
     try {
