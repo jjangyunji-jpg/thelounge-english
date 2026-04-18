@@ -12,6 +12,7 @@ import {
   AlertCircle, BanIcon, Bell, ChevronLeft,
   ChevronRight, Coffee, CalendarDays, TrendingUp, FileText,
   RotateCcw, X, Activity, CreditCard, Heart, Paperclip, Monitor,
+  BookMarked,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import BugReportModal from "@/components/dashboard/BugReportModal";
@@ -398,6 +399,7 @@ export default function StudentDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [vocabWords, setVocabWords] = useState<VocabWord[]>([]);
   const [testHistory, setTestHistory] = useState<TestRecord[]>([]);
+  const [expressions, setExpressions] = useState<Array<{ id: string; situation_label: string; english: string; korean: string; created_at: string; session_id: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [holidays, setHolidays] = useState<HolidayNotice[]>([]);
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
@@ -410,6 +412,7 @@ export default function StudentDashboard() {
   const [classHistoryOpen, setClassHistoryOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(false);
   const [vocabListOpen, setVocabListOpen] = useState(false);
+  const [expressionListOpen, setExpressionListOpen] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [showMakeup, setShowMakeup] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -628,6 +631,20 @@ export default function StudentDashboard() {
     setVocabWords(mergedVocab);
     setTestHistory(mergedTests);
     setSchedulePeriods(periodsRes.data || []);
+
+    // 핵심 표현 로딩 (학생 본인 + 그룹 대표 학생)
+    const expressionStudentNames = [student, ...Array.from(groupPrimaryStudents)];
+    const { data: expressionsData } = await supabase
+      .from("key_expressions")
+      .select("id,situation_label,english,korean,created_at,session_id,student_name")
+      .in("student_name", expressionStudentNames)
+      .order("created_at", { ascending: false });
+    // Deduplicate by id
+    const exprMap = new Map<string, any>();
+    for (const e of (expressionsData || [])) {
+      if (!exprMap.has(e.id)) exprMap.set(e.id, e);
+    }
+    setExpressions(Array.from(exprMap.values()));
 
     // Derive active record (no end_date) and all records from the array result
     const allStudentRecords = (studentRes.data || []) as any[];
@@ -1155,6 +1172,13 @@ export default function StudentDashboard() {
         return d >= periodStart! && d <= periodEnd!;
       })
     : testHistory;
+
+  const periodExpressions = selectedPeriod
+    ? expressions.filter(e => {
+        const d = new Date(e.created_at);
+        return d >= periodStart! && d <= periodEnd!;
+      })
+    : expressions;
 
   // Period navigation helpers
   const sortedPeriods = [...effectivePeriods]
@@ -2195,20 +2219,12 @@ export default function StudentDashboard() {
                 <span className="text-xs font-semibold text-foreground">나의 단어장</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{periodVocabWords.length}개</span>
               </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => navigate(`/my/expressions?name=${encodeURIComponent(student)}`)}
-                  className="text-[10px] text-purple-600 font-semibold hover:underline transition-colors"
-                >
-                  나의 표현장 →
-                </button>
-                <button
-                  onClick={() => navigate(`/my/vocabulary?name=${encodeURIComponent(student)}`)}
-                  className="text-[10px] text-navy font-semibold hover:underline transition-colors"
-                >
-                  전체 단어장 & 테스트 →
-                </button>
-              </div>
+              <button
+                onClick={() => navigate(`/my/vocabulary?name=${encodeURIComponent(student)}`)}
+                className="text-[10px] text-navy font-semibold hover:underline transition-colors"
+              >
+                전체 단어장 & 테스트 →
+              </button>
             </div>
             {vocabListOpen && (
               <div className="max-h-80 overflow-y-auto">
@@ -2241,6 +2257,48 @@ export default function StudentDashboard() {
               </div>
             )}
           </div>
+
+          {/* Expressions - 핵심 표현장 */}
+          <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+            <div className="w-full flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30">
+              <button
+                onClick={() => setExpressionListOpen(v => !v)}
+                className="flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+              >
+                <BookMarked className="w-3.5 h-3.5 text-purple-500" />
+                <span className="text-xs font-semibold text-foreground">나의 표현장</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">{periodExpressions.length}개</span>
+              </button>
+              <button
+                onClick={() => navigate(`/my/expressions?name=${encodeURIComponent(student)}`)}
+                className="text-[10px] text-purple-600 font-semibold hover:underline transition-colors"
+              >
+                전체 표현장 & 테스트 →
+              </button>
+            </div>
+            {expressionListOpen && (
+              <div className="max-h-80 overflow-y-auto divide-y divide-border/30">
+                {periodExpressions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">발행된 표현이 없습니다</p>
+                ) : (
+                  periodExpressions.map(ex => (
+                    <div key={ex.id} className="px-3 py-2 space-y-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {ex.situation_label && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
+                            {ex.situation_label}
+                          </span>
+                        )}
+                        <span className="text-xs font-semibold text-foreground break-words">{ex.english}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{ex.korean}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <button
               onClick={() => setTestHistoryOpen(v => !v)}
