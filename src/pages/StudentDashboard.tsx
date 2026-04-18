@@ -12,6 +12,7 @@ import {
   AlertCircle, BanIcon, Bell, ChevronLeft,
   ChevronRight, Coffee, CalendarDays, TrendingUp, FileText,
   RotateCcw, X, Activity, CreditCard, Heart, Paperclip, Monitor,
+  BookMarked,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import BugReportModal from "@/components/dashboard/BugReportModal";
