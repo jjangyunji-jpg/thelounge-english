@@ -260,7 +260,7 @@ export default function VocabTestModal({
 
   const startTest = (mode: TestMode) => {
     setTestMode(mode);
-    const qs = buildQuestions(words);
+    const qs = buildQuestions(words, mode);
     setQuestions(qs);
     setCurrentIdx(0);
     setAnswers([]);
