@@ -16,6 +16,14 @@ interface CorrectionItem {
   explanation: string;
 }
 
+interface ParaphraseResult {
+  detected_level: string;
+  target_level: string;
+  paraphrased: string;
+  key_improvements: string[];
+  instructor_comment: string;
+}
+
 interface AIResult {
   corrected: string;
   errors: CorrectionItem[];
@@ -26,6 +34,7 @@ interface AIResult {
   score: number;
   english_level?: string;
   vocab_level?: string;
+  paraphrase?: ParaphraseResult | null;
 }
 
 interface HomeworkReviewModalProps {
