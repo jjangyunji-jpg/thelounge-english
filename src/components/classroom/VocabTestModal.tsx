@@ -446,7 +446,7 @@ export default function VocabTestModal({
               <div className="mb-5">
                 <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5">
                   <span>{currentIdx + 1} / {questions.length}</span>
-                  <span>{testMode === "speech" ? "🔊 음성" : "💬 단어"}</span>
+                  <span>{testMode === "speech" ? "🔊 음성" : testMode === "choice" ? "📝 객관식" : "✏️ 주관식"}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                   <div className="h-full rounded-full bg-navy transition-all duration-300"
@@ -459,8 +459,12 @@ export default function VocabTestModal({
                 <TextQuestion question={questions[currentIdx]} qIndex={currentIdx}
                   total={questions.length} onAnswer={handleAnswer}
                 />
-              ) : (
+              ) : testMode === "speech" ? (
                 <SpeechQuestion question={questions[currentIdx]} qIndex={currentIdx}
+                  total={questions.length} onAnswer={handleAnswer}
+                />
+              ) : (
+                <ChoiceQuestion question={questions[currentIdx]} qIndex={currentIdx}
                   total={questions.length} onAnswer={handleAnswer}
                 />
               )}
