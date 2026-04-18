@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, MessageCircle, Sparkles } from "lucide-react";
+
+const DIALOGUE_STORAGE_KEY = "dialogue_generator_last_input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +47,25 @@ export default function DialogueGeneratorModal({
   const [tone, setTone] = useState("Casual");
   const [generating, setGenerating] = useState(false);
 
+  // Restore last inputs when modal opens
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const saved = localStorage.getItem(DIALOGUE_STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (typeof data.situation === "string") setSituation(data.situation);
+        if (typeof data.speakers === "string") setSpeakers(data.speakers);
+        if (typeof data.student === "string" && data.student) setStudent(data.student);
+        if (typeof data.level === "string") setLevel(data.level);
+        if (typeof data.mustInclude === "string") setMustInclude(data.mustInclude);
+        if (typeof data.tone === "string") setTone(data.tone);
+      }
+    } catch {
+      // ignore
+    }
+  }, [open]);
+
   const handleGenerate = async () => {
     setGenerating(true);
     try {
@@ -62,13 +83,19 @@ export default function DialogueGeneratorModal({
         .replace(/```\n?/g, "")
         .trim();
 
+      // Save inputs for next time
+      try {
+        localStorage.setItem(
+          DIALOGUE_STORAGE_KEY,
+          JSON.stringify({ situation, speakers, student, level, mustInclude, tone }),
+        );
+      } catch {
+        // ignore quota errors
+      }
+
       onInsert(cleaned);
       toast({ title: "Dialogue 삽입 완료 ✓" });
       onClose();
-      // Reset form
-      setSituation("");
-      setSpeakers("");
-      setMustInclude("");
     } catch (err: any) {
       toast({
         title: "생성 실패",
