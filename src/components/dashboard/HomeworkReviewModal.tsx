@@ -269,21 +269,8 @@ export default function HomeworkReviewModal({
       if (error) throw error;
       setParaphrase(data);
       setEditedParaphrase(data.paraphrased || "");
-      // Append paraphrase comment to existing instructor note (don't overwrite AI correction feedback)
-      const lines: string[] = [];
-      if (data.instructor_comment) lines.push(data.instructor_comment);
-      if (data.key_improvements?.length) {
-        lines.push("");
-        lines.push("📌 모델 에세이의 핵심 개선점:");
-        data.key_improvements.forEach((imp: string, i: number) => lines.push(`${i + 1}. ${imp}`));
-      }
-      const paraphraseBlock = lines.join("\n").trim();
-      setInstructorNote(prev => {
-        const existing = prev.trim();
-        if (!existing) return paraphraseBlock;
-        if (!paraphraseBlock) return existing;
-        return `${existing}\n\n${paraphraseBlock}`;
-      });
+      // Note: key_improvements are shown separately in the model essay card on the student view,
+      // so we intentionally do NOT append them to the instructor feedback to avoid duplication.
     } catch (e: any) {
       toast({ title: "Paraphrase 실패", description: e.message, variant: "destructive" });
     } finally {
