@@ -2257,6 +2257,48 @@ export default function StudentDashboard() {
               </div>
             )}
           </div>
+
+          {/* Expressions - 핵심 표현장 */}
+          <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+            <div className="w-full flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/30">
+              <button
+                onClick={() => setExpressionListOpen(v => !v)}
+                className="flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+              >
+                <BookMarked className="w-3.5 h-3.5 text-purple-500" />
+                <span className="text-xs font-semibold text-foreground">나의 표현장</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">{periodExpressions.length}개</span>
+              </button>
+              <button
+                onClick={() => navigate(`/my/expressions?name=${encodeURIComponent(student)}`)}
+                className="text-[10px] text-purple-600 font-semibold hover:underline transition-colors"
+              >
+                전체 표현장 & 테스트 →
+              </button>
+            </div>
+            {expressionListOpen && (
+              <div className="max-h-80 overflow-y-auto divide-y divide-border/30">
+                {periodExpressions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">발행된 표현이 없습니다</p>
+                ) : (
+                  periodExpressions.map(ex => (
+                    <div key={ex.id} className="px-3 py-2 space-y-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {ex.situation_label && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
+                            {ex.situation_label}
+                          </span>
+                        )}
+                        <span className="text-xs font-semibold text-foreground break-words">{ex.english}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{ex.korean}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <button
               onClick={() => setTestHistoryOpen(v => !v)}
