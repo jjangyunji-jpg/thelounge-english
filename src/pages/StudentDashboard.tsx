@@ -632,6 +632,20 @@ export default function StudentDashboard() {
     setTestHistory(mergedTests);
     setSchedulePeriods(periodsRes.data || []);
 
+    // 핵심 표현 로딩 (학생 본인 + 그룹 대표 학생)
+    const expressionStudentNames = [student, ...Array.from(groupPrimaryStudents)];
+    const { data: expressionsData } = await supabase
+      .from("key_expressions")
+      .select("id,situation_label,english,korean,created_at,session_id,student_name")
+      .in("student_name", expressionStudentNames)
+      .order("created_at", { ascending: false });
+    // Deduplicate by id
+    const exprMap = new Map<string, any>();
+    for (const e of (expressionsData || [])) {
+      if (!exprMap.has(e.id)) exprMap.set(e.id, e);
+    }
+    setExpressions(Array.from(exprMap.values()));
+
     // Derive active record (no end_date) and all records from the array result
     const allStudentRecords = (studentRes.data || []) as any[];
     const activeStudentRec = allStudentRecords.find((r: any) => r.status === "active" && !r.end_date)
