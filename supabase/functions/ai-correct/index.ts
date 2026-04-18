@@ -178,6 +178,35 @@ function buildToolsAndChoice(mode: string) {
     };
   }
 
+  if (mode === "paraphrase") {
+    return {
+      tools: [{
+        type: "function",
+        function: {
+          name: "paraphrase_result",
+          description: "Return a model essay rewritten one CEFR level above the student's writing.",
+          parameters: {
+            type: "object",
+            properties: {
+              detected_level: { type: "string", description: "Detected CEFR level of the student's text (A1, A2, B1, B2, C1, C2)" },
+              target_level: { type: "string", description: "One level above detected_level (e.g. B1 → B2)" },
+              paraphrased: { type: "string", description: "The model essay — same content but more logical, fluent, one CEFR level higher" },
+              key_improvements: {
+                type: "array",
+                items: { type: "string" },
+                description: "3 key improvements made (in Korean, friendly tone with emojis like a YouTube comment)",
+              },
+              instructor_comment: { type: "string", description: "Friendly instructor comment to send to the student in Korean (warm YouTube-comment tone with emojis, mentions what's great about their original + how the model essay can inspire next time)" },
+            },
+            required: ["detected_level", "target_level", "paraphrased", "key_improvements", "instructor_comment"],
+            additionalProperties: false,
+          },
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "paraphrase_result" } },
+    };
+  }
+
   // default / "analyze"
   return {
     tools: [{
