@@ -25,10 +25,19 @@ type TestMode = "text" | "speech" | "choice";
 interface Question { word: VocabWord; choices?: string[]; }
 interface Answer { questionIdx: number; userAnswer: string; correct: boolean; expected: string; }
 
-function buildQuestions(words: VocabWord[]): Question[] {
+function buildQuestions(words: VocabWord[], mode: TestMode): Question[] {
   const shuffled = [...words].sort(() => Math.random() - 0.5);
   const count = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
-  return shuffled.slice(0, count).map((w) => ({ word: w }));
+  const selected = shuffled.slice(0, count);
+  return selected.map((w) => {
+    if (mode === "choice") {
+      const distractorPool = words.filter((x) => x.id !== w.id).map((x) => x.english_word);
+      const distractors = [...distractorPool].sort(() => Math.random() - 0.5).slice(0, 3);
+      const choices = [w.english_word, ...distractors].sort(() => Math.random() - 0.5);
+      return { word: w, choices };
+    }
+    return { word: w };
+  });
 }
 
 function normalize(s: string) {
