@@ -399,6 +399,7 @@ export default function StudentDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [vocabWords, setVocabWords] = useState<VocabWord[]>([]);
   const [testHistory, setTestHistory] = useState<TestRecord[]>([]);
+  const [expressions, setExpressions] = useState<Array<{ id: string; situation_label: string; english: string; korean: string; created_at: string; session_id: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [holidays, setHolidays] = useState<HolidayNotice[]>([]);
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
@@ -411,6 +412,7 @@ export default function StudentDashboard() {
   const [classHistoryOpen, setClassHistoryOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(false);
   const [vocabListOpen, setVocabListOpen] = useState(false);
+  const [expressionListOpen, setExpressionListOpen] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [showMakeup, setShowMakeup] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
