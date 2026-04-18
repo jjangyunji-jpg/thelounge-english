@@ -357,7 +357,9 @@ Respond in Korean for explanations and feedback.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: (mode === "homework_review" || mode === "notes_correct" || mode === "correct")
+          ? "google/gemini-2.5-pro"
+          : "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
