@@ -389,6 +389,8 @@ export default function VocabTestModal({
               {weekLabel.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`)}
               {" · "}{`${completedTests + 1}회차`}
               {phase === "testing" && testMode === "speech" && " · 🔊 음성 모드"}
+              {phase === "testing" && testMode === "choice" && " · 📝 객관식"}
+              {phase === "testing" && testMode === "text" && " · ✏️ 주관식"}
             </p>
           </div>
           {phase !== "testing" && (
