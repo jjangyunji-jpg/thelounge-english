@@ -333,6 +333,9 @@ export default function StudentVocabPanel({
     setLoading(false);
   };
 
+  const [latestCorrect, setLatestCorrect] = useState(0);
+  const [latestAttempted, setLatestAttempted] = useState(0);
+
   const loadTestCount = async () => {
     setLoadingTests(true);
     const { data } = await supabase
@@ -347,6 +350,26 @@ export default function StudentVocabPanel({
     const relevant = all.filter((t) => t.word_ids?.some((id) => sessionWordIds.has(id)));
     setTestHistory(relevant);
     setCompletedTests(relevant.length);
+
+    // 단어별 최신 정답률: 관련 테스트들의 모든 결과에서 단어별 가장 최근 결과만 집계
+    if (relevant.length > 0 && sessionWordIds.size > 0) {
+      const testIds = relevant.map((t) => t.id);
+      const { data: resultsData } = await supabase
+        .from("vocabulary_test_results")
+        .select("word_id, is_correct, created_at, test_id")
+        .in("test_id", testIds)
+        .order("created_at", { ascending: false });
+      const latest = new Map<string, boolean>();
+      for (const r of (resultsData ?? []) as { word_id: string | null; is_correct: boolean | null }[]) {
+        if (!r.word_id || !sessionWordIds.has(r.word_id)) continue;
+        if (!latest.has(r.word_id)) latest.set(r.word_id, !!r.is_correct);
+      }
+      setLatestAttempted(latest.size);
+      setLatestCorrect(Array.from(latest.values()).filter(Boolean).length);
+    } else {
+      setLatestAttempted(0);
+      setLatestCorrect(0);
+    }
     setLoadingTests(false);
   };
 
