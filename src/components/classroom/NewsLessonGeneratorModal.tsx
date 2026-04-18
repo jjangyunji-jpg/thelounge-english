@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Newspaper, Sparkles } from "lucide-react";
+
+const NEWS_STORAGE_KEY = "news_lesson_generator_last_input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +45,24 @@ export default function NewsLessonGeneratorModal({
   const [duration, setDuration] = useState("40");
   const [generating, setGenerating] = useState(false);
 
+  // Restore last inputs when modal opens
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const saved = localStorage.getItem(NEWS_STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.inputMode === "text" || data.inputMode === "url") setInputMode(data.inputMode);
+        if (typeof data.articleText === "string") setArticleText(data.articleText);
+        if (typeof data.articleUrl === "string") setArticleUrl(data.articleUrl);
+        if (typeof data.level === "string") setLevel(data.level);
+        if (typeof data.duration === "string") setDuration(data.duration);
+      }
+    } catch {
+      // ignore
+    }
+  }, [open]);
+
   const handleGenerate = async () => {
     setGenerating(true);
     try {
@@ -63,11 +83,19 @@ export default function NewsLessonGeneratorModal({
         .replace(/```\n?/g, "")
         .trim();
 
+      // Save inputs for next time
+      try {
+        localStorage.setItem(
+          NEWS_STORAGE_KEY,
+          JSON.stringify({ inputMode, articleText, articleUrl, level, duration }),
+        );
+      } catch {
+        // ignore quota errors
+      }
+
       onInsert(html);
       toast({ title: "수업 자료 삽입 완료 ✓" });
       onClose();
-      setArticleText("");
-      setArticleUrl("");
     } catch (err: any) {
       toast({
         title: "생성 실패",
