@@ -803,6 +803,83 @@ export type Database = {
         }
         Relationships: []
       }
+      key_expression_test_results: {
+        Row: {
+          ai_feedback: string | null
+          created_at: string
+          expression_id: string
+          id: string
+          is_correct: boolean
+          score: number
+          student_answer: string
+          student_name: string
+        }
+        Insert: {
+          ai_feedback?: string | null
+          created_at?: string
+          expression_id: string
+          id?: string
+          is_correct?: boolean
+          score?: number
+          student_answer: string
+          student_name: string
+        }
+        Update: {
+          ai_feedback?: string | null
+          created_at?: string
+          expression_id?: string
+          id?: string
+          is_correct?: boolean
+          score?: number
+          student_answer?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "key_expression_test_results_expression_id_fkey"
+            columns: ["expression_id"]
+            isOneToOne: false
+            referencedRelation: "key_expressions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      key_expressions: {
+        Row: {
+          created_at: string
+          created_by_instructor: string | null
+          english: string
+          id: string
+          korean: string
+          session_id: string | null
+          situation_label: string
+          student_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_instructor?: string | null
+          english: string
+          id?: string
+          korean: string
+          session_id?: string | null
+          situation_label?: string
+          student_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_instructor?: string | null
+          english?: string
+          id?: string
+          korean?: string
+          session_id?: string | null
+          situation_label?: string
+          student_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       makeup_requests: {
         Row: {
           created_at: string
