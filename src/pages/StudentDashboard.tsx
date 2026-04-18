@@ -2219,20 +2219,12 @@ export default function StudentDashboard() {
                 <span className="text-xs font-semibold text-foreground">나의 단어장</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">{periodVocabWords.length}개</span>
               </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => navigate(`/my/expressions?name=${encodeURIComponent(student)}`)}
-                  className="text-[10px] text-purple-600 font-semibold hover:underline transition-colors"
-                >
-                  나의 표현장 →
-                </button>
-                <button
-                  onClick={() => navigate(`/my/vocabulary?name=${encodeURIComponent(student)}`)}
-                  className="text-[10px] text-navy font-semibold hover:underline transition-colors"
-                >
-                  전체 단어장 & 테스트 →
-                </button>
-              </div>
+              <button
+                onClick={() => navigate(`/my/vocabulary?name=${encodeURIComponent(student)}`)}
+                className="text-[10px] text-navy font-semibold hover:underline transition-colors"
+              >
+                전체 단어장 & 테스트 →
+              </button>
             </div>
             {vocabListOpen && (
               <div className="max-h-80 overflow-y-auto">
