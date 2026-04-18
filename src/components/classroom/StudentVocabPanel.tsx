@@ -449,7 +449,11 @@ export default function StudentVocabPanel({
               <ClipboardCheck className="w-3.5 h-3.5 text-gold flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-foreground">
-                  단어 학습 & 테스트 ({completedTests}회 완료)
+                  단어 학습 & 테스트 ({completedTests}회 완료
+                  {latestAttempted > 0 && (
+                    <span className="text-muted-foreground font-normal"> · 최근 {latestCorrect}/{latestAttempted}</span>
+                  )}
+                  )
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate">
                   플래시카드로 학습하거나 테스트하세요
