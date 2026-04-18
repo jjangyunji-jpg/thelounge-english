@@ -361,15 +361,15 @@ export default function ClassNote() {
               <StudentHomeworkPanel studentName={student} sessionId={selectedSession.id} />
             </div>
 
-            {/* ── RIGHT COLUMN: Vocabulary + Expressions ───────────────────── */}
+            {/* ── RIGHT COLUMN: Expressions + Vocabulary ───────────────────── */}
             <div className="w-full lg:w-80 xl:w-96 lg:flex-shrink-0 flex flex-col gap-4 lg:gap-5">
+              <StudentExpressionPanel
+                studentName={student}
+                sessionId={selectedSession.id}
+              />
               <StudentVocabPanel
                 studentName={student}
                 scheduledAt={new Date(selectedSession.scheduled_at)}
-                sessionId={selectedSession.id}
-              />
-              <StudentExpressionPanel
-                studentName={student}
                 sessionId={selectedSession.id}
               />
             </div>
