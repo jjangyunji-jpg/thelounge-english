@@ -276,6 +276,36 @@ export default function HomeworkFeedbackModal({
             </div>
           )}
 
+          {/* Paraphrase: Model essay one level above */}
+          {aiCorrection?.paraphrase && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                <Wand2 className="w-3 h-3 text-[hsl(var(--gold))]" />
+                모델 에세이
+                <span className="inline-flex items-center gap-0.5 ml-1 normal-case tracking-normal">
+                  <span className="text-[10px] text-muted-foreground">{aiCorrection.paraphrase.detected_level}</span>
+                  <ArrowUp className="w-2.5 h-2.5 text-[hsl(var(--gold))]" />
+                  <span className="text-[10px] font-bold text-[hsl(var(--gold))]">{aiCorrection.paraphrase.target_level}</span>
+                </span>
+              </p>
+              <div className="rounded-lg border border-[hsl(var(--gold)/0.3)] bg-[hsl(var(--gold)/0.05)] p-4 space-y-3">
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                  {aiCorrection.paraphrase.paraphrased}
+                </p>
+                {aiCorrection.paraphrase.key_improvements?.length > 0 && (
+                  <div className="space-y-1 pt-3 border-t border-[hsl(var(--gold)/0.2)]">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">핵심 개선점</p>
+                    {aiCorrection.paraphrase.key_improvements.map((imp, i) => (
+                      <p key={i} className="text-xs text-foreground/85 leading-relaxed">
+                        <span className="font-bold text-[hsl(var(--gold))]">{i + 1}.</span> {imp}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {!instructorNote && !aiCorrection && !onEdit && (
             <div className="rounded-lg border border-border bg-muted/10 p-4 text-center">
               <p className="text-xs text-muted-foreground">피드백 메시지가 없습니다</p>
