@@ -200,6 +200,10 @@ export default function HomeworkReviewModal({
   const [manualCorrections, setManualCorrections] = useState<CorrectionItem[]>([]);
   const [editedAICorrections, setEditedAICorrections] = useState<Map<number, CorrectionItem>>(new Map());
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [paraphrase, setParaphrase] = useState<ParaphraseResult | null>(null);
+  const [paraphraseLoading, setParaphraseLoading] = useState(false);
+  const [editedParaphrase, setEditedParaphrase] = useState<string>("");
+  const [includeParaphrase, setIncludeParaphrase] = useState(true);
 
   const handleSaveEdit = (idx: number, item: CorrectionItem) => {
     setEditedAICorrections(prev => new Map(prev).set(idx, item));
