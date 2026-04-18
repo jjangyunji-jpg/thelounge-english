@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink, Undo2, Plus, Trash2, HelpCircle, Pencil,
+  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink, Undo2, Plus, Trash2, HelpCircle, Pencil, Wand2, ArrowUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,14 @@ interface CorrectionItem {
   explanation: string;
 }
 
+interface ParaphraseResult {
+  detected_level: string;
+  target_level: string;
+  paraphrased: string;
+  key_improvements: string[];
+  instructor_comment: string;
+}
+
 interface AIResult {
   corrected: string;
   errors: CorrectionItem[];
@@ -26,6 +34,7 @@ interface AIResult {
   score: number;
   english_level?: string;
   vocab_level?: string;
+  paraphrase?: ParaphraseResult | null;
 }
 
 interface HomeworkReviewModalProps {
@@ -191,6 +200,10 @@ export default function HomeworkReviewModal({
   const [manualCorrections, setManualCorrections] = useState<CorrectionItem[]>([]);
   const [editedAICorrections, setEditedAICorrections] = useState<Map<number, CorrectionItem>>(new Map());
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [paraphrase, setParaphrase] = useState<ParaphraseResult | null>(null);
+  const [paraphraseLoading, setParaphraseLoading] = useState(false);
+  const [editedParaphrase, setEditedParaphrase] = useState<string>("");
+  const [includeParaphrase, setIncludeParaphrase] = useState(true);
 
   const handleSaveEdit = (idx: number, item: CorrectionItem) => {
     setEditedAICorrections(prev => new Map(prev).set(idx, item));
@@ -243,26 +256,82 @@ export default function HomeworkReviewModal({
     }
   };
 
+  const runParaphrase = async () => {
+    if (!textContent?.trim()) {
+      toast({ title: "Paraphrase할 텍스트가 없습니다", variant: "destructive" });
+      return;
+    }
+    setParaphraseLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-correct", {
+        body: { text: textContent, mode: "paraphrase" },
+      });
+      if (error) throw error;
+      setParaphrase(data);
+      setEditedParaphrase(data.paraphrased || "");
+      // Auto-populate instructor note with the friendly comment + key improvements
+      const lines: string[] = [];
+      if (data.instructor_comment) lines.push(data.instructor_comment);
+      if (data.key_improvements?.length) {
+        lines.push("");
+        lines.push("📌 모델 에세이의 핵심 개선점:");
+        data.key_improvements.forEach((imp: string, i: number) => lines.push(`${i + 1}. ${imp}`));
+      }
+      setInstructorNote(lines.join("\n").trim());
+    } catch (e: any) {
+      toast({ title: "Paraphrase 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setParaphraseLoading(false);
+    }
+  };
+
   const handleReview = async () => {
     setSaving(true);
     try {
+      // Build paraphrase payload (only include if user kept it enabled and it exists)
+      const paraphrasePayload = (paraphrase && includeParaphrase) ? {
+        ...paraphrase,
+        paraphrased: editedParaphrase.trim() || paraphrase.paraphrased,
+      } : null;
+
+      // Build the final ai_correction object
+      let finalAiCorrection: any = null;
+      if (aiResult) {
+        finalAiCorrection = {
+          ...aiResult,
+          errors: [
+            ...aiResult.errors
+              .map((e, i) => editedAICorrections.has(i) ? editedAICorrections.get(i)! : e)
+              .filter((_, i) => !dismissedIndices.has(i)),
+            ...manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
+          ],
+          paraphrase: paraphrasePayload,
+        };
+      } else if (paraphrasePayload) {
+        // Paraphrase only, no other corrections
+        finalAiCorrection = {
+          errors: manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
+          score: null,
+          corrected: null,
+          feedback: null,
+          paraphrase: paraphrasePayload,
+        };
+      } else if (manualCorrections.filter(c => c.original.trim() && c.corrected.trim()).length > 0) {
+        finalAiCorrection = {
+          errors: manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
+          score: null,
+          corrected: null,
+          feedback: null,
+        };
+      }
+
       const { error } = await supabase
         .from("homework_submissions")
         .update({
           status: "reviewed",
           instructor_note: instructorNote.trim() || null,
           reviewed_at: new Date().toISOString(),
-          ai_correction: aiResult ? JSON.parse(JSON.stringify({
-            ...aiResult,
-            errors: [
-              ...aiResult.errors
-                .map((e, i) => editedAICorrections.has(i) ? editedAICorrections.get(i)! : e)
-                .filter((_, i) => !dismissedIndices.has(i)),
-              ...manualCorrections.filter(c => c.original.trim() && c.corrected.trim()),
-            ],
-          })) : manualCorrections.filter(c => c.original.trim() && c.corrected.trim()).length > 0
-            ? { errors: manualCorrections.filter(c => c.original.trim() && c.corrected.trim()), score: null, corrected: null, feedback: null }
-            : null,
+          ai_correction: finalAiCorrection ? JSON.parse(JSON.stringify(finalAiCorrection)) : null,
         })
         .eq("id", submissionId);
       if (error) throw error;
@@ -298,7 +367,7 @@ export default function HomeworkReviewModal({
         <div className="p-5 space-y-4">
           {/* AI Correction Button */}
           {isWriting && textContent && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 size="sm"
                 onClick={runAICorrection}
@@ -313,6 +382,28 @@ export default function HomeworkReviewModal({
                   <><Sparkles className="w-3.5 h-3.5" />AI 교정하기</>
                 )}
               </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={runParaphrase}
+                    disabled={paraphraseLoading || !!paraphrase}
+                    className="gap-1.5 h-8 text-xs border-[hsl(var(--gold))] text-[hsl(var(--gold))] hover:bg-[hsl(var(--gold)/0.1)] hover:text-[hsl(var(--gold))]"
+                  >
+                    {paraphraseLoading ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" />생성 중...</>
+                    ) : paraphrase ? (
+                      <><Check className="w-3.5 h-3.5" />모델 에세이 완료</>
+                    ) : (
+                      <><Wand2 className="w-3.5 h-3.5" />모델 에세이 (한 단계 위)</>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[260px] text-xs">
+                  학생 글의 레벨을 자동 판정한 뒤, 같은 내용을 한 단계 위 CEFR 레벨로 다시 써서 모델 에세이를 만들어줍니다. 고칠 게 거의 없는 학생에게 유용합니다.
+                </TooltipContent>
+              </Tooltip>
               {aiResult && (
                 <div className="flex items-center gap-3 flex-wrap">
                   <Tooltip>
@@ -354,6 +445,56 @@ export default function HomeworkReviewModal({
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Paraphrase Preview Card */}
+          {isWriting && paraphrase && (
+            <div className="rounded-lg border border-[hsl(var(--gold)/0.4)] bg-[hsl(var(--gold)/0.05)] p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="w-3.5 h-3.5 text-[hsl(var(--gold))]" />
+                  <p className="text-xs font-bold text-foreground">모델 에세이 미리보기</p>
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-muted-foreground">
+                    {paraphrase.detected_level}
+                    <ArrowUp className="w-2.5 h-2.5 text-[hsl(var(--gold))]" />
+                    <span className="text-[hsl(var(--gold))]">{paraphrase.target_level}</span>
+                  </span>
+                </div>
+                <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeParaphrase}
+                    onChange={(e) => setIncludeParaphrase(e.target.checked)}
+                    className="w-3 h-3 accent-[hsl(var(--gold))]"
+                  />
+                  학생에게 전달
+                </label>
+              </div>
+
+              <Textarea
+                value={editedParaphrase}
+                onChange={(e) => setEditedParaphrase(e.target.value)}
+                className="min-h-[140px] text-sm resize-y bg-card"
+              />
+
+              {paraphrase.key_improvements?.length > 0 && (
+                <div className="space-y-1 pt-1 border-t border-[hsl(var(--gold)/0.2)]">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">핵심 개선점</p>
+                  {paraphrase.key_improvements.map((imp, i) => (
+                    <p key={i} className="text-[11px] text-foreground/80 leading-relaxed">
+                      <span className="font-bold text-[hsl(var(--gold))]">{i + 1}.</span> {imp}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => { setParaphrase(null); setEditedParaphrase(""); }}
+                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+              >
+                다시 생성하기
+              </button>
             </div>
           )}
 
