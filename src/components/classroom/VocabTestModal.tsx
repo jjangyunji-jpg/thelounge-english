@@ -44,23 +44,31 @@ function normalize(s: string) {
   return s
     .toLowerCase()
     .trim()
-    .replace(/[\u2018\u2019\u201C\u201D]/g, "'")   // smart quotes → straight
-    .replace(/[.,!?'"]/g, "")                        // strip punctuation
-    .replace(/[-–—]/g, " ")                          // hyphens → spaces
-    .replace(/\s+/g, " ")                            // collapse whitespace
+    .replace(/[\u2018\u2019\u201C\u201D’‘”“]/g, "'")  // smart quotes → straight
+    .replace(/\bi['']?m\b/g, "i am")                    // contractions expansion
+    .replace(/\b(\w+)['']?s\b/g, "$1 is")
+    .replace(/\b(\w+)n['']?t\b/g, "$1 not")
+    .replace(/\b(\w+)['']?re\b/g, "$1 are")
+    .replace(/\b(\w+)['']?ve\b/g, "$1 have")
+    .replace(/\b(\w+)['']?ll\b/g, "$1 will")
+    .replace(/\b(\w+)['']?d\b/g, "$1 would")
+    .replace(/[.,!?'"`;:()\[\]{}]/g, "")                // strip all punctuation
+    .replace(/[-–—_/\\]/g, " ")                         // separators → spaces
+    .replace(/\s+/g, " ")                               // collapse whitespace
     .trim();
 }
 
 function isCorrect(userAnswer: string, expected: string): boolean {
   const u = normalize(userAnswer);
   const e = normalize(expected);
+  if (!u || !e) return false;
   if (u === e) return true;
-  // Also match if all words from expected are present
+  // Match ignoring spaces entirely (e.g. "oneofakind" === "one of a kind")
+  if (u.replace(/\s/g, "") === e.replace(/\s/g, "")) return true;
+  // Also match if all words from expected are present in user answer (lenient)
   const eWords = e.split(" ").filter(Boolean);
   const uWords = u.split(" ").filter(Boolean);
   if (eWords.length > 0 && eWords.every((word) => uWords.includes(word))) return true;
-  // Match ignoring spaces entirely (e.g. "oneofakind" === "one of a kind")
-  if (u.replace(/\s/g, "") === e.replace(/\s/g, "")) return true;
   return false;
 }
 
