@@ -212,8 +212,34 @@ export default function StudentExpressionPanel({
   useEffect(() => { if (!loading) loadResults(); }, [expressions]);
 
   const canTest = expressions.length >= 1;
-  const correctCount = results.filter((r) => r.is_correct).length;
-  const completedTests = results.length;
+
+  // 회차 수: 10분 이내 답변을 1회차로 그룹핑 (results는 created_at desc로 정렬됨)
+  const sessionCount = (() => {
+    if (results.length === 0) return 0;
+    const sorted = [...results].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    let count = 1;
+    let prev = new Date(sorted[0].created_at).getTime();
+    const TEN_MIN = 10 * 60 * 1000;
+    for (let i = 1; i < sorted.length; i++) {
+      const curr = new Date(sorted[i].created_at).getTime();
+      if (curr - prev > TEN_MIN) count++;
+      prev = curr;
+    }
+    return count;
+  })();
+
+  // 표현별 최신 정답률: 표현마다 가장 최근 결과 1건만 집계
+  const latestByExpression = new Map<string, TestResultRow>();
+  for (const r of results) {
+    // results는 desc 정렬이므로 첫 등장 = 최신
+    if (!latestByExpression.has(r.expression_id)) {
+      latestByExpression.set(r.expression_id, r);
+    }
+  }
+  const attemptedCount = latestByExpression.size;
+  const latestCorrect = Array.from(latestByExpression.values()).filter((r) => r.is_correct).length;
 
   return (
     <>
