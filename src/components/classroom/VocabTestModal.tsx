@@ -20,9 +20,9 @@ interface VocabWord {
 }
 
 type Phase = "confirm" | "testing" | "results";
-type TestMode = "text" | "speech";
+type TestMode = "text" | "speech" | "choice";
 
-interface Question { word: VocabWord; }
+interface Question { word: VocabWord; choices?: string[]; }
 interface Answer { questionIdx: number; userAnswer: string; correct: boolean; expected: string; }
 
 function buildQuestions(words: VocabWord[]): Question[] {
