@@ -418,10 +418,16 @@ export default function VocabTestModal({
 
               {/* Mode selection */}
               <div className="space-y-2">
+                <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold gap-2"
+                  onClick={() => startTest("choice")}
+                >
+                  📝 객관식 (4지선다)
+                  <span className="text-[10px] font-normal opacity-80">뜻을 보고 영어 단어 고르기</span>
+                </Button>
                 <Button className="w-full bg-navy hover:bg-navy-light text-primary-foreground font-semibold gap-2"
                   onClick={() => startTest("text")}
                 >
-                  ✏️ 텍스트 모드
+                  ✏️ 주관식 (텍스트)
                   <span className="text-[10px] font-normal opacity-80">뜻을 보고 영어 입력</span>
                 </Button>
                 <Button className="w-full bg-gold hover:bg-gold-dark text-foreground font-semibold gap-2"
