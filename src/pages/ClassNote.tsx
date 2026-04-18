@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
+import StudentExpressionPanel from "@/components/classroom/StudentExpressionPanel";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 
 interface ClassSession {
@@ -360,11 +361,15 @@ export default function ClassNote() {
               <StudentHomeworkPanel studentName={student} sessionId={selectedSession.id} />
             </div>
 
-            {/* ── RIGHT COLUMN: Vocabulary + Test ──────────────────────────── */}
-            <div className="w-full lg:w-80 xl:w-96 lg:flex-shrink-0 flex flex-col">
+            {/* ── RIGHT COLUMN: Vocabulary + Expressions ───────────────────── */}
+            <div className="w-full lg:w-80 xl:w-96 lg:flex-shrink-0 flex flex-col gap-4 lg:gap-5">
               <StudentVocabPanel
                 studentName={student}
                 scheduledAt={new Date(selectedSession.scheduled_at)}
+                sessionId={selectedSession.id}
+              />
+              <StudentExpressionPanel
+                studentName={student}
                 sessionId={selectedSession.id}
               />
             </div>
