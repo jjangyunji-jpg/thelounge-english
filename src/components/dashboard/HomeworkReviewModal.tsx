@@ -382,28 +382,30 @@ export default function HomeworkReviewModal({
                   <><Sparkles className="w-3.5 h-3.5" />AI 교정하기</>
                 )}
               </Button>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={runParaphrase}
-                    disabled={paraphraseLoading || !!paraphrase}
-                    className="gap-1.5 h-8 text-xs border-[hsl(var(--gold))] text-[hsl(var(--gold))] hover:bg-[hsl(var(--gold)/0.1)] hover:text-[hsl(var(--gold))]"
-                  >
-                    {paraphraseLoading ? (
-                      <><Loader2 className="w-3.5 h-3.5 animate-spin" />생성 중...</>
-                    ) : paraphrase ? (
-                      <><Check className="w-3.5 h-3.5" />모델 에세이 완료</>
-                    ) : (
-                      <><Wand2 className="w-3.5 h-3.5" />모델 에세이 (한 단계 위)</>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[260px] text-xs">
-                  학생 글의 레벨을 자동 판정한 뒤, 같은 내용을 한 단계 위 CEFR 레벨로 다시 써서 모델 에세이를 만들어줍니다. 고칠 게 거의 없는 학생에게 유용합니다.
-                </TooltipContent>
-              </Tooltip>
+              {aiResult && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={runParaphrase}
+                      disabled={paraphraseLoading || !!paraphrase}
+                      className="gap-1.5 h-8 text-xs border-[hsl(var(--gold))] text-[hsl(var(--gold))] hover:bg-[hsl(var(--gold)/0.1)] hover:text-[hsl(var(--gold))]"
+                    >
+                      {paraphraseLoading ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" />생성 중...</>
+                      ) : paraphrase ? (
+                        <><Check className="w-3.5 h-3.5" />모델 에세이 완료</>
+                      ) : (
+                        <><Wand2 className="w-3.5 h-3.5" />Paraphrasing하기</>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[260px] text-xs">
+                    학생 글의 레벨을 자동 판정한 뒤, 같은 내용을 한 단계 위 CEFR 레벨로 다시 써서 모델 에세이를 만들어줍니다. AI 교정의 피드백/교정안은 그대로 유지되고, 모델 에세이가 추가로 학생에게 함께 전달됩니다.
+                  </TooltipContent>
+                </Tooltip>
+              )}
               {aiResult && (
                 <div className="flex items-center gap-3 flex-wrap">
                   <Tooltip>
