@@ -219,7 +219,71 @@ function SpeechQuestion({
   );
 }
 
-// ── Result Item ──
+// ── Question Card (Multiple Choice mode) ──
+function ChoiceQuestion({
+  question, qIndex, total, onAnswer,
+}: {
+  question: Question; qIndex: number; total: number; onAnswer: (answer: string) => void;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const choices = question.choices ?? [];
+  const correctAnswer = question.word.english_word;
+
+  // Reset selection when question changes
+  useEffect(() => { setSelected(null); }, [question.word.id]);
+
+  const handlePick = (c: string) => {
+    if (selected) return;
+    setSelected(c);
+    // Brief visual feedback before advancing
+    setTimeout(() => onAnswer(c), 600);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center space-y-1">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
+          뜻에 알맞은 영어 단어를 고르세요
+        </p>
+        <p className="text-2xl font-bold text-foreground">{question.word.korean_meaning}</p>
+        {question.word.part_of_speech && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            {question.word.part_of_speech}
+          </span>
+        )}
+      </div>
+      <div className="space-y-2">
+        {choices.map((c, i) => {
+          const isSelected = selected === c;
+          const isAnswer = c === correctAnswer;
+          const showState = !!selected;
+          return (
+            <button
+              key={i}
+              onClick={() => handlePick(c)}
+              disabled={!!selected}
+              className={cn(
+                "w-full text-left rounded-lg border-2 p-3 text-sm transition-all",
+                !showState && "border-border hover:border-navy/40 hover:bg-navy/5",
+                showState && isAnswer && "border-success bg-success/10",
+                showState && isSelected && !isAnswer && "border-destructive bg-destructive/10",
+                showState && !isSelected && !isAnswer && "border-border opacity-60"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-muted-foreground w-4">{String.fromCharCode(65 + i)}.</span>
+                <span className="flex-1 font-medium text-foreground">{c}</span>
+                {showState && isAnswer && <CheckCircle2 className="w-4 h-4 text-success" />}
+                {showState && isSelected && !isAnswer && <XCircle className="w-4 h-4 text-destructive" />}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-center text-[10px] text-muted-foreground">{qIndex + 1} / {total}</p>
+    </div>
+  );
+}
 function ResultItem({ question, answer }: { question: Question; answer: Answer }) {
   return (
     <div className={cn("rounded-lg p-3 border text-sm space-y-1",
