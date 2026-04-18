@@ -284,6 +284,8 @@ function ChoiceQuestion({
     </div>
   );
 }
+
+// ── Result Item ──
 function ResultItem({ question, answer }: { question: Question; answer: Answer }) {
   return (
     <div className={cn("rounded-lg p-3 border text-sm space-y-1",
