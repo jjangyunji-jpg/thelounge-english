@@ -20,15 +20,24 @@ interface VocabWord {
 }
 
 type Phase = "confirm" | "testing" | "results";
-type TestMode = "text" | "speech";
+type TestMode = "text" | "speech" | "choice";
 
-interface Question { word: VocabWord; }
+interface Question { word: VocabWord; choices?: string[]; }
 interface Answer { questionIdx: number; userAnswer: string; correct: boolean; expected: string; }
 
-function buildQuestions(words: VocabWord[]): Question[] {
+function buildQuestions(words: VocabWord[], mode: TestMode): Question[] {
   const shuffled = [...words].sort(() => Math.random() - 0.5);
   const count = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
-  return shuffled.slice(0, count).map((w) => ({ word: w }));
+  const selected = shuffled.slice(0, count);
+  return selected.map((w) => {
+    if (mode === "choice") {
+      const distractorPool = words.filter((x) => x.id !== w.id).map((x) => x.english_word);
+      const distractors = [...distractorPool].sort(() => Math.random() - 0.5).slice(0, 3);
+      const choices = [w.english_word, ...distractors].sort(() => Math.random() - 0.5);
+      return { word: w, choices };
+    }
+    return { word: w };
+  });
 }
 
 function normalize(s: string) {
@@ -210,6 +219,72 @@ function SpeechQuestion({
   );
 }
 
+// ── Question Card (Multiple Choice mode) ──
+function ChoiceQuestion({
+  question, qIndex, total, onAnswer,
+}: {
+  question: Question; qIndex: number; total: number; onAnswer: (answer: string) => void;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const choices = question.choices ?? [];
+  const correctAnswer = question.word.english_word;
+
+  // Reset selection when question changes
+  useEffect(() => { setSelected(null); }, [question.word.id]);
+
+  const handlePick = (c: string) => {
+    if (selected) return;
+    setSelected(c);
+    // Brief visual feedback before advancing
+    setTimeout(() => onAnswer(c), 600);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center space-y-1">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
+          뜻에 알맞은 영어 단어를 고르세요
+        </p>
+        <p className="text-2xl font-bold text-foreground">{question.word.korean_meaning}</p>
+        {question.word.part_of_speech && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            {question.word.part_of_speech}
+          </span>
+        )}
+      </div>
+      <div className="space-y-2">
+        {choices.map((c, i) => {
+          const isSelected = selected === c;
+          const isAnswer = c === correctAnswer;
+          const showState = !!selected;
+          return (
+            <button
+              key={i}
+              onClick={() => handlePick(c)}
+              disabled={!!selected}
+              className={cn(
+                "w-full text-left rounded-lg border-2 p-3 text-sm transition-all",
+                !showState && "border-border hover:border-navy/40 hover:bg-navy/5",
+                showState && isAnswer && "border-success bg-success/10",
+                showState && isSelected && !isAnswer && "border-destructive bg-destructive/10",
+                showState && !isSelected && !isAnswer && "border-border opacity-60"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-muted-foreground w-4">{String.fromCharCode(65 + i)}.</span>
+                <span className="flex-1 font-medium text-foreground">{c}</span>
+                {showState && isAnswer && <CheckCircle2 className="w-4 h-4 text-success" />}
+                {showState && isSelected && !isAnswer && <XCircle className="w-4 h-4 text-destructive" />}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-center text-[10px] text-muted-foreground">{qIndex + 1} / {total}</p>
+    </div>
+  );
+}
+
 // ── Result Item ──
 function ResultItem({ question, answer }: { question: Question; answer: Answer }) {
   return (
@@ -251,7 +326,7 @@ export default function VocabTestModal({
 
   const startTest = (mode: TestMode) => {
     setTestMode(mode);
-    const qs = buildQuestions(words);
+    const qs = buildQuestions(words, mode);
     setQuestions(qs);
     setCurrentIdx(0);
     setAnswers([]);
@@ -314,6 +389,8 @@ export default function VocabTestModal({
               {weekLabel.replace(/(\d{4})-W(\d{2})/, (_, y, w) => `${y}년 ${parseInt(w)}주차`)}
               {" · "}{`${completedTests + 1}회차`}
               {phase === "testing" && testMode === "speech" && " · 🔊 음성 모드"}
+              {phase === "testing" && testMode === "choice" && " · 📝 객관식"}
+              {phase === "testing" && testMode === "text" && " · ✏️ 주관식"}
             </p>
           </div>
           {phase !== "testing" && (
@@ -343,10 +420,16 @@ export default function VocabTestModal({
 
               {/* Mode selection */}
               <div className="space-y-2">
+                <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold gap-2"
+                  onClick={() => startTest("choice")}
+                >
+                  📝 객관식 (4지선다)
+                  <span className="text-[10px] font-normal opacity-80">뜻을 보고 영어 단어 고르기</span>
+                </Button>
                 <Button className="w-full bg-navy hover:bg-navy-light text-primary-foreground font-semibold gap-2"
                   onClick={() => startTest("text")}
                 >
-                  ✏️ 텍스트 모드
+                  ✏️ 주관식 (텍스트)
                   <span className="text-[10px] font-normal opacity-80">뜻을 보고 영어 입력</span>
                 </Button>
                 <Button className="w-full bg-gold hover:bg-gold-dark text-foreground font-semibold gap-2"
@@ -365,7 +448,7 @@ export default function VocabTestModal({
               <div className="mb-5">
                 <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5">
                   <span>{currentIdx + 1} / {questions.length}</span>
-                  <span>{testMode === "speech" ? "🔊 음성" : "💬 단어"}</span>
+                  <span>{testMode === "speech" ? "🔊 음성" : testMode === "choice" ? "📝 객관식" : "✏️ 주관식"}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                   <div className="h-full rounded-full bg-navy transition-all duration-300"
@@ -378,8 +461,12 @@ export default function VocabTestModal({
                 <TextQuestion question={questions[currentIdx]} qIndex={currentIdx}
                   total={questions.length} onAnswer={handleAnswer}
                 />
-              ) : (
+              ) : testMode === "speech" ? (
                 <SpeechQuestion question={questions[currentIdx]} qIndex={currentIdx}
+                  total={questions.length} onAnswer={handleAnswer}
+                />
+              ) : (
+                <ChoiceQuestion question={questions[currentIdx]} qIndex={currentIdx}
                   total={questions.length} onAnswer={handleAnswer}
                 />
               )}
