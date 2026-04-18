@@ -51,6 +51,36 @@ export default function ExpressionTestModal({
 
   const current = ordered[index];
 
+  // ── Normalization helper (matches VocabTestModal logic) ──
+  // Handles: case, punctuation, smart quotes, hyphens, extra whitespace, contractions
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .trim()
+      .replace(/[\u2018\u2019\u201C\u201D]/g, "'")     // smart quotes → straight
+      .replace(/[’‘”“]/g, "'")
+      .replace(/\bi['']?m\b/g, "i am")                  // contractions
+      .replace(/\b(\w+)['']?s\b/g, "$1 is")
+      .replace(/\b(\w+)n['']?t\b/g, "$1 not")
+      .replace(/\b(\w+)['']?re\b/g, "$1 are")
+      .replace(/\b(\w+)['']?ve\b/g, "$1 have")
+      .replace(/\b(\w+)['']?ll\b/g, "$1 will")
+      .replace(/\b(\w+)['']?d\b/g, "$1 would")
+      .replace(/[.,!?'"`]/g, "")                        // strip punctuation
+      .replace(/[-–—]/g, " ")                           // hyphens → spaces
+      .replace(/\s+/g, " ")                             // collapse whitespace
+      .trim();
+
+  const isExactMatch = (userAnswer: string, expected: string): boolean => {
+    const u = normalize(userAnswer);
+    const e = normalize(expected);
+    if (!u || !e) return false;
+    if (u === e) return true;
+    // Match ignoring spaces entirely (e.g. "oneofakind" vs "one of a kind")
+    if (u.replace(/\s/g, "") === e.replace(/\s/g, "")) return true;
+    return false;
+  };
+
   // Build 4 choices for current question (multiple-choice mode)
   const choices = useMemo(() => {
     if (!current || mode !== "choice") return [] as string[];
@@ -86,13 +116,39 @@ export default function ExpressionTestModal({
 
   const handleSubmitWriting = async () => {
     if (!current || !answer.trim()) return;
+    const trimmed = answer.trim();
+
+    // ── Hybrid step 1: Try exact match first (no AI cost) ──
+    if (isExactMatch(trimmed, current.english)) {
+      const r: AttemptResult = {
+        is_correct: true,
+        score: 100,
+        feedback: "정답입니다! 정확하게 작성하셨어요.",
+        student_answer: trimmed,
+      };
+      setResult(r);
+      setResults(prev => [...prev, r]);
+      try {
+        await supabase.from("key_expression_test_results").insert({
+          expression_id: current.id,
+          student_name: studentName,
+          student_answer: r.student_answer,
+          is_correct: r.is_correct,
+          score: r.score,
+          ai_feedback: r.feedback,
+        });
+      } catch {/* silent */}
+      return;
+    }
+
+    // ── Hybrid step 2: Fallback to AI evaluation for variations ──
     setEvaluating(true);
     try {
       const { data, error } = await supabase.functions.invoke("evaluate-expression-answer", {
         body: {
           korean: current.korean,
           target_english: current.english,
-          student_answer: answer.trim(),
+          student_answer: trimmed,
         },
       });
       if (error) throw error;
@@ -101,7 +157,7 @@ export default function ExpressionTestModal({
         is_correct: !!data.is_correct,
         score: data.score ?? 0,
         feedback: data.feedback ?? "",
-        student_answer: answer.trim(),
+        student_answer: trimmed,
       };
       setResult(r);
       setResults(prev => [...prev, r]);
