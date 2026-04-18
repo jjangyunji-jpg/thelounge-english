@@ -89,19 +89,23 @@ serve(async (req) => {
     const MAX_CHARS = 60000;
     if (cleaned.length > MAX_CHARS) cleaned = cleaned.slice(0, MAX_CHARS) + "\n[...truncated]";
 
-    const systemPrompt = `You are an English coach who extracts useful, memorable sentences and expressions from class notes for Korean adult learners.
+    const systemPrompt = `You are an English coach who extracts ready-to-memorize EXAMPLE SENTENCES from class notes for Korean adult learners.
 
-Goal: pick 5–10 sentences/expressions the student can practically MEMORIZE and reuse in real life. Quality over quantity.
+Goal: pick exactly 10 COMPLETE, NATURAL example sentences the student can memorize and use verbatim in real life.
 
-RULES:
-- Pick natural, full English sentences or fixed expressions (NOT single words — those go to the vocabulary list).
-- Prioritize: phrases that came up naturally during conversation, useful idiomatic expressions, real-life situational sentences, polite/business expressions.
-- AVOID: textbook-only example sentences, overly long sentences (>20 words), things already obvious to a ${level || "B1"}-level Korean learner.
-- For each item, write a short Korean situation label (4–10 자) describing WHEN to use it (e.g. "회의 미루기", "정중한 거절", "공감 표현").
-- Provide a clean Korean translation that captures meaning and tone (not literal).
-- If the source contains both English and Korean already, prefer using the Korean from the source.
+CRITICAL RULES:
+- Output COMPLETE example sentences as actually spoken (e.g. "What brings you to the party today?", "I was wondering if we could push the meeting to next week.").
+- DO NOT output sentence patterns, templates, or fragments with blanks/placeholders (no "I was wondering if ___", no "What brings you to ___?").
+- DO NOT output single words or short collocations (those belong in the vocabulary list).
+- Prefer real conversational lines (questions, polite requests, reactions, small talk, business phrases) — natural, spoken English a Korean learner would actually use.
+- Keep each sentence under 20 words. Avoid textbook-only or overly literary sentences.
+- Order the 10 sentences from MOST FREQUENTLY USED in everyday/professional life (#1) to less frequent (#10). The top half should be high-frequency staples.
+- For each item, write a short Korean situation label (4–10 자) describing WHEN to use it (e.g. "파티 인사", "회의 미루기", "정중한 거절").
+- Provide a natural Korean translation that captures meaning and tone (not literal).
+- If both English and Korean appear in the source, prefer the Korean from the source.
 
-Return only via the structured tool call.`;
+Target learner level: ${level || "B1"}.
+Return exactly 10 items via the structured tool call (or fewer only if the notes truly don't support 10).`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -120,7 +124,7 @@ Return only via the structured tool call.`;
             type: "function",
             function: {
               name: "submit_key_expressions",
-              description: "Return 5-10 key expressions extracted from the class notes.",
+              description: "Return exactly 10 complete example sentences, ordered from most to least frequently used in real life.",
               parameters: {
                 type: "object",
                 properties: {
