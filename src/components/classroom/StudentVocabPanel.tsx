@@ -333,6 +333,9 @@ export default function StudentVocabPanel({
     setLoading(false);
   };
 
+  const [latestCorrect, setLatestCorrect] = useState(0);
+  const [latestAttempted, setLatestAttempted] = useState(0);
+
   const loadTestCount = async () => {
     setLoadingTests(true);
     const { data } = await supabase
@@ -347,6 +350,26 @@ export default function StudentVocabPanel({
     const relevant = all.filter((t) => t.word_ids?.some((id) => sessionWordIds.has(id)));
     setTestHistory(relevant);
     setCompletedTests(relevant.length);
+
+    // 단어별 최신 정답률: 관련 테스트들의 모든 결과에서 단어별 가장 최근 결과만 집계
+    if (relevant.length > 0 && sessionWordIds.size > 0) {
+      const testIds = relevant.map((t) => t.id);
+      const { data: resultsData } = await supabase
+        .from("vocabulary_test_results")
+        .select("word_id, is_correct, created_at, test_id")
+        .in("test_id", testIds)
+        .order("created_at", { ascending: false });
+      const latest = new Map<string, boolean>();
+      for (const r of (resultsData ?? []) as { word_id: string | null; is_correct: boolean | null }[]) {
+        if (!r.word_id || !sessionWordIds.has(r.word_id)) continue;
+        if (!latest.has(r.word_id)) latest.set(r.word_id, !!r.is_correct);
+      }
+      setLatestAttempted(latest.size);
+      setLatestCorrect(Array.from(latest.values()).filter(Boolean).length);
+    } else {
+      setLatestAttempted(0);
+      setLatestCorrect(0);
+    }
     setLoadingTests(false);
   };
 
@@ -426,7 +449,11 @@ export default function StudentVocabPanel({
               <ClipboardCheck className="w-3.5 h-3.5 text-gold flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-foreground">
-                  단어 학습 & 테스트 ({completedTests}회 완료)
+                  단어 학습 & 테스트 ({completedTests}회 완료
+                  {latestAttempted > 0 && (
+                    <span className="text-muted-foreground font-normal"> · 최근 {latestCorrect}/{latestAttempted}</span>
+                  )}
+                  )
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate">
                   플래시카드로 학습하거나 테스트하세요
