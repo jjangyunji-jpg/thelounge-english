@@ -1173,6 +1173,13 @@ export default function StudentDashboard() {
       })
     : testHistory;
 
+  const periodExpressions = selectedPeriod
+    ? expressions.filter(e => {
+        const d = new Date(e.created_at);
+        return d >= periodStart! && d <= periodEnd!;
+      })
+    : expressions;
+
   // Period navigation helpers
   const sortedPeriods = [...effectivePeriods]
     .filter(p => studentRecord?.student_type === "corporate" || !studentRecord?.earliest_start_date || p.end_date >= studentRecord.earliest_start_date)
