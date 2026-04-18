@@ -289,6 +289,14 @@ Limit to the 5 most interesting/educational words. Respond in Korean for context
       systemPrompt = `You are a STRICT English language teacher reviewing a Korean student's written homework.
 You must evaluate honestly and critically — do NOT inflate scores.
 
+## 🚨 CRITICAL ANTI-HALLUCINATION RULES (HIGHEST PRIORITY)
+1. **NEVER replace a word with an unrelated word.** If the student wrote "enemy", do NOT change it to "my", "many", "any" — these are visually similar but semantically different. Only correct if the word is genuinely wrong in context.
+2. **The "original" string MUST appear EXACTLY (case-sensitive) in the student's text.** If you cannot find your "original" as a literal substring, DO NOT include that error.
+3. **Preserve capitalization of proper nouns and sentence-initial words.** "My unit" at sentence start MUST stay "My" (capital M). Do NOT lowercase "My" → "my" if it starts a sentence. Do NOT change "I" → "i". Do NOT change names, places, brands, or "I".
+4. **When in doubt, DO NOT correct.** It is far better to miss a real error than to introduce a false correction. Only flag errors you are 95%+ confident about.
+5. **Do not invent words.** Every word in "corrected" must either come from the student's original text OR be a clearly necessary grammatical addition (article, preposition, auxiliary verb).
+6. **Check before submitting:** For each error, mentally verify: (a) Is "original" actually in the student's text? (b) Is the meaning preserved or only lightly improved? (c) Did I keep proper capitalization? If any answer is no, REMOVE that error.
+
 ## CEFR Level Criteria (english_level)
 Assign the level that BEST matches the student's ACTUAL writing ability:
 - A1: Only isolated words/phrases, no sentence structure, very basic vocabulary (hello, my name, I like)
@@ -349,7 +357,9 @@ Respond in Korean for explanations and feedback.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: (mode === "homework_review" || mode === "notes_correct" || mode === "correct")
+          ? "google/gemini-2.5-pro"
+          : "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -407,6 +417,78 @@ Respond in Korean for explanations and feedback.`;
           }
           return err;
         }).filter((e: { original: string; corrected: string }) => e.original !== e.corrected);
+
+        // 🛡️ VALIDATION LAYER: Filter out hallucinated/unsafe corrections
+        const originalText = text as string;
+        const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+        const normText = normalize(originalText);
+        const normTextLower = normText.toLowerCase();
+
+        result.errors = result.errors.filter((err: { original: string; corrected: string; explanation?: string }) => {
+          const orig = normalize(err.original);
+          const corr = normalize(err.corrected);
+          if (!orig || !corr) return false;
+
+          // Rule 1: original MUST appear in student text (case-insensitive fallback for safety)
+          const existsExact = normText.includes(orig);
+          const existsCi = normTextLower.includes(orig.toLowerCase());
+          if (!existsExact && !existsCi) {
+            console.log(`🚫 Filtered hallucinated error: "${orig}" not in student text`);
+            return false;
+          }
+
+          // Rule 2: For single-word swaps, block semantically unrelated replacements
+          const oWords = orig.split(/\s+/);
+          const cWords = corr.split(/\s+/);
+          if (oWords.length === 1 && cWords.length === 1) {
+            const o = oWords[0].toLowerCase().replace(/[.,!?;:'"]/g, "");
+            const c = cWords[0].toLowerCase().replace(/[.,!?;:'"]/g, "");
+            // Block if the words share no letters in common (e.g. enemy → my)
+            // and lengths differ significantly — likely a hallucination
+            if (o.length >= 3 && c.length >= 1) {
+              const oSet = new Set(o.split(""));
+              const cSet = new Set(c.split(""));
+              const shared = Array.from(oSet).filter((ch) => cSet.has(ch)).length;
+              const minLen = Math.min(o.length, c.length);
+              const lenDiff = Math.abs(o.length - c.length);
+              // If <30% letter overlap AND length differs by >=2, likely hallucination
+              if (shared / minLen < 0.3 && lenDiff >= 2) {
+                console.log(`🚫 Filtered suspicious swap: "${o}" → "${c}" (low overlap)`);
+                return false;
+              }
+            }
+          }
+
+          // Rule 3: Block proper-noun lowercasing ("My" at sentence start, "I", names)
+          if (oWords.length === 1 && cWords.length === 1) {
+            const oRaw = oWords[0];
+            const cRaw = cWords[0];
+            // "I" must never be lowercased
+            if (oRaw === "I" && cRaw === "i") {
+              console.log(`🚫 Filtered: "I" cannot be lowercased`);
+              return false;
+            }
+            // Capital → lowercase of same word: only allow if clearly mid-sentence misuse
+            if (/^[A-Z]/.test(oRaw) && /^[a-z]/.test(cRaw) && oRaw.toLowerCase() === cRaw.toLowerCase()) {
+              // Check if "original" appears at start of student text or after sentence-ending punctuation
+              const idx = normText.indexOf(oRaw);
+              if (idx === 0) {
+                console.log(`🚫 Filtered: "${oRaw}" at sentence start should keep capital`);
+                return false;
+              }
+              if (idx > 0) {
+                // Check 2 chars before for sentence-ending punctuation
+                const before = normText.slice(Math.max(0, idx - 2), idx).trim();
+                if (/[.!?]$/.test(before)) {
+                  console.log(`🚫 Filtered: "${oRaw}" after sentence-end should keep capital`);
+                  return false;
+                }
+              }
+            }
+          }
+
+          return true;
+        });
       }
 
       return new Response(JSON.stringify(result), {
