@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2 } from "lucide-react";
+import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2, Wand2, ArrowUp } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
