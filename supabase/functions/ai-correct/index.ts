@@ -448,7 +448,7 @@ Respond in Korean for explanations and feedback.`;
             if (o.length >= 3 && c.length >= 1) {
               const oSet = new Set(o.split(""));
               const cSet = new Set(c.split(""));
-              const shared = [...oSet].filter((ch) => cSet.has(ch)).length;
+              const shared = Array.from(oSet).filter((ch) => cSet.has(ch)).length;
               const minLen = Math.min(o.length, c.length);
               const lenDiff = Math.abs(o.length - c.length);
               // If <30% letter overlap AND length differs by >=2, likely hallucination
