@@ -420,7 +420,7 @@ Respond in Korean for explanations and feedback.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: (mode === "homework_review" || mode === "notes_correct" || mode === "correct")
+        model: (mode === "homework_review" || mode === "notes_correct" || mode === "correct" || mode === "paraphrase")
           ? "google/gemini-2.5-pro"
           : "google/gemini-2.5-flash",
         messages: [
