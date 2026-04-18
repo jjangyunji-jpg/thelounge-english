@@ -21,6 +21,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Signup from "./pages/Signup";
 
 import Vocabulary from "./pages/Vocabulary";
+import KeyExpressions from "./pages/KeyExpressions";
 import MyProfile from "./pages/MyProfile";
 
 const queryClient = new QueryClient();
@@ -97,6 +98,11 @@ const App = () => (
           <Route path="/my/vocabulary" element={
             <ProtectedRoute allowedRoles={["student", "instructor", "admin", "manager", "staff"]}>
               <Vocabulary />
+            </ProtectedRoute>
+          } />
+          <Route path="/my/expressions" element={
+            <ProtectedRoute allowedRoles={["student", "instructor", "admin", "manager", "staff"]}>
+              <KeyExpressions />
             </ProtectedRoute>
           } />
           <Route path="/my/classnote" element={

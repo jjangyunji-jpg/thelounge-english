@@ -18,6 +18,7 @@ import MaterialPickerModal from "@/components/classroom/MaterialPickerModal";
 import NoteVersionsModal from "@/components/classroom/NoteVersionsModal";
 import DialogueGeneratorModal from "@/components/classroom/DialogueGeneratorModal";
 import NewsLessonGeneratorModal from "@/components/classroom/NewsLessonGeneratorModal";
+import KeyExpressionExtractModal from "@/components/classroom/KeyExpressionExtractModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
@@ -339,6 +340,7 @@ export default function Classroom() {
   const notesEditorRef = useRef<any>(null);
   const [dialogueModalOpen, setDialogueModalOpen] = useState(false);
   const [newsLessonModalOpen, setNewsLessonModalOpen] = useState(false);
+  const [keyExprModalOpen, setKeyExprModalOpen] = useState(false);
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
 
   const [versionModalOpen, setVersionModalOpen] = useState(false);
@@ -1685,6 +1687,14 @@ export default function Classroom() {
                     >
                       <Newspaper className="w-3 h-3" />News Talk
                     </Button>
+                    {role === "instructor" && (
+                      <Button size="sm" variant="outline" onClick={() => setKeyExprModalOpen(true)}
+                        disabled={isDisabled}
+                        className="h-7 text-xs gap-1.5 transition-all border-purple-300 text-purple-600 hover:bg-purple-50"
+                      >
+                        <BookMarked className="w-3 h-3" />핵심표현
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => setMaterialPickerOpen(true)}
                       disabled={isDisabled}
                       className="h-7 text-xs gap-1.5 transition-all border-gold/30 text-gold-dark hover:bg-gold/10"
@@ -2002,6 +2012,15 @@ export default function Classroom() {
           setNotes(editor.getHTML());
         }
       }}
+    />
+    <KeyExpressionExtractModal
+      open={keyExprModalOpen}
+      onClose={() => setKeyExprModalOpen(false)}
+      notesHtml={notes}
+      level={session.level}
+      sessionId={session.sessionId}
+      studentNames={allGroupMembers.length > 0 ? allGroupMembers : [session.dbStudentName]}
+      instructorName={session.instructorName}
     />
     <MaterialPickerModal
       open={materialPickerOpen}
