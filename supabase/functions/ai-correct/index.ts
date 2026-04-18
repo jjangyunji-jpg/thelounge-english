@@ -387,6 +387,15 @@ If there are no errors, return an empty errors array.`;
    - Sentence variety and natural connectors
    - Idiomatic phrasing where natural
 
+## 📝 PARAGRAPH STRUCTURE (MANDATORY)
+The "paraphrased" output MUST be split into MULTIPLE paragraphs separated by a blank line (TWO newline characters: \\n\\n). This is non-negotiable — a single wall of text is NOT acceptable, even if the original student text had no paragraphs.
+- Short essays (under 80 words): 2 paragraphs (e.g. setup + conclusion, or experience + reflection)
+- Medium essays (80–200 words): 2–3 paragraphs (intro / body / conclusion OR topic1 / topic2)
+- Longer essays (200+ words): 3–4 paragraphs with clear logical progression
+- Each paragraph should focus on ONE idea or time/topic shift (e.g. setup → main event → outcome → reflection).
+- Use \\n\\n (literal newline + newline) BETWEEN paragraphs in the JSON string. Do NOT use single newlines, do NOT use markdown headings, do NOT use bullet points.
+- Even if the student wrote one block, you MUST identify natural break points and split.
+
 ## CRITICAL RULES
 - DO NOT make it dramatically harder — only ONE level up. The student should feel "이 정도면 나도 곧 쓸 수 있겠다" not "이건 너무 어렵다".
 - DO NOT add new content, opinions, or facts the student didn't write.
@@ -397,8 +406,8 @@ If there are no errors, return an empty errors array.`;
 ## OUTPUT FIELDS
 - detected_level: The CEFR level you assessed for the student's text
 - target_level: One level above (e.g. B1 → B2)
-- paraphrased: The model essay (English only, no markdown)
-- key_improvements: Exactly 3 short bullet points (Korean, friendly tone with emoji, e.g. "문장을 'because' 대신 'since'로 연결해서 더 매끄럽게 만들었어요 ✨")
+- paraphrased: The model essay (English only, no markdown, MUST contain \\n\\n between paragraphs as described above)
+- key_improvements: Exactly 3 short bullet points (Korean, friendly tone with emoji, e.g. "문장을 'because' 대신 'since'로 연결해서 더 매끄럽게 만들었어요 ✨"). At least ONE bullet should mention the paragraph/structure improvement (e.g. "한 덩어리였던 글을 도입–본문–마무리 3문단으로 나눠서 흐름이 훨씬 명확해졌어요 ✨").
 - instructor_comment: Friendly comment to send to the student (Korean, warm YouTube-comment style with emojis, ~3-4 sentences). 
 
 ## INSTRUCTOR COMMENT TONE
