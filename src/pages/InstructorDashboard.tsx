@@ -1400,7 +1400,10 @@ export default function InstructorDashboard() {
       .select("role")
       .eq("user_id", user.id);
     const adminRoles = (adminRole || []).map(r => r.role);
-    const hasAdminAccess = adminRoles.includes("admin") || adminRoles.includes("manager") || adminRoles.includes("staff");
+    // Admin page is strictly restricted to the owner account
+    const OWNER_EMAIL = "reinainbiz@gmail.com";
+    const hasAdminAccess = (adminRoles.includes("admin") || adminRoles.includes("manager") || adminRoles.includes("staff"))
+      && user.email === OWNER_EMAIL;
     if (hasAdminAccess) setIsAdmin(true);
 
     // If admin is viewing a specific instructor via query param
