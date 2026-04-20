@@ -322,20 +322,44 @@ function ChoiceQuestion({
 
 // ── Result Item ──
 function ResultItem({ question, answer }: { question: Question; answer: Answer }) {
+  const isSynonymCredit = answer.correct && (answer.matchKind === "synonym" || answer.matchKind === "ai");
   return (
     <div className={cn("rounded-lg p-3 border text-sm space-y-1",
-      answer.correct ? "bg-success/5 border-success/20" : "bg-destructive/5 border-destructive/20"
+      answer.correct
+        ? (isSynonymCredit ? "bg-gold/5 border-gold/30" : "bg-success/5 border-success/20")
+        : "bg-destructive/5 border-destructive/20"
     )}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {answer.correct
-          ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+          ? <CheckCircle2 className={cn("w-4 h-4 flex-shrink-0", isSynonymCredit ? "text-gold-dark" : "text-success")} />
           : <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />}
         <span className="font-medium text-foreground text-xs">{question.word.korean_meaning}</span>
+        {isSynonymCredit && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gold/15 text-gold-dark font-semibold">
+            {answer.matchKind === "synonym" ? "동의어 인정" : "AI 인정"}
+          </span>
+        )}
       </div>
       {!answer.correct && (
         <div className="pl-6 space-y-0.5">
           <p className="text-[11px] text-destructive/80">내 답: <span className="font-mono">{answer.userAnswer || "(미입력)"}</span></p>
           <p className="text-[11px] text-success/80">정답: <span className="font-mono font-semibold">{answer.expected}</span></p>
+        </div>
+      )}
+      {isSynonymCredit && (
+        <div className="pl-6 space-y-0.5">
+          <p className="text-[11px] text-muted-foreground">
+            내 답: <span className="font-mono text-foreground">{answer.userAnswer}</span>
+            {answer.matchKind === "synonym" && answer.synonymOf && (
+              <> · 단어장에 <span className="font-mono">{answer.synonymOf}</span>로 등록됨</>
+            )}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            기준 정답: <span className="font-mono">{answer.expected}</span>
+          </p>
+          {answer.matchKind === "ai" && answer.aiReason && (
+            <p className="text-[11px] text-muted-foreground italic">{answer.aiReason}</p>
+          )}
         </div>
       )}
     </div>
