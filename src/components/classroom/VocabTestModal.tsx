@@ -320,7 +320,7 @@ function ChoiceQuestion({
 
 // ── Result Item ──
 function ResultItem({ question, answer }: { question: Question; answer: Answer }) {
-  const isSynonymCredit = answer.correct && (answer.matchKind === "synonym" || answer.matchKind === "ai");
+  const isSynonymCredit = answer.correct && answer.matchKind === "synonym";
   return (
     <div className={cn("rounded-lg p-3 border text-sm space-y-1",
       answer.correct
@@ -334,7 +334,7 @@ function ResultItem({ question, answer }: { question: Question; answer: Answer }
         <span className="font-medium text-foreground text-xs">{question.word.korean_meaning}</span>
         {isSynonymCredit && (
           <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gold/15 text-gold-dark font-semibold">
-            {answer.matchKind === "synonym" ? "동의어 인정" : "AI 인정"}
+            동의어 인정
           </span>
         )}
       </div>
@@ -348,16 +348,13 @@ function ResultItem({ question, answer }: { question: Question; answer: Answer }
         <div className="pl-6 space-y-0.5">
           <p className="text-[11px] text-muted-foreground">
             내 답: <span className="font-mono text-foreground">{answer.userAnswer}</span>
-            {answer.matchKind === "synonym" && answer.synonymOf && (
+            {answer.synonymOf && (
               <> · 단어장에 <span className="font-mono">{answer.synonymOf}</span>로 등록됨</>
             )}
           </p>
           <p className="text-[11px] text-muted-foreground">
             기준 정답: <span className="font-mono">{answer.expected}</span>
           </p>
-          {answer.matchKind === "ai" && answer.aiReason && (
-            <p className="text-[11px] text-muted-foreground italic">{answer.aiReason}</p>
-          )}
         </div>
       )}
     </div>
