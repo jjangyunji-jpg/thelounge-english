@@ -394,8 +394,10 @@ export default function VocabTestModal({
   };
 
   const handleAnswer = useCallback(async (userAnswer: string) => {
+    if (evaluating) return;
     const q = questions[currentIdx];
     const expected = q.word.english_word;
+    setEvaluating(true);
 
     let newAnswer: Answer;
 
