@@ -23,7 +23,18 @@ type Phase = "confirm" | "testing" | "results";
 type TestMode = "text" | "speech" | "choice";
 
 interface Question { word: VocabWord; choices?: string[]; }
-interface Answer { questionIdx: number; userAnswer: string; correct: boolean; expected: string; }
+interface Answer {
+  questionIdx: number;
+  userAnswer: string;
+  correct: boolean;
+  expected: string;
+  /** "exact" | "synonym" (단어장 내 동의어) | "ai" (AI 인정) | undefined (오답) */
+  matchKind?: "exact" | "synonym" | "ai";
+  /** 동의어로 인정된 경우, 매칭된 단어장 단어 */
+  synonymOf?: string;
+  /** AI가 인정한 경우의 한국어 사유 */
+  aiReason?: string;
+}
 
 function buildQuestions(words: VocabWord[], mode: TestMode): Question[] {
   const shuffled = [...words].sort(() => Math.random() - 0.5);
