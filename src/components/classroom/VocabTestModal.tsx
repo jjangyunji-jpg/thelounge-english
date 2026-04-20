@@ -576,6 +576,11 @@ export default function VocabTestModal({
                 />
               )}
 
+              {evaluating && !saving && (
+                <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />채점 중...
+                </div>
+              )}
               {saving && (
                 <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />결과 저장 중...
