@@ -444,12 +444,13 @@ export default function VocabTestModal({
 
     const newAnswers = [...answers, newAnswer];
     setAnswers(newAnswers);
+    setEvaluating(false);
     if (currentIdx + 1 < questions.length) {
       setCurrentIdx((i) => i + 1);
     } else {
       finishTest(newAnswers, questions);
     }
-  }, [questions, currentIdx, answers, testMode, words]);
+  }, [questions, currentIdx, answers, testMode, words, evaluating]);
 
   const finishTest = async (finalAnswers: Answer[], finalQuestions: Question[]) => {
     setSaving(true);
