@@ -388,7 +388,7 @@ export default function VocabTestModal({
     setPhase("testing");
   };
 
-  const handleAnswer = useCallback(async (userAnswer: string) => {
+  const handleAnswer = useCallback((userAnswer: string) => {
     if (evaluating) return;
     const q = questions[currentIdx];
     const expected = q.word.english_word;
@@ -396,7 +396,7 @@ export default function VocabTestModal({
 
     let newAnswer: Answer;
 
-    // 객관식: 단어 그대로 골라야 하므로 동의어/AI 판정 없이 정확 일치만
+    // 객관식: 단어 그대로 골라야 하므로 동의어 판정 없이 정확 일치만
     if (testMode === "choice") {
       const correct = isExactMatch(userAnswer, expected);
       newAnswer = { questionIdx: currentIdx, userAnswer, correct, expected, matchKind: correct ? "exact" : undefined };
@@ -412,28 +412,7 @@ export default function VocabTestModal({
           matchKind: "synonym", synonymOf: synonymWord.english_word,
         };
       } else {
-        // 3차: AI에게 동의어 판정 요청 (실패해도 오답 처리로 폴백)
-        try {
-          const { data, error } = await supabase.functions.invoke("evaluate-vocab-answer", {
-            body: {
-              korean_meaning: q.word.korean_meaning,
-              expected_english: expected,
-              student_answer: userAnswer,
-              part_of_speech: q.word.part_of_speech,
-            },
-          });
-          if (!error && data?.is_correct) {
-            newAnswer = {
-              questionIdx: currentIdx, userAnswer, correct: true, expected,
-              matchKind: "ai", aiReason: data.reason ?? "",
-            };
-          } else {
-            newAnswer = { questionIdx: currentIdx, userAnswer, correct: false, expected };
-          }
-        } catch (e) {
-          console.warn("AI vocab evaluation failed", e);
-          newAnswer = { questionIdx: currentIdx, userAnswer, correct: false, expected };
-        }
+        newAnswer = { questionIdx: currentIdx, userAnswer, correct: false, expected };
       }
     }
 
