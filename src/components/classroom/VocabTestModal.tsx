@@ -23,7 +23,18 @@ type Phase = "confirm" | "testing" | "results";
 type TestMode = "text" | "speech" | "choice";
 
 interface Question { word: VocabWord; choices?: string[]; }
-interface Answer { questionIdx: number; userAnswer: string; correct: boolean; expected: string; }
+interface Answer {
+  questionIdx: number;
+  userAnswer: string;
+  correct: boolean;
+  expected: string;
+  /** "exact" | "synonym" (단어장 내 동의어) | "ai" (AI 인정) | undefined (오답) */
+  matchKind?: "exact" | "synonym" | "ai";
+  /** 동의어로 인정된 경우, 매칭된 단어장 단어 */
+  synonymOf?: string;
+  /** AI가 인정한 경우의 한국어 사유 */
+  aiReason?: string;
+}
 
 function buildQuestions(words: VocabWord[], mode: TestMode): Question[] {
   const shuffled = [...words].sort(() => Math.random() - 0.5);
@@ -58,7 +69,7 @@ function normalize(s: string) {
     .trim();
 }
 
-function isCorrect(userAnswer: string, expected: string): boolean {
+function isExactMatch(userAnswer: string, expected: string): boolean {
   const u = normalize(userAnswer);
   const e = normalize(expected);
   if (!u || !e) return false;
@@ -70,6 +81,22 @@ function isCorrect(userAnswer: string, expected: string): boolean {
   const uWords = u.split(" ").filter(Boolean);
   if (eWords.length > 0 && eWords.every((word) => uWords.includes(word))) return true;
   return false;
+}
+
+/** Match against expected first, then against any other word in the vocab list
+ * that shares the same Korean meaning (synonym in the same word set). */
+function findSynonymMatch(
+  userAnswer: string,
+  currentWord: VocabWord,
+  allWords: VocabWord[],
+): VocabWord | null {
+  const targetKorean = normalize(currentWord.korean_meaning);
+  for (const w of allWords) {
+    if (w.id === currentWord.id) continue;
+    if (normalize(w.korean_meaning) !== targetKorean) continue;
+    if (isExactMatch(userAnswer, w.english_word)) return w;
+  }
+  return null;
 }
 
 // ── TTS helper (browser built-in) ──
@@ -295,20 +322,44 @@ function ChoiceQuestion({
 
 // ── Result Item ──
 function ResultItem({ question, answer }: { question: Question; answer: Answer }) {
+  const isSynonymCredit = answer.correct && (answer.matchKind === "synonym" || answer.matchKind === "ai");
   return (
     <div className={cn("rounded-lg p-3 border text-sm space-y-1",
-      answer.correct ? "bg-success/5 border-success/20" : "bg-destructive/5 border-destructive/20"
+      answer.correct
+        ? (isSynonymCredit ? "bg-gold/5 border-gold/30" : "bg-success/5 border-success/20")
+        : "bg-destructive/5 border-destructive/20"
     )}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {answer.correct
-          ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+          ? <CheckCircle2 className={cn("w-4 h-4 flex-shrink-0", isSynonymCredit ? "text-gold-dark" : "text-success")} />
           : <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />}
         <span className="font-medium text-foreground text-xs">{question.word.korean_meaning}</span>
+        {isSynonymCredit && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gold/15 text-gold-dark font-semibold">
+            {answer.matchKind === "synonym" ? "동의어 인정" : "AI 인정"}
+          </span>
+        )}
       </div>
       {!answer.correct && (
         <div className="pl-6 space-y-0.5">
           <p className="text-[11px] text-destructive/80">내 답: <span className="font-mono">{answer.userAnswer || "(미입력)"}</span></p>
           <p className="text-[11px] text-success/80">정답: <span className="font-mono font-semibold">{answer.expected}</span></p>
+        </div>
+      )}
+      {isSynonymCredit && (
+        <div className="pl-6 space-y-0.5">
+          <p className="text-[11px] text-muted-foreground">
+            내 답: <span className="font-mono text-foreground">{answer.userAnswer}</span>
+            {answer.matchKind === "synonym" && answer.synonymOf && (
+              <> · 단어장에 <span className="font-mono">{answer.synonymOf}</span>로 등록됨</>
+            )}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            기준 정답: <span className="font-mono">{answer.expected}</span>
+          </p>
+          {answer.matchKind === "ai" && answer.aiReason && (
+            <p className="text-[11px] text-muted-foreground italic">{answer.aiReason}</p>
+          )}
         </div>
       )}
     </div>
@@ -329,6 +380,7 @@ export default function VocabTestModal({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [saving, setSaving] = useState(false);
+  const [evaluating, setEvaluating] = useState(false);
 
   const questionCount = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
 
@@ -341,19 +393,64 @@ export default function VocabTestModal({
     setPhase("testing");
   };
 
-  const handleAnswer = useCallback((userAnswer: string) => {
+  const handleAnswer = useCallback(async (userAnswer: string) => {
+    if (evaluating) return;
     const q = questions[currentIdx];
     const expected = q.word.english_word;
-    const correct = isCorrect(userAnswer, expected);
-    const newAnswer: Answer = { questionIdx: currentIdx, userAnswer, correct, expected };
+    setEvaluating(true);
+
+    let newAnswer: Answer;
+
+    // 객관식: 단어 그대로 골라야 하므로 동의어/AI 판정 없이 정확 일치만
+    if (testMode === "choice") {
+      const correct = isExactMatch(userAnswer, expected);
+      newAnswer = { questionIdx: currentIdx, userAnswer, correct, expected, matchKind: correct ? "exact" : undefined };
+    } else if (isExactMatch(userAnswer, expected)) {
+      // 1차: 정확 일치
+      newAnswer = { questionIdx: currentIdx, userAnswer, correct: true, expected, matchKind: "exact" };
+    } else {
+      // 2차: 같은 한국어 뜻을 가진 단어장 내 다른 단어와 매칭
+      const synonymWord = findSynonymMatch(userAnswer, q.word, words);
+      if (synonymWord) {
+        newAnswer = {
+          questionIdx: currentIdx, userAnswer, correct: true, expected,
+          matchKind: "synonym", synonymOf: synonymWord.english_word,
+        };
+      } else {
+        // 3차: AI에게 동의어 판정 요청 (실패해도 오답 처리로 폴백)
+        try {
+          const { data, error } = await supabase.functions.invoke("evaluate-vocab-answer", {
+            body: {
+              korean_meaning: q.word.korean_meaning,
+              expected_english: expected,
+              student_answer: userAnswer,
+              part_of_speech: q.word.part_of_speech,
+            },
+          });
+          if (!error && data?.is_correct) {
+            newAnswer = {
+              questionIdx: currentIdx, userAnswer, correct: true, expected,
+              matchKind: "ai", aiReason: data.reason ?? "",
+            };
+          } else {
+            newAnswer = { questionIdx: currentIdx, userAnswer, correct: false, expected };
+          }
+        } catch (e) {
+          console.warn("AI vocab evaluation failed", e);
+          newAnswer = { questionIdx: currentIdx, userAnswer, correct: false, expected };
+        }
+      }
+    }
+
     const newAnswers = [...answers, newAnswer];
     setAnswers(newAnswers);
+    setEvaluating(false);
     if (currentIdx + 1 < questions.length) {
       setCurrentIdx((i) => i + 1);
     } else {
       finishTest(newAnswers, questions);
     }
-  }, [questions, currentIdx, answers]);
+  }, [questions, currentIdx, answers, testMode, words, evaluating]);
 
   const finishTest = async (finalAnswers: Answer[], finalQuestions: Question[]) => {
     setSaving(true);
@@ -479,6 +576,11 @@ export default function VocabTestModal({
                 />
               )}
 
+              {evaluating && !saving && (
+                <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />채점 중...
+                </div>
+              )}
               {saving && (
                 <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />결과 저장 중...
@@ -510,14 +612,18 @@ export default function VocabTestModal({
               </div>
 
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">오답 목록</p>
-                {answers.filter((a) => !a.correct).length === 0 ? (
-                  <p className="text-xs text-center text-muted-foreground py-2">오답이 없습니다 🎊</p>
-                ) : (
-                  answers.filter((a) => !a.correct).map((a, i) => (
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">검토 목록</p>
+                {(() => {
+                  const reviewable = answers.filter(
+                    (a) => !a.correct || a.matchKind === "synonym" || a.matchKind === "ai",
+                  );
+                  if (reviewable.length === 0) {
+                    return <p className="text-xs text-center text-muted-foreground py-2">모두 정확하게 맞췄어요 🎊</p>;
+                  }
+                  return reviewable.map((a, i) => (
                     <ResultItem key={i} question={questions[a.questionIdx]} answer={a} />
-                  ))
-                )}
+                  ));
+                })()}
               </div>
 
               <Button className="w-full bg-navy hover:bg-navy-light text-primary-foreground" onClick={onClose}>
