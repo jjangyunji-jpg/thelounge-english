@@ -612,14 +612,18 @@ export default function VocabTestModal({
               </div>
 
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">오답 목록</p>
-                {answers.filter((a) => !a.correct).length === 0 ? (
-                  <p className="text-xs text-center text-muted-foreground py-2">오답이 없습니다 🎊</p>
-                ) : (
-                  answers.filter((a) => !a.correct).map((a, i) => (
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">검토 목록</p>
+                {(() => {
+                  const reviewable = answers.filter(
+                    (a) => !a.correct || a.matchKind === "synonym" || a.matchKind === "ai",
+                  );
+                  if (reviewable.length === 0) {
+                    return <p className="text-xs text-center text-muted-foreground py-2">모두 정확하게 맞췄어요 🎊</p>;
+                  }
+                  return reviewable.map((a, i) => (
                     <ResultItem key={i} question={questions[a.questionIdx]} answer={a} />
-                  ))
-                )}
+                  ));
+                })()}
               </div>
 
               <Button className="w-full bg-navy hover:bg-navy-light text-primary-foreground" onClick={onClose}>
