@@ -58,7 +58,7 @@ function normalize(s: string) {
     .trim();
 }
 
-function isCorrect(userAnswer: string, expected: string): boolean {
+function isExactMatch(userAnswer: string, expected: string): boolean {
   const u = normalize(userAnswer);
   const e = normalize(expected);
   if (!u || !e) return false;
@@ -70,6 +70,22 @@ function isCorrect(userAnswer: string, expected: string): boolean {
   const uWords = u.split(" ").filter(Boolean);
   if (eWords.length > 0 && eWords.every((word) => uWords.includes(word))) return true;
   return false;
+}
+
+/** Match against expected first, then against any other word in the vocab list
+ * that shares the same Korean meaning (synonym in the same word set). */
+function findSynonymMatch(
+  userAnswer: string,
+  currentWord: VocabWord,
+  allWords: VocabWord[],
+): VocabWord | null {
+  const targetKorean = normalize(currentWord.korean_meaning);
+  for (const w of allWords) {
+    if (w.id === currentWord.id) continue;
+    if (normalize(w.korean_meaning) !== targetKorean) continue;
+    if (isExactMatch(userAnswer, w.english_word)) return w;
+  }
+  return null;
 }
 
 // ── TTS helper (browser built-in) ──
