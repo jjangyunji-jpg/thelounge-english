@@ -380,6 +380,7 @@ export default function VocabTestModal({
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [saving, setSaving] = useState(false);
+  const [evaluating, setEvaluating] = useState(false);
 
   const questionCount = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
 
