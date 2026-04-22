@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Loader2, MessageCircle, Sparkles } from "lucide-react";
 
-const DIALOGUE_STORAGE_KEY = "dialogue_generator_last_input";
+const DIALOGUE_STORAGE_KEY_BASE = "dialogue_generator_last_input";
+const getStorageKey = (studentName?: string) => {
+  const key = (studentName || "").trim();
+  return key ? `${DIALOGUE_STORAGE_KEY_BASE}::${key}` : DIALOGUE_STORAGE_KEY_BASE;
+};
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
