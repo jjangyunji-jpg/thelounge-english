@@ -94,10 +94,10 @@ export default function NewsLessonGeneratorModal({
         .replace(/```\n?/g, "")
         .trim();
 
-      // Save inputs for next time
+      // Save inputs for next time (per-student)
       try {
         localStorage.setItem(
-          NEWS_STORAGE_KEY,
+          getStorageKey(defaultStudentName),
           JSON.stringify({ inputMode, articleText, articleUrl, level, duration }),
         );
       } catch {
