@@ -487,7 +487,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   },
                   {
                     title: "STEP 4",
-                    question: "변경 요청된 수업은 강사 확인 및 승인 후 최종 확정됩니다. 확인하셨습니까?",
+                    question: "모든 보강 일정은 당월에 소진되어야 하며, 다음달로 이월되지 않습니다. 확인하셨습니까?",
                     notice: null as string | null,
                     type: "confirm" as const,
                   },
