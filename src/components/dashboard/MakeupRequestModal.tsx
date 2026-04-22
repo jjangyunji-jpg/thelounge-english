@@ -464,44 +464,94 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 </div>
               )}
 
-              {/* Step: Checklist */}
+              {/* Step: Checklist (단계별 Q&A) */}
               {step === "checklist" && (() => {
-                const CHECKLIST_ITEMS = [
-                  "수업 48시간 이내의 일정은 변경이 어려울 수 있습니다.",
-                  "잦은 일정 변경은 학습 흐름에 영향을 줄 수 있습니다. 또한 일정 변경이 반복될 경우, 수업이 중단될 수 있습니다.",
-                  "장기 부재(출장, 여행 등)가 예정된 경우, 한 달 전에 미리 알려주세요.",
-                  "변경된 수업은 강사 승인 후 확정됩니다.",
+                const STEPS = [
+                  {
+                    title: "STEP 1",
+                    question: "보강을 신청하시는 수업까지 48시간 이상 남았습니까?",
+                    type: "yesno" as const,
+                  },
+                  {
+                    title: "STEP 2",
+                    question: "잦은 일정 변경은 학습 흐름과 진도 진행에 영향을 줄 수 있습니다. 지속적인 일정 변경이 반복될 경우, 보다 안정적인 수업을 위해 시간대 조정 또는 운영 상담이 진행될 수 있습니다. 이를 확인하셨습니까?",
+                    type: "confirm" as const,
+                  },
+                  {
+                    title: "STEP 3",
+                    question: "보강은 담당 강사님의 가능한 일정 내에서만 진행됩니다.\n\n가능한 시간이 없을 경우 별도 시간 개설은 어려우며, 규정에 따라 해당 수업은 수업횟수에서 차감됩니다. 확인하셨습니까?",
+                    type: "confirm" as const,
+                  },
+                  {
+                    title: "STEP 4",
+                    question: "변경 요청된 수업은 강사 확인 및 승인 후 최종 확정됩니다. 확인하셨습니까?",
+                    type: "confirm" as const,
+                  },
                 ];
-                const allChecked = checkedItems.every(Boolean);
+                const current = STEPS[checklistStep];
+
+                if (showBlockedAlert) {
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold tracking-wider text-muted-foreground">STEP 1</span>
+                      </div>
+                      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                          <div className="space-y-2">
+                            <p className="text-sm font-bold text-destructive">48시간 이내에는 보강이 불가합니다</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              수업 48시간 이내 일정 변경은 원활한 운영과 강사 일정 보호를 위해 병가(증빙 가능 사유) 외에는 보강 신청이 어렵습니다.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <Button onClick={onClose} className="w-full" size="sm" variant="outline">
+                        확인
+                      </Button>
+                    </div>
+                  );
+                }
+
                 return (
                   <div className="space-y-4">
-                    <p className="text-sm font-bold text-foreground">일정 변경 전 확인해주세요 <span className="text-xs font-normal text-muted-foreground">(모두 체크해주세요)</span></p>
-                    <div className="space-y-3">
-                      {CHECKLIST_ITEMS.map((text, i) => (
-                        <label key={i} className="flex items-start gap-3 cursor-pointer group">
-                          <div
-                            className={cn(
-                              "mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
-                              checkedItems[i]
-                                ? "bg-primary border-primary"
-                                : "border-muted-foreground/40 group-hover:border-primary/60"
-                            )}
-                            onClick={() => setCheckedItems(prev => { const n = [...prev]; n[i] = !n[i]; return n; })}
-                          >
-                            {checkedItems[i] && <Check className="w-3 h-3 text-primary-foreground" />}
-                          </div>
-                          <span className="text-xs text-muted-foreground leading-relaxed">{text}</span>
-                        </label>
-                      ))}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold tracking-wider text-primary">{current.title}</span>
+                      <span className="text-[10px] text-muted-foreground">{checklistStep + 1} / {STEPS.length}</span>
                     </div>
-                    <Button
-                      onClick={() => setStep("session")}
-                      disabled={!allChecked}
-                      className="w-full"
-                      size="sm"
-                    >
-                      확인했습니다
-                    </Button>
+                    <div className="rounded-xl border border-border bg-muted/20 p-4">
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{current.question}</p>
+                    </div>
+
+                    {current.type === "yesno" ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowBlockedAlert(true)}
+                        >
+                          아니오
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => setChecklistStep(s => s + 1)}
+                        >
+                          예
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        className="w-full"
+                        size="sm"
+                        onClick={() => {
+                          if (checklistStep < STEPS.length - 1) setChecklistStep(s => s + 1);
+                          else setStep("session");
+                        }}
+                      >
+                        확인했습니다
+                      </Button>
+                    )}
                   </div>
                 );
               })()}
