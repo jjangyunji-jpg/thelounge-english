@@ -1074,6 +1074,45 @@ export default function StudentDashboard() {
       .map((d) => d.toDateString()),
   ]);
 
+  // 캘린더 날짜별 상세 정보 (시간/주제/강사) — 클릭 시 표시
+  const dayDetailsMap = new Map<string, CalendarDayItem[]>();
+  const pushDetail = (key: string, item: CalendarDayItem) => {
+    const arr = dayDetailsMap.get(key) || [];
+    arr.push(item);
+    dayDetailsMap.set(key, arr);
+  };
+  for (const s of allSessions) {
+    const d = new Date(s.scheduled_at);
+    const dateKey = s.scheduled_at.slice(0, 10);
+    if (s.cancellation_type === 'instructor_cancel' || holidayDateStrings.has(d.toDateString()) || isDateInPause(dateKey)) continue;
+    pushDetail(d.toDateString(), {
+      iso: s.scheduled_at,
+      topic: (s as any).topic ?? null,
+      instructor_name: (s as any).instructor_name ?? null,
+      isVirtual: false,
+    });
+  }
+  for (const d of recurringDates) {
+    const dateKey = toLocalDateKey(d);
+    if (holidayDateStrings.has(d.toDateString()) || isDateInPause(dateKey) || rescheduledOriginDateStrings.has(d.toDateString()) || instructorCancelledDates.has(d.toDateString())) continue;
+    // skip if a real session exists at the same time (avoid dupes)
+    const dKey = d.toDateString();
+    const existing = dayDetailsMap.get(dKey) || [];
+    const sameTime = existing.some(e => Math.abs(new Date(e.iso).getTime() - d.getTime()) < 60_000);
+    if (sameTime) continue;
+    pushDetail(dKey, {
+      iso: d.toISOString(),
+      topic: null,
+      instructor_name: studentRecord?.instructor_name ?? null,
+      isVirtual: true,
+    });
+  }
+  // 시간 순 정렬
+  for (const arr of dayDetailsMap.values()) {
+    arr.sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime());
+  }
+
+
   // ── Generate monthly periods for corporate students ──
   const corporateMonthlyPeriods: SchedulePeriod[] = (() => {
     if (studentRecord?.student_type !== "corporate") return [];
