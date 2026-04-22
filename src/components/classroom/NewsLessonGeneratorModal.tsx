@@ -33,6 +33,7 @@ interface NewsLessonGeneratorModalProps {
   onClose: () => void;
   onInsert: (html: string) => void;
   defaultLevel?: string;
+  defaultStudentName?: string;
 }
 
 export default function NewsLessonGeneratorModal({
@@ -40,6 +41,7 @@ export default function NewsLessonGeneratorModal({
   onClose,
   onInsert,
   defaultLevel = "B1",
+  defaultStudentName = "",
 }: NewsLessonGeneratorModalProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"text" | "url">("text");
