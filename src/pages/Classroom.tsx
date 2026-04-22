@@ -2005,6 +2005,7 @@ export default function Classroom() {
       open={newsLessonModalOpen}
       onClose={() => setNewsLessonModalOpen(false)}
       defaultLevel={session.level}
+      defaultStudentName={session.dbStudentName}
       onInsert={(html) => {
         const editor = notesEditorRef.current;
         if (editor) {
