@@ -470,21 +470,25 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   {
                     title: "STEP 1",
                     question: "보강을 신청하시는 수업까지 48시간 이상 남았습니까?",
+                    notice: null as string | null,
                     type: "yesno" as const,
                   },
                   {
                     title: "STEP 2",
-                    question: "잦은 일정 변경은 학습 흐름과 진도 진행에 영향을 줄 수 있습니다. 지속적인 일정 변경이 반복될 경우, 보다 안정적인 수업을 위해 시간대 조정 또는 운영 상담이 진행될 수 있습니다. 이를 확인하셨습니까?",
+                    question: "잦은 일정 변경은 학습 흐름과 진도 진행에 영향을 줄 수 있습니다. 이를 확인하셨습니까?",
+                    notice: "지속적인 일정 변경이 반복될 경우, 보다 안정적인 수업을 위해 시간대 조정 또는 운영 상담이 진행될 수 있습니다.",
                     type: "confirm" as const,
                   },
                   {
                     title: "STEP 3",
-                    question: "보강은 담당 강사님의 가능한 일정 내에서만 진행됩니다.\n\n가능한 시간이 없을 경우 별도 시간 개설은 어려우며, 규정에 따라 해당 수업은 수업횟수에서 차감됩니다. 확인하셨습니까?",
+                    question: "보강은 담당 강사님의 가능한 일정 내에서만 진행됩니다. 확인하셨습니까?",
+                    notice: "가능한 시간이 없을 경우 별도 시간 개설은 어려우며, 규정에 따라 해당 수업은 수업횟수에서 차감됩니다.",
                     type: "confirm" as const,
                   },
                   {
                     title: "STEP 4",
                     question: "변경 요청된 수업은 강사 확인 및 승인 후 최종 확정됩니다. 확인하셨습니까?",
+                    notice: null as string | null,
                     type: "confirm" as const,
                   },
                 ];
@@ -521,8 +525,16 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       <span className="text-[10px] text-muted-foreground">{checklistStep + 1} / {STEPS.length}</span>
                     </div>
                     <div className="rounded-xl border border-border bg-muted/20 p-4">
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{current.question}</p>
+                      <p className="text-sm text-foreground leading-relaxed">{current.question}</p>
                     </div>
+                    {current.notice && (
+                      <div className="rounded-lg border-l-4 border-[hsl(var(--warning))] bg-[hsl(var(--warning))]/10 px-3 py-2.5 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-[hsl(var(--warning))] shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-foreground/80 leading-relaxed">
+                          {current.notice}
+                        </p>
+                      </div>
+                    )}
 
                     {current.type === "yesno" ? (
                       <div className="grid grid-cols-2 gap-2">
