@@ -1,8 +1,8 @@
-import { Mark, mergeAttributes } from "@tiptap/core";
+import { Mark, mergeAttributes } from "@tiptap/react";
 
 /* ── 편집 제안: 삭제 표시 (빨간 취소선) ── */
 
-declare module "@tiptap/core" {
+declare module "@tiptap/react" {
   interface Commands<ReturnType> {
     suggestionDelete: {
       setSuggestionDelete: () => ReturnType;
