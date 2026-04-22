@@ -236,14 +236,23 @@ function TTSButton({ word }: { word: VocabWord }) {
 }
 
 // ── Mini Calendar ──────────────────────────────────────────────────────────────
-function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, onPeriodChange }: {
+interface CalendarDayItem {
+  iso: string;
+  topic: string | null;
+  instructor_name: string | null;
+  isVirtual: boolean;
+}
+
+function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPeriod, allPeriods, onPeriodChange }: {
   allCalendarDates: Set<string>;
+  dayDetailsMap: Map<string, CalendarDayItem[]>;
   holidays: HolidayNotice[];
   selectedPeriod: SchedulePeriod | null;
   allPeriods: SchedulePeriod[];
   onPeriodChange: (id: string) => void;
 }) {
   const today = new Date();
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
 
   const primaryYear = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getFullYear() : today.getFullYear();
   const primaryMonth = selectedPeriod ? new Date(selectedPeriod.start_date + "T00:00:00").getMonth() : today.getMonth();
@@ -263,6 +272,12 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
   const isHoliday = (d: Date) =>
     holidayRanges.some(r => d >= r.start && d <= r.end);
   
+  const findHoliday = (d: Date) =>
+    holidays.find(h => {
+      const s = new Date(h.date_start + "T00:00:00");
+      const e = new Date(h.date_end + "T23:59:59");
+      return d >= s && d <= e;
+    });
 
   // Build cells: from period start's week Sunday to period end's week Saturday
   const periodStart = selectedPeriod
@@ -295,6 +310,15 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
 
   const periodIdx = allPeriods.findIndex(p => p.id === selectedPeriod?.id);
 
+  const selectedDate = selectedDateKey ? new Date(selectedDateKey) : null;
+  const selectedSessions = selectedDateKey ? (dayDetailsMap.get(selectedDateKey) || []) : [];
+  const selectedHoliday = selectedDate ? findHoliday(selectedDate) : null;
+
+  const fmtTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul", hour12: false });
+  const fmtDayLabel = (d: Date) =>
+    `${d.getMonth() + 1}월 ${d.getDate()}일 (${["일","월","화","수","목","금","토"][d.getDay()]})`;
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -326,21 +350,29 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
         <div className="grid grid-cols-7 gap-px">
           {cells.map((cell, idx) => {
             const date = new Date(cell.year, cell.month, cell.day);
+            const dateKey = date.toDateString();
             const isOutsidePeriodMonth = cell.month !== pStartMonth || cell.year !== pStartYear;
             const holiday = isHoliday(date);
             const inPeriod = isInPeriod(date);
-            const session = inPeriod && allCalendarDates.has(date.toDateString());
+            const session = inPeriod && allCalendarDates.has(dateKey);
             const todayMark = today.getFullYear() === cell.year && today.getMonth() === cell.month && today.getDate() === cell.day;
             const isOff = holiday;
+            const isSelected = selectedDateKey === dateKey;
             return (
-              <div key={idx} className={cn(
-                "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all",
-                todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
-                  : session && !isOff ? "bg-gold/15 text-gold-dark font-semibold"
-                  : holiday ? "text-muted-foreground/30"
-                  : inPeriod ? "text-foreground hover:bg-muted/50"
-                  : "text-muted-foreground/40 hover:bg-muted/30",
-              )}>
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setSelectedDateKey(prev => prev === dateKey ? null : dateKey)}
+                className={cn(
+                  "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all cursor-pointer",
+                  isSelected ? "ring-2 ring-gold ring-offset-1 ring-offset-card" : "",
+                  todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
+                    : session && !isOff ? "bg-gold/15 text-gold-dark font-semibold hover:bg-gold/25"
+                    : holiday ? "text-muted-foreground/30 hover:bg-muted/30"
+                    : inPeriod ? "text-foreground hover:bg-muted/50"
+                    : "text-muted-foreground/40 hover:bg-muted/30",
+                )}
+              >
                 {isOutsidePeriodMonth ? `${cell.month + 1}/${cell.day}` : cell.day}
                 {session && !todayMark && !isOff && (
                   <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
@@ -348,11 +380,60 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
                 {holiday && !todayMark && (
                   <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-muted-foreground/30" />
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
       </div>
+
+      {/* Selected date detail */}
+      {selectedDate && (
+        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-foreground">{fmtDayLabel(selectedDate)}</p>
+            <button
+              onClick={() => setSelectedDateKey(null)}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="닫기"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          {selectedHoliday && (
+            <div className="rounded-md bg-destructive/10 border border-destructive/20 px-2 py-1.5">
+              <p className="text-[11px] font-semibold text-destructive">휴강: {selectedHoliday.title}</p>
+              {selectedHoliday.reason && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">{selectedHoliday.reason}</p>
+              )}
+            </div>
+          )}
+          {!selectedHoliday && selectedSessions.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">예정된 수업이 없습니다.</p>
+          )}
+          {!selectedHoliday && selectedSessions.length > 0 && (
+            <div className="space-y-1.5">
+              {selectedSessions.map((s, i) => (
+                <div key={i} className="flex items-start gap-2 rounded-md bg-card border border-border px-2 py-1.5">
+                  <Clock className="w-3 h-3 text-gold flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-foreground">
+                      {fmtTime(s.iso)}
+                      {s.isVirtual && <span className="ml-1 text-[9px] text-muted-foreground font-normal">정기 수업</span>}
+                    </p>
+                    {s.topic && (
+                      <p className="text-[10px] text-muted-foreground truncate">{s.topic}</p>
+                    )}
+                    {s.instructor_name && (
+                      <p className="text-[10px] text-muted-foreground">담당: {s.instructor_name}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Legend */}
       <div className="flex items-center gap-3 pt-1 text-[10px] text-muted-foreground flex-wrap">
         <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gold" />수업일</div>
@@ -362,6 +443,7 @@ function MiniCalendar({ allCalendarDates, holidays, selectedPeriod, allPeriods, 
     </div>
   );
 }
+
 
 // ── Right Panel Section ────────────────────────────────────────────────────────
 function RSection({ title, icon: Icon, children, badge }: {
