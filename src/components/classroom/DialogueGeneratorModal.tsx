@@ -51,11 +51,16 @@ export default function DialogueGeneratorModal({
   const [tone, setTone] = useState("Casual");
   const [generating, setGenerating] = useState(false);
 
-  // Restore last inputs when modal opens
+  // Restore last inputs when modal opens (per-student)
   useEffect(() => {
     if (!open) return;
     try {
-      const saved = localStorage.getItem(DIALOGUE_STORAGE_KEY);
+      const storageKey = getStorageKey(defaultStudentName);
+      let saved = localStorage.getItem(storageKey);
+      // Fallback: if no per-student data exists, try the legacy global key
+      if (!saved && storageKey !== DIALOGUE_STORAGE_KEY_BASE) {
+        saved = localStorage.getItem(DIALOGUE_STORAGE_KEY_BASE);
+      }
       if (saved) {
         const data = JSON.parse(saved);
         if (typeof data.situation === "string") setSituation(data.situation);
@@ -68,7 +73,7 @@ export default function DialogueGeneratorModal({
     } catch {
       // ignore
     }
-  }, [open]);
+  }, [open, defaultStudentName]);
 
   const handleGenerate = async () => {
     setGenerating(true);
