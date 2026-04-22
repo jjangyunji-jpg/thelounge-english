@@ -305,8 +305,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   if (requestType === "reschedule") setStep("session");
                   else { setSelectedCancelledSession(null); setStep("type"); }
                 }
-                else if (step === "session") setStep("checklist");
-                else if (step === "checklist") { setCheckedItems([false, false, false, false]); setStep("type"); }
+                else if (step === "session") { setChecklistStep(3); setStep("checklist"); }
+                else if (step === "checklist") {
+                  if (showBlockedAlert) { setShowBlockedAlert(false); return; }
+                  if (checklistStep > 0) setChecklistStep(s => s - 1);
+                  else { setChecklistStep(0); setStep("type"); }
+                }
               }} className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="w-4 h-4" />
               </button>
