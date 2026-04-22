@@ -51,11 +51,16 @@ export default function NewsLessonGeneratorModal({
   const [duration, setDuration] = useState("40");
   const [generating, setGenerating] = useState(false);
 
-  // Restore last inputs when modal opens
+  // Restore last inputs when modal opens (per-student)
   useEffect(() => {
     if (!open) return;
     try {
-      const saved = localStorage.getItem(NEWS_STORAGE_KEY);
+      const storageKey = getStorageKey(defaultStudentName);
+      let saved = localStorage.getItem(storageKey);
+      // Fallback: legacy global key
+      if (!saved && storageKey !== NEWS_STORAGE_KEY_BASE) {
+        saved = localStorage.getItem(NEWS_STORAGE_KEY_BASE);
+      }
       if (saved) {
         const data = JSON.parse(saved);
         if (data.inputMode === "text" || data.inputMode === "url") setInputMode(data.inputMode);
@@ -67,7 +72,7 @@ export default function NewsLessonGeneratorModal({
     } catch {
       // ignore
     }
-  }, [open]);
+  }, [open, defaultStudentName]);
 
   const handleGenerate = async () => {
     setGenerating(true);
