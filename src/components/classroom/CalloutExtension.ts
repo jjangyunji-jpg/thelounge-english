@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/react";
 
-declare module "@tiptap/core" {
+declare module "@tiptap/react" {
   interface Commands<ReturnType> {
     callout: {
       setCallout: (attrs?: { type?: string }) => ReturnType;
