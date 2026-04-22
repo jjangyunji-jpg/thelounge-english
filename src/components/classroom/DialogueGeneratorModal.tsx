@@ -92,10 +92,10 @@ export default function DialogueGeneratorModal({
         .replace(/```\n?/g, "")
         .trim();
 
-      // Save inputs for next time
+      // Save inputs for next time (per-student)
       try {
         localStorage.setItem(
-          DIALOGUE_STORAGE_KEY,
+          getStorageKey(defaultStudentName),
           JSON.stringify({ situation, speakers, student, level, mustInclude, tone }),
         );
       } catch {
