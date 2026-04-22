@@ -75,8 +75,6 @@ const targetLabel: Record<string, string> = {
 export default function MessageCenter() {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<Template[]>(mockTemplates);
-  const [autoNote, setAutoNote] = useState(true);
-  const [autoHomework, setAutoHomework] = useState(true);
   const [broadcastTarget, setBroadcastTarget] = useState<"all" | "instructors" | "students">("all");
   const [broadcastSubject, setBroadcastSubject] = useState("");
   const [broadcastBody, setBroadcastBody] = useState("");
