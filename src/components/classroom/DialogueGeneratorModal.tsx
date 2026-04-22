@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Loader2, MessageCircle, Sparkles } from "lucide-react";
 
-const DIALOGUE_STORAGE_KEY = "dialogue_generator_last_input";
+const DIALOGUE_STORAGE_KEY_BASE = "dialogue_generator_last_input";
+const getStorageKey = (studentName?: string) => {
+  const key = (studentName || "").trim();
+  return key ? `${DIALOGUE_STORAGE_KEY_BASE}::${key}` : DIALOGUE_STORAGE_KEY_BASE;
+};
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,11 +51,16 @@ export default function DialogueGeneratorModal({
   const [tone, setTone] = useState("Casual");
   const [generating, setGenerating] = useState(false);
 
-  // Restore last inputs when modal opens
+  // Restore last inputs when modal opens (per-student)
   useEffect(() => {
     if (!open) return;
     try {
-      const saved = localStorage.getItem(DIALOGUE_STORAGE_KEY);
+      const storageKey = getStorageKey(defaultStudentName);
+      let saved = localStorage.getItem(storageKey);
+      // Fallback: if no per-student data exists, try the legacy global key
+      if (!saved && storageKey !== DIALOGUE_STORAGE_KEY_BASE) {
+        saved = localStorage.getItem(DIALOGUE_STORAGE_KEY_BASE);
+      }
       if (saved) {
         const data = JSON.parse(saved);
         if (typeof data.situation === "string") setSituation(data.situation);
@@ -64,7 +73,7 @@ export default function DialogueGeneratorModal({
     } catch {
       // ignore
     }
-  }, [open]);
+  }, [open, defaultStudentName]);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -83,10 +92,10 @@ export default function DialogueGeneratorModal({
         .replace(/```\n?/g, "")
         .trim();
 
-      // Save inputs for next time
+      // Save inputs for next time (per-student)
       try {
         localStorage.setItem(
-          DIALOGUE_STORAGE_KEY,
+          getStorageKey(defaultStudentName),
           JSON.stringify({ situation, speakers, student, level, mustInclude, tone }),
         );
       } catch {

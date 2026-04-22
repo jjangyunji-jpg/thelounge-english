@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Loader2, Newspaper, Sparkles } from "lucide-react";
 
-const NEWS_STORAGE_KEY = "news_lesson_generator_last_input";
+const NEWS_STORAGE_KEY_BASE = "news_lesson_generator_last_input";
+const getStorageKey = (studentName?: string) => {
+  const key = (studentName || "").trim();
+  return key ? `${NEWS_STORAGE_KEY_BASE}::${key}` : NEWS_STORAGE_KEY_BASE;
+};
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +33,7 @@ interface NewsLessonGeneratorModalProps {
   onClose: () => void;
   onInsert: (html: string) => void;
   defaultLevel?: string;
+  defaultStudentName?: string;
 }
 
 export default function NewsLessonGeneratorModal({
@@ -36,6 +41,7 @@ export default function NewsLessonGeneratorModal({
   onClose,
   onInsert,
   defaultLevel = "B1",
+  defaultStudentName = "",
 }: NewsLessonGeneratorModalProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"text" | "url">("text");
@@ -45,11 +51,16 @@ export default function NewsLessonGeneratorModal({
   const [duration, setDuration] = useState("40");
   const [generating, setGenerating] = useState(false);
 
-  // Restore last inputs when modal opens
+  // Restore last inputs when modal opens (per-student)
   useEffect(() => {
     if (!open) return;
     try {
-      const saved = localStorage.getItem(NEWS_STORAGE_KEY);
+      const storageKey = getStorageKey(defaultStudentName);
+      let saved = localStorage.getItem(storageKey);
+      // Fallback: legacy global key
+      if (!saved && storageKey !== NEWS_STORAGE_KEY_BASE) {
+        saved = localStorage.getItem(NEWS_STORAGE_KEY_BASE);
+      }
       if (saved) {
         const data = JSON.parse(saved);
         if (data.inputMode === "text" || data.inputMode === "url") setInputMode(data.inputMode);
@@ -61,7 +72,7 @@ export default function NewsLessonGeneratorModal({
     } catch {
       // ignore
     }
-  }, [open]);
+  }, [open, defaultStudentName]);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -83,10 +94,10 @@ export default function NewsLessonGeneratorModal({
         .replace(/```\n?/g, "")
         .trim();
 
-      // Save inputs for next time
+      // Save inputs for next time (per-student)
       try {
         localStorage.setItem(
-          NEWS_STORAGE_KEY,
+          getStorageKey(defaultStudentName),
           JSON.stringify({ inputMode, articleText, articleUrl, level, duration }),
         );
       } catch {
