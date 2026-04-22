@@ -1952,7 +1952,7 @@ export default function StudentDashboard() {
               <span className="text-xs font-semibold text-foreground">수업 캘린더</span>
             </div>
             <div className="p-3">
-              <MiniCalendar allCalendarDates={allCalendarDates} holidays={holidays} selectedPeriod={selectedPeriod} allPeriods={sortedPeriods} onPeriodChange={setSelectedPeriodId} />
+              <MiniCalendar allCalendarDates={allCalendarDates} dayDetailsMap={dayDetailsMap} holidays={holidays} selectedPeriod={selectedPeriod} allPeriods={sortedPeriods} onPeriodChange={setSelectedPeriodId} />
             </div>
             {/* Upcoming next session inside calendar */}
             {nextClassDate && (
