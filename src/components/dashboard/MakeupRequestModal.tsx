@@ -73,7 +73,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
 
   const [step, setStep] = useState<"type" | "checklist" | "session" | "calendar" | "confirm">("type");
-  const [checkedItems, setCheckedItems] = useState<boolean[]>([false, false, false, false]);
+  const [checklistStep, setChecklistStep] = useState<number>(0); // 0~3: 4개 단계
+  const [showBlockedAlert, setShowBlockedAlert] = useState(false); // STEP 1에서 "아니오" 선택 시
   const [requestType, setRequestType] = useState<"reschedule" | "extra" | "makeup">("reschedule");
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
   const [selectedCancelledSession, setSelectedCancelledSession] = useState<ClassSession | null>(null);
