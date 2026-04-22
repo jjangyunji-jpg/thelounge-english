@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Loader2, Newspaper, Sparkles } from "lucide-react";
 
-const NEWS_STORAGE_KEY = "news_lesson_generator_last_input";
+const NEWS_STORAGE_KEY_BASE = "news_lesson_generator_last_input";
+const getStorageKey = (studentName?: string) => {
+  const key = (studentName || "").trim();
+  return key ? `${NEWS_STORAGE_KEY_BASE}::${key}` : NEWS_STORAGE_KEY_BASE;
+};
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
