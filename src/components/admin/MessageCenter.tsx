@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+// Switch retained for "발송 예약" toggle below
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -75,8 +76,6 @@ const targetLabel: Record<string, string> = {
 export default function MessageCenter() {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<Template[]>(mockTemplates);
-  const [autoNote, setAutoNote] = useState(true);
-  const [autoHomework, setAutoHomework] = useState(true);
   const [broadcastTarget, setBroadcastTarget] = useState<"all" | "instructors" | "students">("all");
   const [broadcastSubject, setBroadcastSubject] = useState("");
   const [broadcastBody, setBroadcastBody] = useState("");
@@ -148,30 +147,15 @@ export default function MessageCenter() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
-              <div>
-                <p className="text-sm font-medium text-foreground">수업 노트 업데이트 시 알림</p>
-                <p className="text-xs text-muted-foreground mt-0.5">강사가 노트 저장 후 학생에게 자동 발송</p>
-              </div>
-              <Switch checked={autoNote} onCheckedChange={setAutoNote} />
+            <div className="p-3 rounded-lg bg-muted/40 border border-border">
+              <p className="text-sm font-medium text-foreground">월말 업무 마무리 메시지</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                매월 23일 오전 9시(KST)에 강사 전체에게 자동 발송됩니다.
+              </p>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
-              <div>
-                <p className="text-sm font-medium text-foreground">숙제 미제출 리마인더</p>
-                <p className="text-xs text-muted-foreground mt-0.5">수업 후 48시간 미제출 시 자동 발송</p>
-              </div>
-              <Switch checked={autoHomework} onCheckedChange={setAutoHomework} />
+            <div className="p-3 rounded-lg bg-success/8 border border-success/20">
+              <p className="text-xs text-success font-medium">✓ 매월 23일 자동 발송이 활성화되어 있습니다.</p>
             </div>
-            {autoNote && (
-              <div className="p-3 rounded-lg bg-success/8 border border-success/20">
-                <p className="text-xs text-success font-medium">✓ 노트 알림이 활성화되어 있습니다.</p>
-              </div>
-            )}
-            {autoHomework && (
-              <div className="p-3 rounded-lg bg-success/8 border border-success/20">
-                <p className="text-xs text-success font-medium">✓ 숙제 리마인더가 활성화되어 있습니다.</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
