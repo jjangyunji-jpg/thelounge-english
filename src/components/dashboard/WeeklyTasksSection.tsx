@@ -244,7 +244,7 @@ export default function WeeklyTasksSection({
             const isDraft = sub && sub.status === "draft";
             const meta = HW_META[a.type as HwType] ?? HW_META.writing;
             const Icon = meta.icon;
-            const isQuickType = a.type === "memorizing" || a.type === "speaking";
+            const isQuickType = a.type === "speaking";
 
             return (
               <div key={a.id} className="px-3 py-2.5 space-y-1.5">
