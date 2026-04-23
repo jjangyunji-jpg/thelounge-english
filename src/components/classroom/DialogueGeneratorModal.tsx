@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 import { Loader2, MessageCircle, Sparkles, Wand2, ArrowLeft, Check } from "lucide-react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { Table } from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import Underline from "@tiptap/extension-underline";
+import Link from "@tiptap/extension-link";
 
 const DIALOGUE_STORAGE_KEY_BASE = "dialogue_generator_last_input";
 const getStorageKey = (studentName?: string) => {
@@ -57,6 +65,44 @@ export default function DialogueGeneratorModal({
   const [step, setStep] = useState<Step>("input");
   const [dialogueHtml, setDialogueHtml] = useState("");
   const [revisionInstruction, setRevisionInstruction] = useState("");
+
+  // TipTap editor for preview (same extensions as NotesEditor for table/format parity)
+  const previewEditor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+      }),
+      Underline,
+      Link.configure({ openOnClick: false, autolink: true }),
+      Table.configure({ resizable: true, allowTableNodeSelection: true }),
+      TableRow,
+      TableCell,
+      TableHeader,
+    ],
+    content: "",
+    editorProps: {
+      attributes: {
+        class:
+          "prose prose-sm max-w-none dark:prose-invert focus:outline-none min-h-[300px] px-3 py-2",
+      },
+    },
+    onUpdate: ({ editor }) => {
+      setDialogueHtml(editor.getHTML());
+    },
+  });
+
+  // Sync editor content when dialogueHtml changes externally (initial gen / AI revision)
+  useEffect(() => {
+    if (!previewEditor) return;
+    if (previewEditor.getHTML() === dialogueHtml) return;
+    previewEditor.commands.setContent(dialogueHtml || "", { emitUpdate: false });
+  }, [dialogueHtml, previewEditor]);
+
+  // Toggle editable when revising
+  useEffect(() => {
+    if (!previewEditor) return;
+    previewEditor.setEditable(!revising);
+  }, [revising, previewEditor]);
 
   // Restore last inputs when modal opens (per-student)
   useEffect(() => {
@@ -288,30 +334,8 @@ export default function DialogueGeneratorModal({
 
         {step === "preview" && (
           <div className="space-y-4">
-            {/* Editable preview */}
+            {/* AI revision input — moved to top */}
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">
-                생성된 Dialogue (HTML 직접 편집 가능)
-              </Label>
-              <Textarea
-                value={dialogueHtml}
-                onChange={(e) => setDialogueHtml(e.target.value)}
-                className="font-mono text-xs h-64 resize-y"
-                disabled={revising}
-              />
-            </div>
-
-            {/* Rendered preview */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">미리보기</Label>
-              <div
-                className="border rounded-md p-3 max-h-64 overflow-y-auto bg-muted/30 text-sm prose prose-sm max-w-none dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: dialogueHtml }}
-              />
-            </div>
-
-            {/* AI revision input */}
-            <div className="space-y-1 border-t pt-3">
               <Label className="text-xs text-muted-foreground flex items-center gap-1">
                 <Wand2 className="w-3 h-3 text-gold" />
                 AI에게 수정 요청
@@ -342,6 +366,20 @@ export default function DialogueGeneratorModal({
                   </>
                 )}
               </Button>
+            </div>
+
+            {/* Editable rich preview (same engine as notes editor) */}
+            <div className="space-y-1 border-t pt-3">
+              <Label className="text-xs text-muted-foreground">
+                미리보기 (직접 수정 가능)
+              </Label>
+              <div
+                className={`border rounded-md bg-background max-h-[420px] overflow-y-auto ${
+                  revising ? "opacity-60 pointer-events-none" : ""
+                }`}
+              >
+                <EditorContent editor={previewEditor} />
+              </div>
             </div>
 
             {/* Actions */}
