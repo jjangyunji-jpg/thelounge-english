@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 import { Loader2, MessageCircle, Sparkles, Wand2, ArrowLeft, Check } from "lucide-react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { Table } from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import Underline from "@tiptap/extension-underline";
+import Link from "@tiptap/extension-link";
 
 const DIALOGUE_STORAGE_KEY_BASE = "dialogue_generator_last_input";
 const getStorageKey = (studentName?: string) => {
