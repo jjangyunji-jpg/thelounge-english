@@ -331,6 +331,7 @@ export default function HomeworkSubmitModal({
               <X className="w-4 h-4" />
             </button>
           </div>
+        </div>
 
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Description */}
