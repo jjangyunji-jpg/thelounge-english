@@ -71,6 +71,13 @@ export type Database = {
             foreignKeyName: "business_meeting_attendees_instructor_id_fkey"
             columns: ["instructor_id"]
             isOneToOne: false
+            referencedRelation: "instructor_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_meeting_attendees_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
             referencedRelation: "instructors"
             referencedColumns: ["id"]
           },
@@ -112,6 +119,13 @@ export type Database = {
           scheduled_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "business_meetings_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_directory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "business_meetings_instructor_id_fkey"
             columns: ["instructor_id"]
@@ -583,6 +597,13 @@ export type Database = {
             foreignKeyName: "instructor_available_slots_instructor_id_fkey"
             columns: ["instructor_id"]
             isOneToOne: false
+            referencedRelation: "instructor_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_available_slots_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
             referencedRelation: "instructors"
             referencedColumns: ["id"]
           },
@@ -724,6 +745,13 @@ export type Database = {
           withdrawal_reason?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "instructor_students_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_directory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "instructor_students_instructor_id_fkey"
             columns: ["instructor_id"]
@@ -1271,6 +1299,13 @@ export type Database = {
             foreignKeyName: "teaching_category_instructors_instructor_id_fkey"
             columns: ["instructor_id"]
             isOneToOne: false
+            referencedRelation: "instructor_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_category_instructors_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
             referencedRelation: "instructors"
             referencedColumns: ["id"]
           },
@@ -1553,7 +1588,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      instructor_directory: {
+        Row: {
+          active: boolean | null
+          id: string | null
+          meet_link: string | null
+          name: string | null
+          position: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          id?: string | null
+          meet_link?: string | null
+          name?: string | null
+          position?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          id?: string | null
+          meet_link?: string | null
+          name?: string | null
+          position?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
