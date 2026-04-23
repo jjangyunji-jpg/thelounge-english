@@ -311,7 +311,7 @@ export default function TeachingMaterials() {
       <div className="flex items-center gap-2 flex-wrap">
         {categories
           .filter(cat => {
-            if (levelFilter === "all") return !cat.is_archived;
+            if (levelFilter === "unassigned") return !cat.is_archived && !cat.level;
             if (levelFilter === "archived") return cat.is_archived;
             return !cat.is_archived && cat.level === levelFilter;
           })
