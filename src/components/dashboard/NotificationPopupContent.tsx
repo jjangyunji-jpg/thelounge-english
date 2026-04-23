@@ -9,6 +9,18 @@ interface NotificationPopupContentProps {
   onConfirm: () => void;
 }
 
+/** Render text with **bold** markdown converted to <strong>. */
+function renderWithBold(text: string) {
+  if (!text) return null;
+  const parts = text.split(/(\*\*[^*\n]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 export default function NotificationPopupContent({
   subject,
   body,
