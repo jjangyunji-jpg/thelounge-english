@@ -42,6 +42,7 @@ export default function TeachingMaterials() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editCategoryName, setEditCategoryName] = useState("");
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
 
   // Edit state
   const [editing, setEditing] = useState<string | null>(null);
