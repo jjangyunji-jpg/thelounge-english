@@ -3525,12 +3525,14 @@ export default function InstructorDashboard() {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 if (st.start_date && selectedPeriod && st.start_date > selectedPeriod.end_date) return false;
                 const isCorp = st.student_type === "corporate";
-                if (studentTypeFilter === "corporate" && !isCorp) return false;
-                if (studentTypeFilter === "regular" && isCorp) return false;
-                // Hide currently-on-pause active students
                 const todayStrFilter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
                 const onPause = st.pauses?.some(p => p.pause_start <= todayStrFilter && (!p.pause_end || p.pause_end >= todayStrFilter)) ?? false;
-                if (onPause && st.status === "active") return false;
+                const isPaused = onPause && st.status === "active";
+                if (studentTypeFilter === "corporate") return isCorp;
+                if (studentTypeFilter === "paused") return isPaused && !isCorp;
+                // regular: non-corp and non-paused
+                if (isCorp) return false;
+                if (isPaused) return false;
                 return true;
               }).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko")).map((st) => {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
