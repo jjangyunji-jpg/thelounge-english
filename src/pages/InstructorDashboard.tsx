@@ -1369,6 +1369,7 @@ export default function InstructorDashboard() {
   const [settlementYear, setSettlementYear] = useState(nowForSettlement.getFullYear());
   const [settlementMonth, setSettlementMonth] = useState(nowForSettlement.getMonth()); // 0-indexed
   const [studentTabPeriodIdx, setStudentTabPeriodIdx] = useState(-1);
+  const [studentTypeFilter, setStudentTypeFilter] = useState<"regular" | "corporate">("regular");
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
@@ -3389,7 +3390,22 @@ export default function InstructorDashboard() {
               <h2 className="text-base font-bold text-foreground flex items-center gap-2 flex-wrap">
                 <Users className="w-4 h-4 text-primary" />
                 담당 학생 관리
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{students.filter(s => { const sp = allPeriods[studentTabPeriodIdx] || period; return (!s.start_date || !sp || s.start_date <= sp.end_date); }).length}명</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                  {(() => {
+                    const sp = allPeriods[studentTabPeriodIdx] || period;
+                    const todayStrCount = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                    return students.filter(s => {
+                      if (s.start_date && sp && s.start_date > sp.end_date) return false;
+                      const isCorp = s.student_type === "corporate";
+                      if (studentTypeFilter === "corporate" && !isCorp) return false;
+                      if (studentTypeFilter === "regular" && isCorp) return false;
+                      // Hide currently paused (regular tab only — paused corporate shouldn't really exist, but be safe)
+                      const onPause = s.pauses?.some(p => p.pause_start <= todayStrCount && (!p.pause_end || p.pause_end >= todayStrCount)) ?? false;
+                      if (onPause && s.status === "active") return false;
+                      return true;
+                    }).length;
+                  })()}명
+                </span>
                 <Button
                   size="sm"
                   variant="outline"
@@ -3466,11 +3482,41 @@ export default function InstructorDashboard() {
               )}
             </div>
 
+            {/* Student type filter tabs */}
+            <div className="flex items-center gap-1 border-b border-border">
+              {([
+                { key: "regular" as const, label: "정규 수강생" },
+                { key: "corporate" as const, label: "기업 수강생" },
+              ]).map((tab) => {
+                const isActive = studentTypeFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setStudentTypeFilter(tab.key)}
+                    className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors -mb-px ${
+                      isActive
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {students.filter((st) => {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
-                if (!st.start_date || !selectedPeriod) return true;
-                return st.start_date <= selectedPeriod.end_date;
+                if (st.start_date && selectedPeriod && st.start_date > selectedPeriod.end_date) return false;
+                const isCorp = st.student_type === "corporate";
+                if (studentTypeFilter === "corporate" && !isCorp) return false;
+                if (studentTypeFilter === "regular" && isCorp) return false;
+                // Hide currently-on-pause active students
+                const todayStrFilter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                const onPause = st.pauses?.some(p => p.pause_start <= todayStrFilter && (!p.pause_end || p.pause_end >= todayStrFilter)) ?? false;
+                if (onPause && st.status === "active") return false;
+                return true;
               }).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko")).map((st) => {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 const stats = getStudentStats(st.student_name, st.schedules, selectedPeriod);
