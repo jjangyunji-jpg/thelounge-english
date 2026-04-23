@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Mic, Square, Play, Pause, Send, RotateCcw, Loader2, X,
   PenLine, BookOpen, Brain, Paperclip, FileUp, Monitor, Save,
+  Volume2, VolumeX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -116,6 +117,36 @@ export default function HomeworkSubmitModal({
   const meta = HW_META[assignment.type as HwType] ?? HW_META.writing;
   const Icon = meta.icon;
   const recorder = useAudioRecorder();
+
+  // TTS for reading / memorizing description
+  const [speaking, setSpeaking] = useState(false);
+  const supportsTTS = typeof window !== "undefined" && "speechSynthesis" in window;
+  const canListen =
+    supportsTTS &&
+    (assignment.type === "reading" || assignment.type === "memorizing") &&
+    !!assignment.description?.trim();
+
+  const stopSpeaking = useCallback(() => {
+    if (!supportsTTS) return;
+    window.speechSynthesis.cancel();
+    setSpeaking(false);
+  }, [supportsTTS]);
+
+  const toggleSpeak = useCallback(() => {
+    if (!canListen) return;
+    if (speaking) { stopSpeaking(); return; }
+    const utter = new SpeechSynthesisUtterance(assignment.description || "");
+    utter.lang = "en-US";
+    utter.rate = 0.95;
+    utter.onend = () => setSpeaking(false);
+    utter.onerror = () => setSpeaking(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+    setSpeaking(true);
+  }, [canListen, speaking, assignment.description, stopSpeaking]);
+
+  // Stop speech when modal closes / unmounts
+  useEffect(() => () => { if (supportsTTS) window.speechSynthesis.cancel(); }, [supportsTTS]);
 
   const isDraft = submission?.status === "draft";
 
@@ -279,9 +310,27 @@ export default function HomeworkSubmitModal({
             <span className="text-sm font-bold text-foreground">{assignment.title}</span>
             <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>{meta.label}</span>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {canListen && (
+              <button
+                onClick={toggleSpeak}
+                title={speaking ? "듣기 중지" : "지문 듣기"}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors",
+                  speaking
+                    ? "bg-[hsl(var(--gold-dark)/0.15)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold-dark)/0.25)]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+              >
+                {speaking
+                  ? <><VolumeX className="w-3.5 h-3.5" />중지</>
+                  : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
+              </button>
+            )}
+            <button onClick={() => { stopSpeaking(); onClose(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
