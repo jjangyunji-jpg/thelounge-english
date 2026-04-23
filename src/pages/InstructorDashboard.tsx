@@ -1381,7 +1381,7 @@ export default function InstructorDashboard() {
   const [settlementYear, setSettlementYear] = useState(nowForSettlement.getFullYear());
   const [settlementMonth, setSettlementMonth] = useState(nowForSettlement.getMonth()); // 0-indexed
   const [studentTabPeriodIdx, setStudentTabPeriodIdx] = useState(-1);
-  const [studentTypeFilter, setStudentTypeFilter] = useState<"regular" | "corporate">("regular");
+  const [studentTypeFilter, setStudentTypeFilter] = useState<"regular" | "paused" | "corporate">("regular");
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
