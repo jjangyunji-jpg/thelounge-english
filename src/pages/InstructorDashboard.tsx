@@ -3409,11 +3409,13 @@ export default function InstructorDashboard() {
                     return students.filter(s => {
                       if (s.start_date && sp && s.start_date > sp.end_date) return false;
                       const isCorp = s.student_type === "corporate";
-                      if (studentTypeFilter === "corporate" && !isCorp) return false;
-                      if (studentTypeFilter === "regular" && isCorp) return false;
-                      // Hide currently paused (regular tab only — paused corporate shouldn't really exist, but be safe)
                       const onPause = s.pauses?.some(p => p.pause_start <= todayStrCount && (!p.pause_end || p.pause_end >= todayStrCount)) ?? false;
-                      if (onPause && s.status === "active") return false;
+                      const isPaused = onPause && s.status === "active";
+                      if (studentTypeFilter === "corporate") return isCorp;
+                      if (studentTypeFilter === "paused") return isPaused && !isCorp;
+                      // regular tab: non-corp, non-paused
+                      if (isCorp) return false;
+                      if (isPaused) return false;
                       return true;
                     }).length;
                   })()}명
