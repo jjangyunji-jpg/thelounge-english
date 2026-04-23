@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import { Bell, Clock, Check, X } from "lucide-react";
+import { Bell, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import NotificationPopupContent from "@/components/dashboard/NotificationPopupContent";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Notification {
@@ -53,7 +54,6 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
     );
     setUnreadCount(unread.length);
 
-    // Show popup for latest unread notification on first load
     if (unread.length > 0 && !showInbox) {
       setPopupNotification(unread[0]);
       setShowPopup(true);
@@ -110,7 +110,6 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
 
   return (
     <>
-      {/* Inbox Button with Badge */}
       <Button
         size="sm"
         variant="outline"
@@ -130,37 +129,19 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
         )}
       </Button>
 
-      {/* Auto Popup Modal for unread notification */}
       <Dialog open={showPopup} onOpenChange={(open) => { if (!open) handleClosePopup(); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <Bell className="w-4 h-4 text-gold" />
-              새 공지사항
-            </DialogTitle>
-          </DialogHeader>
           {popupNotification && (
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-semibold text-foreground">{popupNotification.subject}</p>
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                  <Clock className="w-3 h-3" />
-                  {format(new Date(popupNotification.sent_at), "yyyy.MM.dd HH:mm")}
-                </p>
-              </div>
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/40 p-3 rounded-lg">
-                {popupNotification.body}
-              </p>
-              <Button onClick={handleClosePopup} className="w-full bg-navy hover:bg-navy-light text-primary-foreground gap-2">
-                <Check className="w-4 h-4" />
-                확인
-              </Button>
-            </div>
+            <NotificationPopupContent
+              subject={popupNotification.subject}
+              body={popupNotification.body}
+              timestampLabel={format(new Date(popupNotification.sent_at), "yyyy.MM.dd HH:mm")}
+              onConfirm={handleClosePopup}
+            />
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Inbox Modal */}
       <Dialog open={showInbox} onOpenChange={setShowInbox}>
         <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
           <DialogHeader>
@@ -218,21 +199,24 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
         </DialogContent>
       </Dialog>
 
-      {/* Detail Modal */}
       <Dialog open={!!detailNotification} onOpenChange={(open) => { if (!open) setDetailNotification(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base">{detailNotification?.subject}</DialogTitle>
+            <DialogTitle className="text-base break-words [overflow-wrap:anywhere]">
+              {detailNotification?.subject}
+            </DialogTitle>
           </DialogHeader>
           {detailNotification && (
-            <div className="space-y-3">
+            <div className="min-w-0 space-y-3">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {format(new Date(detailNotification.sent_at), "yyyy.MM.dd HH:mm")}
               </p>
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/40 p-3 rounded-lg">
-                {detailNotification.body}
-              </p>
+              <div className="max-w-full rounded-lg bg-muted/40 p-3">
+                <p className="max-w-full whitespace-pre-wrap text-sm leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">
+                  {detailNotification.body}
+                </p>
+              </div>
               <Button onClick={() => setDetailNotification(null)} className="w-full bg-navy hover:bg-navy-light text-primary-foreground">
                 닫기
               </Button>
