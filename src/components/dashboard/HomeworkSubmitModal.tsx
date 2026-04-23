@@ -118,6 +118,36 @@ export default function HomeworkSubmitModal({
   const Icon = meta.icon;
   const recorder = useAudioRecorder();
 
+  // TTS for reading / memorizing description
+  const [speaking, setSpeaking] = useState(false);
+  const supportsTTS = typeof window !== "undefined" && "speechSynthesis" in window;
+  const canListen =
+    supportsTTS &&
+    (assignment.type === "reading" || assignment.type === "memorizing") &&
+    !!assignment.description?.trim();
+
+  const stopSpeaking = useCallback(() => {
+    if (!supportsTTS) return;
+    window.speechSynthesis.cancel();
+    setSpeaking(false);
+  }, [supportsTTS]);
+
+  const toggleSpeak = useCallback(() => {
+    if (!canListen) return;
+    if (speaking) { stopSpeaking(); return; }
+    const utter = new SpeechSynthesisUtterance(assignment.description || "");
+    utter.lang = "en-US";
+    utter.rate = 0.95;
+    utter.onend = () => setSpeaking(false);
+    utter.onerror = () => setSpeaking(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+    setSpeaking(true);
+  }, [canListen, speaking, assignment.description, stopSpeaking]);
+
+  // Stop speech when modal closes / unmounts
+  useEffect(() => () => { if (supportsTTS) window.speechSynthesis.cancel(); }, [supportsTTS]);
+
   const isDraft = submission?.status === "draft";
 
   // Auto-save draft every 30 seconds if text changed
