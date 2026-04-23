@@ -53,6 +53,10 @@ export default function TeachingMaterials() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
+  // Access modal state
+  const [accessMaterial, setAccessMaterial] = useState<{ id: string; title: string } | null>(null);
+  const [accessCounts, setAccessCounts] = useState<Record<string, number>>({});
+
   const fetchCategories = useCallback(async () => {
     const { data } = await supabase
       .from("teaching_material_categories")
