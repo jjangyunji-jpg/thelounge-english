@@ -95,7 +95,7 @@ export default function DialogueGeneratorModal({
   useEffect(() => {
     if (!previewEditor) return;
     if (previewEditor.getHTML() === dialogueHtml) return;
-    previewEditor.commands.setContent(dialogueHtml || "", false);
+    previewEditor.commands.setContent(dialogueHtml || "", { emitUpdate: false });
   }, [dialogueHtml, previewEditor]);
 
   // Toggle editable when revising
