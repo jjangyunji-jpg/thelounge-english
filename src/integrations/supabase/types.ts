@@ -1271,6 +1271,42 @@ export type Database = {
         }
         Relationships: []
       }
+      teaching_material_instructors: {
+        Row: {
+          created_at: string
+          id: string
+          instructor_id: string
+          material_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instructor_id: string
+          material_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instructor_id?: string
+          material_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teaching_material_instructors_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_material_instructors_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teaching_materials: {
         Row: {
           category: string
