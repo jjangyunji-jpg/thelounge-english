@@ -9,6 +9,18 @@ interface NotificationPopupContentProps {
   onConfirm: () => void;
 }
 
+/** Render text with **bold** markdown converted to <strong>. */
+function renderWithBold(text: string) {
+  if (!text) return null;
+  const parts = text.split(/(\*\*[^*\n]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 export default function NotificationPopupContent({
   subject,
   body,
@@ -27,7 +39,7 @@ export default function NotificationPopupContent({
       <div className="min-w-0 space-y-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground break-words [overflow-wrap:anywhere]">
-            {subject || "(제목 없음)"}
+            {subject ? renderWithBold(subject) : "(제목 없음)"}
           </p>
           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
@@ -37,7 +49,7 @@ export default function NotificationPopupContent({
 
         <div className="max-w-full rounded-lg bg-muted/40 p-3">
           <p className="max-w-full whitespace-pre-wrap text-sm leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">
-            {body || "(내용 없음)"}
+            {body ? renderWithBold(body) : "(내용 없음)"}
           </p>
         </div>
 

@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
-import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2, CalendarIcon, ChevronDown, Clock, CheckCircle2, Eye } from "lucide-react";
+import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2, CalendarIcon, ChevronDown, Clock, CheckCircle2, Eye, Bold } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,6 +89,26 @@ export default function MessageCenter() {
   const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
   const [loadingSent, setLoadingSent] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const wrapBoldInBody = () => {
+    const ta = bodyRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = broadcastBody.slice(0, start);
+    const selected = broadcastBody.slice(start, end);
+    const after = broadcastBody.slice(end);
+    const inner = selected || "굵은 글씨";
+    const next = `${before}**${inner}**${after}`;
+    setBroadcastBody(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const cursorStart = start + 2;
+      const cursorEnd = cursorStart + inner.length;
+      ta.setSelectionRange(cursorStart, cursorEnd);
+    });
+  };
 
   const fetchSentNotifications = async () => {
     setLoadingSent(true);
@@ -200,13 +220,30 @@ export default function MessageCenter() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">내용</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">내용</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={wrapBoldInBody}
+                  className="h-6 px-2 gap-1 text-[11px]"
+                  title="선택한 텍스트를 굵게 (**텍스트**)"
+                >
+                  <Bold className="w-3 h-3" />
+                  굵게
+                </Button>
+              </div>
               <Textarea
-                placeholder="공지 내용을 입력하세요..."
+                ref={bodyRef}
+                placeholder="공지 내용을 입력하세요... (굵게: **텍스트**)"
                 value={broadcastBody}
                 onChange={(e) => setBroadcastBody(e.target.value)}
                 className="resize-none h-24 text-sm"
               />
+              <p className="text-[11px] text-muted-foreground">
+                팁: 글씨를 선택하고 <span className="font-semibold">굵게</span> 버튼을 누르거나, <code className="px-1 rounded bg-muted">**텍스트**</code> 형식으로 입력하세요.
+              </p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
