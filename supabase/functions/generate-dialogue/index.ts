@@ -10,10 +10,21 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { situation, speakers, student, level, mustInclude, tone } = await req.json();
+    const {
+      situation,
+      speakers,
+      student,
+      level,
+      mustInclude,
+      tone,
+      previousDialogue,
+      revisionInstruction,
+    } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const isRevision = !!(previousDialogue && revisionInstruction);
 
     const systemPrompt = `You are an expert English dialogue writer for ESL/EFL education. You create natural, realistic conversations that sound like real people talking — NOT textbook dialogues. 
 
@@ -26,16 +37,7 @@ Rules:
 - If any input field is empty, use your best judgment to fill in reasonable defaults
 - The dialogue MUST be educational and relevant to the student's level`;
 
-    const userPrompt = `Generate a natural English dialogue with the following parameters:
-
-Situation: ${situation || "A casual everyday conversation"}
-Speakers: ${speakers || "Two people"}
-Student info: ${student || "An adult Korean English learner"}
-English Level (CEFR): ${level || "B1"}
-Must include these expressions/words/grammar: ${mustInclude || "No specific requirements"}
-Tone: ${tone || "Casual"}
-
-Format the output EXACTLY like this (use HTML formatting):
+    const baseFormatInstructions = `Format the output EXACTLY like this (use HTML formatting):
 
 <h2>📚 Key Expressions</h2>
 <table>
@@ -61,6 +63,42 @@ Format the output EXACTLY like this (use HTML formatting):
 ...continue translations...
 
 Pick the most useful, natural expressions from the dialogue for the Key Expressions table. Focus on phrases the student can reuse in real life. Use the actual speaker names from the input. Make the dialogue feel real and natural, not like a textbook exercise.`;
+
+    let userPrompt: string;
+
+    if (isRevision) {
+      userPrompt = `You previously generated the following English dialogue with these parameters:
+
+Situation: ${situation || "A casual everyday conversation"}
+Speakers: ${speakers || "Two people"}
+Student info: ${student || "An adult Korean English learner"}
+English Level (CEFR): ${level || "B1"}
+Must include these expressions/words/grammar: ${mustInclude || "No specific requirements"}
+Tone: ${tone || "Casual"}
+
+[PREVIOUS DIALOGUE]
+${previousDialogue}
+[END OF PREVIOUS DIALOGUE]
+
+Now revise the dialogue according to the following instruction from the instructor. Keep the overall flow, length, structure, and most of the content the same, but apply the requested change naturally throughout the dialogue, the Korean translation, and the Key Expressions table where relevant.
+
+[REVISION INSTRUCTION]
+${revisionInstruction}
+[END OF REVISION INSTRUCTION]
+
+${baseFormatInstructions}`;
+    } else {
+      userPrompt = `Generate a natural English dialogue with the following parameters:
+
+Situation: ${situation || "A casual everyday conversation"}
+Speakers: ${speakers || "Two people"}
+Student info: ${student || "An adult Korean English learner"}
+English Level (CEFR): ${level || "B1"}
+Must include these expressions/words/grammar: ${mustInclude || "No specific requirements"}
+Tone: ${tone || "Casual"}
+
+${baseFormatInstructions}`;
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
