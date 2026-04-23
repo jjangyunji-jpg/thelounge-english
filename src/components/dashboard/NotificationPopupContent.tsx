@@ -39,7 +39,7 @@ export default function NotificationPopupContent({
       <div className="min-w-0 space-y-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground break-words [overflow-wrap:anywhere]">
-            {subject || "(제목 없음)"}
+            {subject ? renderWithBold(subject) : "(제목 없음)"}
           </p>
           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
