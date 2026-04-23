@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-// Switch retained for "발송 예약" toggle below
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import NotificationPopupContent from "@/components/dashboard/NotificationPopupContent";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -133,14 +133,12 @@ export default function MessageCenter() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">메시지 관리</h1>
         <p className="text-muted-foreground text-sm mt-1">자동 알림 설정 및 공지사항 발송</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Automation settings */}
         <Card className="shadow-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -161,7 +159,6 @@ export default function MessageCenter() {
           </CardContent>
         </Card>
 
-        {/* Broadcast */}
         <Card className="shadow-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -170,7 +167,6 @@ export default function MessageCenter() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Target */}
             <div>
               <Label className="text-xs text-muted-foreground mb-2 block">발송 대상</Label>
               <div className="flex gap-2">
@@ -212,7 +208,6 @@ export default function MessageCenter() {
                 className="resize-none h-24 text-sm"
               />
             </div>
-            {/* Schedule */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs text-muted-foreground">발송 예약</Label>
@@ -272,7 +267,6 @@ export default function MessageCenter() {
         </Card>
       </div>
 
-      {/* Sent Notifications - Collapsible */}
       <Collapsible open={sentOpen} onOpenChange={setSentOpen}>
         <Card className="shadow-card border-border">
           <CollapsibleTrigger asChild>
@@ -305,8 +299,8 @@ export default function MessageCenter() {
                         {format(new Date(n.sent_at), "yyyy.MM.dd HH:mm")}
                       </span>
                     </div>
-                    <p className="text-sm font-semibold text-foreground mb-1">{n.subject}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{n.body}</p>
+                    <p className="text-sm font-semibold text-foreground mb-1 break-words [overflow-wrap:anywhere]">{n.subject}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{n.body}</p>
                   </div>
                 ))
               )}
@@ -315,7 +309,6 @@ export default function MessageCenter() {
         </Card>
       </Collapsible>
 
-      {/* Message Templates - Collapsible (collapsed by default) */}
       <Collapsible open={templatesOpen} onOpenChange={setTemplatesOpen}>
         <Card className="shadow-card border-border">
           <CollapsibleTrigger asChild>
@@ -365,7 +358,7 @@ export default function MessageCenter() {
                       </Button>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{tmpl.content}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed break-words [overflow-wrap:anywhere]">{tmpl.content}</p>
                 </div>
               ))}
             </CardContent>
@@ -373,40 +366,16 @@ export default function MessageCenter() {
         </Card>
       </Collapsible>
 
-      {/* Preview Dialog - exact replica of recipient's NotificationInbox auto popup */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <Bell className="w-4 h-4 text-gold" />
-              새 공지사항
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                {broadcastSubject || "(제목 없음)"}
-              </p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                <Clock className="w-3 h-3" />
-                {useSchedule && broadcastDate
-                  ? `${format(broadcastDate, "yyyy.MM.dd")} 예약`
-                  : format(new Date(), "yyyy.MM.dd HH:mm")}
-              </p>
-            </div>
-            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/40 p-3 rounded-lg">
-              {broadcastBody || "(내용 없음)"}
-            </p>
-            <Button
-              onClick={() => setPreviewOpen(false)}
-              className="w-full bg-navy hover:bg-navy-light text-primary-foreground gap-2"
-            >
-              확인
-            </Button>
-            <p className="text-[10px] text-muted-foreground text-center">
-              ※ 실제 {targetLabel[broadcastTarget]} 사용자가 로그인 시 보게 될 팝업과 동일한 화면입니다.
-            </p>
-          </div>
+          <NotificationPopupContent
+            subject={broadcastSubject}
+            body={broadcastBody}
+            timestampLabel={useSchedule && broadcastDate
+              ? `${format(broadcastDate, "yyyy.MM.dd")} 예약`
+              : format(new Date(), "yyyy.MM.dd HH:mm")}
+            onConfirm={() => setPreviewOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
