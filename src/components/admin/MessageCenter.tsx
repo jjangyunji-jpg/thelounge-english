@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2, CalendarIcon, ChevronDown, Clock, CheckCircle2 } from "lucide-react";
+import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2, CalendarIcon, ChevronDown, Clock, CheckCircle2, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 // Switch retained for "발송 예약" toggle below
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
