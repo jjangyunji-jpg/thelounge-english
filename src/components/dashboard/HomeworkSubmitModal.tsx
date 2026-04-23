@@ -118,35 +118,63 @@ export default function HomeworkSubmitModal({
   const Icon = meta.icon;
   const recorder = useAudioRecorder();
 
-  // TTS for reading / memorizing description
+  // TTS (ElevenLabs cached) for reading / memorizing description
   const [speaking, setSpeaking] = useState(false);
-  const supportsTTS = typeof window !== "undefined" && "speechSynthesis" in window;
+  const [loadingTts, setLoadingTts] = useState(false);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsUrlCacheRef = useRef<string | null>(null);
   const canListen =
-    supportsTTS &&
     (assignment.type === "reading" || assignment.type === "memorizing") &&
     !!assignment.description?.trim();
 
   const stopSpeaking = useCallback(() => {
-    if (!supportsTTS) return;
-    window.speechSynthesis.cancel();
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current.currentTime = 0;
+    }
     setSpeaking(false);
-  }, [supportsTTS]);
+  }, []);
 
-  const toggleSpeak = useCallback(() => {
-    if (!canListen) return;
+  const toggleSpeak = useCallback(async () => {
+    if (!canListen || loadingTts) return;
     if (speaking) { stopSpeaking(); return; }
-    const utter = new SpeechSynthesisUtterance(assignment.description || "");
-    utter.lang = "en-US";
-    utter.rate = 0.95;
-    utter.onend = () => setSpeaking(false);
-    utter.onerror = () => setSpeaking(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
-    setSpeaking(true);
-  }, [canListen, speaking, assignment.description, stopSpeaking]);
 
-  // Stop speech when modal closes / unmounts
-  useEffect(() => () => { if (supportsTTS) window.speechSynthesis.cancel(); }, [supportsTTS]);
+    try {
+      let url = ttsUrlCacheRef.current;
+      if (!url) {
+        setLoadingTts(true);
+        const { data, error } = await supabase.functions.invoke("homework-tts", {
+          body: { text: assignment.description },
+        });
+        if (error) throw error;
+        if (!data?.audio_url) throw new Error("음성 URL을 받지 못했습니다.");
+        url = data.audio_url as string;
+        ttsUrlCacheRef.current = url;
+      }
+      const audio = new Audio(url);
+      ttsAudioRef.current = audio;
+      audio.onended = () => setSpeaking(false);
+      audio.onerror = () => { setSpeaking(false); toast({ title: "재생 실패", variant: "destructive" }); };
+      await audio.play();
+      setSpeaking(true);
+    } catch (e) {
+      toast({
+        title: "음성 생성 실패",
+        description: e instanceof Error ? e.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTts(false);
+    }
+  }, [canListen, speaking, loadingTts, assignment.description, stopSpeaking, toast]);
+
+  // Stop audio when modal closes / unmounts
+  useEffect(() => () => {
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current = null;
+    }
+  }, []);
 
   const isDraft = submission?.status === "draft";
 
