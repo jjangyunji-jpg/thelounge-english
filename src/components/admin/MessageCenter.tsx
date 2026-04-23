@@ -372,6 +372,40 @@ export default function MessageCenter() {
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      {/* Preview Dialog - mimics recipient inbox popup */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Eye className="w-4 h-4 text-gold" />
+              수신자에게 보일 미리보기
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              아래는 {targetLabel[broadcastTarget]} 사용자가 받게 될 공지 화면입니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
+                {targetLabel[broadcastTarget]}
+              </span>
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {useSchedule && broadcastDate
+                  ? `${format(broadcastDate, "yyyy.MM.dd")} 예약`
+                  : format(new Date(), "yyyy.MM.dd HH:mm")}
+              </span>
+            </div>
+            <p className="text-base font-semibold text-foreground">
+              {broadcastSubject || "(제목 없음)"}
+            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {broadcastBody || "(내용 없음)"}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
