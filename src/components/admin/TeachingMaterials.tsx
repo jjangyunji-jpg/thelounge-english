@@ -445,6 +445,13 @@ export default function TeachingMaterials() {
           )}
         </>
       )}
+
+      <MaterialAccessModal
+        open={!!accessMaterial}
+        onOpenChange={(o) => { if (!o) { setAccessMaterial(null); fetchMaterials(); } }}
+        materialId={accessMaterial?.id ?? null}
+        materialTitle={accessMaterial?.title ?? ""}
+      />
     </div>
   );
 }
