@@ -3500,6 +3500,7 @@ export default function InstructorDashboard() {
             <div className="flex items-center gap-1 border-b border-border">
               {([
                 { key: "regular" as const, label: "정규 수강생" },
+                { key: "paused" as const, label: "휴강생" },
                 { key: "corporate" as const, label: "기업 수강생" },
               ]).map((tab) => {
                 const isActive = studentTypeFilter === tab.key;
