@@ -245,18 +245,29 @@ export default function MessageCenter() {
                 </Popover>
               )}
             </div>
-            <Button
-              className="w-full bg-navy hover:bg-navy-light text-primary-foreground gap-2"
-              disabled={!broadcastSubject || !broadcastBody || (useSchedule && !broadcastDate) || sending}
-              onClick={handleSend}
-            >
-              <Send className="w-4 h-4" />
-              {sending
-                ? "발송 중..."
-                : useSchedule && broadcastDate
-                  ? `${format(broadcastDate, "MM/dd")} 예약 발송`
-                  : "즉시 발송하기"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 gap-2"
+                disabled={!broadcastSubject || !broadcastBody}
+                onClick={() => setPreviewOpen(true)}
+              >
+                <Eye className="w-4 h-4" />
+                미리보기
+              </Button>
+              <Button
+                className="flex-1 bg-navy hover:bg-navy-light text-primary-foreground gap-2"
+                disabled={!broadcastSubject || !broadcastBody || (useSchedule && !broadcastDate) || sending}
+                onClick={handleSend}
+              >
+                <Send className="w-4 h-4" />
+                {sending
+                  ? "발송 중..."
+                  : useSchedule && broadcastDate
+                    ? `${format(broadcastDate, "MM/dd")} 예약 발송`
+                    : "즉시 발송하기"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
