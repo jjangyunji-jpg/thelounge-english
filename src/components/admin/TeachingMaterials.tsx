@@ -280,9 +280,26 @@ export default function TeachingMaterials() {
                 >
                   <FolderOpen className="w-3.5 h-3.5" />
                   {cat.name}
+                  <span
+                    className={cn(
+                      "ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5",
+                      (categoryAccessCounts[cat.slug] ?? 0) > 0
+                        ? category === cat.slug
+                          ? "bg-primary-foreground/20 text-primary-foreground"
+                          : "bg-gold/15 text-gold border border-gold/30"
+                        : "bg-destructive/15 text-destructive border border-destructive/30"
+                    )}
+                    title="접근 가능한 강사 수"
+                  >
+                    <Users className="w-2.5 h-2.5" />
+                    {categoryAccessCounts[cat.slug] ?? 0}
+                  </span>
                 </button>
                 {category === cat.slug && (
                   <span className="flex items-center gap-0.5 bg-primary rounded-r-lg px-1 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={e => { e.stopPropagation(); setAccessCategory({ slug: cat.slug, name: cat.name }); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="강사 권한 설정">
+                      <Users className="w-3 h-3" />
+                    </button>
                     <button onClick={e => { e.stopPropagation(); setEditingCategoryId(cat.id); setEditCategoryName(cat.name); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="이름 변경">
                       <Pencil className="w-3 h-3" />
                     </button>
