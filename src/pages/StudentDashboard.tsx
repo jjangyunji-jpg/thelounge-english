@@ -2273,7 +2273,7 @@ export default function StudentDashboard() {
                             const status = sub?.status || "pending";
                             const meta = HW_META[a.type as HwType];
                             const Icon = meta?.icon ?? Brain;
-                            const isQuickType = a.type === "memorizing" || a.type === "speaking";
+                            const isQuickType = a.type === "speaking";
                             const isPending = status === "pending";
                             return (
                               <div key={sub?.id ?? `${a.id}-${idx}`} className="flex items-center gap-2.5 px-3 py-2.5">
