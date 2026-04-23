@@ -1,10 +1,38 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+/** Allow only public http(s) URLs; block internal/loopback/metadata addresses (SSRF guard). */
+function isSafeArticleUrl(input: string): boolean {
+  try {
+    const parsed = new URL(input);
+    if (!["http:", "https:"].includes(parsed.protocol)) return false;
+    const host = parsed.hostname.toLowerCase();
+    // Block loopback, link-local, private RFC1918, and cloud-metadata endpoints
+    const blocked = [
+      /^localhost$/,
+      /^127\./,
+      /^0\./,
+      /^10\./,
+      /^192\.168\./,
+      /^172\.(1[6-9]|2\d|3[01])\./,
+      /^169\.254\./,
+      /^::1$/,
+      /^fc00:/i,
+      /^fe80:/i,
+      /^metadata\./,
+    ];
+    if (blocked.some((re) => re.test(host))) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function fetchArticleFromUrl(url: string): Promise<string> {
   try {
@@ -39,6 +67,25 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Require authenticated caller
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.toLowerCase().startsWith("bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supa = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: userData, error: userErr } = await supa.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { articleText, articleUrl, level, duration } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -46,6 +93,11 @@ serve(async (req) => {
 
     let article = articleText || "";
     if (!article && articleUrl) {
+      if (!isSafeArticleUrl(articleUrl)) {
+        return new Response(JSON.stringify({ error: "유효하지 않은 URL입니다." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       article = await fetchArticleFromUrl(articleUrl);
     }
     if (!article.trim()) {
