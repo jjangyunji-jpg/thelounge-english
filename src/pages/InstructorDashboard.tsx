@@ -3407,6 +3407,7 @@ export default function InstructorDashboard() {
                     const sp = allPeriods[studentTabPeriodIdx] || period;
                     const todayStrCount = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
                     return students.filter(s => {
+                      if (s.status === "inactive") return false;
                       if (s.start_date && sp && s.start_date > sp.end_date) return false;
                       const isCorp = s.student_type === "corporate";
                       const onPause = s.pauses?.some(p => p.pause_start <= todayStrCount && (!p.pause_end || p.pause_end >= todayStrCount)) ?? false;
