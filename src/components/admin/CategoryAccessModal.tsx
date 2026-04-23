@@ -12,14 +12,14 @@ interface Instructor {
   active: boolean;
 }
 
-interface MaterialAccessModalProps {
+interface CategoryAccessModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  materialId: string | null;
-  materialTitle: string;
+  categorySlug: string | null;
+  categoryName: string;
 }
 
-export default function MaterialAccessModal({ open, onOpenChange, materialId, materialTitle }: MaterialAccessModalProps) {
+export default function CategoryAccessModal({ open, onOpenChange, categorySlug, categoryName }: CategoryAccessModalProps) {
   const { toast } = useToast();
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -27,19 +27,19 @@ export default function MaterialAccessModal({ open, onOpenChange, materialId, ma
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open || !materialId) return;
+    if (!open || !categorySlug) return;
     const load = async () => {
       setLoading(true);
       const [{ data: instr }, { data: links }] = await Promise.all([
         supabase.from("instructors").select("id, name, active").eq("active", true).order("name"),
-        supabase.from("teaching_material_instructors").select("instructor_id").eq("material_id", materialId),
+        supabase.from("teaching_category_instructors").select("instructor_id").eq("category", categorySlug),
       ]);
       setInstructors((instr as Instructor[]) ?? []);
       setSelected(new Set((links ?? []).map((l: any) => l.instructor_id)));
       setLoading(false);
     };
     load();
-  }, [open, materialId]);
+  }, [open, categorySlug]);
 
   const toggle = (id: string) => {
     const next = new Set(selected);
@@ -52,28 +52,27 @@ export default function MaterialAccessModal({ open, onOpenChange, materialId, ma
   const clearAll = () => setSelected(new Set());
 
   const handleSave = async () => {
-    if (!materialId) return;
+    if (!categorySlug) return;
     setSaving(true);
-    // Replace all links for this material
     const { error: delErr } = await supabase
-      .from("teaching_material_instructors")
+      .from("teaching_category_instructors")
       .delete()
-      .eq("material_id", materialId);
+      .eq("category", categorySlug);
     if (delErr) {
       toast({ title: "저장 실패", description: delErr.message, variant: "destructive" });
       setSaving(false);
       return;
     }
     if (selected.size > 0) {
-      const rows = Array.from(selected).map(instructor_id => ({ material_id: materialId, instructor_id }));
-      const { error: insErr } = await supabase.from("teaching_material_instructors").insert(rows);
+      const rows = Array.from(selected).map(instructor_id => ({ category: categorySlug, instructor_id }));
+      const { error: insErr } = await supabase.from("teaching_category_instructors").insert(rows);
       if (insErr) {
         toast({ title: "저장 실패", description: insErr.message, variant: "destructive" });
         setSaving(false);
         return;
       }
     }
-    toast({ title: "권한이 저장되었습니다 ✓", description: `${selected.size}명의 강사가 접근 가능합니다` });
+    toast({ title: "권한이 저장되었습니다 ✓", description: `${selected.size}명의 강사가 이 폴더에 접근 가능합니다` });
     setSaving(false);
     onOpenChange(false);
   };
@@ -83,10 +82,10 @@ export default function MaterialAccessModal({ open, onOpenChange, materialId, ma
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Users className="w-4 h-4 text-gold" /> 강사 접근 권한
+            <Users className="w-4 h-4 text-gold" /> 폴더 접근 권한
           </DialogTitle>
           <DialogDescription className="text-xs">
-            <span className="font-medium text-foreground">{materialTitle}</span> — 선택된 강사만 이 자료를 수업 노트에 삽입할 수 있습니다.
+            <span className="font-medium text-foreground">{categoryName}</span> 폴더 — 선택된 강사만 이 폴더의 자료를 수업 노트에 삽입할 수 있습니다.
           </DialogDescription>
         </DialogHeader>
 

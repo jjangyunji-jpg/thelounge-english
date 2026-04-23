@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff, Loader2, BookOpen, FolderPlus, FolderOpen, Check, X, Copy, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotesEditor from "@/components/classroom/NotesEditor";
-import MaterialAccessModal from "./MaterialAccessModal";
+import CategoryAccessModal from "./CategoryAccessModal";
 
 interface Material {
   id: string;
@@ -53,9 +53,9 @@ export default function TeachingMaterials() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // Access modal state
-  const [accessMaterial, setAccessMaterial] = useState<{ id: string; title: string } | null>(null);
-  const [accessCounts, setAccessCounts] = useState<Record<string, number>>({});
+  // Category access modal state
+  const [accessCategory, setAccessCategory] = useState<{ slug: string; name: string } | null>(null);
+  const [categoryAccessCounts, setCategoryAccessCounts] = useState<Record<string, number>>({});
 
   const fetchCategories = useCallback(async () => {
     const { data } = await supabase
@@ -68,6 +68,21 @@ export default function TeachingMaterials() {
     if (cats.length > 0 && !category) {
       setCategory(cats[0].slug);
     }
+    // Load access counts per category
+    if (cats.length > 0) {
+      const slugs = cats.map(c => c.slug);
+      const { data: links } = await supabase
+        .from("teaching_category_instructors")
+        .select("category")
+        .in("category", slugs);
+      const counts: Record<string, number> = {};
+      (links ?? []).forEach((l: any) => {
+        counts[l.category] = (counts[l.category] ?? 0) + 1;
+      });
+      setCategoryAccessCounts(counts);
+    } else {
+      setCategoryAccessCounts({});
+    }
   }, []);
 
   const fetchMaterials = useCallback(async () => {
@@ -78,23 +93,7 @@ export default function TeachingMaterials() {
       .select("*")
       .eq("category", category)
       .order("sort_order", { ascending: true });
-    const list = (data as Material[]) || [];
-    setMaterials(list);
-    // Load access counts per material
-    if (list.length > 0) {
-      const ids = list.map(m => m.id);
-      const { data: links } = await supabase
-        .from("teaching_material_instructors")
-        .select("material_id")
-        .in("material_id", ids);
-      const counts: Record<string, number> = {};
-      (links ?? []).forEach((l: any) => {
-        counts[l.material_id] = (counts[l.material_id] ?? 0) + 1;
-      });
-      setAccessCounts(counts);
-    } else {
-      setAccessCounts({});
-    }
+    setMaterials((data as Material[]) || []);
     setLoading(false);
   }, [category]);
 
@@ -281,9 +280,26 @@ export default function TeachingMaterials() {
                 >
                   <FolderOpen className="w-3.5 h-3.5" />
                   {cat.name}
+                  <span
+                    className={cn(
+                      "ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5",
+                      (categoryAccessCounts[cat.slug] ?? 0) > 0
+                        ? category === cat.slug
+                          ? "bg-primary-foreground/20 text-primary-foreground"
+                          : "bg-gold/15 text-gold border border-gold/30"
+                        : "bg-destructive/15 text-destructive border border-destructive/30"
+                    )}
+                    title="접근 가능한 강사 수"
+                  >
+                    <Users className="w-2.5 h-2.5" />
+                    {categoryAccessCounts[cat.slug] ?? 0}
+                  </span>
                 </button>
                 {category === cat.slug && (
                   <span className="flex items-center gap-0.5 bg-primary rounded-r-lg px-1 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={e => { e.stopPropagation(); setAccessCategory({ slug: cat.slug, name: cat.name }); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="강사 권한 설정">
+                      <Users className="w-3 h-3" />
+                    </button>
                     <button onClick={e => { e.stopPropagation(); setEditingCategoryId(cat.id); setEditCategoryName(cat.name); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="이름 변경">
                       <Pencil className="w-3 h-3" />
                     </button>
@@ -399,31 +415,16 @@ export default function TeachingMaterials() {
                     <div className="flex items-start gap-3">
                       <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0 cursor-grab active:cursor-grabbing" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-gold flex-shrink-0" />
                           <span className="font-medium text-sm text-foreground">{m.title}</span>
                           {!m.is_active && <span className="text-xs text-muted-foreground">(비활성)</span>}
-                          <span
-                            className={cn(
-                              "text-[10px] px-1.5 py-0.5 rounded font-medium flex items-center gap-1",
-                              (accessCounts[m.id] ?? 0) > 0
-                                ? "bg-gold/15 text-gold border border-gold/30"
-                                : "bg-destructive/10 text-destructive border border-destructive/30"
-                            )}
-                            title="접근 가능한 강사 수"
-                          >
-                            <Users className="w-2.5 h-2.5" />
-                            {accessCounts[m.id] ?? 0}명
-                          </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                           {m.content ? m.content.replace(/<[^>]*>/g, "").slice(0, 120) + "..." : "내용 없음"}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <button onClick={() => setAccessMaterial({ id: m.id, title: m.title })} className="p-1.5 rounded hover:bg-muted" title="강사 권한 설정">
-                          <Users className="w-3.5 h-3.5 text-gold" />
-                        </button>
                         <button onClick={() => handleToggleActive(m.id, m.is_active)} className="p-1.5 rounded hover:bg-muted" title={m.is_active ? "비활성화" : "활성화"}>
                           {m.is_active ? <Eye className="w-3.5 h-3.5 text-success" /> : <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
                         </button>
@@ -446,11 +447,11 @@ export default function TeachingMaterials() {
         </>
       )}
 
-      <MaterialAccessModal
-        open={!!accessMaterial}
-        onOpenChange={(o) => { if (!o) { setAccessMaterial(null); fetchMaterials(); } }}
-        materialId={accessMaterial?.id ?? null}
-        materialTitle={accessMaterial?.title ?? ""}
+      <CategoryAccessModal
+        open={!!accessCategory}
+        onOpenChange={(o) => { if (!o) { setAccessCategory(null); fetchCategories(); } }}
+        categorySlug={accessCategory?.slug ?? null}
+        categoryName={accessCategory?.name ?? ""}
       />
     </div>
   );
