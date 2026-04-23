@@ -1381,7 +1381,7 @@ export default function InstructorDashboard() {
   const [settlementYear, setSettlementYear] = useState(nowForSettlement.getFullYear());
   const [settlementMonth, setSettlementMonth] = useState(nowForSettlement.getMonth()); // 0-indexed
   const [studentTabPeriodIdx, setStudentTabPeriodIdx] = useState(-1);
-  const [studentTypeFilter, setStudentTypeFilter] = useState<"regular" | "corporate">("regular");
+  const [studentTypeFilter, setStudentTypeFilter] = useState<"regular" | "paused" | "corporate">("regular");
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editStudent, setEditStudent] = useState<StudentFull | null>(null);
   const [rescheduleSession, setRescheduleSession] = useState<ClassSession | null>(null);
@@ -3409,11 +3409,13 @@ export default function InstructorDashboard() {
                     return students.filter(s => {
                       if (s.start_date && sp && s.start_date > sp.end_date) return false;
                       const isCorp = s.student_type === "corporate";
-                      if (studentTypeFilter === "corporate" && !isCorp) return false;
-                      if (studentTypeFilter === "regular" && isCorp) return false;
-                      // Hide currently paused (regular tab only — paused corporate shouldn't really exist, but be safe)
                       const onPause = s.pauses?.some(p => p.pause_start <= todayStrCount && (!p.pause_end || p.pause_end >= todayStrCount)) ?? false;
-                      if (onPause && s.status === "active") return false;
+                      const isPaused = onPause && s.status === "active";
+                      if (studentTypeFilter === "corporate") return isCorp;
+                      if (studentTypeFilter === "paused") return isPaused && !isCorp;
+                      // regular tab: non-corp, non-paused
+                      if (isCorp) return false;
+                      if (isPaused) return false;
                       return true;
                     }).length;
                   })()}명
@@ -3498,6 +3500,7 @@ export default function InstructorDashboard() {
             <div className="flex items-center gap-1 border-b border-border">
               {([
                 { key: "regular" as const, label: "정규 수강생" },
+                { key: "paused" as const, label: "휴강생" },
                 { key: "corporate" as const, label: "기업 수강생" },
               ]).map((tab) => {
                 const isActive = studentTypeFilter === tab.key;
@@ -3522,12 +3525,14 @@ export default function InstructorDashboard() {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 if (st.start_date && selectedPeriod && st.start_date > selectedPeriod.end_date) return false;
                 const isCorp = st.student_type === "corporate";
-                if (studentTypeFilter === "corporate" && !isCorp) return false;
-                if (studentTypeFilter === "regular" && isCorp) return false;
-                // Hide currently-on-pause active students
                 const todayStrFilter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
                 const onPause = st.pauses?.some(p => p.pause_start <= todayStrFilter && (!p.pause_end || p.pause_end >= todayStrFilter)) ?? false;
-                if (onPause && st.status === "active") return false;
+                const isPaused = onPause && st.status === "active";
+                if (studentTypeFilter === "corporate") return isCorp;
+                if (studentTypeFilter === "paused") return isPaused && !isCorp;
+                // regular: non-corp and non-paused
+                if (isCorp) return false;
+                if (isPaused) return false;
                 return true;
               }).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko")).map((st) => {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
