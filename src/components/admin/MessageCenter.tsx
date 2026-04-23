@@ -89,6 +89,26 @@ export default function MessageCenter() {
   const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
   const [loadingSent, setLoadingSent] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const wrapBoldInBody = () => {
+    const ta = bodyRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = broadcastBody.slice(0, start);
+    const selected = broadcastBody.slice(start, end);
+    const after = broadcastBody.slice(end);
+    const inner = selected || "굵은 글씨";
+    const next = `${before}**${inner}**${after}`;
+    setBroadcastBody(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const cursorStart = start + 2;
+      const cursorEnd = cursorStart + inner.length;
+      ta.setSelectionRange(cursorStart, cursorEnd);
+    });
+  };
 
   const fetchSentNotifications = async () => {
     setLoadingSent(true);
