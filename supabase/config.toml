@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.suggest-student-goals]
 verify_jwt = false
+
+[functions.cleanup-homework-tts]
+verify_jwt = false
