@@ -88,6 +88,7 @@ export default function MessageCenter() {
   const [sentOpen, setSentOpen] = useState(false);
   const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
   const [loadingSent, setLoadingSent] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const fetchSentNotifications = async () => {
     setLoadingSent(true);
