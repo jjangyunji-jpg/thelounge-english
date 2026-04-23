@@ -399,16 +399,31 @@ export default function TeachingMaterials() {
                     <div className="flex items-start gap-3">
                       <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0 cursor-grab active:cursor-grabbing" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <BookOpen className="w-4 h-4 text-gold flex-shrink-0" />
                           <span className="font-medium text-sm text-foreground">{m.title}</span>
                           {!m.is_active && <span className="text-xs text-muted-foreground">(비활성)</span>}
+                          <span
+                            className={cn(
+                              "text-[10px] px-1.5 py-0.5 rounded font-medium flex items-center gap-1",
+                              (accessCounts[m.id] ?? 0) > 0
+                                ? "bg-gold/15 text-gold border border-gold/30"
+                                : "bg-destructive/10 text-destructive border border-destructive/30"
+                            )}
+                            title="접근 가능한 강사 수"
+                          >
+                            <Users className="w-2.5 h-2.5" />
+                            {accessCounts[m.id] ?? 0}명
+                          </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                           {m.content ? m.content.replace(/<[^>]*>/g, "").slice(0, 120) + "..." : "내용 없음"}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => setAccessMaterial({ id: m.id, title: m.title })} className="p-1.5 rounded hover:bg-muted" title="강사 권한 설정">
+                          <Users className="w-3.5 h-3.5 text-gold" />
+                        </button>
                         <button onClick={() => handleToggleActive(m.id, m.is_active)} className="p-1.5 rounded hover:bg-muted" title={m.is_active ? "비활성화" : "활성화"}>
                           {m.is_active ? <Eye className="w-3.5 h-3.5 text-success" /> : <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
                         </button>
