@@ -373,35 +373,38 @@ export default function MessageCenter() {
         </Card>
       </Collapsible>
 
-      {/* Preview Dialog - mimics recipient inbox popup */}
+      {/* Preview Dialog - exact replica of recipient's NotificationInbox auto popup */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-md bg-card border-border">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base text-foreground">
-              <Eye className="w-4 h-4 text-gold" />
-              수신자에게 보일 미리보기
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Bell className="w-4 h-4 text-gold" />
+              새 공지사항
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              아래는 {targetLabel[broadcastTarget]} 사용자가 받게 될 공지 화면입니다.
-            </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-border bg-background/60 p-4 space-y-2 shadow-inner">
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gold/15 text-gold border border-gold/30">
-                {targetLabel[broadcastTarget]}
-              </span>
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {broadcastSubject || "(제목 없음)"}
+              </p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                 <Clock className="w-3 h-3" />
                 {useSchedule && broadcastDate
                   ? `${format(broadcastDate, "yyyy.MM.dd")} 예약`
                   : format(new Date(), "yyyy.MM.dd HH:mm")}
-              </span>
+              </p>
             </div>
-            <p className="text-base font-semibold text-foreground">
-              {broadcastSubject || "(제목 없음)"}
-            </p>
-            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/40 p-3 rounded-lg">
               {broadcastBody || "(내용 없음)"}
+            </p>
+            <Button
+              onClick={() => setPreviewOpen(false)}
+              className="w-full bg-navy hover:bg-navy-light text-primary-foreground gap-2"
+            >
+              확인
+            </Button>
+            <p className="text-[10px] text-muted-foreground text-center">
+              ※ 실제 {targetLabel[broadcastTarget]} 사용자가 로그인 시 보게 될 팝업과 동일한 화면입니다.
             </p>
           </div>
         </DialogContent>
