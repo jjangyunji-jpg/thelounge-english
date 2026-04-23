@@ -28,7 +28,7 @@ interface Category {
 }
 
 const LEVELS = ["A", "B", "C"] as const;
-type LevelFilter = "all" | "A" | "B" | "C" | "archived";
+type LevelFilter = "unassigned" | "A" | "B" | "C" | "archived";
 
 export default function TeachingMaterials() {
   const { toast } = useToast();
