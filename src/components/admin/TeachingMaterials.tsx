@@ -140,6 +140,22 @@ export default function TeachingMaterials() {
     fetchCategories();
   };
 
+  const handleSetLevel = async (cat: Category, level: string | null) => {
+    const { error } = await supabase.from("teaching_material_categories").update({ level }).eq("id", cat.id);
+    if (error) { toast({ title: "레벨 변경 실패", description: error.message, variant: "destructive" }); return; }
+    toast({ title: level ? `${level} 레벨로 설정되었습니다` : "레벨이 해제되었습니다" });
+    fetchCategories();
+  };
+
+  const handleToggleArchive = async (cat: Category) => {
+    const next = !cat.is_archived;
+    const { error } = await supabase.from("teaching_material_categories").update({ is_archived: next }).eq("id", cat.id);
+    if (error) { toast({ title: "보관 상태 변경 실패", description: error.message, variant: "destructive" }); return; }
+    toast({ title: next ? "보관함으로 이동되었습니다" : "보관함에서 복원되었습니다" });
+    if (category === cat.slug && next) setCategory("");
+    fetchCategories();
+  };
+
   // ── Material CRUD ──
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
