@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import NotesEditor from "@/components/classroom/NotesEditor";
 import MaterialPickerModal from "@/components/classroom/MaterialPickerModal";
 import NoteVersionsModal from "@/components/classroom/NoteVersionsModal";
