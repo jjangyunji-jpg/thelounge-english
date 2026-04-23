@@ -342,17 +342,20 @@ export default function HomeworkSubmitModal({
             {canListen && (
               <button
                 onClick={toggleSpeak}
+                disabled={loadingTts}
                 title={speaking ? "듣기 중지" : "지문 듣기"}
                 className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors",
+                  "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors disabled:opacity-60",
                   speaking
                     ? "bg-[hsl(var(--gold-dark)/0.15)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold-dark)/0.25)]"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
               >
-                {speaking
-                  ? <><VolumeX className="w-3.5 h-3.5" />중지</>
-                  : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
+                {loadingTts
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />생성중</>
+                  : speaking
+                    ? <><VolumeX className="w-3.5 h-3.5" />중지</>
+                    : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
               </button>
             )}
             <button onClick={() => { stopSpeaking(); onClose(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
