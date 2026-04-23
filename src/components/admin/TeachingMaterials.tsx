@@ -272,9 +272,50 @@ export default function TeachingMaterials() {
         </div>
       </div>
 
+      {/* ── Level filter ── */}
+      <div className="flex items-center gap-1.5 flex-wrap border-b border-border pb-2">
+        <span className="text-xs text-muted-foreground mr-1">필터:</span>
+        {([
+          { key: "all", label: "전체" },
+          { key: "A", label: "A 레벨" },
+          { key: "B", label: "B 레벨" },
+          { key: "C", label: "C 레벨" },
+          { key: "archived", label: "보관함" },
+        ] as { key: LevelFilter; label: string }[]).map(f => {
+          const count =
+            f.key === "all" ? categories.filter(c => !c.is_archived).length :
+            f.key === "archived" ? categories.filter(c => c.is_archived).length :
+            categories.filter(c => !c.is_archived && c.level === f.key).length;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setLevelFilter(f.key)}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1",
+                levelFilter === f.key
+                  ? f.key === "archived"
+                    ? "bg-muted-foreground text-background"
+                    : "bg-gold text-background"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {f.key === "archived" && <Archive className="w-3 h-3" />}
+              {f.label}
+              <span className="text-[10px] opacity-70">({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── Category tabs ── */}
       <div className="flex items-center gap-2 flex-wrap">
-        {categories.map(cat => (
+        {categories
+          .filter(cat => {
+            if (levelFilter === "all") return !cat.is_archived;
+            if (levelFilter === "archived") return cat.is_archived;
+            return !cat.is_archived && cat.level === levelFilter;
+          })
+          .map(cat => (
           <div key={cat.id} className="group flex items-center">
             {editingCategoryId === cat.id ? (
               <div className="flex items-center gap-1">
@@ -296,12 +337,27 @@ export default function TeachingMaterials() {
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                     category === cat.slug
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted",
+                      : cat.is_archived
+                        ? "bg-muted/30 text-muted-foreground/70 hover:bg-muted/50 italic"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted",
                     category === cat.slug && "rounded-r-none"
                   )}
                 >
-                  <FolderOpen className="w-3.5 h-3.5" />
+                  {cat.is_archived ? <Archive className="w-3.5 h-3.5" /> : <FolderOpen className="w-3.5 h-3.5" />}
                   {cat.name}
+                  {cat.level && (
+                    <span
+                      className={cn(
+                        "ml-0.5 text-[10px] px-1.5 py-0.5 rounded font-bold",
+                        category === cat.slug
+                          ? "bg-primary-foreground/20 text-primary-foreground"
+                          : "bg-gold/15 text-gold border border-gold/30"
+                      )}
+                      title="레벨"
+                    >
+                      {cat.level}
+                    </span>
+                  )}
                   <span
                     className={cn(
                       "ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5",
@@ -319,11 +375,27 @@ export default function TeachingMaterials() {
                 </button>
                 {category === cat.slug && (
                   <span className="flex items-center gap-0.5 bg-primary rounded-r-lg px-1 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {LEVELS.map(lv => (
+                      <button
+                        key={lv}
+                        onClick={e => { e.stopPropagation(); handleSetLevel(cat, cat.level === lv ? null : lv); }}
+                        className={cn(
+                          "px-1 rounded text-[10px] font-bold hover:bg-primary-foreground/20 text-primary-foreground",
+                          cat.level === lv && "bg-primary-foreground/30"
+                        )}
+                        title={`${lv} 레벨로 설정`}
+                      >
+                        {lv}
+                      </button>
+                    ))}
                     <button onClick={e => { e.stopPropagation(); setAccessCategory({ slug: cat.slug, name: cat.name }); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="강사 권한 설정">
                       <Users className="w-3 h-3" />
                     </button>
                     <button onClick={e => { e.stopPropagation(); setEditingCategoryId(cat.id); setEditCategoryName(cat.name); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="이름 변경">
                       <Pencil className="w-3 h-3" />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); handleToggleArchive(cat); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title={cat.is_archived ? "보관함에서 복원" : "보관함으로 이동"}>
+                      {cat.is_archived ? <ArchiveRestore className="w-3 h-3" /> : <Archive className="w-3 h-3" />}
                     </button>
                     <button onClick={e => { e.stopPropagation(); handleDeleteCategory(cat); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="삭제">
                       <Trash2 className="w-3 h-3" />
