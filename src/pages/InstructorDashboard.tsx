@@ -3523,6 +3523,7 @@ export default function InstructorDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {students.filter((st) => {
+                if (st.status === "inactive") return false;
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 if (st.start_date && selectedPeriod && st.start_date > selectedPeriod.end_date) return false;
                 const isCorp = st.student_type === "corporate";
