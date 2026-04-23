@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import NotesEditor from "@/components/classroom/NotesEditor";
 import MaterialPickerModal from "@/components/classroom/MaterialPickerModal";
 import NoteVersionsModal from "@/components/classroom/NoteVersionsModal";
@@ -1466,8 +1467,8 @@ export default function Classroom() {
                     if (!raw) return "<p class='text-muted-foreground'>강사가 수업 노트를 작성하면 여기에 표시됩니다.</p>";
                     try {
                       const decoded = new DOMParser().parseFromString(raw, "text/html").body.innerHTML;
-                      return decoded;
-                    } catch { return raw; }
+                      return sanitizeHtml(decoded);
+                    } catch { return sanitizeHtml(raw); }
                   })() }}
                 />
               </div>

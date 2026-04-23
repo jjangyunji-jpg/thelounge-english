@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatStudentName } from "@/lib/formatStudentName";
 
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { supabase } from "@/integrations/supabase/client";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
@@ -339,7 +340,7 @@ export default function ClassNote() {
                       /(?<![="'>])(https?:\/\/[^\s<>"']+)/g,
                       '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
                     );
-                    return html;
+                    return sanitizeHtml(html);
                   })() }}
                 />
               </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText } from "lucide-react";
+import { sanitizeHtml } from "@/lib/sanitizeHtml";
 
 export default function ClassroomNotesMirror() {
   const [searchParams] = useSearchParams();
@@ -129,7 +130,7 @@ export default function ClassroomNotesMirror() {
         {isHtml ? (
           <div
             className="tiptap notes-mirror-content text-base leading-relaxed text-foreground"
-            dangerouslySetInnerHTML={{ __html: notes }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(notes) }}
           />
         ) : (
           <div className="whitespace-pre-wrap text-base leading-relaxed text-foreground font-mono">

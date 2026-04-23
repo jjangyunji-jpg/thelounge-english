@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, FileText, Loader2, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitizeHtml";
 
 interface Material {
   id: string;
@@ -166,7 +167,7 @@ export default function MaterialPickerModal({ open, onOpenChange, onInsert }: Ma
                 {selectedId === m.id && m.content && (
                   <div
                     className="tiptap mt-2 text-xs text-muted-foreground max-h-32 overflow-y-auto border-t border-border pt-2"
-                    dangerouslySetInnerHTML={{ __html: m.content.slice(0, 500) }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.content.slice(0, 500)) }}
                   />
                 )}
               </button>
