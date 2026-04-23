@@ -23,7 +23,12 @@ interface Category {
   name: string;
   slug: string;
   sort_order: number;
+  level: string | null;
+  is_archived: boolean;
 }
+
+const LEVELS = ["A", "B", "C"] as const;
+type LevelFilter = "all" | "A" | "B" | "C" | "archived";
 
 export default function TeachingMaterials() {
   const { toast } = useToast();
