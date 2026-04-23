@@ -11,6 +11,18 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+/**
+ * **UI-only access guard.** This component performs role/approval checks in
+ * the browser purely to redirect unauthorized users away from the route.
+ *
+ * It is NOT a security boundary — a determined attacker can bypass it by
+ * editing client JavaScript. All real authorization MUST be enforced by:
+ *  - Supabase Row-Level Security policies on every table
+ *  - Server-side role checks in edge functions (via `auth.getUser()` +
+ *    `has_role` / `is_manager_or_above` / `is_staff_or_above`)
+ *
+ * Never rely on this component alone to gate access to sensitive data.
+ */
 export default function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) {
   const [status, setStatus] = useState<"loading" | "authorized" | "unauthorized" | "unauthenticated" | "waitlist">("loading");
   const location = useLocation();
