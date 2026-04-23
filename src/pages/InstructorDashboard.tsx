@@ -578,25 +578,37 @@ function CollapsibleSessions({ sessions, onReschedule, onTopicChange }: { sessio
       </button>
       {open && sessions.map((s) => (
         <div key={s.id} className="px-2.5 py-1.5 rounded-lg bg-muted/20 border border-border ml-4 space-y-1">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-            <span className="text-[11px] text-foreground flex-1">
-              {fmtDateTime(s.scheduled_at)}
-              {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
-                <RefreshCw className="w-2.5 h-2.5 text-gold-dark inline ml-1 -mt-0.5" />
-              )}
-            </span>
-            {new Date(s.scheduled_at) <= new Date() ? (
-              <span className="text-[10px] text-success font-medium">완료</span>
-            ) : (
-              <button
-                onClick={() => onReschedule(s)}
-                className="text-[10px] text-navy hover:underline font-medium"
-              >
-                변경
-              </button>
-            )}
-          </div>
+          {(() => {
+            const isCancelled = !!s.cancellation_type;
+            const isPast = new Date(s.scheduled_at) <= new Date();
+            const cancelMeta = s.cancellation_type ? CANCELLATION_META[s.cancellation_type as CancellationType] : null;
+            return (
+              <div className="flex items-center gap-2">
+                <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <span className={cn(
+                  "text-[11px] flex-1",
+                  isCancelled ? "text-muted-foreground line-through" : "text-foreground"
+                )}>
+                  {fmtDateTime(s.scheduled_at)}
+                  {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
+                    <RefreshCw className="w-2.5 h-2.5 text-gold-dark inline ml-1 -mt-0.5" />
+                  )}
+                </span>
+                {cancelMeta ? (
+                  <span className={cn("text-[10px] font-medium", cancelMeta.color)}>{cancelMeta.label}</span>
+                ) : isPast ? (
+                  <span className="text-[10px] text-success font-medium">완료</span>
+                ) : (
+                  <button
+                    onClick={() => onReschedule(s)}
+                    className="text-[10px] text-navy hover:underline font-medium"
+                  >
+                    변경
+                  </button>
+                )}
+              </div>
+            );
+          })()}
           {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
             <p className="ml-5 text-[9px] text-gold-dark flex items-center gap-1">
               <RefreshCw className="w-2.5 h-2.5" />
