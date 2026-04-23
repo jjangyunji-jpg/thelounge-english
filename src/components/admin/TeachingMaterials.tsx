@@ -78,7 +78,23 @@ export default function TeachingMaterials() {
       .select("*")
       .eq("category", category)
       .order("sort_order", { ascending: true });
-    setMaterials((data as Material[]) || []);
+    const list = (data as Material[]) || [];
+    setMaterials(list);
+    // Load access counts per material
+    if (list.length > 0) {
+      const ids = list.map(m => m.id);
+      const { data: links } = await supabase
+        .from("teaching_material_instructors")
+        .select("material_id")
+        .in("material_id", ids);
+      const counts: Record<string, number> = {};
+      (links ?? []).forEach((l: any) => {
+        counts[l.material_id] = (counts[l.material_id] ?? 0) + 1;
+      });
+      setAccessCounts(counts);
+    } else {
+      setAccessCounts({});
+    }
     setLoading(false);
   }, [category]);
 
