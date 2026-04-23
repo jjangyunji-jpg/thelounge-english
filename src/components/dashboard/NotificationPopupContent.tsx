@@ -49,7 +49,7 @@ export default function NotificationPopupContent({
 
         <div className="max-w-full rounded-lg bg-muted/40 p-3">
           <p className="max-w-full whitespace-pre-wrap text-sm leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">
-            {body || "(내용 없음)"}
+            {body ? renderWithBold(body) : "(내용 없음)"}
           </p>
         </div>
 
