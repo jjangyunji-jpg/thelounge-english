@@ -334,30 +334,8 @@ export default function DialogueGeneratorModal({
 
         {step === "preview" && (
           <div className="space-y-4">
-            {/* Editable preview */}
+            {/* AI revision input — moved to top */}
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">
-                생성된 Dialogue (HTML 직접 편집 가능)
-              </Label>
-              <Textarea
-                value={dialogueHtml}
-                onChange={(e) => setDialogueHtml(e.target.value)}
-                className="font-mono text-xs h-64 resize-y"
-                disabled={revising}
-              />
-            </div>
-
-            {/* Rendered preview */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">미리보기</Label>
-              <div
-                className="border rounded-md p-3 max-h-64 overflow-y-auto bg-muted/30 text-sm prose prose-sm max-w-none dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: dialogueHtml }}
-              />
-            </div>
-
-            {/* AI revision input */}
-            <div className="space-y-1 border-t pt-3">
               <Label className="text-xs text-muted-foreground flex items-center gap-1">
                 <Wand2 className="w-3 h-3 text-gold" />
                 AI에게 수정 요청
@@ -388,6 +366,20 @@ export default function DialogueGeneratorModal({
                   </>
                 )}
               </Button>
+            </div>
+
+            {/* Editable rich preview (same engine as notes editor) */}
+            <div className="space-y-1 border-t pt-3">
+              <Label className="text-xs text-muted-foreground">
+                미리보기 (직접 수정 가능)
+              </Label>
+              <div
+                className={`border rounded-md bg-background max-h-[420px] overflow-y-auto ${
+                  revising ? "opacity-60 pointer-events-none" : ""
+                }`}
+              >
+                <EditorContent editor={previewEditor} />
+              </div>
             </div>
 
             {/* Actions */}
