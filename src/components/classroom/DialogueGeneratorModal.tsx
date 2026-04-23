@@ -66,6 +66,44 @@ export default function DialogueGeneratorModal({
   const [dialogueHtml, setDialogueHtml] = useState("");
   const [revisionInstruction, setRevisionInstruction] = useState("");
 
+  // TipTap editor for preview (same extensions as NotesEditor for table/format parity)
+  const previewEditor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+      }),
+      Underline,
+      Link.configure({ openOnClick: false, autolink: true }),
+      Table.configure({ resizable: true, allowTableNodeSelection: true }),
+      TableRow,
+      TableCell,
+      TableHeader,
+    ],
+    content: "",
+    editorProps: {
+      attributes: {
+        class:
+          "prose prose-sm max-w-none dark:prose-invert focus:outline-none min-h-[300px] px-3 py-2",
+      },
+    },
+    onUpdate: ({ editor }) => {
+      setDialogueHtml(editor.getHTML());
+    },
+  });
+
+  // Sync editor content when dialogueHtml changes externally (initial gen / AI revision)
+  useEffect(() => {
+    if (!previewEditor) return;
+    if (previewEditor.getHTML() === dialogueHtml) return;
+    previewEditor.commands.setContent(dialogueHtml || "", false);
+  }, [dialogueHtml, previewEditor]);
+
+  // Toggle editable when revising
+  useEffect(() => {
+    if (!previewEditor) return;
+    previewEditor.setEditable(!revising);
+  }, [revising, previewEditor]);
+
   // Restore last inputs when modal opens (per-student)
   useEffect(() => {
     if (!open) return;
