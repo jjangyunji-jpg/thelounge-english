@@ -3482,11 +3482,41 @@ export default function InstructorDashboard() {
               )}
             </div>
 
+            {/* Student type filter tabs */}
+            <div className="flex items-center gap-1 border-b border-border">
+              {([
+                { key: "regular" as const, label: "정규 수강생" },
+                { key: "corporate" as const, label: "기업 수강생" },
+              ]).map((tab) => {
+                const isActive = studentTypeFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setStudentTypeFilter(tab.key)}
+                    className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors -mb-px ${
+                      isActive
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {students.filter((st) => {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
-                if (!st.start_date || !selectedPeriod) return true;
-                return st.start_date <= selectedPeriod.end_date;
+                if (st.start_date && selectedPeriod && st.start_date > selectedPeriod.end_date) return false;
+                const isCorp = st.student_type === "corporate";
+                if (studentTypeFilter === "corporate" && !isCorp) return false;
+                if (studentTypeFilter === "regular" && isCorp) return false;
+                // Hide currently-on-pause active students
+                const todayStrFilter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                const onPause = st.pauses?.some(p => p.pause_start <= todayStrFilter && (!p.pause_end || p.pause_end >= todayStrFilter)) ?? false;
+                if (onPause && st.status === "active") return false;
+                return true;
               }).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko")).map((st) => {
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 const stats = getStudentStats(st.student_name, st.schedules, selectedPeriod);
