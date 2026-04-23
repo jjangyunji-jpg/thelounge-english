@@ -310,10 +310,27 @@ export default function HomeworkSubmitModal({
             <span className="text-sm font-bold text-foreground">{assignment.title}</span>
             <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>{meta.label}</span>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+          <div className="flex items-center gap-1.5">
+            {canListen && (
+              <button
+                onClick={toggleSpeak}
+                title={speaking ? "듣기 중지" : "지문 듣기"}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors",
+                  speaking
+                    ? "bg-[hsl(var(--gold-dark)/0.15)] text-[hsl(var(--gold-dark))] hover:bg-[hsl(var(--gold-dark)/0.25)]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+              >
+                {speaking
+                  ? <><VolumeX className="w-3.5 h-3.5" />중지</>
+                  : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
+              </button>
+            )}
+            <button onClick={() => { stopSpeaking(); onClose(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Description */}
