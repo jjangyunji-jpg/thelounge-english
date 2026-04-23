@@ -28,7 +28,7 @@ interface Category {
 }
 
 const LEVELS = ["A", "B", "C"] as const;
-type LevelFilter = "all" | "A" | "B" | "C" | "archived";
+type LevelFilter = "unassigned" | "A" | "B" | "C" | "archived";
 
 export default function TeachingMaterials() {
   const { toast } = useToast();
@@ -276,14 +276,14 @@ export default function TeachingMaterials() {
       <div className="flex items-center gap-1.5 flex-wrap border-b border-border pb-2">
         <span className="text-xs text-muted-foreground mr-1">필터:</span>
         {([
-          { key: "all", label: "전체" },
           { key: "A", label: "A 레벨" },
           { key: "B", label: "B 레벨" },
           { key: "C", label: "C 레벨" },
+          { key: "unassigned", label: "미분류" },
           { key: "archived", label: "보관함" },
         ] as { key: LevelFilter; label: string }[]).map(f => {
           const count =
-            f.key === "all" ? categories.filter(c => !c.is_archived).length :
+            f.key === "unassigned" ? categories.filter(c => !c.is_archived && !c.level).length :
             f.key === "archived" ? categories.filter(c => c.is_archived).length :
             categories.filter(c => !c.is_archived && c.level === f.key).length;
           return (
@@ -311,7 +311,7 @@ export default function TeachingMaterials() {
       <div className="flex items-center gap-2 flex-wrap">
         {categories
           .filter(cat => {
-            if (levelFilter === "all") return !cat.is_archived;
+            if (levelFilter === "unassigned") return !cat.is_archived && !cat.level;
             if (levelFilter === "archived") return cat.is_archived;
             return !cat.is_archived && cat.level === levelFilter;
           })
