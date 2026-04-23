@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2, CalendarIcon, ChevronDown, Clock, CheckCircle2 } from "lucide-react";
+import { Send, Bell, FileText, Users, GraduationCap, Plus, Trash2, CalendarIcon, ChevronDown, Clock, CheckCircle2, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 // Switch retained for "발송 예약" toggle below
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -87,6 +88,7 @@ export default function MessageCenter() {
   const [sentOpen, setSentOpen] = useState(false);
   const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
   const [loadingSent, setLoadingSent] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const fetchSentNotifications = async () => {
     setLoadingSent(true);
@@ -243,18 +245,29 @@ export default function MessageCenter() {
                 </Popover>
               )}
             </div>
-            <Button
-              className="w-full bg-navy hover:bg-navy-light text-primary-foreground gap-2"
-              disabled={!broadcastSubject || !broadcastBody || (useSchedule && !broadcastDate) || sending}
-              onClick={handleSend}
-            >
-              <Send className="w-4 h-4" />
-              {sending
-                ? "발송 중..."
-                : useSchedule && broadcastDate
-                  ? `${format(broadcastDate, "MM/dd")} 예약 발송`
-                  : "즉시 발송하기"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 gap-2"
+                disabled={!broadcastSubject || !broadcastBody}
+                onClick={() => setPreviewOpen(true)}
+              >
+                <Eye className="w-4 h-4" />
+                미리보기
+              </Button>
+              <Button
+                className="flex-1 bg-navy hover:bg-navy-light text-primary-foreground gap-2"
+                disabled={!broadcastSubject || !broadcastBody || (useSchedule && !broadcastDate) || sending}
+                onClick={handleSend}
+              >
+                <Send className="w-4 h-4" />
+                {sending
+                  ? "발송 중..."
+                  : useSchedule && broadcastDate
+                    ? `${format(broadcastDate, "MM/dd")} 예약 발송`
+                    : "즉시 발송하기"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -359,6 +372,40 @@ export default function MessageCenter() {
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      {/* Preview Dialog - mimics recipient inbox popup */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Eye className="w-4 h-4 text-gold" />
+              수신자에게 보일 미리보기
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              아래는 {targetLabel[broadcastTarget]} 사용자가 받게 될 공지 화면입니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
+                {targetLabel[broadcastTarget]}
+              </span>
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {useSchedule && broadcastDate
+                  ? `${format(broadcastDate, "yyyy.MM.dd")} 예약`
+                  : format(new Date(), "yyyy.MM.dd HH:mm")}
+              </span>
+            </div>
+            <p className="text-base font-semibold text-foreground">
+              {broadcastSubject || "(제목 없음)"}
+            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {broadcastBody || "(내용 없음)"}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
