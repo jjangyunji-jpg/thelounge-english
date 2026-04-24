@@ -10,7 +10,7 @@ import {
   Star, MessageSquare, Download, Bug, RotateCcw,
 } from "lucide-react";
 import BugReportModal from "@/components/dashboard/BugReportModal";
-import FeedbackHistoryModal from "@/components/dashboard/FeedbackHistoryModal";
+import InstructorFeedbackTab from "@/components/dashboard/InstructorFeedbackTab";
 import NotificationInbox from "@/components/dashboard/NotificationInbox";
 import StudentFeedbackModal from "@/components/dashboard/StudentFeedbackModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
@@ -1397,8 +1397,6 @@ export default function InstructorDashboard() {
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
   const [cancellationModal, setCancellationModal] = useState<{ session: ClassSession } | null>(null);
   const [preClassChecklist, setPreClassChecklist] = useState<ClassSession | null>(null);
-  const [studentFeedbackHistory, setStudentFeedbackHistory] = useState<Record<string, { id: string; period_label: string; checklist: any; comment: string | null; suggested_goals: string | null; created_at: string; instructor_name: string }[]>>({});
-  const [feedbackHistoryModalStudent, setFeedbackHistoryModalStudent] = useState<string | null>(null);
   useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
@@ -1553,21 +1551,6 @@ export default function InstructorDashboard() {
     setSubmissions((subRes.data || []) as HomeworkSubmission[]);
     setAllInstructors((allInsRes.data || []) as { id: string; name: string }[]);
 
-    // Load student feedback history for all students of this instructor
-    const fbStudentNames = studentsWithPauses.map(s => s.student_name);
-    if (fbStudentNames.length > 0) {
-      const { data: fbHistory } = await supabase
-        .from("instructor_student_feedback" as any)
-        .select("id, student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
-        .in("student_name", studentNames)
-        .order("created_at", { ascending: false });
-      const fbMap: Record<string, any[]> = {};
-      (fbHistory || []).forEach((fb: any) => {
-        if (!fbMap[fb.student_name]) fbMap[fb.student_name] = [];
-        fbMap[fb.student_name].push(fb);
-      });
-      setStudentFeedbackHistory(fbMap);
-    }
     // Merge own meetings + attended meetings (avoid duplicates)
     const ownMeetings = meetRes.data || [];
     const attendedMeetingIds = new Set((attendedRes.data || []).map((a: any) => a.meeting_id));
