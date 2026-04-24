@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, MessageSquare, Sparkles, ChevronLeft, ChevronRight, Pencil, Check, X, Loader2 } from "lucide-react";
+import { Star, MessageSquare, Sparkles, ChevronLeft, ChevronRight, Pencil, Check, X, Loader2, Edit3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
