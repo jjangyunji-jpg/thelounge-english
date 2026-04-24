@@ -156,14 +156,34 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     return sessions.filter(s => new Date(s.scheduled_at).getTime() > cutoff);
   }, [sessions]);
 
+  // Determine the active period for the originally-scheduled session.
+  // Reschedule/makeup MUST stay within the same monthly schedule_period.
+  // Extra requests are not bound (no original session).
+  const activePeriod = useMemo<SchedulePeriod | null>(() => {
+    const originIso =
+      requestType === "reschedule" ? selectedSession?.scheduled_at :
+      requestType === "makeup" ? selectedCancelledSession?.scheduled_at :
+      null;
+    if (!originIso) return null;
+    // Convert origin to KST date string (YYYY-MM-DD)
+    const originDate = new Date(originIso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+    return periods.find(p => originDate >= p.start_date && originDate <= p.end_date) || null;
+  }, [requestType, selectedSession, selectedCancelledSession, periods]);
+
+  // Filter slots by active period (if any)
+  const visibleSlots = useMemo(() => {
+    if (!activePeriod) return slots;
+    return slots.filter(s => s.slot_date >= activePeriod.start_date && s.slot_date <= activePeriod.end_date);
+  }, [slots, activePeriod]);
+
   const slotDates = useMemo(() => {
     const map = new Map<string, AvailableSlot[]>();
-    for (const s of slots) {
+    for (const s of visibleSlots) {
       if (!map.has(s.slot_date)) map.set(s.slot_date, []);
       map.get(s.slot_date)!.push(s);
     }
     return map;
-  }, [slots]);
+  }, [visibleSlots]);
 
   const dateSlots = useMemo(() => {
     if (!selectedDate) return [];
