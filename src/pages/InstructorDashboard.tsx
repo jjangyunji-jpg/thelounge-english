@@ -1365,10 +1365,6 @@ export default function InstructorDashboard() {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "makeup" | "profile" | "guide">("dashboard");
-  const [feedbackData, setFeedbackData] = useState<any[]>([]);
-  const [feedbackCategories, setFeedbackCategories] = useState<{ key: string; label: string }[]>([]);
-  const [feedbackPeriodIdx, setFeedbackPeriodIdx] = useState(-1);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileNickname, setProfileNickname] = useState("");
   const [profileNewPw, setProfileNewPw] = useState("");
