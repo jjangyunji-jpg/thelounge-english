@@ -1023,6 +1023,7 @@ export default function StudentDashboard() {
     d => d.getTime() > Date.now() && !existingSessionDates.has(d.toDateString()) &&
       !rescheduledOriginDateStrings.has(d.toDateString()) &&
       !instructorCancelledDates.has(d.toDateString()) &&
+      !deletedDates.has(d.toDateString()) &&
       !(studentRecord?.pauses?.some(p => {
         const dateKey = toLocalDateKey(d);
         return dateKey >= p.pause_start && (!p.pause_end || dateKey <= p.pause_end);
@@ -1047,7 +1048,7 @@ export default function StudentDashboard() {
   // 수업일수: 지난 실제 세션 + 반복 일정에서 시작일 ~ 오늘까지 지나간 날 (중복 제거)
   const pastSessions = sessions.filter(s => msUntil(s.scheduled_at) <= 0);
   const pastRecurring = recurringDates.filter(
-    d => d.getTime() <= Date.now() && !existingSessionDates.has(d.toDateString()) && !rescheduledOriginDateStrings.has(d.toDateString()) && !instructorCancelledDates.has(d.toDateString())
+    d => d.getTime() <= Date.now() && !existingSessionDates.has(d.toDateString()) && !rescheduledOriginDateStrings.has(d.toDateString()) && !instructorCancelledDates.has(d.toDateString()) && !deletedDates.has(d.toDateString())
   );
   const totalClassDays = pastSessions.length + pastRecurring.length;
 
@@ -1081,7 +1082,7 @@ export default function StudentDashboard() {
     ...recurringDates
       .filter((d) => {
         const dateKey = toLocalDateKey(d);
-        return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey) && !rescheduledOriginDateStrings.has(d.toDateString()) && !instructorCancelledDates.has(d.toDateString());
+        return !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey) && !rescheduledOriginDateStrings.has(d.toDateString()) && !instructorCancelledDates.has(d.toDateString()) && !deletedDates.has(d.toDateString());
       })
       .map((d) => d.toDateString()),
   ]);
@@ -1106,7 +1107,7 @@ export default function StudentDashboard() {
   }
   for (const d of recurringDates) {
     const dateKey = toLocalDateKey(d);
-    if (holidayDateStrings.has(d.toDateString()) || isDateInPause(dateKey) || rescheduledOriginDateStrings.has(d.toDateString()) || instructorCancelledDates.has(d.toDateString())) continue;
+    if (holidayDateStrings.has(d.toDateString()) || isDateInPause(dateKey) || rescheduledOriginDateStrings.has(d.toDateString()) || instructorCancelledDates.has(d.toDateString()) || deletedDates.has(d.toDateString())) continue;
     // skip if a real session exists at the same time (avoid dupes)
     const dKey = d.toDateString();
     const existing = dayDetailsMap.get(dKey) || [];
