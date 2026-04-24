@@ -640,8 +640,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                         const isToday = cell.date === todayStr;
                         const isSelected = cell.date === selectedDate;
                         const slotsForDay = slotDates.get(cell.date) || [];
-                        const bookedSlotIds = new Set(pendingRequests.map(r => r.slot_id));
-                        const availableCount = slotsForDay.filter(s => !bookedSlotIds.has(s.id)).length;
+                        // A slot is unavailable if it's booked OR pending by current user
+                        const pendingSlotIds = new Set(pendingRequests.map(r => r.slot_id));
+                        const availableCount = slotsForDay.filter(
+                          s => s.status === "open" && !pendingSlotIds.has(s.id)
+                        ).length;
+                        const totalCount = slotsForDay.length;
 
                         return (
                           <button key={idx}
@@ -661,9 +665,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                             {cell.inMonth && hasSlots && !isPast && (
                               <span className={cn("text-[8px] leading-none mt-0.5",
                                 isSelected ? "text-primary-foreground/80" :
-                                availableCount === 0 ? "text-destructive" : "text-[hsl(var(--success))]"
+                                availableCount === 0 ? "text-muted-foreground" : "text-[hsl(var(--success))]"
                               )}>
-                                {availableCount === 0 ? "매진" : `${availableCount}매`}
+                                {availableCount === 0 ? `${totalCount}매진` : `${availableCount}/${totalCount}매`}
                               </span>
                             )}
                             {isToday && !isSelected && (
