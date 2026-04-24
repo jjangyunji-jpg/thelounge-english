@@ -1558,7 +1558,7 @@ export default function InstructorDashboard() {
     if (fbStudentNames.length > 0) {
       const { data: fbHistory } = await supabase
         .from("instructor_student_feedback" as any)
-        .select("student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
+        .select("id, student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
         .in("student_name", studentNames)
         .order("created_at", { ascending: false });
       const fbMap: Record<string, any[]> = {};
