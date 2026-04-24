@@ -477,6 +477,7 @@ export default function StudentDashboard() {
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [allSessions, setAllSessions] = useState<ClassSession[]>([]);
   const [instructorCancelledDates, setInstructorCancelledDates] = useState<Set<string>>(new Set());
+  const [deletedDates, setDeletedDates] = useState<Set<string>>(new Set());
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [vocabWords, setVocabWords] = useState<VocabWord[]>([]);
@@ -654,7 +655,12 @@ export default function StudentDashboard() {
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
       // 휴강 공지 (팝업용은 미래만, 캘린더용은 전체)
       supabase.from("holiday_notices").select("id,title,date_start,date_end,reason,notify_students").order("date_start", { ascending: true }),
+      // 의도적으로 삭제된 수업 날짜 (가상 세션에서 제외)
+      supabase.from("deleted_session_dates").select("deleted_date").eq("student_name", student),
     ]);
+
+    // Last result is deletedDatesRes
+    const deletedDatesRes = (arguments as any) ? null : null; // placeholder, replaced below
 
     // Merge direct + group sessions, deduplicate by id
     const mergeAndDedup = (direct: any[], group: any[]) => {
