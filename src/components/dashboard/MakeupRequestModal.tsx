@@ -684,21 +684,25 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       <p className="text-xs font-semibold text-muted-foreground">회차를 선택하세요.</p>
                       <div className="flex flex-wrap gap-2">
                         {dateSlots.map(slot => {
-                          const isBooked = pendingRequests.some(r => r.slot_id === slot.id);
+                          const isMyPending = pendingRequests.some(r => r.slot_id === slot.id);
+                          const isBookedByOther = slot.status === "booked" && !isMyPending;
+                          const isUnavailable = isMyPending || isBookedByOther;
                           return (
-                            <button key={slot.id} disabled={isBooked}
+                            <button key={slot.id} disabled={isUnavailable}
                               onClick={() => { setSelectedSlot(slot); setStep("confirm"); }}
                               className={cn(
                                 "px-4 py-3 rounded-xl border text-center min-w-[110px] transition-all",
-                                isBooked && "border-border bg-muted/50 text-muted-foreground cursor-not-allowed",
-                                !isBooked && "border-border hover:border-primary/30 text-foreground",
+                                isUnavailable && "border-border bg-muted/50 text-muted-foreground cursor-not-allowed",
+                                !isUnavailable && "border-border hover:border-primary/30 text-foreground",
                               )}
                             >
-                              <p className="text-sm font-bold">{fmtTimeKo(slot.slot_time)}</p>
+                              <p className={cn("text-sm font-bold", isUnavailable && "line-through")}>{fmtTimeKo(slot.slot_time)}</p>
                               <p className={cn("text-[10px] mt-0.5",
-                                isBooked ? "text-destructive" : "text-[hsl(var(--success))]"
+                                isMyPending ? "text-primary" :
+                                isBookedByOther ? "text-muted-foreground" :
+                                "text-[hsl(var(--success))]"
                               )}>
-                                {isBooked ? "매진" : "1매"}
+                                {isMyPending ? "내 신청" : isBookedByOther ? "신청 완료" : "신청 가능"}
                               </p>
                             </button>
                           );
