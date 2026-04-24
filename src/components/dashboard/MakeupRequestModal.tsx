@@ -92,8 +92,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       if (!instructorName) { setLoading(false); return; }
       const now = new Date();
       const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes] = await Promise.all([
+        // Fetch both open AND booked slots so students can see the full picture
+        // (booked slots will be shown as "신청 완료" / 매진)
         supabase.from("instructor_available_slots").select("*")
-          .eq("instructor_name", instructorName).eq("status", "open")
+          .eq("instructor_name", instructorName).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time"),
         supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students")
           .eq("student_name", studentName).gte("scheduled_at", now.toISOString())
