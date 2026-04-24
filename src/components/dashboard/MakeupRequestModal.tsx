@@ -99,7 +99,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     (async () => {
       if (!instructorName) { setLoading(false); return; }
       const now = new Date();
-      const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes] = await Promise.all([
+      const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes, periodsRes] = await Promise.all([
         // Fetch both open AND booked slots so students can see the full picture
         // (booked slots will be shown as "신청 완료" / 매진)
         supabase.from("instructor_available_slots").select("*")
@@ -119,6 +119,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
           .eq("cancellation_resolution", "makeup")
           .order("scheduled_at", { ascending: false })
           .limit(20),
+        // Schedule periods to enforce monthly boundary rule
+        supabase.from("schedule_periods").select("id, label, start_date, end_date")
+          .eq("is_active", true).order("start_date"),
       ]);
 
       const sessionMap = new Map<string, ClassSession>();
@@ -130,6 +133,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
       ));
       setMyRequests((reqsRes.data || []) as MakeupReq[]);
+      setPeriods((periodsRes.data || []) as SchedulePeriod[]);
 
       // Filter cancelled sessions: exclude those that already have a pending/approved makeup request
       const allReqs = (reqsRes.data || []) as MakeupReq[];
