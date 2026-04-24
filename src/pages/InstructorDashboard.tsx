@@ -1365,10 +1365,6 @@ export default function InstructorDashboard() {
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "makeup" | "profile" | "guide">("dashboard");
-  const [feedbackData, setFeedbackData] = useState<any[]>([]);
-  const [feedbackCategories, setFeedbackCategories] = useState<{ key: string; label: string }[]>([]);
-  const [feedbackPeriodIdx, setFeedbackPeriodIdx] = useState(-1);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileNickname, setProfileNickname] = useState("");
   const [profileNewPw, setProfileNewPw] = useState("");
@@ -1623,36 +1619,8 @@ export default function InstructorDashboard() {
     }
   }, []);
 
-  // ── Load feedback data ──
-  const loadFeedback = useCallback(async (instrName: string, periodId: string | null) => {
-    setFeedbackLoading(true);
-    const [catRes, fbRes] = await Promise.all([
-      supabase.from("feedback_categories").select("key,label").eq("is_active", true).order("sort_order"),
-      instrName
-        ? (() => {
-            let q = supabase.from("class_feedback").select("*").eq("instructor_name", instrName).order("created_at", { ascending: false });
-            if (periodId) q = q.eq("period_id", periodId);
-            return q;
-          })()
-        : Promise.resolve({ data: [] }),
-    ]);
-    setFeedbackCategories(catRes.data || []);
-    setFeedbackData(fbRes.data || []);
-    setFeedbackLoading(false);
-  }, []);
 
-  useEffect(() => {
-    if (activeTab === "feedback" && instructor) {
-      const fbPeriod = feedbackPeriodIdx >= 0 && feedbackPeriodIdx < allPeriods.length ? allPeriods[feedbackPeriodIdx] : null;
-      loadFeedback(instructor.name, fbPeriod?.id || null);
-    }
-  }, [activeTab, feedbackPeriodIdx, instructor, allPeriods]);
 
-  useEffect(() => {
-    if (allPeriods.length > 0 && feedbackPeriodIdx < 0) {
-      setFeedbackPeriodIdx(allPeriods.length - 1);
-    }
-  }, [allPeriods]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -3689,152 +3657,11 @@ export default function InstructorDashboard() {
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* ═══ FEEDBACK TAB ════════════════════════════════════════════════ */}
         {/* ══════════════════════════════════════════════════════════════════ */}
-        {activeTab === "feedback" && (
-          <div className="space-y-4">
-            {/* Period navigator */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setFeedbackPeriodIdx(i => Math.max(0, i - 1))}
-                  disabled={feedbackPeriodIdx <= 0}
-                  className="p-1 rounded-md hover:bg-muted transition-colors disabled:opacity-30"
-                >
-                  <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-                </button>
-                <span className="text-sm font-bold text-foreground min-w-[80px] text-center">
-                  {feedbackPeriodIdx >= 0 && feedbackPeriodIdx < allPeriods.length
-                    ? allPeriods[feedbackPeriodIdx].label
-                    : "전체"}
-                </span>
-                <button
-                  onClick={() => setFeedbackPeriodIdx(i => Math.min(allPeriods.length - 1, i + 1))}
-                  disabled={feedbackPeriodIdx >= allPeriods.length - 1}
-                  className="p-1 rounded-md hover:bg-muted transition-colors disabled:opacity-30"
-                >
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </button>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                응답 {feedbackData.length}건
-              </span>
-            </div>
-
-            {feedbackLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : feedbackData.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground text-sm">
-                이 기간의 피드백이 아직 없습니다
-              </div>
-            ) : (
-              <>
-                {/* Summary cards */}
-                <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-navy" />
-                    평균 평점
-                  </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {feedbackCategories.map(cat => {
-                      const values = feedbackData
-                        .map(fb => {
-                          const r = fb.ratings as Record<string, number> | null;
-                          return r?.[cat.key] ?? 0;
-                        })
-                        .filter(v => v > 0);
-                      const avg = values.length > 0 ? values.reduce((a: number, b: number) => a + b, 0) / values.length : 0;
-                      return (
-                        <div key={cat.key} className="rounded-lg bg-muted/50 p-3 text-center space-y-1">
-                          <p className="text-[10px] text-muted-foreground font-medium">{cat.label}</p>
-                          <div className="flex items-center justify-center gap-1">
-                            <Star className="w-4 h-4 text-gold fill-gold" />
-                            <span className="text-lg font-bold text-foreground">{avg.toFixed(1)}</span>
-                          </div>
-                          <p className="text-[9px] text-muted-foreground">{values.length}명 응답</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {/* Overall average */}
-                  {(() => {
-                    const allValues = feedbackData.flatMap(fb => {
-                      const r = fb.ratings as Record<string, number> | null;
-                      if (!r) return [];
-                      return Object.values(r).filter(v => typeof v === "number" && v > 0);
-                    });
-                    const overallAvg = allValues.length > 0 ? allValues.reduce((a: number, b: number) => a + b, 0) / allValues.length : 0;
-                    return (
-                      <div className="flex items-center justify-between pt-3 border-t border-border">
-                        <span className="text-xs font-semibold text-foreground">종합 평균</span>
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3, 4, 5].map(n => (
-                              <Star key={n} className={cn("w-3.5 h-3.5", n <= Math.round(overallAvg) ? "text-gold fill-gold" : "text-muted-foreground/20")} />
-                            ))}
-                          </div>
-                          <span className="text-sm font-bold text-foreground">{overallAvg.toFixed(1)}</span>
-                          <span className="text-[10px] text-muted-foreground">/ 5.0</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Individual feedback */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-navy" />
-                    개별 피드백
-                  </h3>
-                  {[...feedbackData].sort((a, b) => {
-                    const hasComment = (fb: any) => fb.comment?.trim() ? 1 : 0;
-                    const commentDiff = hasComment(b) - hasComment(a);
-                    if (commentDiff !== 0) return commentDiff;
-                    const avgScore = (fb: any) => {
-                      const r = fb.ratings as Record<string, number> | null;
-                      if (!r) return 0;
-                      const vals = Object.values(r).filter(v => typeof v === "number" && v > 0);
-                      return vals.length > 0 ? vals.reduce((s: number, v: number) => s + v, 0) / vals.length : 0;
-                    };
-                    return avgScore(a) - avgScore(b);
-                  }).map((fb: any) => {
-                    const ratings = fb.ratings as Record<string, number> | null;
-                    return (
-                      <div key={fb.id} className="rounded-lg border border-border bg-card p-4 space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-foreground">{formatStudentName(fb.student_name)}</span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(fb.created_at).toLocaleDateString("ko-KR", { year: "numeric", month: "short", day: "numeric", timeZone: "Asia/Seoul" })}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {feedbackCategories.map(cat => {
-                            const val = ratings?.[cat.key] ?? 0;
-                            return (
-                              <div key={cat.key} className="flex items-center gap-1 text-[10px]">
-                                <span className="text-muted-foreground">{cat.label}</span>
-                                <div className="flex gap-px">
-                                  {[1, 2, 3, 4, 5].map(n => (
-                                    <Star key={n} className={cn("w-2.5 h-2.5", n <= val ? "text-gold fill-gold" : "text-muted-foreground/20")} />
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {fb.comment && (
-                          <p className="text-xs text-foreground/80 bg-muted/30 rounded-md px-3 py-2 italic">
-                            "{fb.comment}"
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
+        {activeTab === "feedback" && instructor && (
+          <InstructorFeedbackTab
+            instructorName={instructor.name}
+            allPeriods={allPeriods}
+          />
         )}
 
         {/* ══════════════════════════════════════════════════════════════════ */}
