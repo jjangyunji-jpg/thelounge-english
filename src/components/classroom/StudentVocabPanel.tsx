@@ -3,6 +3,7 @@ import {
   Volume2, Loader2, Square, ChevronDown, ChevronUp, BookOpen,
   RefreshCw, ClipboardCheck, History, Download,
   CheckCircle2, XCircle, Mic, Type, Trash2, BookMarked,
+  Pencil, Plus, Sparkles, Check, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
