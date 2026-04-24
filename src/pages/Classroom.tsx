@@ -1979,10 +1979,21 @@ export default function Classroom() {
             </div>
           )}
 
-          {/* ── RIGHT COLUMN (student only) ────────────────────────── */}
+          {/* ── RIGHT COLUMN ────────────────────────── */}
           {role === "student" && (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
               <StudentVocabPanel studentName={session.dbStudentName} scheduledAt={session.scheduledAt} sessionId={session.sessionId} />
+            </div>
+          )}
+          {role === "instructor" && session.sessionId && (
+            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
+              <StudentVocabPanel
+                studentName={session.dbStudentName}
+                scheduledAt={session.scheduledAt}
+                sessionId={session.sessionId}
+                instructorMode
+                noteContext={notes}
+              />
             </div>
           )}
 
