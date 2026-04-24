@@ -64,6 +64,13 @@ interface MakeupRequestModalProps {
   onClose: () => void;
 }
 
+interface SchedulePeriod {
+  id: string;
+  label: string;
+  start_date: string;
+  end_date: string;
+}
+
 export default function MakeupRequestModal({ studentName, instructorName, groupStudents, onClose }: MakeupRequestModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -71,6 +78,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [cancelledSessions, setCancelledSessions] = useState<ClassSession[]>([]);
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
+  const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
 
   const [step, setStep] = useState<"type" | "checklist" | "session" | "calendar" | "confirm">("type");
   const [checklistStep, setChecklistStep] = useState<number>(0); // 0~3: 4개 단계
