@@ -766,19 +766,21 @@ export default function Classroom() {
           setPrevHwList([]);
         }
 
-        // Fetch vocab tests between prevPrev and prev session
+        // Fetch vocab tests done as homework for the prev session.
+        // Window: from PREV session start (when homework was assigned)
+        //         to CURRENT session start (the deadline).
+        // Use completed_at — the actual finish time — instead of started_at,
+        // because started_at is the DB-row-creation time and can race with
+        // the client-generated completed_at by ~1s.
         const vocabQuery = supabase
           .from("vocabulary_tests")
           .select("id, score, total, started_at, completed_at")
           .eq("student_name", session.dbStudentName)
-          .not("completed_at", "is", null);
+          .not("completed_at", "is", null)
+          .gte("completed_at", prevSessData.scheduled_at)
+          .lt("completed_at", session.scheduledAt.toISOString());
 
-        if (prevPrevSess) {
-          vocabQuery.gte("started_at", prevPrevSess.scheduled_at);
-        }
-        vocabQuery.lte("started_at", prevSessData.scheduled_at);
-
-        const { data: vocabData } = await vocabQuery.order("started_at", { ascending: false });
+        const { data: vocabData } = await vocabQuery.order("completed_at", { ascending: false });
         setPrevVocabTests(vocabData || []);
       } else {
         setPrevHwList([]);
