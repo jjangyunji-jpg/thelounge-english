@@ -1619,36 +1619,8 @@ export default function InstructorDashboard() {
     }
   }, []);
 
-  // ── Load feedback data ──
-  const loadFeedback = useCallback(async (instrName: string, periodId: string | null) => {
-    setFeedbackLoading(true);
-    const [catRes, fbRes] = await Promise.all([
-      supabase.from("feedback_categories").select("key,label").eq("is_active", true).order("sort_order"),
-      instrName
-        ? (() => {
-            let q = supabase.from("class_feedback").select("*").eq("instructor_name", instrName).order("created_at", { ascending: false });
-            if (periodId) q = q.eq("period_id", periodId);
-            return q;
-          })()
-        : Promise.resolve({ data: [] }),
-    ]);
-    setFeedbackCategories(catRes.data || []);
-    setFeedbackData(fbRes.data || []);
-    setFeedbackLoading(false);
-  }, []);
 
-  useEffect(() => {
-    if (activeTab === "feedback" && instructor) {
-      const fbPeriod = feedbackPeriodIdx >= 0 && feedbackPeriodIdx < allPeriods.length ? allPeriods[feedbackPeriodIdx] : null;
-      loadFeedback(instructor.name, fbPeriod?.id || null);
-    }
-  }, [activeTab, feedbackPeriodIdx, instructor, allPeriods]);
 
-  useEffect(() => {
-    if (allPeriods.length > 0 && feedbackPeriodIdx < 0) {
-      setFeedbackPeriodIdx(allPeriods.length - 1);
-    }
-  }, [allPeriods]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
