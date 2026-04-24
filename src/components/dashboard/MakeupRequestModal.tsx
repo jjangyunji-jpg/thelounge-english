@@ -657,6 +657,14 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     {selectedDate ? `📅 ${fmtDateKo(selectedDate)} · 회차를 선택해 주세요.` : "날짜를 선택해주세요"}
                   </p>
 
+                  {activePeriod && (
+                    <div className="rounded-lg border border-[hsl(var(--gold)/0.3)] bg-[hsl(var(--gold)/0.05)] px-3 py-2 flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-[hsl(var(--gold-dark))] shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-foreground/80 leading-relaxed">
+                        <span className="font-semibold text-[hsl(var(--gold-dark))]">{activePeriod.label} 수업</span>은 같은 기간({fmtDateKo(activePeriod.start_date)} ~ {fmtDateKo(activePeriod.end_date)}) 안에서만 보강이 가능합니다.
+                      </p>
+                    </div>
+                  )}
                   <div className="rounded-xl border border-border p-3 space-y-2">
                     <div className="flex items-center justify-center gap-4">
                       <button onClick={() => { if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); } else setCalMonth(m => m - 1); }}
