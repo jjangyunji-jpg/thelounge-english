@@ -818,17 +818,48 @@ export default function StudentVocabPanel({
           </div>
         )}
 
+        {/* 강사 모드: 패널 상단 단어 추가 영역 */}
+        {instructorMode && !loading && (
+          <div className="border-b border-border">
+            {addingNew ? (
+              <VocabEditForm
+                initial={{ english_word: "", korean_meaning: "", part_of_speech: "", example_sentence: "" }}
+                noteContext={noteContext}
+                onSave={async (val) => {
+                  await handleAddWord(val);
+                  // 연속 추가를 위해 폼 유지 (재마운트로 초기화)
+                  setAddingNew(false);
+                  setTimeout(() => setAddingNew(true), 0);
+                }}
+                onCancel={() => setAddingNew(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setAddingNew(true)}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs text-gold-dark hover:text-gold hover:bg-gold/5 transition-colors font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                단어 직접 추가
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Body */}
         <div className="overflow-y-auto flex-1">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
-          ) : words.length === 0 ? (
+          ) : words.length === 0 && !addingNew ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2 text-center px-4">
               <BookOpen className="w-8 h-8 text-muted-foreground/30" />
               <p className="text-xs text-muted-foreground">아직 단어장이 비어있습니다</p>
-              <p className="text-[11px] text-muted-foreground/60">수업 후 강사가 단어를 추출하면 여기에 표시됩니다</p>
+              <p className="text-[11px] text-muted-foreground/60">
+                {instructorMode
+                  ? "노트에서 단어 추출하거나 위 '+ 단어 직접 추가'로 등록하세요"
+                  : "수업 후 강사가 단어를 추출하면 여기에 표시됩니다"}
+              </p>
             </div>
           ) : (
             <div>
@@ -840,6 +871,10 @@ export default function StudentVocabPanel({
                   lessonNumber={lessonNumber}
                   onDownloadPdf={() => { exportWordsPdf(byWeek[wk], studentName); }}
                   onDeleteWord={handleDeleteWord}
+                  onEditWord={instructorMode ? handleEditWord : undefined}
+                  onAddWord={instructorMode ? () => setAddingNew(true) : undefined}
+                  isCurrentWeek={wk === sessionWeekLabel}
+                  noteContext={noteContext}
                 />
               ))}
             </div>
