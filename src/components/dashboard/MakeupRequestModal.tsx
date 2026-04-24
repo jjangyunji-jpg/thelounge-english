@@ -64,6 +64,13 @@ interface MakeupRequestModalProps {
   onClose: () => void;
 }
 
+interface SchedulePeriod {
+  id: string;
+  label: string;
+  start_date: string;
+  end_date: string;
+}
+
 export default function MakeupRequestModal({ studentName, instructorName, groupStudents, onClose }: MakeupRequestModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -71,6 +78,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [cancelledSessions, setCancelledSessions] = useState<ClassSession[]>([]);
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
+  const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
 
   const [step, setStep] = useState<"type" | "checklist" | "session" | "calendar" | "confirm">("type");
   const [checklistStep, setChecklistStep] = useState<number>(0); // 0~3: 4개 단계
@@ -91,7 +99,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     (async () => {
       if (!instructorName) { setLoading(false); return; }
       const now = new Date();
-      const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes] = await Promise.all([
+      const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes, periodsRes] = await Promise.all([
         // Fetch both open AND booked slots so students can see the full picture
         // (booked slots will be shown as "신청 완료" / 매진)
         supabase.from("instructor_available_slots").select("*")
@@ -111,6 +119,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
           .eq("cancellation_resolution", "makeup")
           .order("scheduled_at", { ascending: false })
           .limit(20),
+        // Schedule periods to enforce monthly boundary rule
+        supabase.from("schedule_periods").select("id, label, start_date, end_date")
+          .eq("is_active", true).order("start_date"),
       ]);
 
       const sessionMap = new Map<string, ClassSession>();
@@ -122,6 +133,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
       ));
       setMyRequests((reqsRes.data || []) as MakeupReq[]);
+      setPeriods((periodsRes.data || []) as SchedulePeriod[]);
 
       // Filter cancelled sessions: exclude those that already have a pending/approved makeup request
       const allReqs = (reqsRes.data || []) as MakeupReq[];
@@ -144,14 +156,34 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     return sessions.filter(s => new Date(s.scheduled_at).getTime() > cutoff);
   }, [sessions]);
 
+  // Determine the active period for the originally-scheduled session.
+  // Reschedule/makeup MUST stay within the same monthly schedule_period.
+  // Extra requests are not bound (no original session).
+  const activePeriod = useMemo<SchedulePeriod | null>(() => {
+    const originIso =
+      requestType === "reschedule" ? selectedSession?.scheduled_at :
+      requestType === "makeup" ? selectedCancelledSession?.scheduled_at :
+      null;
+    if (!originIso) return null;
+    // Convert origin to KST date string (YYYY-MM-DD)
+    const originDate = new Date(originIso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+    return periods.find(p => originDate >= p.start_date && originDate <= p.end_date) || null;
+  }, [requestType, selectedSession, selectedCancelledSession, periods]);
+
+  // Filter slots by active period (if any)
+  const visibleSlots = useMemo(() => {
+    if (!activePeriod) return slots;
+    return slots.filter(s => s.slot_date >= activePeriod.start_date && s.slot_date <= activePeriod.end_date);
+  }, [slots, activePeriod]);
+
   const slotDates = useMemo(() => {
     const map = new Map<string, AvailableSlot[]>();
-    for (const s of slots) {
+    for (const s of visibleSlots) {
       if (!map.has(s.slot_date)) map.set(s.slot_date, []);
       map.get(s.slot_date)!.push(s);
     }
     return map;
-  }, [slots]);
+  }, [visibleSlots]);
 
   const dateSlots = useMemo(() => {
     if (!selectedDate) return [];
@@ -193,6 +225,17 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
     if (requestType === "makeup" && !selectedCancelledSession) return;
+
+    // Safety check: enforce monthly schedule_period boundary
+    if (activePeriod && (selectedSlot.slot_date < activePeriod.start_date || selectedSlot.slot_date > activePeriod.end_date)) {
+      toast({
+        title: "수업 기간을 벗어났습니다",
+        description: `${activePeriod.label} 수업은 ${activePeriod.label} 일정 안(${fmtDateKo(activePeriod.start_date)} ~ ${fmtDateKo(activePeriod.end_date)})에서만 보강이 가능합니다.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       // Atomically book the slot: only update if still "open"
@@ -421,6 +464,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                             onClick={() => {
                               setRequestType("makeup");
                               setSelectedCancelledSession(s);
+                              // Jump calendar to the period of the cancelled session
+                              const d = new Date(s.scheduled_at);
+                              setCalYear(d.getFullYear());
+                              setCalMonth(d.getMonth());
+                              setSelectedDate(null);
+                              setSelectedSlot(null);
                               setStep("calendar");
                             }}
                             className="w-full rounded-xl border border-[hsl(var(--gold)/0.4)] bg-[hsl(var(--gold)/0.05)] p-4 text-left hover:border-[hsl(var(--gold)/0.7)] transition-colors space-y-1"
@@ -584,7 +633,16 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <div className="space-y-2">
                       {eligibleSessions.map(s => (
                         <button key={s.id}
-                          onClick={() => { setSelectedSession(s); setStep("calendar"); }}
+                          onClick={() => {
+                            setSelectedSession(s);
+                            // Jump calendar to the period of the original session
+                            const d = new Date(s.scheduled_at);
+                            setCalYear(d.getFullYear());
+                            setCalMonth(d.getMonth());
+                            setSelectedDate(null);
+                            setSelectedSlot(null);
+                            setStep("calendar");
+                          }}
                           className="w-full rounded-lg border border-border p-3 text-left hover:border-primary/30 transition-colors"
                         >
                           <div className="flex items-center justify-between">
@@ -610,6 +668,14 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     {selectedDate ? `📅 ${fmtDateKo(selectedDate)} · 회차를 선택해 주세요.` : "날짜를 선택해주세요"}
                   </p>
 
+                  {activePeriod && (
+                    <div className="rounded-lg border border-[hsl(var(--gold)/0.3)] bg-[hsl(var(--gold)/0.05)] px-3 py-2 flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-[hsl(var(--gold-dark))] shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-foreground/80 leading-relaxed">
+                        <span className="font-semibold text-[hsl(var(--gold-dark))]">{activePeriod.label} 수업</span>은 같은 기간({fmtDateKo(activePeriod.start_date)} ~ {fmtDateKo(activePeriod.end_date)}) 안에서만 보강이 가능합니다.
+                      </p>
+                    </div>
+                  )}
                   <div className="rounded-xl border border-border p-3 space-y-2">
                     <div className="flex items-center justify-center gap-4">
                       <button onClick={() => { if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); } else setCalMonth(m => m - 1); }}
