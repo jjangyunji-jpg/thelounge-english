@@ -23,9 +23,18 @@ interface FeedbackHistoryModalProps {
   feedbacks: FeedbackEntry[];
   /** Name of the instructor currently viewing. Used to gate edit capability. Pass empty string to disable editing. */
   currentInstructorName?: string;
+  /** Label of the active schedule period. When a feedback's period matches this, bulk editing is enabled for the instructor's own entries. */
+  currentPeriodLabel?: string;
   /** Called after a successful edit so the caller can refresh the list. */
   onUpdated?: () => void | Promise<void>;
 }
+
+type DraftEntry = {
+  checklist: Record<string, number>;
+  needs_consultation: boolean;
+  comment: string;
+  goals: string;
+};
 
 const RATING_ITEMS = [
   { key: "homework_completion", label: "숙제 완료도" },
