@@ -225,6 +225,17 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
     if (requestType === "makeup" && !selectedCancelledSession) return;
+
+    // Safety check: enforce monthly schedule_period boundary
+    if (activePeriod && (selectedSlot.slot_date < activePeriod.start_date || selectedSlot.slot_date > activePeriod.end_date)) {
+      toast({
+        title: "수업 기간을 벗어났습니다",
+        description: `${activePeriod.label} 수업은 ${activePeriod.label} 일정 안(${fmtDateKo(activePeriod.start_date)} ~ ${fmtDateKo(activePeriod.end_date)})에서만 보강이 가능합니다.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       // Atomically book the slot: only update if still "open"
