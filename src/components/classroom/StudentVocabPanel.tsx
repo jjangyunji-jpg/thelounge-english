@@ -538,6 +538,51 @@ export default function StudentVocabPanel({
     toast.success("단어가 삭제되었습니다");
   };
 
+  const handleEditWord = async (wordId: string, val: VocabFormValue) => {
+    const original = words.find((w) => w.id === wordId);
+    // 영단어가 바뀌면 기존 audio_url 무효화 (TTS 재생성)
+    const englishChanged = original && original.english_word !== val.english_word;
+    const updates: Record<string, unknown> = {
+      english_word: val.english_word,
+      korean_meaning: val.korean_meaning,
+      part_of_speech: val.part_of_speech || null,
+      example_sentence: val.example_sentence || null,
+    };
+    if (englishChanged) updates.audio_url = null;
+    const { error } = await supabase.from("vocabulary_words").update(updates).eq("id", wordId);
+    if (error) { toast.error("수정 실패"); throw error; }
+    setWords((prev) => prev.map((w) => w.id === wordId ? { ...w, ...updates } as VocabWord : w));
+    toast.success("수정되었습니다");
+  };
+
+  const handleAddWord = async (val: VocabFormValue) => {
+    // 같은 세션에 동일 영단어(대소문자 무시) 중복 검사
+    const dupe = words.find((w) =>
+      w.english_word.trim().toLowerCase() === val.english_word.trim().toLowerCase()
+    );
+    if (dupe) {
+      const ok = confirm(`"${val.english_word}"는 이미 단어장에 있습니다. 그래도 추가할까요?`);
+      if (!ok) return;
+    }
+    const weekLabel = words.length > 0 ? words[0].week_label : getWeekLabel(scheduledAt);
+    const { data, error } = await supabase
+      .from("vocabulary_words")
+      .insert({
+        student_name: studentName,
+        session_id: sessionId,
+        week_label: weekLabel,
+        english_word: val.english_word,
+        korean_meaning: val.korean_meaning,
+        part_of_speech: val.part_of_speech || null,
+        example_sentence: val.example_sentence || null,
+      })
+      .select("id, english_word, korean_meaning, part_of_speech, example_sentence, audio_url, week_label")
+      .single();
+    if (error || !data) { toast.error("추가 실패"); throw error ?? new Error("insert failed"); }
+    setWords((prev) => [...prev, data as VocabWord]);
+    toast.success("추가되었습니다");
+  };
+
   const load = async () => {
     setLoading(true);
     const { data } = await supabase
