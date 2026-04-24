@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, MessageSquare, Sparkles, ChevronLeft, ChevronRight, Pencil, Check, X, Loader2 } from "lucide-react";
+import { Star, MessageSquare, Sparkles, ChevronLeft, ChevronRight, Pencil, Check, X, Loader2, Edit3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,9 +23,18 @@ interface FeedbackHistoryModalProps {
   feedbacks: FeedbackEntry[];
   /** Name of the instructor currently viewing. Used to gate edit capability. Pass empty string to disable editing. */
   currentInstructorName?: string;
+  /** Label of the active schedule period. When a feedback's period matches this, bulk editing is enabled for the instructor's own entries. */
+  currentPeriodLabel?: string;
   /** Called after a successful edit so the caller can refresh the list. */
   onUpdated?: () => void | Promise<void>;
 }
+
+type DraftEntry = {
+  checklist: Record<string, number>;
+  needs_consultation: boolean;
+  comment: string;
+  goals: string;
+};
 
 const RATING_ITEMS = [
   { key: "homework_completion", label: "숙제 완료도" },
@@ -79,6 +88,7 @@ export default function FeedbackHistoryModal({
   studentName,
   feedbacks,
   currentInstructorName = "",
+  currentPeriodLabel = "",
   onUpdated,
 }: FeedbackHistoryModalProps) {
   const { toast } = useToast();
@@ -95,32 +105,119 @@ export default function FeedbackHistoryModal({
   const [editGoals, setEditGoals] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Bulk edit state (applies to the currently-viewed period)
+  const [bulkEditing, setBulkEditing] = useState(false);
+  const [bulkDrafts, setBulkDrafts] = useState<Record<string, DraftEntry>>({});
+  const [bulkSaving, setBulkSaving] = useState(false);
+
   // Reset editing state when modal reopens or student changes
   useEffect(() => {
     if (!open) {
       setEditingId(null);
       setCurrentIdx(0);
+      setBulkEditing(false);
+      setBulkDrafts({});
     }
   }, [open, studentName]);
 
   const selectedPeriod = periods[currentIdx] || "";
   const periodFeedbacks = feedbacks.filter((f) => f.period_label === selectedPeriod);
 
+  // Feedback entries in the current period that this instructor can edit
+  const ownEditablePeriodFbs = useMemo(
+    () =>
+      periodFeedbacks.filter(
+        (fb) => !!currentInstructorName && fb.instructor_name === currentInstructorName,
+      ),
+    [periodFeedbacks, currentInstructorName],
+  );
+
+  const isCurrentPeriod =
+    !!currentPeriodLabel && selectedPeriod === currentPeriodLabel;
+  const canBulkEdit = isCurrentPeriod && ownEditablePeriodFbs.length > 0;
+
   const goToPeriod = (dir: -1 | 1) => {
+    if (bulkEditing) return;
     setCurrentIdx((prev) => Math.max(0, Math.min(periods.length - 1, prev + dir)));
     setEditingId(null);
   };
 
-  const startEdit = (fb: FeedbackEntry) => {
+  const buildDraftFromFb = (fb: FeedbackEntry): DraftEntry => {
     const cl = (fb.checklist || {}) as Record<string, any>;
     const ratings: Record<string, number> = {};
     RATING_ITEMS.forEach((r) => {
       ratings[r.key] = typeof cl[r.key] === "number" ? cl[r.key] : 0;
     });
-    setEditChecklist(ratings);
-    setEditNeedsConsultation(!!cl.needs_consultation);
-    setEditComment(fb.comment || "");
-    setEditGoals(fb.suggested_goals || "");
+    return {
+      checklist: ratings,
+      needs_consultation: !!cl.needs_consultation,
+      comment: fb.comment || "",
+      goals: fb.suggested_goals || "",
+    };
+  };
+
+  const startBulkEdit = () => {
+    const drafts: Record<string, DraftEntry> = {};
+    ownEditablePeriodFbs.forEach((fb) => {
+      drafts[fb.id] = buildDraftFromFb(fb);
+    });
+    setBulkDrafts(drafts);
+    setBulkEditing(true);
+    setEditingId(null);
+  };
+
+  const cancelBulkEdit = () => {
+    setBulkEditing(false);
+    setBulkDrafts({});
+  };
+
+  const updateDraft = (id: string, patch: Partial<DraftEntry>) => {
+    setBulkDrafts((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  };
+
+  const saveBulkEdit = async () => {
+    const ids = Object.keys(bulkDrafts);
+    if (ids.length === 0) {
+      setBulkEditing(false);
+      return;
+    }
+    setBulkSaving(true);
+    const results = await Promise.all(
+      ids.map((id) => {
+        const d = bulkDrafts[id];
+        const checklist = { ...d.checklist, needs_consultation: d.needs_consultation };
+        return supabase
+          .from("instructor_student_feedback" as any)
+          .update({
+            checklist,
+            comment: d.comment.trim() || null,
+            suggested_goals: d.goals.trim() || null,
+          })
+          .eq("id", id);
+      }),
+    );
+    setBulkSaving(false);
+    const failed = results.filter((r: any) => r.error);
+    if (failed.length > 0) {
+      toast({
+        title: "일부 저장 실패",
+        description: `${failed.length}건 저장 중 오류가 발생했습니다.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({ title: `${ids.length}건의 피드백이 저장되었습니다 ✓` });
+    setBulkEditing(false);
+    setBulkDrafts({});
+    await onUpdated?.();
+  };
+
+  const startEdit = (fb: FeedbackEntry) => {
+    const d = buildDraftFromFb(fb);
+    setEditChecklist(d.checklist);
+    setEditNeedsConsultation(d.needs_consultation);
+    setEditComment(d.comment);
+    setEditGoals(d.goals);
     setEditingId(fb.id);
   };
 
@@ -155,53 +252,82 @@ export default function FeedbackHistoryModal({
   if (periods.length === 0) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+    <Dialog open={open} onOpenChange={bulkEditing ? undefined : onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-primary" />
             {studentName} 피드백 히스토리
           </DialogTitle>
         </DialogHeader>
 
-        {/* Period navigation */}
-        <div className="flex items-center justify-center gap-3 py-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            disabled={currentIdx <= 0}
-            onClick={() => goToPeriod(-1)}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-sm font-semibold text-foreground min-w-[100px] text-center">
-            {selectedPeriod}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            disabled={currentIdx >= periods.length - 1}
-            onClick={() => goToPeriod(1)}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
+        {/* Period navigation + bulk edit button */}
+        <div className="px-6 shrink-0">
+          <div className="flex items-center justify-center gap-3 py-2 relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              disabled={bulkEditing || currentIdx <= 0}
+              onClick={() => goToPeriod(-1)}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-semibold text-foreground min-w-[100px] text-center">
+              {selectedPeriod}
+              {isCurrentPeriod && (
+                <span className="ml-1 text-[10px] text-gold font-normal">(이번 달)</span>
+              )}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              disabled={bulkEditing || currentIdx >= periods.length - 1}
+              onClick={() => goToPeriod(1)}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
 
-        {/* Period indicator dots */}
-        <div className="flex justify-center gap-1.5">
-          {periods.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => { setCurrentIdx(idx); setEditingId(null); }}
-              className={`w-2 h-2 rounded-full transition-colors ${idx === currentIdx ? "bg-primary" : "bg-muted-foreground/20"}`}
-            />
-          ))}
+          {/* Period indicator dots */}
+          <div className="flex justify-center gap-1.5">
+            {periods.map((_, idx) => (
+              <button
+                key={idx}
+                disabled={bulkEditing}
+                onClick={() => { setCurrentIdx(idx); setEditingId(null); }}
+                className={`w-2 h-2 rounded-full transition-colors disabled:opacity-40 ${idx === currentIdx ? "bg-primary" : "bg-muted-foreground/20"}`}
+              />
+            ))}
+          </div>
+
+          {/* Bulk edit toggle */}
+          {canBulkEdit && !bulkEditing && editingId === null && (
+            <div className="flex justify-end pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={startBulkEdit}
+                className="h-7 gap-1 text-xs"
+                title="이번 달 내가 작성한 피드백 모두 편집"
+              >
+                <Edit3 className="w-3 h-3" />
+                전체 편집 ({ownEditablePeriodFbs.length})
+              </Button>
+            </div>
+          )}
+          {bulkEditing && (
+            <div className="flex items-center justify-center pt-2">
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                <Edit3 className="w-3 h-3" /> 일괄 편집 모드 · {Object.keys(bulkDrafts).length}건
+              </Badge>
+            </div>
+          )}
         </div>
 
         {/* Feedback entries for selected period */}
-        <div className="space-y-4 mt-2">
+        <div className="flex-1 overflow-y-auto px-6 py-3 space-y-4">
           {periodFeedbacks.map((fb) => {
             const cl = (fb.checklist || {}) as Record<string, any>;
             const ratings = Object.entries(cl)
@@ -210,9 +336,18 @@ export default function FeedbackHistoryModal({
             const avg = ratings.length > 0 ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : "–";
             const isEditing = editingId === fb.id;
             const canEdit = !!currentInstructorName && fb.instructor_name === currentInstructorName;
+            const bulkDraft = bulkEditing ? bulkDrafts[fb.id] : undefined;
+            const isBulkEditingThis = !!bulkDraft;
 
             return (
-              <div key={fb.id} className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+              <div
+                key={fb.id}
+                className={`rounded-lg border p-4 space-y-3 ${
+                  isBulkEditingThis
+                    ? "border-gold/40 bg-gold/5"
+                    : "border-border bg-muted/30"
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-[10px]">{fb.instructor_name}</Badge>
@@ -224,7 +359,7 @@ export default function FeedbackHistoryModal({
                     <span className="text-xs font-medium text-gold flex items-center gap-1">
                       <Star className="w-3 h-3 fill-gold text-gold" /> {avg}
                     </span>
-                    {canEdit && !isEditing && (
+                    {canEdit && !isEditing && !bulkEditing && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -238,9 +373,76 @@ export default function FeedbackHistoryModal({
                   </div>
                 </div>
 
-                {isEditing ? (
+                {isBulkEditingThis ? (
                   <>
-                    {/* Editable ratings */}
+                    {/* Bulk editable ratings */}
+                    <div className="space-y-2">
+                      {RATING_ITEMS.map((item) => (
+                        <div
+                          key={item.key}
+                          className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-background border border-border"
+                        >
+                          <span className="text-xs text-foreground">{item.label}</span>
+                          <EditableStars
+                            value={bulkDraft.checklist[item.key] || 0}
+                            onChange={(v) =>
+                              updateDraft(fb.id, {
+                                checklist: { ...bulkDraft.checklist, [item.key]: v },
+                              })
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateDraft(fb.id, { needs_consultation: !bulkDraft.needs_consultation })
+                      }
+                      className={`w-full flex items-start gap-2 px-2.5 py-2 rounded-lg border cursor-pointer transition-colors text-left ${
+                        bulkDraft.needs_consultation
+                          ? "border-destructive/50 bg-destructive/5"
+                          : "border-border hover:bg-muted/30"
+                      }`}
+                    >
+                      <div className={`mt-0.5 w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                        bulkDraft.needs_consultation
+                          ? "bg-destructive border-destructive"
+                          : "border-muted-foreground/40"
+                      }`}>
+                        {bulkDraft.needs_consultation && <Check className="w-2.5 h-2.5 text-destructive-foreground" />}
+                      </div>
+                      <span className="text-xs text-foreground">상담 필요</span>
+                    </button>
+
+                    <div>
+                      <p className="text-[10px] font-semibold text-muted-foreground mb-1">코멘트</p>
+                      <textarea
+                        value={bulkDraft.comment}
+                        onChange={(e) => updateDraft(fb.id, { comment: e.target.value })}
+                        rows={3}
+                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder="코멘트 입력"
+                      />
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-gold" /> 제안 학습 목표
+                      </p>
+                      <textarea
+                        value={bulkDraft.goals}
+                        onChange={(e) => updateDraft(fb.id, { goals: e.target.value })}
+                        rows={2}
+                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                        placeholder="학습 목표 (선택)"
+                      />
+                    </div>
+                  </>
+                ) : isEditing ? (
+                  <>
+                    {/* Editable ratings (single-card edit) */}
                     <div className="space-y-2">
                       {RATING_ITEMS.map((item) => (
                         <div
@@ -256,7 +458,6 @@ export default function FeedbackHistoryModal({
                       ))}
                     </div>
 
-                    {/* Consultation checkbox */}
                     <button
                       type="button"
                       onClick={() => setEditNeedsConsultation(!editNeedsConsultation)}
@@ -276,7 +477,6 @@ export default function FeedbackHistoryModal({
                       <span className="text-xs text-foreground">상담 필요</span>
                     </button>
 
-                    {/* Comment */}
                     <div>
                       <p className="text-[10px] font-semibold text-muted-foreground mb-1">코멘트</p>
                       <textarea
@@ -288,7 +488,6 @@ export default function FeedbackHistoryModal({
                       />
                     </div>
 
-                    {/* Goals */}
                     <div>
                       <p className="text-[10px] font-semibold text-muted-foreground mb-1 flex items-center gap-1">
                         <Sparkles className="w-3 h-3 text-gold" /> 제안 학습 목표
@@ -302,7 +501,6 @@ export default function FeedbackHistoryModal({
                       />
                     </div>
 
-                    {/* Edit actions */}
                     <div className="flex gap-2 justify-end pt-1">
                       <Button
                         variant="outline"
@@ -365,6 +563,35 @@ export default function FeedbackHistoryModal({
             );
           })}
         </div>
+
+        {/* Sticky bulk save footer */}
+        {bulkEditing && (
+          <div className="shrink-0 border-t border-border bg-background px-6 py-3 flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">
+              {Object.keys(bulkDrafts).length}건을 한 번에 저장합니다
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={cancelBulkEdit}
+                disabled={bulkSaving}
+                className="gap-1"
+              >
+                <X className="w-3.5 h-3.5" /> 취소
+              </Button>
+              <Button
+                size="sm"
+                onClick={saveBulkEdit}
+                disabled={bulkSaving}
+                className="bg-gold hover:bg-gold/90 text-accent-foreground font-bold gap-1"
+              >
+                {bulkSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                모두 저장
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

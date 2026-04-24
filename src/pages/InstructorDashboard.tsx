@@ -2153,6 +2153,7 @@ export default function InstructorDashboard() {
           studentName={feedbackHistoryModalStudent}
           feedbacks={studentFeedbackHistory[feedbackHistoryModalStudent] || []}
           currentInstructorName={instructor?.name || ""}
+          currentPeriodLabel={period?.label || ""}
           onUpdated={async () => {
             // Re-fetch feedback history for this student
             const { data } = await supabase
