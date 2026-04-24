@@ -2152,6 +2152,19 @@ export default function InstructorDashboard() {
           onOpenChange={(open) => { if (!open) setFeedbackHistoryModalStudent(null); }}
           studentName={feedbackHistoryModalStudent}
           feedbacks={studentFeedbackHistory[feedbackHistoryModalStudent] || []}
+          currentInstructorName={instructor?.name || ""}
+          onUpdated={async () => {
+            // Re-fetch feedback history for this student
+            const { data } = await supabase
+              .from("instructor_student_feedback" as any)
+              .select("id, student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
+              .eq("student_name", feedbackHistoryModalStudent)
+              .order("created_at", { ascending: false });
+            setStudentFeedbackHistory(prev => ({
+              ...prev,
+              [feedbackHistoryModalStudent]: (data || []) as any,
+            }));
+          }}
         />
       )}
 
