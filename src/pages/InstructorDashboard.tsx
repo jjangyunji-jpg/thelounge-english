@@ -10,7 +10,7 @@ import {
   Star, MessageSquare, Download, Bug, RotateCcw,
 } from "lucide-react";
 import BugReportModal from "@/components/dashboard/BugReportModal";
-import FeedbackHistoryModal from "@/components/dashboard/FeedbackHistoryModal";
+import InstructorFeedbackTab from "@/components/dashboard/InstructorFeedbackTab";
 import NotificationInbox from "@/components/dashboard/NotificationInbox";
 import StudentFeedbackModal from "@/components/dashboard/StudentFeedbackModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
@@ -1397,8 +1397,6 @@ export default function InstructorDashboard() {
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
   const [cancellationModal, setCancellationModal] = useState<{ session: ClassSession } | null>(null);
   const [preClassChecklist, setPreClassChecklist] = useState<ClassSession | null>(null);
-  const [studentFeedbackHistory, setStudentFeedbackHistory] = useState<Record<string, { id: string; period_label: string; checklist: any; comment: string | null; suggested_goals: string | null; created_at: string; instructor_name: string }[]>>({});
-  const [feedbackHistoryModalStudent, setFeedbackHistoryModalStudent] = useState<string | null>(null);
   useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
@@ -1553,21 +1551,6 @@ export default function InstructorDashboard() {
     setSubmissions((subRes.data || []) as HomeworkSubmission[]);
     setAllInstructors((allInsRes.data || []) as { id: string; name: string }[]);
 
-    // Load student feedback history for all students of this instructor
-    const fbStudentNames = studentsWithPauses.map(s => s.student_name);
-    if (fbStudentNames.length > 0) {
-      const { data: fbHistory } = await supabase
-        .from("instructor_student_feedback" as any)
-        .select("id, student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
-        .in("student_name", studentNames)
-        .order("created_at", { ascending: false });
-      const fbMap: Record<string, any[]> = {};
-      (fbHistory || []).forEach((fb: any) => {
-        if (!fbMap[fb.student_name]) fbMap[fb.student_name] = [];
-        fbMap[fb.student_name].push(fb);
-      });
-      setStudentFeedbackHistory(fbMap);
-    }
     // Merge own meetings + attended meetings (avoid duplicates)
     const ownMeetings = meetRes.data || [];
     const attendedMeetingIds = new Set((attendedRes.data || []).map((a: any) => a.meeting_id));
@@ -2146,117 +2129,6 @@ export default function InstructorDashboard() {
         role="instructor"
       />
 
-      {feedbackHistoryModalStudent && (
-        <FeedbackHistoryModal
-          open={!!feedbackHistoryModalStudent}
-          onOpenChange={(open) => { if (!open) setFeedbackHistoryModalStudent(null); }}
-          studentName={feedbackHistoryModalStudent}
-          feedbacks={studentFeedbackHistory[feedbackHistoryModalStudent] || []}
-          currentInstructorName={instructor?.name || ""}
-          currentPeriodLabel={period?.label || ""}
-          onUpdated={async () => {
-            // Re-fetch feedback history for this student
-            const { data } = await supabase
-              .from("instructor_student_feedback" as any)
-              .select("id, student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
-              .eq("student_name", feedbackHistoryModalStudent)
-              .order("created_at", { ascending: false });
-            setStudentFeedbackHistory(prev => ({
-              ...prev,
-              [feedbackHistoryModalStudent]: (data || []) as any,
-            }));
-          }}
-        />
-      )}
-
-      {showAddSession && instructor && (
-        <AddSessionModal
-          students={students.filter(s => s.status === "active" && s.student_type !== "corporate").map(s => ({
-            student_name: s.student_name,
-            level: s.level,
-            meet_link: s.meet_link,
-            instructor_name: s.instructor_name,
-            group_students: s.group_students || [],
-          }))}
-          instructorName={instructor.name}
-          defaultDate={addSessionDefaultDate}
-          onClose={() => setShowAddSession(false)}
-          onAdded={() => loadData(instructor)}
-        />
-      )}
-
-      {studentFeedbackModal && instructor && (
-        <StudentFeedbackModal
-          instructorName={instructor.name}
-          students={studentFeedbackModal.students}
-          periodId={studentFeedbackModal.periodId}
-          periodLabel={studentFeedbackModal.periodLabel}
-          periodStartDate={studentFeedbackModal.periodStartDate}
-          periodEndDate={studentFeedbackModal.periodEndDate}
-          onComplete={() => { setStudentFeedbackModal(null); }}
-          onClose={() => setStudentFeedbackModal(null)}
-        />
-      )}
-
-      {/* Session Cancellation Modal */}
-      {cancellationModal && (
-        <SessionCancellationModal
-          sessionId={cancellationModal.session.id}
-          studentName={cancellationModal.session.student_name}
-          scheduledAt={cancellationModal.session.scheduled_at}
-          open={true}
-          onClose={() => setCancellationModal(null)}
-          onConfirm={async (type, resolution, remark) => {
-            const updateData: any = {
-              cancellation_type: type,
-              cancellation_resolution: resolution,
-            };
-            if (remark) {
-              updateData.remarks = remark;
-            }
-            const { error } = await supabase.from("class_sessions").update(updateData).eq("id", cancellationModal.session.id);
-            if (error) {
-              toast({ title: "처리 실패", description: error.message, variant: "destructive" });
-            } else {
-              toast({ title: `${CANCELLATION_META[type].label} 처리됨` });
-              setSessions(prev => prev.map(sess =>
-                sess.id === cancellationModal.session.id
-                  ? { ...sess, cancellation_type: type, cancellation_resolution: resolution }
-                  : sess
-              ));
-            }
-            setCancellationModal(null);
-          }}
-        />
-      )}
-
-      {/* Pre-Class Checklist Modal */}
-      {preClassChecklist && (
-        <PreClassChecklistModal
-          session={preClassChecklist}
-          allSessions={sessions}
-          assignments={assignments}
-          submissions={submissions}
-          vocabTests={vocabTests}
-          onClose={() => setPreClassChecklist(null)}
-          onReviewHw={(a, sub) => {
-            setPreClassChecklist(null);
-            setReviewHw({ assignment: a, submission: sub });
-          }}
-          onViewCheckedHw={(a, sub) => {
-            setPreClassChecklist(null);
-            setViewCheckedHw({ assignment: a, submission: sub });
-          }}
-          onQuickReview={async (submissionId) => {
-            await supabase.from("homework_submissions").update({
-              status: "reviewed",
-              reviewed_at: new Date().toISOString(),
-            }).eq("id", submissionId);
-            toast({ title: "확인 완료 ✓" });
-            setSubmissions(prev => prev.map(sb => sb.id === submissionId ? { ...sb, status: "reviewed", reviewed_at: new Date().toISOString() } : sb));
-          }}
-        />
-      )}
 
 
       <div className="border-b border-border bg-card px-2 sm:px-5 overflow-x-auto scrollbar-none">
@@ -3587,15 +3459,6 @@ export default function InstructorDashboard() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColor)}>{statusLabel}</span>
-                        {(studentFeedbackHistory[st.student_name] || []).length > 0 && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setFeedbackHistoryModalStudent(st.student_name); }}
-                            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                            title="피드백 히스토리"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                          </button>
-                        )}
                         {st.google_sheet_url ? (
                           <a
                             href={st.google_sheet_url}
@@ -4221,6 +4084,76 @@ export default function InstructorDashboard() {
           students={students.filter(s => s.status === "active" && s.student_type !== "corporate")}
           onClose={() => setShowBulkGoalModal(false)}
           onSaved={() => { setShowBulkGoalModal(false); if (instructor) loadData(instructor); }}
+        />
+      )}
+      {showAddSession && instructor && (
+        <AddSessionModal
+          students={students.filter(s => s.status === "active" && s.student_type !== "corporate").map(s => ({
+            student_name: s.student_name,
+            level: s.level,
+            meet_link: s.meet_link,
+            instructor_name: s.instructor_name,
+            group_students: s.group_students || [],
+          }))}
+          instructorName={instructor.name}
+          onClose={() => setShowAddSession(false)}
+          onAdded={() => { setShowAddSession(false); loadData(instructor); }}
+        />
+      )}
+      {cancellationModal && (
+        <SessionCancellationModal
+          sessionId={cancellationModal.session.id}
+          studentName={cancellationModal.session.student_name}
+          scheduledAt={cancellationModal.session.scheduled_at}
+          open={!!cancellationModal}
+          onClose={() => setCancellationModal(null)}
+          onConfirm={async (type, resolution, remark) => {
+            const updates: any = { cancellation_type: type, cancellation_resolution: resolution };
+            if (remark) updates.remarks = remark;
+            const { error } = await supabase
+              .from("class_sessions")
+              .update(updates)
+              .eq("id", cancellationModal.session.id);
+            if (error) {
+              toast({ title: "취소 처리 실패", description: error.message, variant: "destructive" });
+            } else {
+              toast({ title: "수업이 취소 처리되었습니다" });
+              if (instructor) loadData(instructor);
+            }
+            setCancellationModal(null);
+          }}
+        />
+      )}
+      {preClassChecklist && (
+        <PreClassChecklistModal
+          session={preClassChecklist}
+          allSessions={sessions}
+          assignments={assignments}
+          submissions={submissions}
+          vocabTests={vocabTests}
+          onClose={() => setPreClassChecklist(null)}
+          onReviewHw={(a, sub) => { setPreClassChecklist(null); setReviewHw({ assignment: a, submission: sub }); }}
+          onViewCheckedHw={(a, sub) => { setPreClassChecklist(null); setViewCheckedHw({ assignment: a, submission: sub }); }}
+          onQuickReview={async (submissionId) => {
+            await supabase.from("homework_submissions").update({
+              status: "reviewed",
+              reviewed_at: new Date().toISOString(),
+            }).eq("id", submissionId);
+            toast({ title: "확인 완료 ✓" });
+            setSubmissions(prev => prev.map(sb => sb.id === submissionId ? { ...sb, status: "reviewed", reviewed_at: new Date().toISOString() } : sb));
+          }}
+        />
+      )}
+      {studentFeedbackModal && instructor && (
+        <StudentFeedbackModal
+          instructorName={instructor.name}
+          students={studentFeedbackModal.students}
+          periodId={studentFeedbackModal.periodId}
+          periodLabel={studentFeedbackModal.periodLabel}
+          periodStartDate={studentFeedbackModal.periodStartDate}
+          periodEndDate={studentFeedbackModal.periodEndDate}
+          onComplete={() => { setStudentFeedbackModal(null); if (instructor) loadData(instructor); }}
+          onClose={() => setStudentFeedbackModal(null)}
         />
       )}
     </div>
