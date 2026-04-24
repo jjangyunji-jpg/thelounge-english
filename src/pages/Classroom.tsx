@@ -25,7 +25,7 @@ import { exportNotesPdf } from "@/lib/exportNotesPdf";
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentExpressionPanel from "@/components/classroom/StudentExpressionPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
