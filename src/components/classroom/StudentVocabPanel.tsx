@@ -501,10 +501,16 @@ export default function StudentVocabPanel({
   studentName,
   scheduledAt,
   sessionId,
+  instructorMode = false,
+  noteContext,
 }: {
   studentName: string;
   scheduledAt: Date;
   sessionId: string;
+  /** 강사/매니저 모드: 단어 인라인 편집 + 추가 + AI 자동 채움 활성화 */
+  instructorMode?: boolean;
+  /** AI 자동 채움 시 톤/주제 참고용 노트 텍스트 */
+  noteContext?: string;
 }) {
   const [words, setWords] = useState<VocabWord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -518,6 +524,7 @@ export default function StudentVocabPanel({
   const [selectedTest, setSelectedTest] = useState<TestRecord | null>(null);
   const [testDetails, setTestDetails] = useState<TestResultDetail[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [addingNew, setAddingNew] = useState(false);
 
   // Use the session's word week label instead of current calendar week
   const sessionWeekLabel = words.length > 0 ? words[0].week_label : getWeekLabel();
