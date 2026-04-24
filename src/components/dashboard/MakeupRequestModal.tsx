@@ -616,7 +616,16 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <div className="space-y-2">
                       {eligibleSessions.map(s => (
                         <button key={s.id}
-                          onClick={() => { setSelectedSession(s); setStep("calendar"); }}
+                          onClick={() => {
+                            setSelectedSession(s);
+                            // Jump calendar to the period of the original session
+                            const d = new Date(s.scheduled_at);
+                            setCalYear(d.getFullYear());
+                            setCalMonth(d.getMonth());
+                            setSelectedDate(null);
+                            setSelectedSlot(null);
+                            setStep("calendar");
+                          }}
                           className="w-full rounded-lg border border-border p-3 text-left hover:border-primary/30 transition-colors"
                         >
                           <div className="flex items-center justify-between">
