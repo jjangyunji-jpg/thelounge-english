@@ -4086,6 +4086,76 @@ export default function InstructorDashboard() {
           onSaved={() => { setShowBulkGoalModal(false); if (instructor) loadData(instructor); }}
         />
       )}
+      {showAddSession && instructor && (
+        <AddSessionModal
+          students={students.filter(s => s.status === "active" && s.student_type !== "corporate").map(s => ({
+            student_name: s.student_name,
+            level: s.level,
+            meet_link: s.meet_link,
+            instructor_name: s.instructor_name,
+            group_students: s.group_students || [],
+          }))}
+          instructorName={instructor.name}
+          onClose={() => setShowAddSession(false)}
+          onAdded={() => { setShowAddSession(false); loadData(instructor); }}
+        />
+      )}
+      {cancellationModal && (
+        <SessionCancellationModal
+          sessionId={cancellationModal.session.id}
+          studentName={cancellationModal.session.student_name}
+          scheduledAt={cancellationModal.session.scheduled_at}
+          open={!!cancellationModal}
+          onClose={() => setCancellationModal(null)}
+          onConfirm={async (type, resolution, remark) => {
+            const updates: any = { cancellation_type: type, cancellation_resolution: resolution };
+            if (remark) updates.remarks = remark;
+            const { error } = await supabase
+              .from("class_sessions")
+              .update(updates)
+              .eq("id", cancellationModal.session.id);
+            if (error) {
+              toast({ title: "취소 처리 실패", description: error.message, variant: "destructive" });
+            } else {
+              toast({ title: "수업이 취소 처리되었습니다" });
+              if (instructor) loadData(instructor);
+            }
+            setCancellationModal(null);
+          }}
+        />
+      )}
+      {preClassChecklist && (
+        <PreClassChecklistModal
+          session={preClassChecklist}
+          allSessions={sessions}
+          assignments={assignments}
+          submissions={submissions}
+          vocabTests={vocabTests}
+          onClose={() => setPreClassChecklist(null)}
+          onReviewHw={(a, sub) => { setPreClassChecklist(null); setReviewHw({ assignment: a, submission: sub }); }}
+          onViewCheckedHw={(a, sub) => { setPreClassChecklist(null); setViewCheckedHw({ assignment: a, submission: sub }); }}
+          onQuickReview={async (submissionId) => {
+            await supabase.from("homework_submissions").update({
+              status: "reviewed",
+              reviewed_at: new Date().toISOString(),
+            }).eq("id", submissionId);
+            toast({ title: "확인 완료 ✓" });
+            setSubmissions(prev => prev.map(sb => sb.id === submissionId ? { ...sb, status: "reviewed", reviewed_at: new Date().toISOString() } : sb));
+          }}
+        />
+      )}
+      {studentFeedbackModal && instructor && (
+        <StudentFeedbackModal
+          instructorName={instructor.name}
+          students={studentFeedbackModal.students}
+          periodId={studentFeedbackModal.periodId}
+          periodLabel={studentFeedbackModal.periodLabel}
+          periodStartDate={studentFeedbackModal.periodStartDate}
+          periodEndDate={studentFeedbackModal.periodEndDate}
+          onComplete={() => { setStudentFeedbackModal(null); if (instructor) loadData(instructor); }}
+          onClose={() => setStudentFeedbackModal(null)}
+        />
+      )}
     </div>
   );
 }
