@@ -1982,20 +1982,29 @@ export default function Classroom() {
           )}
 
           {/* ── RIGHT COLUMN ────────────────────────── */}
-          {role === "student" && (
+          {session.sessionId && (role === "student" || role === "instructor") && (
             <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
-              <StudentVocabPanel studentName={session.dbStudentName} scheduledAt={session.scheduledAt} sessionId={session.sessionId} />
-            </div>
-          )}
-          {role === "instructor" && session.sessionId && (
-            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
-              <StudentVocabPanel
-                studentName={session.dbStudentName}
-                scheduledAt={session.scheduledAt}
-                sessionId={session.sessionId}
-                instructorMode
-                noteContext={notes}
-              />
+              <Tabs defaultValue="vocab" className="flex flex-col h-full">
+                <TabsList className="grid grid-cols-2 w-full mb-2 flex-shrink-0">
+                  <TabsTrigger value="vocab">단어장</TabsTrigger>
+                  <TabsTrigger value="expression">문장 패턴</TabsTrigger>
+                </TabsList>
+                <TabsContent value="vocab" className="flex-1 overflow-hidden mt-0">
+                  <StudentVocabPanel
+                    studentName={session.dbStudentName}
+                    scheduledAt={session.scheduledAt}
+                    sessionId={session.sessionId}
+                    instructorMode={role === "instructor"}
+                    noteContext={role === "instructor" ? notes : undefined}
+                  />
+                </TabsContent>
+                <TabsContent value="expression" className="flex-1 overflow-hidden mt-0">
+                  <StudentExpressionPanel
+                    studentName={session.dbStudentName}
+                    sessionId={session.sessionId}
+                  />
+                </TabsContent>
+              </Tabs>
             </div>
           )}
 
