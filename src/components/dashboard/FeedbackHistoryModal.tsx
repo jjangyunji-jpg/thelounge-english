@@ -88,6 +88,7 @@ export default function FeedbackHistoryModal({
   studentName,
   feedbacks,
   currentInstructorName = "",
+  currentPeriodLabel = "",
   onUpdated,
 }: FeedbackHistoryModalProps) {
   const { toast } = useToast();
@@ -104,32 +105,119 @@ export default function FeedbackHistoryModal({
   const [editGoals, setEditGoals] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Bulk edit state (applies to the currently-viewed period)
+  const [bulkEditing, setBulkEditing] = useState(false);
+  const [bulkDrafts, setBulkDrafts] = useState<Record<string, DraftEntry>>({});
+  const [bulkSaving, setBulkSaving] = useState(false);
+
   // Reset editing state when modal reopens or student changes
   useEffect(() => {
     if (!open) {
       setEditingId(null);
       setCurrentIdx(0);
+      setBulkEditing(false);
+      setBulkDrafts({});
     }
   }, [open, studentName]);
 
   const selectedPeriod = periods[currentIdx] || "";
   const periodFeedbacks = feedbacks.filter((f) => f.period_label === selectedPeriod);
 
+  // Feedback entries in the current period that this instructor can edit
+  const ownEditablePeriodFbs = useMemo(
+    () =>
+      periodFeedbacks.filter(
+        (fb) => !!currentInstructorName && fb.instructor_name === currentInstructorName,
+      ),
+    [periodFeedbacks, currentInstructorName],
+  );
+
+  const isCurrentPeriod =
+    !!currentPeriodLabel && selectedPeriod === currentPeriodLabel;
+  const canBulkEdit = isCurrentPeriod && ownEditablePeriodFbs.length > 0;
+
   const goToPeriod = (dir: -1 | 1) => {
+    if (bulkEditing) return;
     setCurrentIdx((prev) => Math.max(0, Math.min(periods.length - 1, prev + dir)));
     setEditingId(null);
   };
 
-  const startEdit = (fb: FeedbackEntry) => {
+  const buildDraftFromFb = (fb: FeedbackEntry): DraftEntry => {
     const cl = (fb.checklist || {}) as Record<string, any>;
     const ratings: Record<string, number> = {};
     RATING_ITEMS.forEach((r) => {
       ratings[r.key] = typeof cl[r.key] === "number" ? cl[r.key] : 0;
     });
-    setEditChecklist(ratings);
-    setEditNeedsConsultation(!!cl.needs_consultation);
-    setEditComment(fb.comment || "");
-    setEditGoals(fb.suggested_goals || "");
+    return {
+      checklist: ratings,
+      needs_consultation: !!cl.needs_consultation,
+      comment: fb.comment || "",
+      goals: fb.suggested_goals || "",
+    };
+  };
+
+  const startBulkEdit = () => {
+    const drafts: Record<string, DraftEntry> = {};
+    ownEditablePeriodFbs.forEach((fb) => {
+      drafts[fb.id] = buildDraftFromFb(fb);
+    });
+    setBulkDrafts(drafts);
+    setBulkEditing(true);
+    setEditingId(null);
+  };
+
+  const cancelBulkEdit = () => {
+    setBulkEditing(false);
+    setBulkDrafts({});
+  };
+
+  const updateDraft = (id: string, patch: Partial<DraftEntry>) => {
+    setBulkDrafts((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  };
+
+  const saveBulkEdit = async () => {
+    const ids = Object.keys(bulkDrafts);
+    if (ids.length === 0) {
+      setBulkEditing(false);
+      return;
+    }
+    setBulkSaving(true);
+    const results = await Promise.all(
+      ids.map((id) => {
+        const d = bulkDrafts[id];
+        const checklist = { ...d.checklist, needs_consultation: d.needs_consultation };
+        return supabase
+          .from("instructor_student_feedback" as any)
+          .update({
+            checklist,
+            comment: d.comment.trim() || null,
+            suggested_goals: d.goals.trim() || null,
+          })
+          .eq("id", id);
+      }),
+    );
+    setBulkSaving(false);
+    const failed = results.filter((r: any) => r.error);
+    if (failed.length > 0) {
+      toast({
+        title: "일부 저장 실패",
+        description: `${failed.length}건 저장 중 오류가 발생했습니다.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({ title: `${ids.length}건의 피드백이 저장되었습니다 ✓` });
+    setBulkEditing(false);
+    setBulkDrafts({});
+    await onUpdated?.();
+  };
+
+  const startEdit = (fb: FeedbackEntry) => {
+    const d = buildDraftFromFb(fb);
+    setEditChecklist(d.checklist);
+    setEditNeedsConsultation(d.needs_consultation);
+    setEditComment(d.comment);
+    setEditGoals(d.goals);
     setEditingId(fb.id);
   };
 
