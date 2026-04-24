@@ -1397,7 +1397,7 @@ export default function InstructorDashboard() {
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
   const [cancellationModal, setCancellationModal] = useState<{ session: ClassSession } | null>(null);
   const [preClassChecklist, setPreClassChecklist] = useState<ClassSession | null>(null);
-  const [studentFeedbackHistory, setStudentFeedbackHistory] = useState<Record<string, { period_label: string; checklist: any; comment: string | null; suggested_goals: string | null; created_at: string; instructor_name: string }[]>>({});
+  const [studentFeedbackHistory, setStudentFeedbackHistory] = useState<Record<string, { id: string; period_label: string; checklist: any; comment: string | null; suggested_goals: string | null; created_at: string; instructor_name: string }[]>>({});
   const [feedbackHistoryModalStudent, setFeedbackHistoryModalStudent] = useState<string | null>(null);
   useEffect(() => { init(); }, [viewingInstructorId]);
 
@@ -1558,7 +1558,7 @@ export default function InstructorDashboard() {
     if (fbStudentNames.length > 0) {
       const { data: fbHistory } = await supabase
         .from("instructor_student_feedback" as any)
-        .select("student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
+        .select("id, student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
         .in("student_name", studentNames)
         .order("created_at", { ascending: false });
       const fbMap: Record<string, any[]> = {};
@@ -2152,6 +2152,19 @@ export default function InstructorDashboard() {
           onOpenChange={(open) => { if (!open) setFeedbackHistoryModalStudent(null); }}
           studentName={feedbackHistoryModalStudent}
           feedbacks={studentFeedbackHistory[feedbackHistoryModalStudent] || []}
+          currentInstructorName={instructor?.name || ""}
+          onUpdated={async () => {
+            // Re-fetch feedback history for this student
+            const { data } = await supabase
+              .from("instructor_student_feedback" as any)
+              .select("id, student_name, period_label, checklist, comment, suggested_goals, created_at, instructor_name")
+              .eq("student_name", feedbackHistoryModalStudent)
+              .order("created_at", { ascending: false });
+            setStudentFeedbackHistory(prev => ({
+              ...prev,
+              [feedbackHistoryModalStudent]: (data || []) as any,
+            }));
+          }}
         />
       )}
 
