@@ -92,8 +92,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       if (!instructorName) { setLoading(false); return; }
       const now = new Date();
       const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes] = await Promise.all([
+        // Fetch both open AND booked slots so students can see the full picture
+        // (booked slots will be shown as "신청 완료" / 매진)
         supabase.from("instructor_available_slots").select("*")
-          .eq("instructor_name", instructorName).eq("status", "open")
+          .eq("instructor_name", instructorName).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time"),
         supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students")
           .eq("student_name", studentName).gte("scheduled_at", now.toISOString())
@@ -204,7 +206,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       if (updateErr || !updated || updated.length === 0) {
         toast({ title: "이미 예약된 시간입니다", description: "다른 사람이 먼저 신청했습니다. 다른 시간을 선택해주세요.", variant: "destructive" });
         const { data: fresh } = await supabase.from("instructor_available_slots").select("*")
-          .eq("instructor_name", instructorName).eq("status", "open")
+          .eq("instructor_name", instructorName).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time");
         setSlots((fresh || []) as AvailableSlot[]);
         setSelectedSlot(null);
@@ -638,8 +640,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                         const isToday = cell.date === todayStr;
                         const isSelected = cell.date === selectedDate;
                         const slotsForDay = slotDates.get(cell.date) || [];
-                        const bookedSlotIds = new Set(pendingRequests.map(r => r.slot_id));
-                        const availableCount = slotsForDay.filter(s => !bookedSlotIds.has(s.id)).length;
+                        // A slot is unavailable if it's booked OR pending by current user
+                        const pendingSlotIds = new Set(pendingRequests.map(r => r.slot_id));
+                        const availableCount = slotsForDay.filter(
+                          s => s.status === "open" && !pendingSlotIds.has(s.id)
+                        ).length;
+                        const totalCount = slotsForDay.length;
 
                         return (
                           <button key={idx}
@@ -659,9 +665,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                             {cell.inMonth && hasSlots && !isPast && (
                               <span className={cn("text-[8px] leading-none mt-0.5",
                                 isSelected ? "text-primary-foreground/80" :
-                                availableCount === 0 ? "text-destructive" : "text-[hsl(var(--success))]"
+                                availableCount === 0 ? "text-muted-foreground" : "text-[hsl(var(--success))]"
                               )}>
-                                {availableCount === 0 ? "매진" : `${availableCount}매`}
+                                {availableCount === 0 ? `${totalCount}매진` : `${availableCount}/${totalCount}매`}
                               </span>
                             )}
                             {isToday && !isSelected && (
@@ -678,21 +684,25 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       <p className="text-xs font-semibold text-muted-foreground">회차를 선택하세요.</p>
                       <div className="flex flex-wrap gap-2">
                         {dateSlots.map(slot => {
-                          const isBooked = pendingRequests.some(r => r.slot_id === slot.id);
+                          const isMyPending = pendingRequests.some(r => r.slot_id === slot.id);
+                          const isBookedByOther = slot.status === "booked" && !isMyPending;
+                          const isUnavailable = isMyPending || isBookedByOther;
                           return (
-                            <button key={slot.id} disabled={isBooked}
+                            <button key={slot.id} disabled={isUnavailable}
                               onClick={() => { setSelectedSlot(slot); setStep("confirm"); }}
                               className={cn(
                                 "px-4 py-3 rounded-xl border text-center min-w-[110px] transition-all",
-                                isBooked && "border-border bg-muted/50 text-muted-foreground cursor-not-allowed",
-                                !isBooked && "border-border hover:border-primary/30 text-foreground",
+                                isUnavailable && "border-border bg-muted/50 text-muted-foreground cursor-not-allowed",
+                                !isUnavailable && "border-border hover:border-primary/30 text-foreground",
                               )}
                             >
-                              <p className="text-sm font-bold">{fmtTimeKo(slot.slot_time)}</p>
+                              <p className={cn("text-sm font-bold", isUnavailable && "line-through")}>{fmtTimeKo(slot.slot_time)}</p>
                               <p className={cn("text-[10px] mt-0.5",
-                                isBooked ? "text-destructive" : "text-[hsl(var(--success))]"
+                                isMyPending ? "text-primary" :
+                                isBookedByOther ? "text-muted-foreground" :
+                                "text-[hsl(var(--success))]"
                               )}>
-                                {isBooked ? "매진" : "1매"}
+                                {isMyPending ? "내 신청" : isBookedByOther ? "신청 완료" : "신청 가능"}
                               </p>
                             </button>
                           );
