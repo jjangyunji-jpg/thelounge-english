@@ -337,6 +337,30 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_session_dates: {
+        Row: {
+          created_at: string
+          deleted_by: string | null
+          deleted_date: string
+          id: string
+          student_name: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_by?: string | null
+          deleted_date: string
+          id?: string
+          student_name: string
+        }
+        Update: {
+          created_at?: string
+          deleted_by?: string | null
+          deleted_date?: string
+          id?: string
+          student_name?: string
+        }
+        Relationships: []
+      }
       feedback_categories: {
         Row: {
           created_at: string
