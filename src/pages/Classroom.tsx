@@ -1981,30 +1981,20 @@ export default function Classroom() {
             </div>
           )}
 
-          {/* ── RIGHT COLUMN ────────────────────────── */}
-          {session.sessionId && (role === "student" || role === "instructor") && (
-            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
-              <Tabs defaultValue="vocab" className="flex flex-col h-full">
-                <TabsList className="grid grid-cols-2 w-full mb-2 flex-shrink-0">
-                  <TabsTrigger value="vocab">단어장</TabsTrigger>
-                  <TabsTrigger value="expression">문장 패턴</TabsTrigger>
-                </TabsList>
-                <TabsContent value="vocab" className="flex-1 overflow-hidden mt-0">
-                  <StudentVocabPanel
-                    studentName={session.dbStudentName}
-                    scheduledAt={session.scheduledAt}
-                    sessionId={session.sessionId}
-                    instructorMode={role === "instructor"}
-                    noteContext={role === "instructor" ? notes : undefined}
-                  />
-                </TabsContent>
-                <TabsContent value="expression" className="flex-1 overflow-hidden mt-0">
-                  <StudentExpressionPanel
-                    studentName={session.dbStudentName}
-                    sessionId={session.sessionId}
-                  />
-                </TabsContent>
-              </Tabs>
+          {/* ── RIGHT COLUMN (학생 탭에서만 노출) ────────────────────────── */}
+          {session.sessionId && role === "student" && (
+            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4 lg:gap-5 overflow-y-auto">
+              <StudentExpressionPanel
+                studentName={session.dbStudentName}
+                sessionId={session.sessionId}
+              />
+              <StudentVocabPanel
+                studentName={session.dbStudentName}
+                scheduledAt={session.scheduledAt}
+                sessionId={session.sessionId}
+                instructorMode={true}
+                noteContext={notes}
+              />
             </div>
           )}
 
