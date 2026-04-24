@@ -453,6 +453,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                             onClick={() => {
                               setRequestType("makeup");
                               setSelectedCancelledSession(s);
+                              // Jump calendar to the period of the cancelled session
+                              const d = new Date(s.scheduled_at);
+                              setCalYear(d.getFullYear());
+                              setCalMonth(d.getMonth());
+                              setSelectedDate(null);
+                              setSelectedSlot(null);
                               setStep("calendar");
                             }}
                             className="w-full rounded-xl border border-[hsl(var(--gold)/0.4)] bg-[hsl(var(--gold)/0.05)] p-4 text-left hover:border-[hsl(var(--gold)/0.7)] transition-colors space-y-1"
