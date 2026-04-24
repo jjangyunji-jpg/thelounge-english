@@ -631,7 +631,7 @@ export default function StudentDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
-    const [sessRes, allSessRes, groupSessRes, groupAllSessRes, hwRes, subRes, vocRes, testRes, studentRes, periodsRes, holidaysRes] = await Promise.all([
+    const [sessRes, allSessRes, groupSessRes, groupAllSessRes, hwRes, subRes, vocRes, testRes, studentRes, periodsRes, holidaysRes, deletedDatesRes] = await Promise.all([
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution")
         .eq("student_name", student).order("scheduled_at", { ascending: false }).limit(20),
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution")
@@ -659,8 +659,14 @@ export default function StudentDashboard() {
       supabase.from("deleted_session_dates").select("deleted_date").eq("student_name", student),
     ]);
 
-    // Last result is deletedDatesRes
-    const deletedDatesRes = (arguments as any) ? null : null; // placeholder, replaced below
+    // 의도적으로 삭제된 수업 날짜 → Set으로 변환 (KST 기준 toDateString 키)
+    const deletedDateStrings = new Set<string>();
+    (deletedDatesRes.data || []).forEach((row: any) => {
+      if (row.deleted_date) {
+        deletedDateStrings.add(new Date(row.deleted_date + "T00:00:00").toDateString());
+      }
+    });
+    setDeletedDates(deletedDateStrings);
 
     // Merge direct + group sessions, deduplicate by id
     const mergeAndDedup = (direct: any[], group: any[]) => {
