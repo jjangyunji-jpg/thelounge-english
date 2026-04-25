@@ -194,8 +194,9 @@ export default function SessionEditModal({
           }
         }
 
-        if (edit.carryover !== undefined) {
-          update.is_carryover = edit.carryover;
+        if (edit.carryover_direction !== undefined) {
+          update.carryover_direction = edit.carryover_direction;
+          update.is_carryover = edit.carryover_direction !== null;
         }
 
         const { error } = await supabase
