@@ -632,7 +632,7 @@ export default function SessionCountReport() {
       </div>
 
       <p className="text-[10px] text-muted-foreground -mt-2">
-        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · 미체크는 수업 시간이 지났지만 상태가 저장되지 않은 항목
+        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(당월 이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · <span className="font-semibold">이월(당월)</span>: 이번 달 → 다음달로 이월 · <span className="font-semibold">이월(전월)</span>: 지난달의 '당월 이월'이 이번 달 결제에서 차감된 횟수
       </p>
 
       {loading ? (
