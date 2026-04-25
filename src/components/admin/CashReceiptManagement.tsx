@@ -98,6 +98,16 @@ export default function CashReceiptManagement() {
   const [deductCount, setDeductCount] = useState("");
   const [activeTab, setActiveTab] = useState<"count" | "payment">("count");
   const [pauseRanges, setPauseRanges] = useState<Map<string, { start: string; end: string | null }[]>>(new Map());
+  const [refundFlags, setRefundFlags] = useState<Set<string>>(new Set());
+
+  // Receipt management state
+  const [receiptModal, setReceiptModal] = useState<{ mode: "create" | "edit"; data?: CashReceipt } | null>(null);
+  const [receiptInput, setReceiptInput] = useState<{ student_name: string; receipt_type: string; receipt_number: string; recurring: boolean; recurring_attendance: boolean }>({ student_name: "", receipt_type: "phone", receipt_number: "", recurring: false, recurring_attendance: false });
+  const [showAllReceipts, setShowAllReceipts] = useState(false);
+
+  // Attendance request management state
+  const [attendModal, setAttendModal] = useState<{ mode: "create" | "edit"; data?: AttendanceRequest } | null>(null);
+  const [attendInput, setAttendInput] = useState<{ user_name: string; period_text: string }>({ user_name: "", period_text: "" });
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
