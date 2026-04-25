@@ -250,17 +250,14 @@ export default function SessionCountReport() {
 
     const prevMap = new Map<string, number>();
     if (results[3]) {
-      const prevRows = (results[3].data || []) as { student_name: string; is_carryover: boolean; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[];
-      // Exclude sessions that were rescheduled OUT of the previous period (they'll be counted in their new month)
+      const prevRows = (results[3].data || []) as { student_name: string; is_carryover: boolean; carryover_direction: "prev" | "next" | null; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[];
       prevRows.forEach(r => {
-        // Carryover deduction applies only when the session was NOT actually conducted
-        // (no ended_at, no cancellation handled this month).
-        // Instructor cancel: always deducts (it's a guaranteed make-up next month).
-        // is_carryover: deducts only if still pending (not completed in previous month).
-        const isPending = !r.ended_at && !r.cancellation_type;
+        // Carryover deduction (전월에서 이번 달로 차감되는 케이스):
+        // 1) instructor_cancel: 강사 사정 취소는 다음달 보강 보장 → 차감
+        // 2) carryover_direction = 'next': 전월에 명시적으로 '다음달 이월'로 표시한 세션 → 차감
         if (r.cancellation_type === "instructor_cancel") {
           prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
-        } else if (r.is_carryover && isPending) {
+        } else if (r.carryover_direction === "next") {
           prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
         }
       });
