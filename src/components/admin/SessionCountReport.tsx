@@ -206,10 +206,12 @@ export default function SessionCountReport() {
 
       const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + scheduled;
       const prev_carryover_in = prevCarryoverByStudent.get(student.student_name) || 0;
-      // Billable = (completed + makeup_completed + no_show) - previous month's carryover count
-      // Settlement memory: completed + no_show (excludes same_day/sick/instructor/advance cancels)
-      const actual_billable_base = completed + makeup_completed + no_show;
-      const billable = Math.max(0, actual_billable_base - prev_carryover_in);
+      // Actual lessons conducted (settlement-eligible base): completed + makeup + no-show
+      const actual_lessons = completed + makeup_completed + no_show;
+      // Billable = base monthly count (4) - previous month's carryovers (carryover flag + instructor cancel)
+      // All students pay for 4 sessions per month by default
+      const BASE_MONTHLY_COUNT = 4;
+      const billable = Math.max(0, BASE_MONTHLY_COUNT - prev_carryover_in);
 
       // Pick instructor by majority of sessions IN THIS RANGE (handles transfer-pending duplicates correctly)
       const instructorCounts = new Map<string, number>();
