@@ -488,9 +488,16 @@ export default function CashReceiptManagement() {
 
   const hasOverride = (name: string) => feeOverrides.has(name);
 
+  // Helper: parse existing note JSON safely
+  const parseNote = (note: string | null): Record<string, any> => {
+    if (!note) return {};
+    try { return JSON.parse(note); } catch { return {}; }
+  };
+
   const saveFeeOverride = async (studentName: string, fee: number) => {
     const existing = confMap.get(studentName);
-    const noteData = JSON.stringify({ fee_override: fee });
+    const baseNote = existing ? parseNote(existing.note) : {};
+    const noteData = JSON.stringify({ ...baseNote, fee_override: fee });
     if (existing) {
       await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
     } else {
@@ -504,8 +511,118 @@ export default function CashReceiptManagement() {
   const clearFeeOverride = async (studentName: string) => {
     const existing = confMap.get(studentName);
     if (existing) {
-      await supabase.from("payment_confirmations" as any).update({ note: null } as any).eq("id", existing.id);
+      const base = parseNote(existing.note);
+      delete base.fee_override;
+      const next = Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+      await supabase.from("payment_confirmations" as any).update({ note: next } as any).eq("id", existing.id);
     }
+    loadData();
+  };
+
+  const toggleRefund = async (studentName: string) => {
+    const existing = confMap.get(studentName);
+    const base = existing ? parseNote(existing.note) : {};
+    const next = !base.refund;
+    if (next) base.refund = true; else delete base.refund;
+    const noteData = Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+    if (existing) {
+      await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
+    } else if (next) {
+      await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: false, note: noteData } as any);
+    }
+    toast({ title: next ? "환불 표시 추가됨" : "환불 표시 제거됨" });
+    loadData();
+  };
+
+  // ========== Cash Receipt CRUD ==========
+  const openReceiptCreate = () => {
+    setReceiptInput({ student_name: "", receipt_type: "phone", receipt_number: "", recurring: false, recurring_attendance: false });
+    setReceiptModal({ mode: "create" });
+  };
+  const openReceiptEdit = (r: CashReceipt) => {
+    setReceiptInput({ student_name: r.student_name, receipt_type: r.receipt_type, receipt_number: r.receipt_number, recurring: r.recurring, recurring_attendance: r.recurring_attendance });
+    setReceiptModal({ mode: "edit", data: r });
+  };
+  const saveReceipt = async () => {
+    if (!receiptInput.student_name.trim()) { toast({ title: "학생명을 입력하세요", variant: "destructive" }); return; }
+    const payload = {
+      student_name: receiptInput.student_name.trim(),
+      receipt_type: receiptInput.receipt_type,
+      receipt_number: receiptInput.receipt_number.trim(),
+      recurring: receiptInput.recurring,
+      recurring_attendance: receiptInput.recurring_attendance,
+    };
+    if (receiptModal?.mode === "edit" && receiptModal.data) {
+      // Find by student_name (no id field on type) — match exact original record
+      const orig = receiptModal.data;
+      // Delete original then insert if name changed; otherwise upsert by student_name
+      if (orig.student_name !== payload.student_name) {
+        // student_name is the natural key in the table — delete the old row and insert a new one
+        await supabase.from("cash_receipts" as any).delete().eq("student_name", orig.student_name);
+        await supabase.from("cash_receipts" as any).insert(payload as any);
+      } else {
+        await supabase.from("cash_receipts" as any).update(payload as any).eq("student_name", orig.student_name);
+      }
+      toast({ title: "현금영수증 정보 수정됨" });
+    } else {
+      // Create — upsert by student_name in case row exists
+      const { error } = await supabase.from("cash_receipts" as any).upsert(payload as any, { onConflict: "student_name" } as any);
+      if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "현금영수증 정보 추가됨" });
+    }
+    setReceiptModal(null);
+    loadData();
+  };
+  const deleteReceipt = async (studentName: string) => {
+    if (!confirm(`${studentName}의 현금영수증 정보를 삭제하시겠습니까?`)) return;
+    await supabase.from("cash_receipts" as any).delete().eq("student_name", studentName);
+    toast({ title: "삭제됨" });
+    loadData();
+  };
+
+  // ========== Attendance Request CRUD ==========
+  const openAttendCreate = () => {
+    setAttendInput({ user_name: "", period_text: "" });
+    setAttendModal({ mode: "create" });
+  };
+  const openAttendEdit = (req: AttendanceRequest) => {
+    const periodLine = req.description.split("\n").find(l => l.startsWith("출석 기간:"));
+    const periodText = periodLine ? periodLine.replace("출석 기간: ", "") : "";
+    setAttendInput({ user_name: req.user_name, period_text: periodText });
+    setAttendModal({ mode: "edit", data: req });
+  };
+  const saveAttendRequest = async () => {
+    if (!attendInput.user_name.trim()) { toast({ title: "학생명을 입력하세요", variant: "destructive" }); return; }
+    const description = `출석 기간: ${attendInput.period_text.trim() || "-"}`;
+    if (attendModal?.mode === "edit" && attendModal.data) {
+      await supabase.from("support_requests").update({
+        user_name: attendInput.user_name.trim(),
+        description,
+      }).eq("id", attendModal.data.id);
+      toast({ title: "출석증 요청 수정됨" });
+    } else {
+      // Need user_id — use current admin's id as a fallback so RLS passes
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast({ title: "로그인이 필요합니다", variant: "destructive" }); return; }
+      const { error } = await supabase.from("support_requests").insert({
+        user_id: session.user.id,
+        user_name: attendInput.user_name.trim(),
+        role: "student",
+        category: "attendance",
+        title: "출석증 요청",
+        description,
+        status: "open",
+      });
+      if (error) { toast({ title: "추가 실패", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "출석증 요청 추가됨" });
+    }
+    setAttendModal(null);
+    loadData();
+  };
+  const deleteAttendRequest = async (id: string, name: string) => {
+    if (!confirm(`${name}의 출석증 요청을 삭제하시겠습니까?`)) return;
+    await supabase.from("support_requests").delete().eq("id", id);
+    toast({ title: "삭제됨" });
     loadData();
   };
 
