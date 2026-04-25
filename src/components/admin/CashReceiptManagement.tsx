@@ -687,13 +687,28 @@ export default function CashReceiptManagement() {
           </div>
 
           {/* Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground">정규 수강생</p>
               <p className="text-xl font-bold text-foreground mt-1">{regularStudents.length}명</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 확인 완료 <span className="text-primary font-semibold">{confirmedCount}</span> / {regularStudents.length}
               </p>
+            </div>
+            <div className="relative group rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <UserPlus className="w-3 h-3" /> 신규생
+              </p>
+              <p className="text-xl font-bold text-success mt-1">{newStudents.length}명</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{periodLabel} 신규 등록</p>
+              {newStudents.length > 0 && (
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 hidden group-hover:block w-max max-w-[260px] rounded-md border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+                  <p className="font-semibold mb-1 text-success">신규생 ({newStudents.length}명)</p>
+                  <p className="leading-relaxed whitespace-normal break-keep">
+                    {newStudents.map(s => s.student_name).join(", ")}
+                  </p>
+                </div>
+              )}
             </div>
             <div className="relative group rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
