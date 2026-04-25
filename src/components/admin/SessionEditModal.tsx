@@ -79,6 +79,7 @@ export default function SessionEditModal({
   studentName,
   rangeStart,
   rangeEnd,
+  computedBillable,
   onSaved,
 }: SessionEditModalProps) {
   const { toast } = useToast();
@@ -86,27 +87,54 @@ export default function SessionEditModal({
   const [saving, setSaving] = useState(false);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [edits, setEdits] = useState<Record<string, PendingEdit>>({});
+  const [billableOverride, setBillableOverride] = useState<number | null>(null);
+  const [billableNote, setBillableNote] = useState<string>("");
+  const [billableInput, setBillableInput] = useState<string>("");
+  const [billableNoteInput, setBillableNoteInput] = useState<string>("");
+  const [billableDirty, setBillableDirty] = useState(false);
 
   const load = useCallback(async () => {
     if (!open) return;
     setLoading(true);
     const startTs = `${rangeStart}T00:00:00+09:00`;
     const endTs = `${rangeEnd}T23:59:59+09:00`;
-    const { data, error } = await supabase
-      .from("class_sessions")
-      .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover")
-      .eq("student_name", studentName)
-      .gte("scheduled_at", startTs)
-      .lte("scheduled_at", endTs)
-      .order("scheduled_at", { ascending: true });
-    if (error) {
-      toast({ title: "수업 조회 실패", description: error.message, variant: "destructive" });
+    const [sessRes, ovRes] = await Promise.all([
+      supabase
+        .from("class_sessions")
+        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover")
+        .eq("student_name", studentName)
+        .gte("scheduled_at", startTs)
+        .lte("scheduled_at", endTs)
+        .order("scheduled_at", { ascending: true }),
+      supabase
+        .from("billable_overrides")
+        .select("billable_count, note")
+        .eq("student_name", studentName)
+        .eq("period_start", rangeStart)
+        .eq("period_end", rangeEnd)
+        .maybeSingle(),
+    ]);
+    if (sessRes.error) {
+      toast({ title: "수업 조회 실패", description: sessRes.error.message, variant: "destructive" });
     }
-    const list = (data || []) as SessionItem[];
+    const list = (sessRes.data || []) as SessionItem[];
     setSessions(list);
     setEdits({});
+    const ov = ovRes.data as { billable_count: number; note: string | null } | null;
+    if (ov) {
+      setBillableOverride(ov.billable_count);
+      setBillableNote(ov.note || "");
+      setBillableInput(String(ov.billable_count));
+      setBillableNoteInput(ov.note || "");
+    } else {
+      setBillableOverride(null);
+      setBillableNote("");
+      setBillableInput(computedBillable !== undefined ? String(computedBillable) : "");
+      setBillableNoteInput("");
+    }
+    setBillableDirty(false);
     setLoading(false);
-  }, [open, studentName, rangeStart, rangeEnd, toast]);
+  }, [open, studentName, rangeStart, rangeEnd, computedBillable, toast]);
 
   useEffect(() => { load(); }, [load]);
 
