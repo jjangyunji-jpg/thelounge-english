@@ -21,7 +21,10 @@ interface StudentRecord {
   pause_start: string | null;
   pause_end: string | null;
   end_date: string | null;
+  cash_payment: boolean;
 }
+
+const STORE_FEE_RATE = 0.0495; // 스마트스토어 수수료 4.95%
 
 interface ScheduleSlot { day: string; time: string; frequency?: string; }
 
