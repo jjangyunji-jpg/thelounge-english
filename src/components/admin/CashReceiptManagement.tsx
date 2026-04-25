@@ -443,6 +443,24 @@ export default function CashReceiptManagement() {
   const confirmedCount = regularStudents.filter(s => confMap.get(s.student_name)?.confirmed).length;
   const totalFee = regularStudents.reduce((sum, s) => sum + getFee(s), 0);
 
+  const handleDownloadPdf = async () => {
+    try {
+      const { exportPaymentListPdf } = await import("@/lib/exportPaymentListPdf");
+      await exportPaymentListPdf({
+        periodLabel: periodLabel || "수강생 리스트",
+        rows: regularStudents.map(s => ({
+          student_name: s.student_name,
+          fee: getFee(s),
+          session_count: sessionCounts.get(s.student_name) || 0,
+        })),
+      });
+      toast({ title: "PDF 다운로드 완료" });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "PDF 생성 실패", variant: "destructive" });
+    }
+  };
+
   const renderStudentRow = (s: StudentRecord, isCorporate = false) => {
     const conf = confMap.get(s.student_name);
     const isConfirmed = conf?.confirmed || false;
