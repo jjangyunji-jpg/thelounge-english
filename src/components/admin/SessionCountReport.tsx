@@ -137,15 +137,15 @@ export default function SessionCountReport() {
       .lte("scheduled_at", endTs)
       .then(r => r);
 
+    // Previous period: fetch carryovers + instructor cancels (both auto-deduct from current month's billable)
     const prevPromise = previousRange
       ? supabase
           .from("class_sessions")
-          .select("student_name, is_carryover")
-          .eq("is_carryover", true)
+          .select("student_name, is_carryover, cancellation_type")
           .gte("scheduled_at", `${previousRange.start}T00:00:00+09:00`)
           .lte("scheduled_at", `${previousRange.end}T23:59:59+09:00`)
           .then(r => r)
-      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean }[] });
+      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; cancellation_type: string | null }[] });
 
     const results = await Promise.all([studPromise, sessPromise, prevPromise]);
     setStudents((results[0].data || []) as StudentRecord[]);
@@ -153,9 +153,10 @@ export default function SessionCountReport() {
 
     const prevMap = new Map<string, number>();
     if (results[2]) {
-      const prevRows = (results[2].data || []) as { student_name: string; is_carryover: boolean }[];
+      const prevRows = (results[2].data || []) as { student_name: string; is_carryover: boolean; cancellation_type: string | null }[];
       prevRows.forEach(r => {
-        if (r.is_carryover) {
+        // Auto-carryover to next month: explicit carryover flag OR instructor cancel
+        if (r.is_carryover || r.cancellation_type === "instructor_cancel") {
           prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
         }
       });
