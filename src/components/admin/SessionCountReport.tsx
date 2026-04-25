@@ -116,6 +116,7 @@ export default function SessionCountReport() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [pauses, setPauses] = useState<StudentPause[]>([]);
   const [prevCarryoverByStudent, setPrevCarryoverByStudent] = useState<Map<string, number>>(new Map());
+  const [billableOverrides, setBillableOverrides] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [editingStudent, setEditingStudent] = useState<string | null>(null);
