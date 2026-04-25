@@ -25,9 +25,12 @@ interface SessionItem {
   topic: string | null;
   is_carryover: boolean;
   carryover_direction: "prev" | "next" | null;
+  carryover_reason: string | null;
 }
 
 type CarryoverDirection = "prev" | "next" | null;
+
+const AUTO_INSTRUCTOR_CANCEL_REASON = "강사 취소로 인한 자동 이월";
 
 type StatusKey =
   | "completed"
