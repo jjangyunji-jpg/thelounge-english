@@ -29,8 +29,10 @@ type: feature
 - `prepaid_credits.created_at`이 현재 period(start_date~end_date) 안 → **선결제 등록 달**
   - 해당 학생 행: fee 대신 `total_sessions × LESSON_PRICE` 일시 반영 (스토어 분류)
   - 학생명 옆 "선결제" 보라색 뱃지
-- created_at < pStartDate → **이후 달**: 예산에서 완전 제외 (차감만 진행)
-- 카드 상단 안내 문구에 제외된 학생 수 표시
+- created_at < pStartDate → **이후 달**
+  - 리스트(스토어 또는 현금)에는 표시하되 금액 자리에 "—", 합계에 미반영
+  - "선결제 (차감)" 뱃지 + opacity-70
+- 카드 상단 안내 문구에 차감 학생 수 표시
 
 ## UI 구성
 1. 4개 요약 카드: 총수입(예상) / 현금 / 스토어 결제 / 실수령 합계
