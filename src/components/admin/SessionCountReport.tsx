@@ -323,31 +323,33 @@ export default function SessionCountReport() {
         const ct = s.cancellation_type;
         const direction = s.carryover_direction ?? (s.is_carryover ? "prev" : null);
 
-        // 이월 마크 카운트 (취소 카테고리와 독립)
+        // 이월 마크 카운트 (취소 카테고리와 독립, 진행 여부 무관)
         if (direction === "next") carryover++;
         if (direction === "prev") carryover_in++;
 
         // 분류 우선순위:
-        // 1) 취소 카테고리가 있으면 해당 카테고리로 분류
-        // 2) 전월 이월(prev) 마크된 세션은 별도 컬럼만 카운트 (미체크/예정/완료 분류 제외)
-        // 3) 완료 → 완료/보강
-        // 4) 시간 지남 → 미체크
-        // 5) 그 외 → 예정
+        // 1) 취소 카테고리가 있으면 해당 카테고리로 분류 (이월 여부와 독립)
+        // 2) 완료(ended_at) → 완료 +1, 보강이면 추가로 보강 +1 (더블카운트)
+        //    이월(전월)이 완료된 경우도 완료에 포함 — 별도 컬럼은 위에서 이미 +1
+        // 3) 미진행 prev 이월 → 이월(전월) 컬럼만 (예정/미체크에서 제외)
+        // 4) 미진행 next 이월 → 이월(당월) 컬럼만
+        // 5) 미진행 보강 → 항상 '예정'
+        // 6) 시간 지남 → 미체크
+        // 7) 그 외 → 예정
         if (ct === "no_show") no_show++;
         else if (ct === "student_cancel") same_day_cancel++;
         else if (ct === "sick") sick++;
         else if (ct === "instructor_cancel") instructor_cancel++;
         else if (ct === "advance_cancel") advance_cancel++;
-        else if (direction === "prev") {
-          // 전월 이월 마크된 세션은 '이월(전월)' 컬럼으로만 분류 — 미체크/예정에서 제외
-        } else if (s.ended_at) {
+        else if (s.ended_at) {
+          completed++;
           if (isMakeup) makeup_completed++;
-          else completed++;
+        } else if (direction === "prev") {
+          // 미진행 전월 이월 — '이월(전월)' 컬럼에만 카운트
         } else if (direction === "next") {
-          // 당월 이월 처리된 세션은 미체크/예정에 포함하지 않음 (이월 컬럼으로만 집계)
+          // 당월 이월 처리된 세션은 미체크/예정에 포함하지 않음
         } else if (isMakeup) {
-          // 보강으로 일정 변경된 세션은 완료(ended_at) 전까지는 항상 '예정'으로 분류
-          // (시간이 지나도 미체크에 들어가지 않음 — 강사가 완료 처리 시 보강으로 이동)
+          // 보강으로 일정 변경된 세션은 완료 전까지는 '예정'으로 분류
           scheduled++;
         } else if (new Date(s.scheduled_at).getTime() < Date.now()) {
           unchecked++;
@@ -356,11 +358,12 @@ export default function SessionCountReport() {
         }
       });
 
-      // '전체'는 이월(전월/당월)을 제외 — 일반 카테고리 합계만
-      const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + unchecked + scheduled;
+      // 새 정의: 전체 = 완료 + 노쇼 + 당일취소 - 이월(전월)
+      // (완료에는 이미 보강 완료 + 이월(전월) 완료가 모두 포함됨)
+      const total = completed + no_show + same_day_cancel - carryover_in;
       const prev_carryover_in = prevCarryoverByStudent.get(student.student_name) || 0;
-      // Actual lessons conducted (settlement-eligible base): completed + makeup + no-show + 전월에서 이월된 수업
-      const actual_lessons = completed + makeup_completed + no_show + carryover_in;
+      // 실수업 = 완료 (보강·이월 완료가 모두 합쳐진 값)
+      const actual_lessons = completed;
       // Billable = base monthly count (4) - previous month's carryovers (next + instructor cancel)
       // All students pay for 4 sessions per month by default
       const BASE_MONTHLY_COUNT = 4;
@@ -530,12 +533,21 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.carryover_in || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-muted-foreground bg-muted/20">{r.prev_carryover_in ? `-${r.prev_carryover_in}` : "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
-                  <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
+                  <td className={cn(
+                    "px-2 py-2 text-center font-bold",
+                    r.total !== r.billable ? "text-warning bg-warning/10" : "text-foreground"
+                  )} title={r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : undefined}>
+                    {r.total !== r.billable ? `⚠ ${r.total}` : r.total}
+                  </td>
                   <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
                   <td className={cn(
                     "px-2 py-2 text-center font-bold",
-                    r.billable_overridden ? "text-warning bg-warning/10" : "text-primary bg-primary/5"
-                  )} title={r.billable_overridden ? `자동값 ${r.computed_billable} → 수동 ${r.billable}` : undefined}>
+                    r.billable_overridden ? "text-warning bg-warning/10" : (r.total !== r.billable ? "text-warning bg-warning/10" : "text-primary bg-primary/5")
+                  )} title={
+                    r.billable_overridden
+                      ? `자동값 ${r.computed_billable} → 수동 ${r.billable}`
+                      : (r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : undefined)
+                  }>
                     {r.billable}
                   </td>
                   <td className="px-1 py-1 text-center">
@@ -668,7 +680,7 @@ export default function SessionCountReport() {
       </div>
 
       <p className="text-[10px] text-muted-foreground -mt-2">
-        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(당월 이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · <span className="font-semibold">이월(당월)</span>: 이번 달 → 다음달로 이월 · <span className="font-semibold">이월(전월)</span>: 지난달의 '당월 이월'이 이번 달 결제에서 차감된 횟수
+        💡 <span className="font-semibold">전체</span> = 완료 + 노쇼 + 당일 − 이월(전월) · <span className="font-semibold">실수업</span> = 완료 (보강·이월(전월) 완료 포함) · <span className="font-semibold">결제대상</span> = 4 − 이월(전월) − 전월 강사취소 · <span className="text-warning font-semibold">⚠ 전체 ≠ 결제대상이면 표시</span>
       </p>
 
       {loading ? (
