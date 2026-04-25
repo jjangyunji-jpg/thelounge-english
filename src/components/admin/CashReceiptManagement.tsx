@@ -439,7 +439,11 @@ export default function CashReceiptManagement() {
   const getFee = (s: StudentRecord) => {
     const override = feeOverrides.get(s.student_name);
     if (override !== undefined) return override;
-    const count = sessionCounts.get(s.student_name) || 0;
+    // Use billable count (= 결제대상) from session count report logic, not raw session count.
+    // Falls back to raw session count if billable hasn't loaded yet.
+    const count = billableCounts.has(s.student_name)
+      ? (billableCounts.get(s.student_name) || 0)
+      : (sessionCounts.get(s.student_name) || 0);
     return count * LESSON_PRICE;
   };
 
