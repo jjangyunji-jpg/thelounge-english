@@ -267,7 +267,8 @@ export default function SessionEditModal({
           </DialogTitle>
           <p className="text-xs text-muted-foreground">{rangeStart} ~ {rangeEnd}</p>
           <p className="text-[11px] text-muted-foreground">
-            💡 <span className="font-semibold">이월</span>: 강사-학생 협의로 다음 달 결제 횟수에서 1회 차감됩니다.<br />
+            💡 <span className="font-semibold">전월 이월</span>: 지난달에서 넘어온 수업 (이번 달 카운트 +1).<br />
+            ➡️ <span className="font-semibold">당월 이월</span>: 이번 달 수업이 다음달로 이월 (다음달 결제에서 1회 차감).<br />
             🗑️ <span className="font-semibold">사전취소</span>: 직전 월 사전 통보 1회 차감 — 저장 시 세션이 삭제됩니다.
           </p>
         </DialogHeader>
