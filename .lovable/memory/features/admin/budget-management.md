@@ -1,14 +1,15 @@
 ---
 name: Budget Management
-description: 어드민 결제확인 → 예산관리 탭. 정규 수강생(현금/스토어)과 기업 수강생(계산서/3.3% 후불)을 분리 집계
+description: 어드민 결제확인의 예산 관리/예산 요약 탭. 정규 수강생, 기업 수강생, AI 프로그램 수입을 합산
 type: feature
 ---
 
-# 예산관리 탭
+# 예산관리 / 예산요약 탭
 
 ## 위치
-- 어드민 → 결제확인 → "예산 관리" 탭
+- 어드민 → 결제확인 → 4개 탭: 월별 수업 카운트 / 결제 확인 / 예산 관리 / 예산 요약
 - 컴포넌트: `src/components/admin/CashReceiptManagement.tsx`
+- AI 프로그램 합산 유틸: `src/lib/aiProgramTotals.ts` (parent에서도 동일 로직 재사용)
 
 ## 정규 수강생
 ### 결제수단 플래그
