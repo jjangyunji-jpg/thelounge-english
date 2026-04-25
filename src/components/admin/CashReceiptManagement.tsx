@@ -133,10 +133,14 @@ export default function CashReceiptManagement() {
   const periodStart = currentPeriod ? `${currentPeriod.start_date}T00:00:00+09:00` : "";
   const periodEnd = currentPeriod ? `${currentPeriod.end_date}T23:59:59+09:00` : "";
 
-  // Calendar month range for corporate students (derived from period start_date's month)
-  const corpMonth = currentPeriod ? new Date(currentPeriod.start_date) : new Date();
-  const corpYear = corpMonth.getFullYear();
-  const corpMon = corpMonth.getMonth() + 1;
+  // Calendar month range for corporate students — POSTPAID: current period (e.g. April)
+  // bills the PREVIOUS calendar month's sessions (March). Always shift back by 1 month.
+  const corpAnchor = currentPeriod ? new Date(currentPeriod.start_date) : new Date();
+  const corpAnchorYear = corpAnchor.getFullYear();
+  const corpAnchorMon = corpAnchor.getMonth() + 1; // 1-12 of the period (billing) month
+  // Previous month (the month whose sessions are being billed)
+  const corpMon = corpAnchorMon === 1 ? 12 : corpAnchorMon - 1;
+  const corpYear = corpAnchorMon === 1 ? corpAnchorYear - 1 : corpAnchorYear;
   const corpMonthStart = `${corpYear}-${String(corpMon).padStart(2, "0")}-01T00:00:00+09:00`;
   const corpNextMon = corpMon === 12 ? 1 : corpMon + 1;
   const corpNextYear = corpMon === 12 ? corpYear + 1 : corpYear;
