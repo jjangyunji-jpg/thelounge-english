@@ -1,0 +1,244 @@
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Loader2, Save, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+interface SessionEditModalProps {
+  open: boolean;
+  onClose: () => void;
+  studentName: string;
+  rangeStart: string; // YYYY-MM-DD
+  rangeEnd: string;   // YYYY-MM-DD
+  onSaved?: () => void;
+}
+
+interface SessionItem {
+  id: string;
+  scheduled_at: string;
+  ended_at: string | null;
+  cancellation_type: string | null;
+  reschedule_origin_dates: string[] | null;
+  topic: string | null;
+}
+
+type StatusKey =
+  | "completed"
+  | "scheduled"
+  | "no_show"
+  | "student_cancel"
+  | "sick"
+  | "instructor_cancel"
+  | "advance_cancel";
+
+const STATUS_OPTIONS: { key: StatusKey; label: string; tone: string }[] = [
+  { key: "completed", label: "완료", tone: "bg-success/15 text-success border-success/30" },
+  { key: "scheduled", label: "예정", tone: "bg-muted text-muted-foreground border-border" },
+  { key: "no_show", label: "노쇼", tone: "bg-warning/15 text-warning border-warning/30" },
+  { key: "student_cancel", label: "당일취소", tone: "bg-muted text-muted-foreground border-border" },
+  { key: "sick", label: "병결", tone: "bg-muted text-muted-foreground border-border" },
+  { key: "instructor_cancel", label: "강사취소", tone: "bg-muted text-muted-foreground border-border" },
+  { key: "advance_cancel", label: "사전취소", tone: "bg-muted text-muted-foreground border-border" },
+];
+
+function deriveStatus(s: SessionItem): StatusKey {
+  if (s.cancellation_type === "no_show") return "no_show";
+  if (s.cancellation_type === "student_cancel") return "student_cancel";
+  if (s.cancellation_type === "sick") return "sick";
+  if (s.cancellation_type === "instructor_cancel") return "instructor_cancel";
+  if (s.cancellation_type === "advance_cancel") return "advance_cancel";
+  if (s.ended_at) return "completed";
+  return "scheduled";
+}
+
+function formatKstDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default function SessionEditModal({
+  open,
+  onClose,
+  studentName,
+  rangeStart,
+  rangeEnd,
+  onSaved,
+}: SessionEditModalProps) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [edits, setEdits] = useState<Record<string, StatusKey>>({});
+
+  const load = useCallback(async () => {
+    if (!open) return;
+    setLoading(true);
+    const startTs = `${rangeStart}T00:00:00+09:00`;
+    const endTs = `${rangeEnd}T23:59:59+09:00`;
+    const { data, error } = await supabase
+      .from("class_sessions")
+      .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic")
+      .eq("student_name", studentName)
+      .gte("scheduled_at", startTs)
+      .lte("scheduled_at", endTs)
+      .order("scheduled_at", { ascending: true });
+    if (error) {
+      toast({ title: "수업 조회 실패", description: error.message, variant: "destructive" });
+    }
+    const list = (data || []) as SessionItem[];
+    setSessions(list);
+    setEdits({});
+    setLoading(false);
+  }, [open, studentName, rangeStart, rangeEnd, toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleStatusChange = (sessionId: string, status: StatusKey) => {
+    setEdits(prev => ({ ...prev, [sessionId]: status }));
+  };
+
+  const handleSave = async () => {
+    const changedIds = Object.keys(edits);
+    if (changedIds.length === 0) {
+      toast({ title: "변경된 항목이 없습니다" });
+      return;
+    }
+    setSaving(true);
+    try {
+      for (const id of changedIds) {
+        const newStatus = edits[id];
+        const session = sessions.find(s => s.id === id);
+        if (!session) continue;
+
+        const update: Record<string, unknown> = {};
+        if (newStatus === "completed") {
+          update.cancellation_type = null;
+          update.cancellation_resolution = null;
+          update.ended_at = session.ended_at || new Date().toISOString();
+        } else if (newStatus === "scheduled") {
+          update.cancellation_type = null;
+          update.cancellation_resolution = null;
+          update.ended_at = null;
+        } else {
+          // cancellation
+          update.cancellation_type = newStatus;
+          update.ended_at = null;
+        }
+
+        const { error } = await supabase
+          .from("class_sessions")
+          .update(update)
+          .eq("id", id);
+        if (error) throw error;
+      }
+      toast({ title: `${changedIds.length}개 수업이 업데이트되었습니다` });
+      onSaved?.();
+      onClose();
+    } catch (e) {
+      const err = e as Error;
+      toast({ title: "저장 실패", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const dirtyCount = Object.keys(edits).length;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-base">
+            {studentName} — 수업 상태 수정
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">{rangeStart} ~ {rangeEnd}</p>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto -mx-6 px-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : sessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-12">
+              해당 기간에 수업이 없습니다.
+            </p>
+          ) : (
+            <div className="space-y-2 py-2">
+              {sessions.map(s => {
+                const currentStatus = edits[s.id] || deriveStatus(s);
+                const isMakeup = Array.isArray(s.reschedule_origin_dates) && s.reschedule_origin_dates.length > 0;
+                const isDirty = !!edits[s.id];
+                return (
+                  <div
+                    key={s.id}
+                    className={cn(
+                      "rounded-lg border p-3 space-y-2 transition-colors",
+                      isDirty ? "border-primary bg-primary/5" : "border-border bg-card"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="font-semibold text-foreground">{formatKstDate(s.scheduled_at)}</span>
+                        {isMakeup && (
+                          <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">
+                            보강
+                          </span>
+                        )}
+                        {s.topic && (
+                          <span className="text-muted-foreground truncate max-w-[200px]">· {s.topic}</span>
+                        )}
+                      </div>
+                      {isDirty && (
+                        <span className="text-[10px] text-primary font-semibold">변경됨</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {STATUS_OPTIONS.map(opt => (
+                        <button
+                          key={opt.key}
+                          onClick={() => handleStatusChange(s.id, opt.key)}
+                          className={cn(
+                            "px-2 py-1 rounded border text-[11px] font-semibold transition-colors min-h-[28px]",
+                            currentStatus === opt.key
+                              ? opt.tone
+                              : "bg-background text-muted-foreground border-border hover:bg-muted"
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-3 border-t border-border">
+          <span className="text-xs text-muted-foreground">
+            {dirtyCount > 0 ? `${dirtyCount}개 변경 대기` : "변경 사항 없음"}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+              <X className="w-3.5 h-3.5" /> 취소
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving || dirtyCount === 0}>
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              저장
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
