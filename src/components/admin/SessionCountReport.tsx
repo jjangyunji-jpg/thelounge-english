@@ -411,8 +411,18 @@ export default function SessionCountReport() {
               {list.map(r => (
                 <tr key={r.student_name} className="border-b border-border last:border-0 hover:bg-muted/30">
                   <td className="px-3 py-2 font-medium text-foreground">
-                    {r.student_name}
-                    {r.is_group && <span className="ml-1 text-[9px] text-muted-foreground">(그룹)</span>}
+                    <div className="flex items-center gap-1.5">
+                      <span>{r.student_name}</span>
+                      {r.is_group && <span className="text-[9px] text-muted-foreground">(그룹)</span>}
+                      <button
+                        type="button"
+                        title="학생 대시보드 열기 (새 탭)"
+                        onClick={() => window.open(`/t/student-dashboard?student_name=${encodeURIComponent(r.student_name)}`, "_blank", "noopener,noreferrer")}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
                   </td>
                   <td className="px-2 py-2 text-center font-semibold text-success">{r.completed || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-primary">{r.makeup_completed || "-"}</td>
