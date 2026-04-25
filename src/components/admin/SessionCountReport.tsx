@@ -595,7 +595,7 @@ export default function SessionCountReport() {
                       : (r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : (r.billable !== 4 ? `결제대상이 4회가 아님 (${r.billable}회)` : undefined))
                   }>
                     <span className="inline-flex items-center justify-center gap-1">
-                      {r.billable !== 4 && !r.billable_overridden && r.total === r.billable && (
+                      {r.billable !== 4 && (
                         <AlertCircle className="w-3.5 h-3.5 text-destructive" />
                       )}
                       {r.billable}
