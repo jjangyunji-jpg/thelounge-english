@@ -497,7 +497,12 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
                   <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
                   <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
-                  <td className="px-2 py-2 text-center font-bold text-primary bg-primary/5">{r.billable}</td>
+                  <td className={cn(
+                    "px-2 py-2 text-center font-bold",
+                    r.billable_overridden ? "text-warning bg-warning/10" : "text-primary bg-primary/5"
+                  )} title={r.billable_overridden ? `자동값 ${r.computed_billable} → 수동 ${r.billable}` : undefined}>
+                    {r.billable}{r.billable_overridden && <span className="ml-0.5 text-[9px]">✎</span>}
+                  </td>
                   <td className="px-1 py-1 text-center">
                     <button
                       onClick={() => setEditingStudent(r.student_name)}
