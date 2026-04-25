@@ -50,8 +50,16 @@ export async function exportPaymentListPdf({ periodLabel, rows }: ExportOptions)
     startY: 32,
     head: [["번호", "이름", "수업 횟수", "수강료"]],
     body,
-    styles: { font: "SpoqaHanSansNeo", fontSize: 10, cellPadding: 2.5 },
-    headStyles: { fillColor: [40, 30, 24], textColor: 255, halign: "center" },
+    styles: { font: "SpoqaHanSansNeo", fontStyle: "normal", fontSize: 10, cellPadding: 2.5 },
+    headStyles: {
+      font: "SpoqaHanSansNeo",
+      fontStyle: "normal",
+      fillColor: [40, 30, 24],
+      textColor: 255,
+      halign: "center",
+    },
+    bodyStyles: { font: "SpoqaHanSansNeo", fontStyle: "normal" },
+    footStyles: { font: "SpoqaHanSansNeo", fontStyle: "normal" },
     columnStyles: {
       0: { halign: "center", cellWidth: 18 },
       1: { halign: "left" },
@@ -59,10 +67,12 @@ export async function exportPaymentListPdf({ periodLabel, rows }: ExportOptions)
       3: { halign: "right", cellWidth: 38 },
     },
     didParseCell: (data) => {
-      // Bold the totals row
+      // Force Korean font on every cell (head/body/foot) to prevent glyph fallback
+      data.cell.styles.font = "SpoqaHanSansNeo";
+      data.cell.styles.fontStyle = "normal";
+      // Bold the totals row visually with background
       if (data.row.index === body.length - 1) {
         data.cell.styles.fillColor = [245, 240, 230];
-        data.cell.styles.fontStyle = "normal";
       }
     },
   });
