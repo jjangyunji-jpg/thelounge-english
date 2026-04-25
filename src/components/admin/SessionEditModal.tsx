@@ -145,8 +145,10 @@ export default function SessionEditModal({
     setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], status } }));
   };
 
-  const handleCarryoverToggle = (sessionId: string, current: boolean) => {
-    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], carryover: !current } }));
+  const handleCarryoverDirection = (sessionId: string, current: CarryoverDirection, target: "prev" | "next") => {
+    // Toggle: clicking the active direction clears it
+    const next: CarryoverDirection = current === target ? null : target;
+    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], carryover_direction: next } }));
   };
 
   const handleSave = async () => {
