@@ -73,7 +73,7 @@ function formatKstDate(iso: string) {
 
 interface PendingEdit {
   status?: StatusKey;
-  carryover?: boolean;
+  carryover_direction?: CarryoverDirection;
 }
 
 export default function SessionEditModal({
