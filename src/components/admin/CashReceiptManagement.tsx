@@ -996,7 +996,6 @@ export default function CashReceiptManagement() {
   const budgetNetTotal = budgetCashTotal + budgetStoreNet;
   // 선결제 차감(=금액 미반영)된 학생 수 — UI 안내용
   const prepaidExcludedCount = budgetRows.filter(r => r.isPrepaidDeducted).length;
-  }).length;
 
   return (
     <div className="space-y-4">
