@@ -108,6 +108,8 @@ export default function CashReceiptManagement() {
   const [refundFlags, setRefundFlags] = useState<Set<string>>(new Set());
   // Per-month cash payment override map (true = cash this month, false = store this month, undefined = use student default)
   const [cashOverrides, setCashOverrides] = useState<Map<string, boolean>>(new Map());
+  // Per-month tax-invoice override for corporate students (true = 계산서 발급, false = 사업소득 3.3%, undefined = use student default)
+  const [taxOverrides, setTaxOverrides] = useState<Map<string, boolean>>(new Map());
 
   // Receipt management state
   const [receiptModal, setReceiptModal] = useState<{ mode: "create" | "edit"; data?: CashReceipt } | null>(null);
