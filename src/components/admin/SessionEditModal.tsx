@@ -74,6 +74,17 @@ function formatKstDate(iso: string) {
   });
 }
 
+function formatKstDateOnly(dateStr: string) {
+  // dateStr is YYYY-MM-DD; render as KST date with weekday
+  const d = new Date(`${dateStr}T00:00:00+09:00`);
+  return d.toLocaleDateString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  });
+}
+
 interface PendingEdit {
   status?: StatusKey;
   carryover_direction?: CarryoverDirection;
