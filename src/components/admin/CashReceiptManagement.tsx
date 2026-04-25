@@ -1618,8 +1618,160 @@ export default function CashReceiptManagement() {
             </div>
           </div>
 
+          {/* ===== Corporate (기업) Section ===== */}
+          <div className="pt-4 mt-2 border-t border-border space-y-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">기업 결제 — {corpMonthLabel}</h3>
+              <span className="text-[10px] text-muted-foreground">후불 (당월 발생액 기준 · 입금은 다음 달)</span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Building2 className="w-3 h-3" /> 기업 총 발생액
+                </p>
+                <p className="text-2xl font-bold text-foreground mt-1">₩{corpGrossTotal.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{corpBudgetRows.length}명 합산</p>
+              </div>
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-emerald-600" /> 계산서 발급 (전액)
+                </p>
+                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-1">₩{corpInvoiceTotal.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{corpInvoiceRows.length}명 · 공제 없음</p>
+              </div>
+              <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <TrendingDown className="w-3 h-3 text-rose-600" /> 사업소득 3.3%
+                </p>
+                <p className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1">₩{corpTaxGrossTotal.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{corpTaxRows.length}명 · 공제 전</p>
+              </div>
+              <div className="rounded-lg border border-success/30 bg-success/5 p-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <TrendingDown className="w-3 h-3 text-success" /> 기업 실수령 합계
+                </p>
+                <p className="text-2xl font-bold text-success mt-1">₩{corpNetTotal.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">계산서 + 3.3% 공제 후</p>
+              </div>
+            </div>
+
+            {/* 사업소득 공제 내역 */}
+            {corpTaxRows.length > 0 && (
+              <div className="rounded-lg border border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                    <TrendingDown className="w-4 h-4 text-rose-600" /> 사업소득 3.3% 공제 내역
+                  </p>
+                  <span className="text-[10px] text-muted-foreground">공제율 3.3%</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">발생 총액</p>
+                    <p className="font-semibold text-foreground">₩{corpTaxGrossTotal.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">공제 (3.3%)</p>
+                    <p className="font-semibold text-destructive">-₩{corpTaxFeeTotal.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">실수령</p>
+                    <p className="font-semibold text-success">₩{corpTaxNetTotal.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 기업 학생 리스트 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* 계산서 발급 */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-emerald-600" /> 계산서 발급 — {corpInvoiceRows.length}명
+                </p>
+                <div className="border border-border rounded-lg overflow-hidden max-h-[420px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">학생명</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">회수</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">단가</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">금액</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {corpInvoiceRows.length === 0 ? (
+                        <tr><td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">계산서 발급 학생이 없습니다.</td></tr>
+                      ) : corpInvoiceRows.map(r => (
+                        <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <td className="px-3 py-2 text-foreground">{r.name}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">{r.sessions}회</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">₩{r.rate.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right font-medium text-foreground">₩{r.gross.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {corpInvoiceRows.length > 0 && (
+                      <tfoot className="bg-emerald-500/10 border-t border-border">
+                        <tr>
+                          <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-foreground">합계</td>
+                          <td className="px-3 py-2 text-right font-bold text-emerald-700 dark:text-emerald-400">₩{corpInvoiceTotal.toLocaleString()}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+
+              {/* 사업소득 3.3% */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                  <TrendingDown className="w-3 h-3 text-rose-600" /> 사업소득 3.3% — {corpTaxRows.length}명
+                </p>
+                <div className="border border-border rounded-lg overflow-hidden max-h-[420px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">학생명</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">회수</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">발생액</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">실수령</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {corpTaxRows.length === 0 ? (
+                        <tr><td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">3.3% 공제 학생이 없습니다.</td></tr>
+                      ) : corpTaxRows.map(r => (
+                        <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <td className="px-3 py-2 text-foreground">
+                            {r.name}
+                            <span className="ml-1.5 text-[9px] text-muted-foreground">×{r.sessions}회 · ₩{r.rate.toLocaleString()}</span>
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">{r.sessions}회</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">₩{r.gross.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right font-medium text-foreground">₩{r.net.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {corpTaxRows.length > 0 && (
+                      <tfoot className="bg-rose-500/10 border-t border-border">
+                        <tr>
+                          <td className="px-3 py-2 text-xs font-semibold text-foreground">합계</td>
+                          <td className="px-3 py-2"></td>
+                          <td className="px-3 py-2 text-right text-xs text-muted-foreground">₩{corpTaxGrossTotal.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right font-bold text-rose-700 dark:text-rose-400">₩{corpTaxNetTotal.toLocaleString()}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <p className="text-[10px] text-muted-foreground">
-            💡 결제 확인 탭의 학생 이름 옆 결제수단 뱃지를 클릭하면 이번 달만 변경, 우클릭하면 학생 기본값을 변경합니다.
+            💡 결제 확인 탭의 학생 이름 옆 결제수단 뱃지(현금/스토어 또는 계산서/3.3%)를 <span className="font-semibold">클릭</span>하면 이번 달만 변경, <span className="font-semibold">우클릭</span>하면 학생 기본값을 변경합니다.
           </p>
           </>)}
         </TabsContent>
