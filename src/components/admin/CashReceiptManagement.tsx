@@ -94,6 +94,7 @@ export default function CashReceiptManagement() {
   const [editingFeeValue, setEditingFeeValue] = useState("");
   const [deductModal, setDeductModal] = useState<string | null>(null);
   const [deductCount, setDeductCount] = useState("");
+  const [activeTab, setActiveTab] = useState<"count" | "payment">("count");
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
@@ -219,8 +220,30 @@ export default function CashReceiptManagement() {
 
   // Deduplicate by student_name (transfer creates multiple records for same student)
   const deduped = Array.from(new Map(students.map(s => [s.student_name, s])).values());
-  const regularStudents = deduped.filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name)).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
-  const corporateStudents = deduped.filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name)).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
+  // Filter helpers based on the currently selected period
+  const pStartDate = currentPeriod?.start_date || "";
+  const pEndDate = currentPeriod?.end_date || "";
+  const isWithinPeriod = (s: StudentRecord) => {
+    // Exclude students who haven't started yet by the end of this period (e.g. enrolled May → not in April list)
+    if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
+    // Exclude students whose pause fully covers the period (entire period is within pause range)
+    if (s.pause_start && pStartDate && pEndDate) {
+      const pauseStartCoversPeriod = s.pause_start <= pStartDate;
+      const pauseEndCoversPeriod = !s.pause_end || s.pause_end >= pEndDate;
+      if (pauseStartCoversPeriod && pauseEndCoversPeriod) return false;
+    }
+    return true;
+  };
+
+  const regularStudents = deduped
+    .filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
+    .filter(isWithinPeriod)
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+  const corporateStudents = deduped
+    .filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
+    .filter(isWithinPeriod)
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
   const toggleConfirm = async (studentName: string) => {
     const existing = confMap.get(studentName);
@@ -373,10 +396,6 @@ export default function CashReceiptManagement() {
 
   const confirmedCount = regularStudents.filter(s => confMap.get(s.student_name)?.confirmed).length;
   const totalFee = regularStudents.reduce((sum, s) => sum + getFee(s), 0);
-
-  if (loading) {
-    return <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
-  }
 
   const renderStudentRow = (s: StudentRecord, isCorporate = false) => {
     const conf = confMap.get(s.student_name);
@@ -546,7 +565,7 @@ export default function CashReceiptManagement() {
         <h2 className="text-lg font-bold text-foreground">결제확인</h2>
       </div>
 
-      <Tabs defaultValue="count" className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "count" | "payment")} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="count" className="flex items-center gap-1.5">
             <BarChart3 className="w-3.5 h-3.5" />
@@ -565,6 +584,9 @@ export default function CashReceiptManagement() {
 
         {/* Tab 2: Payment Confirmation */}
         <TabsContent value="payment" className="mt-4 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (<>
           {/* Period Navigation */}
           <div className="flex items-center justify-end gap-3">
             <button onClick={prevPeriod} disabled={periodIdx >= periods.length - 1} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
@@ -746,6 +768,7 @@ export default function CashReceiptManagement() {
           </div>
         </div>
       )}
+          </>)}
         </TabsContent>
       </Tabs>
 
