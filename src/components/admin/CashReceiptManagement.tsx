@@ -624,7 +624,6 @@ export default function CashReceiptManagement() {
                   </span>
                 )}
                 <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{fee!.toLocaleString()}</span>
-                <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
               </div>
               {isOverridden && (
                 <span
