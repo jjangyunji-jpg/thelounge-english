@@ -501,7 +501,7 @@ export default function SessionCountReport() {
                     "px-2 py-2 text-center font-bold",
                     r.billable_overridden ? "text-warning bg-warning/10" : "text-primary bg-primary/5"
                   )} title={r.billable_overridden ? `자동값 ${r.computed_billable} → 수동 ${r.billable}` : undefined}>
-                    {r.billable}{r.billable_overridden && <span className="ml-0.5 text-[9px]">✎</span>}
+                    {r.billable}
                   </td>
                   <td className="px-1 py-1 text-center">
                     <button
