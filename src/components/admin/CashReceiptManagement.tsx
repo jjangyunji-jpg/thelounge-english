@@ -335,7 +335,7 @@ export default function CashReceiptManagement() {
       supabase.from("store_rewards" as any).select("amount, note").eq("month", aiMonthKeyForEffect).maybeSingle(),
     ]);
     setAiTotals(totals);
-    const r = rewardRes.data as { amount: number; note: string | null } | null;
+    const r = (rewardRes.data as unknown) as { amount: number; note: string | null } | null;
     setStoreReward(r ? { amount: r.amount, note: r.note } : { amount: 0, note: null });
   }, [aiMonthKeyForEffect]);
   useEffect(() => { loadSummaryExtras(); }, [loadSummaryExtras]);
