@@ -414,6 +414,8 @@ export default function SessionCountReport() {
         instructor_name: dominantInstructor || student.instructor_name || "(미배정)",
         completed,
         makeup_completed,
+        makeup,
+        sick_unmatched,
         no_show,
         same_day_cancel,
         sick,
