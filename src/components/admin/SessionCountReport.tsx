@@ -460,6 +460,8 @@ export default function SessionCountReport() {
     return {
       completed: sum("completed"),
       makeup_completed: sum("makeup_completed"),
+      makeup: sum("makeup"),
+      sick_unmatched: sum("sick_unmatched"),
       no_show: sum("no_show"),
       same_day_cancel: sum("same_day_cancel"),
       sick: sum("sick"),
