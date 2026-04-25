@@ -298,7 +298,8 @@ export default function SessionCountReport() {
         : (byName.get(student.student_name) || []).filter(s => !isWithinPause(getKstDate(s.scheduled_at), studentPauses));
       let completed = 0, no_show = 0, same_day_cancel = 0, sick = 0;
       let instructor_cancel = 0, advance_cancel = 0, makeup_completed = 0, scheduled = 0, unchecked = 0;
-      let carryover = 0;
+      let carryover = 0;     // 당월 → 다음달 이월 (next)
+      let carryover_in = 0;  // 전월 → 당월 이월 (prev)
 
       list.forEach(s => {
         // KST 날짜로 변환하여 origin과 비교하고, 현재 정규 요일/시간과 일치하면 단순 일정 변경 이력으로 간주
@@ -307,14 +308,25 @@ export default function SessionCountReport() {
         const isMakeup = origins.some(d => d !== kstDateStr) && !matchesRegularSchedule(s, student);
         const ct = s.cancellation_type;
         const direction = s.carryover_direction ?? (s.is_carryover ? "prev" : null);
-        // '당월 이월'(next)만 carryover 컬럼에 집계 — 다음달 결제에서 차감되는 케이스
+
+        // 이월 마크 카운트 (취소 카테고리와 독립)
         if (direction === "next") carryover++;
+        if (direction === "prev") carryover_in++;
+
+        // 분류 우선순위:
+        // 1) 취소 카테고리가 있으면 해당 카테고리로 분류
+        // 2) 전월 이월(prev) 마크된 세션은 별도 컬럼만 카운트 (미체크/예정/완료 분류 제외)
+        // 3) 완료 → 완료/보강
+        // 4) 시간 지남 → 미체크
+        // 5) 그 외 → 예정
         if (ct === "no_show") no_show++;
         else if (ct === "student_cancel") same_day_cancel++;
         else if (ct === "sick") sick++;
         else if (ct === "instructor_cancel") instructor_cancel++;
         else if (ct === "advance_cancel") advance_cancel++;
-        else if (s.ended_at) {
+        else if (direction === "prev") {
+          // 전월 이월 마크된 세션은 '이월(전월)' 컬럼으로만 분류 — 미체크/예정에서 제외
+        } else if (s.ended_at) {
           if (isMakeup) makeup_completed++;
           else completed++;
         } else if (direction === "next") {
@@ -326,11 +338,12 @@ export default function SessionCountReport() {
         }
       });
 
-      const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + unchecked + scheduled + carryover;
+      // '전체'는 이월(전월/당월)을 제외 — 일반 카테고리 합계만
+      const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + unchecked + scheduled;
       const prev_carryover_in = prevCarryoverByStudent.get(student.student_name) || 0;
-      // Actual lessons conducted (settlement-eligible base): completed + makeup + no-show
-      const actual_lessons = completed + makeup_completed + no_show;
-      // Billable = base monthly count (4) - previous month's carryovers (carryover flag + instructor cancel)
+      // Actual lessons conducted (settlement-eligible base): completed + makeup + no-show + 전월에서 이월된 수업
+      const actual_lessons = completed + makeup_completed + no_show + carryover_in;
+      // Billable = base monthly count (4) - previous month's carryovers (next + instructor cancel)
       // All students pay for 4 sessions per month by default
       const BASE_MONTHLY_COUNT = 4;
       const computed_billable = Math.max(0, BASE_MONTHLY_COUNT - prev_carryover_in);
