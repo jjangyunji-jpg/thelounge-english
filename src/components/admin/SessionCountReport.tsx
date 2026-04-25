@@ -241,6 +241,7 @@ export default function SessionCountReport() {
         scheduled,
         carryover,
         prev_carryover_in,
+        actual_lessons,
         billable,
         total,
       };
