@@ -281,6 +281,7 @@ export default function SessionCountReport() {
       scheduled: sum("scheduled"),
       carryover: sum("carryover"),
       prev_carryover_in: sum("prev_carryover_in"),
+      actual_lessons: sum("actual_lessons"),
       billable: sum("billable"),
       total: sum("total"),
     };
