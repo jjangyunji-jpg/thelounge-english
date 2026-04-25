@@ -565,7 +565,7 @@ export default function CashReceiptManagement() {
         <h2 className="text-lg font-bold text-foreground">결제확인</h2>
       </div>
 
-      <Tabs defaultValue="count" className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "count" | "payment")} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="count" className="flex items-center gap-1.5">
             <BarChart3 className="w-3.5 h-3.5" />
