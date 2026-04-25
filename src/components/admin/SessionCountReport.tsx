@@ -20,11 +20,19 @@ interface SchedulePeriod {
 }
 
 interface StudentRecord {
+  id: string;
   student_name: string;
   student_type: string;
   status: string | null;
   group_students: string[];
   instructor_name: string | null;
+  schedules: string | null;
+}
+
+interface StudentPause {
+  student_id: string;
+  pause_start: string;
+  pause_end: string | null;
 }
 
 interface SessionRow {
@@ -44,6 +52,45 @@ function ymd(d: Date) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function getKstDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+
+function getKstWeekday(iso: string) {
+  return new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", weekday: "short" });
+}
+
+function getKstTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function parseSchedules(value: string | null) {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as { day?: string; time?: string }[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function isWithinPause(date: string, pauses: StudentPause[]) {
+  return pauses.some(pause => date >= pause.pause_start && (!pause.pause_end || date <= pause.pause_end));
+}
+
+function matchesRegularSchedule(session: SessionRow, student: StudentRecord) {
+  const scheduleItems = parseSchedules(student.schedules);
+  if (scheduleItems.length === 0) return false;
+  const weekday = getKstWeekday(session.scheduled_at);
+  const time = getKstTime(session.scheduled_at);
+  return scheduleItems.some(item => item.day === weekday && item.time === time);
 }
 
 // Compute the immediately preceding range (used to fetch previous month's carryover counts)
@@ -67,6 +114,7 @@ export default function SessionCountReport() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [pauses, setPauses] = useState<StudentPause[]>([]);
   const [prevCarryoverByStudent, setPrevCarryoverByStudent] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -126,8 +174,15 @@ export default function SessionCountReport() {
 
     const studPromise = supabase
       .from("instructor_students")
-      .select("student_name, student_type, status, group_students, instructor_name")
+      .select("id, student_name, student_type, status, group_students, instructor_name, schedules")
       .eq("status", "active")
+      .then(r => r);
+
+    const pausePromise = supabase
+      .from("student_pauses")
+      .select("student_id, pause_start, pause_end")
+      .lte("pause_start", currentRange.end)
+      .or(`pause_end.is.null,pause_end.gte.${currentRange.start}`)
       .then(r => r);
 
     const sessPromise = supabase
@@ -147,13 +202,14 @@ export default function SessionCountReport() {
           .then(r => r)
       : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; cancellation_type: string | null }[] });
 
-    const results = await Promise.all([studPromise, sessPromise, prevPromise]);
+    const results = await Promise.all([studPromise, pausePromise, sessPromise, prevPromise]);
     setStudents((results[0].data || []) as StudentRecord[]);
-    setSessions((results[1].data || []) as SessionRow[]);
+    setPauses((results[1].data || []) as StudentPause[]);
+    setSessions((results[2].data || []) as SessionRow[]);
 
     const prevMap = new Map<string, number>();
-    if (results[2]) {
-      const prevRows = (results[2].data || []) as { student_name: string; is_carryover: boolean; cancellation_type: string | null }[];
+    if (results[3]) {
+      const prevRows = (results[3].data || []) as { student_name: string; is_carryover: boolean; cancellation_type: string | null }[];
       prevRows.forEach(r => {
         // Auto-carryover to next month: explicit carryover flag OR instructor cancel
         if (r.is_carryover || r.cancellation_type === "instructor_cancel") {
@@ -182,16 +238,22 @@ export default function SessionCountReport() {
     });
 
     const result = dedupedStudents.map(student => {
-      const list = byName.get(student.student_name) || [];
+      const studentPauses = pauses.filter(p => p.student_id === student.id);
+      const isFullyPaused = currentRange
+        ? studentPauses.some(p => p.pause_start <= currentRange.start && (!p.pause_end || p.pause_end >= currentRange.end))
+        : false;
+      const list = isFullyPaused
+        ? []
+        : (byName.get(student.student_name) || []).filter(s => !isWithinPause(getKstDate(s.scheduled_at), studentPauses));
       let completed = 0, no_show = 0, same_day_cancel = 0, sick = 0;
-      let instructor_cancel = 0, advance_cancel = 0, makeup_completed = 0, scheduled = 0;
+      let instructor_cancel = 0, advance_cancel = 0, makeup_completed = 0, scheduled = 0, unchecked = 0;
       let carryover = 0;
 
       list.forEach(s => {
-        // KST 날짜로 변환하여 origin과 비교 — 같은 KST 날짜면 시간만 변경된 것이므로 보강 아님
-        const kstDateStr = new Date(s.scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+        // KST 날짜로 변환하여 origin과 비교하고, 현재 정규 요일/시간과 일치하면 단순 일정 변경 이력으로 간주
+        const kstDateStr = getKstDate(s.scheduled_at);
         const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
-        const isMakeup = origins.some(d => d !== kstDateStr);
+        const isMakeup = origins.some(d => d !== kstDateStr) && !matchesRegularSchedule(s, student);
         const ct = s.cancellation_type;
         if (s.is_carryover) carryover++;
         if (ct === "no_show") no_show++;
@@ -202,12 +264,14 @@ export default function SessionCountReport() {
         else if (s.ended_at) {
           if (isMakeup) makeup_completed++;
           else completed++;
+        } else if (new Date(s.scheduled_at).getTime() < Date.now()) {
+          unchecked++;
         } else {
           scheduled++;
         }
       });
 
-      const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + scheduled;
+      const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + unchecked + scheduled;
       const prev_carryover_in = prevCarryoverByStudent.get(student.student_name) || 0;
       // Actual lessons conducted (settlement-eligible base): completed + makeup + no-show
       const actual_lessons = completed + makeup_completed + no_show;
@@ -241,6 +305,7 @@ export default function SessionCountReport() {
         sick,
         instructor_cancel,
         advance_cancel,
+        unchecked,
         scheduled,
         carryover,
         prev_carryover_in,
@@ -255,7 +320,7 @@ export default function SessionCountReport() {
       if (a.instructor_name !== b.instructor_name) return a.instructor_name.localeCompare(b.instructor_name, "ko");
       return a.student_name.localeCompare(b.student_name, "ko");
     });
-  }, [students, sessions, prevCarryoverByStudent]);
+  }, [students, sessions, pauses, prevCarryoverByStudent, currentRange]);
 
   // Group by instructor within each segment
   const groupByInstructor = (list: typeof rows) => {
@@ -281,6 +346,7 @@ export default function SessionCountReport() {
       sick: sum("sick"),
       instructor_cancel: sum("instructor_cancel"),
       advance_cancel: sum("advance_cancel"),
+      unchecked: sum("unchecked"),
       scheduled: sum("scheduled"),
       carryover: sum("carryover"),
       prev_carryover_in: sum("prev_carryover_in"),
@@ -331,6 +397,7 @@ export default function SessionCountReport() {
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">병결</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">강사취소</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">사전</th>
+                <th className="px-2 py-2 font-semibold text-warning text-center">미체크</th>
                 <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10">이월(당월)</th>
                 <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10">이월(전월)</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">예정</th>
@@ -354,6 +421,7 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.sick || "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.instructor_cancel || "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.advance_cancel || "-"}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-warning">{r.unchecked || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.carryover || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.prev_carryover_in ? `-${r.prev_carryover_in}` : "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
@@ -479,6 +547,7 @@ export default function SessionCountReport() {
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">병결 {totals.sick}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">강사취소 {totals.instructor_cancel}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">사전취소 {totals.advance_cancel}</span>
+        <span className="px-2 py-1 rounded bg-warning/10 text-warning font-semibold">미체크 {totals.unchecked}</span>
         <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">이월(당월) {totals.carryover}</span>
         <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">전월차감 -{totals.prev_carryover_in}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">예정 {totals.scheduled}</span>
@@ -488,7 +557,7 @@ export default function SessionCountReport() {
       </div>
 
       <p className="text-[10px] text-muted-foreground -mt-2">
-        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · 강사취소/이월은 다음 달 결제에서 자동 차감
+        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · 미체크는 수업 시간이 지났지만 상태가 저장되지 않은 항목
       </p>
 
       {loading ? (

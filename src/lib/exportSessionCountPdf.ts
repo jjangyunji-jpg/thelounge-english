@@ -12,6 +12,7 @@ export interface SessionCountRow {
   sick: number;             // sick
   instructor_cancel: number;// instructor_cancel
   advance_cancel: number;   // advance_cancel
+  unchecked: number;        // 시간이 지났지만 완료/취소 상태가 없음
   makeup_completed: number; // 보강으로 처리되어 완료된 수업
   scheduled: number;        // 미진행
   carryover: number;        // 이번 달 이월 표시된 수업 수
@@ -82,6 +83,7 @@ export async function exportSessionCountPdf(
     String(r.sick),
     String(r.instructor_cancel),
     String(r.advance_cancel),
+    String(r.unchecked),
     String(r.carryover),
     r.prev_carryover_in ? `-${r.prev_carryover_in}` : "0",
     String(r.scheduled),
@@ -101,6 +103,7 @@ export async function exportSessionCountPdf(
       String(sum("sick")),
       String(sum("instructor_cancel")),
       String(sum("advance_cancel")),
+      String(sum("unchecked")),
       String(sum("carryover")),
       `-${sum("prev_carryover_in")}`,
       String(sum("scheduled")),
@@ -111,11 +114,11 @@ export async function exportSessionCountPdf(
   };
 
   const commonOpts = {
-    styles: { fontSize: 7.5, cellPadding: 1.4, font: "SpoqaHanSansNeo" },
-    headStyles: { fillColor: [30, 58, 95] as [number, number, number], textColor: 255, font: "SpoqaHanSansNeo", fontStyle: "normal" as const, halign: "center" as const, fontSize: 7 },
+    styles: { fontSize: 7, cellPadding: 1.2, font: "SpoqaHanSansNeo" },
+    headStyles: { fillColor: [30, 58, 95] as [number, number, number], textColor: 255, font: "SpoqaHanSansNeo", fontStyle: "normal" as const, halign: "center" as const, fontSize: 6.6 },
     footStyles: { fillColor: [240, 240, 240] as [number, number, number], textColor: [30, 30, 30] as [number, number, number], font: "SpoqaHanSansNeo", fontStyle: "normal" as const, halign: "center" as const },
     columnStyles: {
-      0: { cellWidth: 40 },
+      0: { cellWidth: 34 },
       1: { halign: "center" as const },
       2: { halign: "center" as const },
       3: { halign: "center" as const },
@@ -123,12 +126,13 @@ export async function exportSessionCountPdf(
       5: { halign: "center" as const },
       6: { halign: "center" as const },
       7: { halign: "center" as const },
-      8: { halign: "center" as const, fillColor: [255, 248, 220] as [number, number, number] },
+      8: { halign: "center" as const },
       9: { halign: "center" as const, fillColor: [255, 248, 220] as [number, number, number] },
-      10: { halign: "center" as const },
+      10: { halign: "center" as const, fillColor: [255, 248, 220] as [number, number, number] },
       11: { halign: "center" as const },
-      12: { halign: "center" as const, fillColor: [230, 250, 230] as [number, number, number] },
-      13: { halign: "center" as const, fillColor: [220, 235, 255] as [number, number, number], fontStyle: "normal" as const },
+      12: { halign: "center" as const },
+      13: { halign: "center" as const, fillColor: [230, 250, 230] as [number, number, number] },
+      14: { halign: "center" as const, fillColor: [220, 235, 255] as [number, number, number], fontStyle: "normal" as const },
     },
     margin: { left: 14, right: 14 },
   };
