@@ -539,7 +539,9 @@ export default function CashReceiptManagement() {
   const renderStudentRow = (s: StudentRecord, isCorporate = false) => {
     const conf = confMap.get(s.student_name);
     const isConfirmed = conf?.confirmed || false;
-    const count = isCorporate ? (corpSessionCounts.get(s.student_name) || 0) : (sessionCounts.get(s.student_name) || 0);
+    const count = isCorporate
+      ? (corpSessionCounts.get(s.student_name) || 0)
+      : (billableCounts.has(s.student_name) ? (billableCounts.get(s.student_name) || 0) : (sessionCounts.get(s.student_name) || 0));
     const fee = isCorporate ? null : getFee(s);
     const isOverridden = !isCorporate && hasOverride(s.student_name);
     const credit = creditMap.get(s.student_name);
