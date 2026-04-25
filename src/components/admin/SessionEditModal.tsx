@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, X } from "lucide-react";
+import { Loader2, Save, X, ArrowRightCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ interface SessionItem {
   cancellation_type: string | null;
   reschedule_origin_dates: string[] | null;
   topic: string | null;
+  is_carryover: boolean;
 }
 
 type StatusKey =
@@ -65,6 +66,11 @@ function formatKstDate(iso: string) {
   });
 }
 
+interface PendingEdit {
+  status?: StatusKey;
+  carryover?: boolean;
+}
+
 export default function SessionEditModal({
   open,
   onClose,
@@ -77,7 +83,7 @@ export default function SessionEditModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
-  const [edits, setEdits] = useState<Record<string, StatusKey>>({});
+  const [edits, setEdits] = useState<Record<string, PendingEdit>>({});
 
   const load = useCallback(async () => {
     if (!open) return;
@@ -86,7 +92,7 @@ export default function SessionEditModal({
     const endTs = `${rangeEnd}T23:59:59+09:00`;
     const { data, error } = await supabase
       .from("class_sessions")
-      .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic")
+      .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover")
       .eq("student_name", studentName)
       .gte("scheduled_at", startTs)
       .lte("scheduled_at", endTs)
@@ -103,7 +109,11 @@ export default function SessionEditModal({
   useEffect(() => { load(); }, [load]);
 
   const handleStatusChange = (sessionId: string, status: StatusKey) => {
-    setEdits(prev => ({ ...prev, [sessionId]: status }));
+    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], status } }));
+  };
+
+  const handleCarryoverToggle = (sessionId: string, current: boolean) => {
+    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], carryover: !current } }));
   };
 
   const handleSave = async () => {
@@ -115,23 +125,29 @@ export default function SessionEditModal({
     setSaving(true);
     try {
       for (const id of changedIds) {
-        const newStatus = edits[id];
+        const edit = edits[id];
         const session = sessions.find(s => s.id === id);
         if (!session) continue;
 
         const update: Record<string, unknown> = {};
-        if (newStatus === "completed") {
-          update.cancellation_type = null;
-          update.cancellation_resolution = null;
-          update.ended_at = session.ended_at || new Date().toISOString();
-        } else if (newStatus === "scheduled") {
-          update.cancellation_type = null;
-          update.cancellation_resolution = null;
-          update.ended_at = null;
-        } else {
-          // cancellation
-          update.cancellation_type = newStatus;
-          update.ended_at = null;
+
+        if (edit.status) {
+          if (edit.status === "completed") {
+            update.cancellation_type = null;
+            update.cancellation_resolution = null;
+            update.ended_at = session.ended_at || new Date().toISOString();
+          } else if (edit.status === "scheduled") {
+            update.cancellation_type = null;
+            update.cancellation_resolution = null;
+            update.ended_at = null;
+          } else {
+            update.cancellation_type = edit.status;
+            update.ended_at = null;
+          }
+        }
+
+        if (edit.carryover !== undefined) {
+          update.is_carryover = edit.carryover;
         }
 
         const { error } = await supabase
@@ -160,6 +176,9 @@ export default function SessionEditModal({
             {studentName} — 수업 상태 수정
           </DialogTitle>
           <p className="text-xs text-muted-foreground">{rangeStart} ~ {rangeEnd}</p>
+          <p className="text-[11px] text-muted-foreground">
+            💡 <span className="font-semibold">이월</span>: 강사-학생 협의로 다음 달 결제 횟수에서 1회 차감됩니다 (취소 사유와 별개로 토글).
+          </p>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto -mx-6 px-6">
@@ -174,9 +193,11 @@ export default function SessionEditModal({
           ) : (
             <div className="space-y-2 py-2">
               {sessions.map(s => {
-                const currentStatus = edits[s.id] || deriveStatus(s);
+                const editEntry = edits[s.id];
+                const currentStatus = editEntry?.status || deriveStatus(s);
+                const currentCarryover = editEntry?.carryover !== undefined ? editEntry.carryover : s.is_carryover;
                 const isMakeup = Array.isArray(s.reschedule_origin_dates) && s.reschedule_origin_dates.length > 0;
-                const isDirty = !!edits[s.id];
+                const isDirty = !!editEntry;
                 return (
                   <div
                     key={s.id}
@@ -191,6 +212,11 @@ export default function SessionEditModal({
                         {isMakeup && (
                           <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">
                             보강
+                          </span>
+                        )}
+                        {currentCarryover && (
+                          <span className="px-1.5 py-0.5 rounded bg-accent/20 text-accent-foreground text-[10px] font-semibold border border-accent/30">
+                            이월
                           </span>
                         )}
                         {s.topic && (
@@ -216,6 +242,19 @@ export default function SessionEditModal({
                           {opt.label}
                         </button>
                       ))}
+                      <button
+                        onClick={() => handleCarryoverToggle(s.id, currentCarryover)}
+                        className={cn(
+                          "px-2 py-1 rounded border text-[11px] font-semibold transition-colors min-h-[28px] inline-flex items-center gap-1",
+                          currentCarryover
+                            ? "bg-accent/20 text-accent-foreground border-accent/40"
+                            : "bg-background text-muted-foreground border-border hover:bg-muted"
+                        )}
+                        title="다음 달 결제 횟수에서 차감"
+                      >
+                        <ArrowRightCircle className="w-3 h-3" />
+                        이월 {currentCarryover ? "ON" : "OFF"}
+                      </button>
                     </div>
                   </div>
                 );
