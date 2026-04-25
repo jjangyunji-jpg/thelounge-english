@@ -202,8 +202,9 @@ export default function CashReceiptManagement() {
     });
     setPauseRanges(pauseMap);
 
-    // Extract fee overrides from confirmation notes
+    // Extract fee overrides + refund flags from confirmation notes
     const overrides = new Map<string, number>();
+    const refunds = new Set<string>();
     confs.forEach(c => {
       if (c.note) {
         try {
@@ -211,10 +212,14 @@ export default function CashReceiptManagement() {
           if (typeof parsed.fee_override === "number") {
             overrides.set(c.student_name, parsed.fee_override);
           }
+          if (parsed.refund === true) {
+            refunds.add(c.student_name);
+          }
         } catch { /* not JSON, ignore */ }
       }
     });
     setFeeOverrides(overrides);
+    setRefundFlags(refunds);
 
     // Count sessions per student, attributing rescheduled sessions to their original period
     const pStart = currentPeriod.start_date;
