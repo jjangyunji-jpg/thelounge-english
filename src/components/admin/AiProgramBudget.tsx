@@ -66,6 +66,8 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
   }, [monthKey]);
 
   useEffect(() => { loadData(); }, [loadData]);
+  // Notify parent on data changes (after subscribers/payments arrive)
+  useEffect(() => { if (!loading) onChange?.(); }, [subscribers, payments, loading, onChange]);
 
   // Active subscribers for the current month
   // - challenge_21 (one-time): include only if start_month === monthKey
