@@ -10,10 +10,12 @@ export interface SessionCountRow {
   no_show: number;          // no_show
   same_day_cancel: number;  // student_cancel
   sick: number;             // sick
+  sick_unmatched?: number;  // 보강이 잡히지 않은 병결 건수 (UI 경고용)
   instructor_cancel: number;// instructor_cancel
   advance_cancel: number;   // advance_cancel
   unchecked: number;        // 시간이 지났지만 완료/취소 상태가 없음
   makeup_completed: number; // 보강으로 처리되어 완료된 수업
+  makeup?: number;          // 보강 세션 (완료+예정 모두)
   scheduled: number;        // 미진행
   carryover: number;        // 이번 달 → 다음달 이월 표시된 수업 수 (next)
   carryover_in: number;     // 전월에서 이월되어 들어온 수업 수 (prev) — 이번 달 실수업에 포함
