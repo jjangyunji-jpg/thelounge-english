@@ -190,7 +190,7 @@ export default function SessionCountReport() {
     // This ensures sessions moved OUT of the period (e.g., 4/2 → 4/30) are still counted in the original month.
     const sessInRangePromise = supabase
       .from("class_sessions")
-      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
+      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover, carryover_direction")
       .gte("scheduled_at", startTs)
       .lte("scheduled_at", endTs)
       .then(r => r);
