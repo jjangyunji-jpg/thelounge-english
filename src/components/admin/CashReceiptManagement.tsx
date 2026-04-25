@@ -105,13 +105,18 @@ export default function CashReceiptManagement() {
   const [editingFeeValue, setEditingFeeValue] = useState("");
   const [deductModal, setDeductModal] = useState<string | null>(null);
   const [deductCount, setDeductCount] = useState("");
-  const [activeTab, setActiveTab] = useState<"count" | "payment" | "budget">("count");
+  const [activeTab, setActiveTab] = useState<"count" | "payment" | "budget" | "summary">("count");
   const [pauseRanges, setPauseRanges] = useState<Map<string, { start: string; end: string | null }[]>>(new Map());
   const [refundFlags, setRefundFlags] = useState<Set<string>>(new Set());
   // Per-month cash payment override map (true = cash this month, false = store this month, undefined = use student default)
   const [cashOverrides, setCashOverrides] = useState<Map<string, boolean>>(new Map());
   // Per-month tax-invoice override for corporate students (true = 계산서 발급, false = 사업소득 3.3%, undefined = use student default)
   const [taxOverrides, setTaxOverrides] = useState<Map<string, boolean>>(new Map());
+  // AI program totals + manual store reward for the current month — used in 예산 요약 tab
+  const [aiTotals, setAiTotals] = useState<AiTotals>({ count: 0, gross: 0, net: 0, fee: 0 });
+  const [storeReward, setStoreReward] = useState<{ amount: number; note: string | null } | null>(null);
+  const [rewardEdit, setRewardEdit] = useState<{ amount: string; note: string } | null>(null);
+  const [rewardSaving, setRewardSaving] = useState(false);
 
   // Receipt management state
   const [receiptModal, setReceiptModal] = useState<{ mode: "create" | "edit"; data?: CashReceipt } | null>(null);
