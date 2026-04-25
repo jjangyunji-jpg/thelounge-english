@@ -225,12 +225,16 @@ export default function CashReceiptManagement() {
   const toggleConfirm = async (studentName: string) => {
     const existing = confMap.get(studentName);
     if (existing?.confirmed) return; // Already confirmed — do nothing
+    const nowIso = new Date().toISOString();
     if (existing) {
-      await supabase.from("payment_confirmations" as any).update({ confirmed: true, confirmed_at: new Date().toISOString() } as any).eq("id", existing.id);
+      // Optimistic update — flip confirmed locally without refetch
+      setConfirmations(prev => prev.map(c => c.id === existing.id ? { ...c, confirmed: true } : c));
+      await supabase.from("payment_confirmations" as any).update({ confirmed: true, confirmed_at: nowIso } as any).eq("id", existing.id);
     } else {
-      await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: true, confirmed_at: new Date().toISOString() } as any);
+      // Insert and merge returned row into local state
+      const { data } = await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: true, confirmed_at: nowIso } as any).select().single();
+      if (data) setConfirmations(prev => [...prev, data as unknown as PaymentConfirmation]);
     }
-    loadData();
   };
 
   // Deduct specified sessions from prepaid balance
