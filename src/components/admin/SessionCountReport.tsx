@@ -369,6 +369,8 @@ export default function SessionCountReport() {
         prev_carryover_in,
         actual_lessons,
         billable,
+        billable_overridden,
+        computed_billable,
         total,
       };
     }).filter(r => r.total > 0 || r.prev_carryover_in > 0);
