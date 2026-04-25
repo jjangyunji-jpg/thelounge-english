@@ -45,8 +45,9 @@ type: feature
 ## 인라인 편집 (SessionEditModal)
 - 수업 행의 ✏️ 아이콘 → 학생의 해당 기간 모든 세션 표시
 - **상태 버튼**: 완료/예정/노쇼/당일취소/병결/강사취소/사전취소
-- **이월 토글**: 별도 버튼 (ON/OFF) — 상태 변경과 독립
+- **이월 방향 분리**: `class_sessions.carryover_direction` 컬럼 — `prev`(전월에서 이월: 이번 달 카운트에 포함), `next`(당월 이월: 다음달 결제에서 1회 차감). 두 버튼 토글로 선택, 같은 버튼 재클릭 시 해제. 기존 `is_carryover=true`는 backfill로 모두 `prev` 처리됨.
 - **결제대상 수동 오버라이드**: `billable_overrides` 테이블 (student_name + period_start + period_end 유니크). 빈 값으로 저장 시 자동 계산값으로 복원. 오버라이드 적용된 행은 결제대상 셀에 ✎ 표시 + warning 색상.
+- 전월 차감 계산은 `carryover_direction = 'next'` 또는 `instructor_cancel`인 전월 세션만 카운트
 - 변경 항목만 일괄 저장
 
 ## PDF
