@@ -256,10 +256,36 @@ export default function CashReceiptManagement() {
     return true;
   };
 
-  const regularStudents = deduped
-    .filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
+  // Non-corporate students for breakdown counts (active / paused / withdrawn)
+  const nonCorpStudents = deduped.filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name));
+
+  const isPausedOnPeriod = (s: StudentRecord) => {
+    if (s.pause_start && isPauseCoveringPeriod(s.pause_start, s.pause_end)) return true;
+    const ranges = pauseRanges.get(s.student_name) || [];
+    return ranges.some(r => isPauseCoveringPeriod(r.start, r.end));
+  };
+
+  // Regular = active + within period + not paused for the whole period (current payment list)
+  const regularStudents = nonCorpStudents
+    .filter(s => s.status === "active")
     .filter(isWithinPeriod)
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
+  // Paused = active status but full-period pause (already excluded from regular)
+  const pausedStudents = nonCorpStudents
+    .filter(s => s.status === "active")
+    .filter(s => {
+      // Must have started by end of period
+      if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
+      return isPausedOnPeriod(s);
+    })
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
+  // Withdrawn = inactive status
+  const withdrawnStudents = nonCorpStudents
+    .filter(s => s.status === "inactive")
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
   const corporateStudents = deduped
     .filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
     .filter(isWithinPeriod)
