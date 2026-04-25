@@ -379,6 +379,7 @@ export default function SessionCountReport() {
         unchecked,
         scheduled,
         carryover,
+        carryover_in,
         prev_carryover_in,
         actual_lessons,
         billable,
@@ -386,7 +387,7 @@ export default function SessionCountReport() {
         computed_billable,
         total,
       };
-    }).filter(r => r.total > 0 || r.prev_carryover_in > 0);
+    }).filter(r => r.total > 0 || r.prev_carryover_in > 0 || r.carryover_in > 0);
 
     return result.sort((a, b) => {
       if (a.is_corporate !== b.is_corporate) return a.is_corporate ? 1 : -1;
