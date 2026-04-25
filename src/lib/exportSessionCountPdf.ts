@@ -87,6 +87,7 @@ export async function exportSessionCountPdf(
     String(r.advance_cancel),
     String(r.unchecked),
     String(r.carryover),
+    String(r.carryover_in),
     r.prev_carryover_in ? `-${r.prev_carryover_in}` : "0",
     String(r.scheduled),
     String(r.total),
