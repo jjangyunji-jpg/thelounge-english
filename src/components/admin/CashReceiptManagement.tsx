@@ -1034,46 +1034,83 @@ export default function CashReceiptManagement() {
         </div>
       )}
 
-      {/* Cash Receipts Table */}
-      {receipts.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">현금영수증 정보</p>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50 border-b border-border">
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">유형</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">번호</th>
-                  <th className="text-center px-4 py-3 font-semibold text-foreground">자동발급</th>
-                </tr>
-              </thead>
-              <tbody>
-                {receipts.filter(r => r.receipt_number).map((r, i) => (
-                  <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 text-xs font-medium">
-                        {r.receipt_type === "phone" ? <><Phone className="w-3 h-3 text-primary" /> 휴대폰</> : <><Building2 className="w-3 h-3 text-amber-500" /> 사업자</>}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{r.receipt_number}</td>
-                    <td className="px-4 py-3 text-center">
-                      {r.recurring && (
-                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                          <RefreshCw className="w-3 h-3" /> 매달
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Cash Receipts Table — always show with add/edit/delete */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-muted-foreground">현금영수증 정보</p>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setShowAllReceipts(v => !v)}
+              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md border border-border bg-card hover:bg-muted text-foreground transition-colors"
+              title="전체(자동발급/매달 포함) 보기 토글"
+            >
+              <Settings2 className="w-3 h-3" />
+              {showAllReceipts ? "필터링" : "전체 관리"}
+            </button>
+            <button
+              onClick={openReceiptCreate}
+              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-3 h-3" /> 추가
+            </button>
           </div>
         </div>
-      )}
+        <div className="border border-border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 border-b border-border">
+                <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">유형</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">번호</th>
+                <th className="text-center px-4 py-3 font-semibold text-foreground">자동발급</th>
+                <th className="w-20 px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {(showAllReceipts ? receipts : receipts.filter(r => r.receipt_number)).map((r, i) => (
+                <tr key={`${r.student_name}-${i}`} className="border-b border-border last:border-0 hover:bg-muted/30 group/row">
+                  <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium">
+                      {r.receipt_type === "phone" ? <><Phone className="w-3 h-3 text-primary" /> 휴대폰</> : <><Building2 className="w-3 h-3 text-amber-500" /> 사업자</>}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-foreground">{r.receipt_number || <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      {r.recurring && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                          <RefreshCw className="w-3 h-3" /> 영수증
+                        </span>
+                      )}
+                      {r.recurring_attendance && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-accent/40 text-accent-foreground font-medium">
+                          <RefreshCw className="w-3 h-3" /> 출석증
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                      <button onClick={() => openReceiptEdit(r)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-primary" title="수정">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => deleteReceipt(r.student_name)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive" title="삭제">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {(showAllReceipts ? receipts : receipts.filter(r => r.receipt_number)).length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-xs text-muted-foreground">등록된 현금영수증 정보가 없습니다.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      {/* Recurring Attendance Requests */}
+      {/* Recurring Attendance Requests (auto-issue list) */}
       {receipts.some(r => r.recurring_attendance) && (
         <div>
           <p className="text-xs font-semibold text-muted-foreground mb-2">출석증 매달 자동 발급 대상</p>
@@ -1092,58 +1129,86 @@ export default function CashReceiptManagement() {
         </div>
       )}
 
-      {/* Attendance Certificate Requests */}
-      {attendanceRequests.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">출석증 요청</p>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50 border-b border-border">
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">출석 기간</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">요청일</th>
-                  <th className="text-center px-4 py-3 font-semibold text-foreground">상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendanceRequests.map((req) => {
-                  const periodLine = req.description.split("\n").find(l => l.startsWith("출석 기간:"));
-                  const periodText = periodLine ? periodLine.replace("출석 기간: ", "") : "-";
-                  const isResolved = req.status === "resolved";
-                  return (
-                    <tr key={req.id} className={cn("border-b border-border last:border-0 transition-colors", isResolved ? "bg-primary/5" : "hover:bg-muted/30")}>
-                      <td className="px-4 py-3 font-medium text-foreground">{req.user_name}</td>
-                      <td className="px-4 py-3 text-foreground">{periodText}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">
-                        {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {isResolved ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                            <CheckCircle className="w-3 h-3" /> 발급완료
-                          </span>
-                        ) : (
-                          <button
-                            onClick={async () => {
-                              await supabase.from("support_requests").update({ status: "resolved", resolved_at: new Date().toISOString() }).eq("id", req.id);
-                              toast({ title: "출석증 발급 완료 처리됨" });
-                              loadData();
-                            }}
-                            className="text-[10px] px-2 py-1 rounded bg-accent text-accent-foreground hover:bg-accent/80 transition-colors font-medium"
-                          >
-                            발급 완료
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+      {/* Attendance Certificate Requests — always show with add/edit/delete */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-muted-foreground">출석증 요청</p>
+          <button
+            onClick={openAttendCreate}
+            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-3 h-3" /> 추가
+          </button>
         </div>
-      )}
+        <div className="border border-border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 border-b border-border">
+                <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">출석 기간</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">요청일</th>
+                <th className="text-center px-4 py-3 font-semibold text-foreground">상태</th>
+                <th className="w-24 px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {attendanceRequests.map((req) => {
+                const periodLine = req.description.split("\n").find(l => l.startsWith("출석 기간:"));
+                const periodText = periodLine ? periodLine.replace("출석 기간: ", "") : "-";
+                const isResolved = req.status === "resolved";
+                return (
+                  <tr key={req.id} className={cn("border-b border-border last:border-0 transition-colors group/row", isResolved ? "bg-primary/5" : "hover:bg-muted/30")}>
+                    <td className="px-4 py-3 font-medium text-foreground">{req.user_name}</td>
+                    <td className="px-4 py-3 text-foreground">{periodText}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {isResolved ? (
+                        <button
+                          onClick={async () => {
+                            await supabase.from("support_requests").update({ status: "open", resolved_at: null }).eq("id", req.id);
+                            toast({ title: "발급 완료 해제됨" });
+                            loadData();
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium hover:bg-primary/20"
+                          title="발급 완료 취소"
+                        >
+                          <CheckCircle className="w-3 h-3" /> 발급완료
+                        </button>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            await supabase.from("support_requests").update({ status: "resolved", resolved_at: new Date().toISOString() }).eq("id", req.id);
+                            toast({ title: "출석증 발급 완료 처리됨" });
+                            loadData();
+                          }}
+                          className="text-[10px] px-2 py-1 rounded bg-accent text-accent-foreground hover:bg-accent/80 transition-colors font-medium"
+                        >
+                          발급 완료
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        <button onClick={() => openAttendEdit(req)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-primary" title="수정">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => deleteAttendRequest(req.id, req.user_name)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive" title="삭제">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {attendanceRequests.length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-xs text-muted-foreground">등록된 출석증 요청이 없습니다.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
           </>)}
         </TabsContent>
       </Tabs>
