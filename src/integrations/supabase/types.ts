@@ -47,6 +47,39 @@ export type Database = {
         }
         Relationships: []
       }
+      billable_overrides: {
+        Row: {
+          billable_count: number
+          created_at: string
+          id: string
+          note: string | null
+          period_end: string
+          period_start: string
+          student_name: string
+          updated_at: string
+        }
+        Insert: {
+          billable_count: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          period_end: string
+          period_start: string
+          student_name: string
+          updated_at?: string
+        }
+        Update: {
+          billable_count?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          period_end?: string
+          period_start?: string
+          student_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       business_meeting_attendees: {
         Row: {
           created_at: string
