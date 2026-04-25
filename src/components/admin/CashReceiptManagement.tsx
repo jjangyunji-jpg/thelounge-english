@@ -645,15 +645,29 @@ export default function CashReceiptManagement() {
           </div>
 
           {/* Summary */}
-          <div className="flex gap-4">
-            <div className="rounded-lg border border-border bg-card p-4 flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground">정규 수강생</p>
               <p className="text-xl font-bold text-foreground mt-1">{regularStudents.length}명</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 확인 완료 <span className="text-primary font-semibold">{confirmedCount}</span> / {regularStudents.length}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-4 flex-1">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <PauseCircle className="w-3 h-3" /> 휴강생
+              </p>
+              <p className="text-xl font-bold text-warning mt-1">{pausedStudents.length}명</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{periodLabel} 전체 휴강</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <UserMinus className="w-3 h-3" /> 퇴원생
+              </p>
+              <p className="text-xl font-bold text-muted-foreground mt-1">{withdrawnStudents.length}명</p>
+              <p className="text-xs text-muted-foreground mt-0.5">전체 누적</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground">예상 수강료 합계</p>
               <p className="text-xl font-bold text-foreground mt-1">₩{totalFee.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground mt-0.5">기업 수강생 별도</p>
@@ -663,7 +677,17 @@ export default function CashReceiptManagement() {
       {/* Regular Students Table */}
       {regularStudents.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">정규 수강생</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-muted-foreground">정규 수강생</p>
+            <button
+              onClick={handleDownloadPdf}
+              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md border border-border bg-card hover:bg-muted text-foreground transition-colors"
+              title={`${periodLabel} 수강생 리스트 PDF 다운로드`}
+            >
+              <Download className="w-3 h-3" />
+              PDF 다운로드
+            </button>
+          </div>
           <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
