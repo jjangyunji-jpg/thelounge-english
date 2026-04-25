@@ -680,7 +680,7 @@ export default function SessionCountReport() {
       </div>
 
       <p className="text-[10px] text-muted-foreground -mt-2">
-        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(당월 이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · <span className="font-semibold">이월(당월)</span>: 이번 달 → 다음달로 이월 · <span className="font-semibold">이월(전월)</span>: 지난달의 '당월 이월'이 이번 달 결제에서 차감된 횟수
+        💡 <span className="font-semibold">전체</span> = 완료 + 노쇼 + 당일 − 이월(전월) · <span className="font-semibold">실수업</span> = 완료 (보강·이월(전월) 완료 포함) · <span className="font-semibold">결제대상</span> = 4 − 이월(전월) − 전월 강사취소 · <span className="text-warning font-semibold">⚠ 전체 ≠ 결제대상이면 표시</span>
       </p>
 
       {loading ? (
