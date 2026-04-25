@@ -124,32 +124,30 @@ export default function SessionCountReport() {
     const startTs = `${currentRange.start}T00:00:00+09:00`;
     const endTs = `${currentRange.end}T23:59:59+09:00`;
 
-    const queries: Promise<unknown>[] = [
-      supabase
-        .from("instructor_students")
-        .select("student_name, student_type, status, group_students, instructor_name")
-        .eq("status", "active"),
-      supabase
-        .from("class_sessions")
-        .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
-        .gte("scheduled_at", startTs)
-        .lte("scheduled_at", endTs),
-    ];
+    const studPromise = supabase
+      .from("instructor_students")
+      .select("student_name, student_type, status, group_students, instructor_name")
+      .eq("status", "active")
+      .then(r => r);
 
-    if (previousRange) {
-      const prevStartTs = `${previousRange.start}T00:00:00+09:00`;
-      const prevEndTs = `${previousRange.end}T23:59:59+09:00`;
-      queries.push(
-        supabase
+    const sessPromise = supabase
+      .from("class_sessions")
+      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
+      .gte("scheduled_at", startTs)
+      .lte("scheduled_at", endTs)
+      .then(r => r);
+
+    const prevPromise = previousRange
+      ? supabase
           .from("class_sessions")
           .select("student_name, is_carryover")
           .eq("is_carryover", true)
-          .gte("scheduled_at", prevStartTs)
-          .lte("scheduled_at", prevEndTs)
-      );
-    }
+          .gte("scheduled_at", `${previousRange.start}T00:00:00+09:00`)
+          .lte("scheduled_at", `${previousRange.end}T23:59:59+09:00`)
+          .then(r => r)
+      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean }[] });
 
-    const results = await Promise.all(queries) as Array<{ data: unknown }>;
+    const results = await Promise.all([studPromise, sessPromise, prevPromise]);
     setStudents((results[0].data || []) as StudentRecord[]);
     setSessions((results[1].data || []) as SessionRow[]);
 
