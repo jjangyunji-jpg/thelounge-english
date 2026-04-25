@@ -95,6 +95,7 @@ export default function CashReceiptManagement() {
   const [deductModal, setDeductModal] = useState<string | null>(null);
   const [deductCount, setDeductCount] = useState("");
   const [activeTab, setActiveTab] = useState<"count" | "payment">("count");
+  const [pauseRanges, setPauseRanges] = useState<Map<string, { start: string; end: string | null }[]>>(new Map());
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
