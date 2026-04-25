@@ -1830,6 +1830,188 @@ export default function CashReceiptManagement() {
           </p>
           </>)}
         </TabsContent>
+
+        {/* Tab 4: 예산 요약 — Aggregated totals across regular + corporate + AI programs */}
+        <TabsContent value="summary" className="mt-4 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (() => {
+            const rewardAmount = storeReward?.amount || 0;
+            const totalIncome = budgetGrossTotal + corpGrossTotal + aiTotals.gross;
+            const cashTotal = budgetCashTotal + corpNetTotal;
+            const storeGrossAll = budgetStoreTotal + aiTotals.gross;
+            const storeNetAll = budgetStoreNet + aiTotals.net - rewardAmount;
+            const feeTotal = budgetStoreFee + aiTotals.fee;
+            return (
+              <>
+                {/* Period Navigation */}
+                <div className="flex items-center justify-end gap-3">
+                  <button onClick={prevPeriod} disabled={periodIdx >= periods.length - 1} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <span className="text-sm font-semibold text-foreground min-w-[140px] text-center">{periodLabel || "—"}</span>
+                  <button onClick={nextPeriod} disabled={periodIdx <= 0} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  정규 수업 + 기업 수업 + AI 프로그램의 모든 수입을 합산한 요약입니다. 기업 수업은 전월 수업 기준 후불, AI 프로그램은 당월 결제 기준입니다.
+                </p>
+
+                {/* 1) 총 수입 (예상) */}
+                <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <Receipt className="w-4 h-4 text-primary" /> 총 수입 (예상)
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">정규 + 기업 + AI 프로그램</span>
+                  </div>
+                  <p className="text-3xl font-bold text-primary mt-2">₩{totalIncome.toLocaleString()}</p>
+                  <div className="grid grid-cols-3 gap-2 mt-3 text-[11px]">
+                    <div className="rounded-md bg-card border border-border p-2">
+                      <p className="text-muted-foreground">정규 수업</p>
+                      <p className="font-semibold text-foreground">₩{budgetGrossTotal.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-md bg-card border border-border p-2">
+                      <p className="text-muted-foreground">기업 발생액</p>
+                      <p className="font-semibold text-foreground">₩{corpGrossTotal.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-md bg-card border border-border p-2">
+                      <p className="text-muted-foreground">AI 프로그램</p>
+                      <p className="font-semibold text-foreground">₩{aiTotals.gross.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2 ~ 5 grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* 2) 현금 (이체) */}
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                        <Wallet className="w-4 h-4 text-amber-600" /> 현금 (이체)
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1">₩{cashTotal.toLocaleString()}</p>
+                    <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
+                      <p>· 정규 현금/이체 ₩{budgetCashTotal.toLocaleString()}</p>
+                      <p>· 기업 결제 실수령 ₩{corpNetTotal.toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  {/* 3) 스마트스토어 결제 */}
+                  <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                        <Store className="w-4 h-4 text-blue-600" /> 스마트스토어 결제
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1">₩{storeGrossAll.toLocaleString()}</p>
+                    <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
+                      <p>· 정규 스토어 ₩{budgetStoreTotal.toLocaleString()}</p>
+                      <p>· AI 프로그램 ₩{aiTotals.gross.toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  {/* 4) 스마트스토어 실수령액 */}
+                  <div className="rounded-lg border border-success/30 bg-success/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                        <TrendingDown className="w-4 h-4 text-success" /> 스마트스토어 실수령액
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold text-success mt-1">₩{storeNetAll.toLocaleString()}</p>
+                    <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
+                      <p>· 정규 실수령 ₩{budgetStoreNet.toLocaleString()}</p>
+                      <p>· AI 실수령 ₩{aiTotals.net.toLocaleString()}</p>
+                      {rewardAmount > 0 && <p>· 리워드 차감 -₩{rewardAmount.toLocaleString()}</p>}
+                    </div>
+                  </div>
+
+                  {/* 5) 수수료 */}
+                  <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                        <TrendingDown className="w-4 h-4 text-rose-600" /> 수수료 (4.95%)
+                      </p>
+                    </div>
+                    <p className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1">-₩{feeTotal.toLocaleString()}</p>
+                    <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
+                      <p>· 정규 스토어 수수료 ₩{budgetStoreFee.toLocaleString()}</p>
+                      <p>· AI 프로그램 수수료 ₩{aiTotals.fee.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6) 스마트스토어 리워드 (수동입력) */}
+                <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <Gift className="w-4 h-4 text-purple-600" /> 스마트스토어 리워드 — {aiMonthLabel || "—"}
+                      <span className="text-[10px] text-muted-foreground font-normal">(수동입력 · 실수령액에서 차감됨)</span>
+                    </p>
+                    {rewardEdit === null && (
+                      <button
+                        onClick={() => setRewardEdit({ amount: String(storeReward?.amount || ""), note: storeReward?.note || "" })}
+                        className="text-[11px] px-2 py-1 rounded-md border border-border bg-card hover:bg-muted text-foreground transition-colors flex items-center gap-1"
+                      >
+                        <Pencil className="w-3 h-3" /> {storeReward && storeReward.amount > 0 ? "수정" : "입력"}
+                      </button>
+                    )}
+                  </div>
+                  {rewardEdit !== null ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] font-semibold text-muted-foreground">리워드 금액 (원)</label>
+                          <input
+                            type="text"
+                            value={rewardEdit.amount}
+                            onChange={e => setRewardEdit(prev => prev && { ...prev, amount: e.target.value })}
+                            placeholder="예: 12000"
+                            inputMode="numeric"
+                            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            autoFocus
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-semibold text-muted-foreground">메모 (선택)</label>
+                          <input
+                            type="text"
+                            value={rewardEdit.note}
+                            onChange={e => setRewardEdit(prev => prev && { ...prev, note: e.target.value })}
+                            placeholder="예: 4월 스토어팜 적립금"
+                            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <button onClick={() => setRewardEdit(null)} disabled={rewardSaving} className="px-3 py-1.5 text-xs rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors">
+                          취소
+                        </button>
+                        <button onClick={saveStoreReward} disabled={rewardSaving} className="px-3 py-1.5 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1">
+                          {rewardSaving && <Loader2 className="w-3 h-3 animate-spin" />}저장
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">₩{(storeReward?.amount || 0).toLocaleString()}</p>
+                      {storeReward?.note && (
+                        <p className="text-[11px] text-muted-foreground mt-1">{storeReward.note}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[10px] text-muted-foreground">
+                  💡 정규 수업 금액은 결제 확인 탭의 결제수단(현금/스토어) 설정을 따릅니다. 기업 수업 금액은 전월 수업 회수와 학생별 단가, 계산서/3.3% 설정에 따라 산출됩니다. AI 프로그램은 구독자 관리에서 등록한 수강생의 결제 여부에 따라 합산됩니다.
+                </p>
+              </>
+            );
+          })()}
+        </TabsContent>
       </Tabs>
 
       {/* Deduction Count Modal */}
