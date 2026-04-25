@@ -432,7 +432,14 @@ export default function SessionCountReport() {
         computed_billable,
         total,
       };
-    }).filter(r => r.total > 0 || r.prev_carryover_in > 0 || r.carryover_in > 0);
+    }).filter(r =>
+      r.total > 0 ||
+      r.prev_carryover_in > 0 ||
+      r.carryover_in > 0 ||
+      r.scheduled > 0 ||
+      r.unchecked > 0 ||
+      r.carryover > 0
+    );
 
     return result.sort((a, b) => {
       if (a.is_corporate !== b.is_corporate) return a.is_corporate ? 1 : -1;
