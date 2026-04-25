@@ -235,8 +235,19 @@ export default function CashReceiptManagement() {
   const dedMap = new Map(deductions.map(d => [d.student_name, d]));
   const receiptMap = new Map(receipts.map(r => [r.student_name, r]));
 
-  // Deduplicate by student_name (transfer creates multiple records for same student)
-  const deduped = Array.from(new Map(students.map(s => [s.student_name, s])).values());
+  // Deduplicate by student_name (transfers create multiple records for the same student).
+  // Prefer the record with the EARLIEST start_date so that "신규" badge and period filtering
+  // reflect when the student actually started, not when a future transfer record was created.
+  const deduped = Array.from(
+    students.reduce((map, s) => {
+      const existing = map.get(s.student_name);
+      if (!existing) { map.set(s.student_name, s); return map; }
+      const a = existing.start_date || "9999-12-31";
+      const b = s.start_date || "9999-12-31";
+      if (b < a) map.set(s.student_name, s);
+      return map;
+    }, new Map<string, StudentRecord>()).values()
+  );
 
   // Filter helpers based on the currently selected period
   const pStartDate = currentPeriod?.start_date || "";
