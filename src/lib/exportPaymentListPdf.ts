@@ -48,7 +48,7 @@ export async function exportPaymentListPdf({ periodLabel, rows }: ExportOptions)
 
   autoTable(doc, {
     startY: 32,
-    head: [["번호", "이름", "수업 횟수", "수강료"]],
+    head: [["번호", "이름", "결제대상", "수강료"]],
     body,
     styles: { font: "SpoqaHanSansNeo", fontStyle: "normal", fontSize: 10, cellPadding: 2.5 },
     headStyles: {
