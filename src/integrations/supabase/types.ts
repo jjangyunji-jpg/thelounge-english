@@ -47,6 +47,80 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_program_payments: {
+        Row: {
+          amount_override: number | null
+          created_at: string
+          id: string
+          month: string
+          note: string | null
+          paid: boolean
+          subscriber_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_override?: number | null
+          created_at?: string
+          id?: string
+          month: string
+          note?: string | null
+          paid?: boolean
+          subscriber_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_override?: number | null
+          created_at?: string
+          id?: string
+          month?: string
+          note?: string | null
+          paid?: boolean
+          subscriber_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_program_payments_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "ai_program_subscribers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_program_subscribers: {
+        Row: {
+          created_at: string
+          customer_name: string
+          end_month: string | null
+          id: string
+          note: string | null
+          program_type: string
+          start_month: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          end_month?: string | null
+          id?: string
+          note?: string | null
+          program_type: string
+          start_month: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          end_month?: string | null
+          id?: string
+          note?: string | null
+          program_type?: string
+          start_month?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       billable_overrides: {
         Row: {
           billable_count: number

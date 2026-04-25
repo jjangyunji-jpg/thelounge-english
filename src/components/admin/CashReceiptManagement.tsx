@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import SessionCountReport from "./SessionCountReport";
+import AiProgramBudget from "./AiProgramBudget";
 import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare, Download, PauseCircle, UserMinus, UserPlus, AlertCircle, Trash2, Settings2, RotateCcw, Wallet, Store, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -146,6 +147,10 @@ export default function CashReceiptManagement() {
   const corpNextYear = corpMon === 12 ? corpYear + 1 : corpYear;
   const corpMonthEnd = `${corpNextYear}-${String(corpNextMon).padStart(2, "0")}-01T00:00:00+09:00`;
   const corpMonthLabel = `${corpYear}년 ${corpMon}월`;
+
+  // AI program month key: derived from current period's start_date (YYYY-MM)
+  const aiMonthKey = currentPeriod ? currentPeriod.start_date.slice(0, 7) : "";
+  const aiMonthLabel = currentPeriod ? `${corpAnchorYear}년 ${corpAnchorMon}월` : "";
 
   // Load periods first, then data
   useEffect(() => {
@@ -1773,6 +1778,9 @@ export default function CashReceiptManagement() {
               </div>
             </div>
           </div>
+
+          {/* ===== AI Program Section ===== */}
+          <AiProgramBudget monthKey={aiMonthKey} monthLabel={aiMonthLabel} />
 
           <p className="text-[10px] text-muted-foreground">
             💡 결제 확인 탭의 학생 이름 옆 결제수단 뱃지(현금/스토어 또는 계산서/3.3%)를 <span className="font-semibold">클릭</span>하면 이번 달만 변경, <span className="font-semibold">우클릭</span>하면 학생 기본값을 변경합니다.
