@@ -434,6 +434,28 @@ export default function SessionEditModal({
                         당월 이월
                       </button>
                     </div>
+                    {currentDirection !== null && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
+                          이월 사유
+                        </span>
+                        <input
+                          type="text"
+                          value={
+                            editEntry?.carryover_reason !== undefined
+                              ? editEntry.carryover_reason
+                              : (s.carryover_reason ?? "")
+                          }
+                          onChange={(e) => handleReasonChange(s.id, e.target.value)}
+                          placeholder={
+                            currentStatus === "instructor_cancel"
+                              ? AUTO_INSTRUCTOR_CANCEL_REASON
+                              : "사유를 입력하세요 (예: 학생 요청, 일정 조율 등)"
+                          }
+                          className="flex-1 h-7 px-2 rounded border border-input bg-background text-[11px]"
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
