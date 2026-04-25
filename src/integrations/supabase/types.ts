@@ -1228,6 +1228,33 @@ export type Database = {
         }
         Relationships: []
       }
+      store_rewards: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          month: string
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          month: string
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          month?: string
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       student_pauses: {
         Row: {
           created_at: string
