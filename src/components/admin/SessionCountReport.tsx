@@ -333,7 +333,10 @@ export default function SessionCountReport() {
       // Billable = base monthly count (4) - previous month's carryovers (carryover flag + instructor cancel)
       // All students pay for 4 sessions per month by default
       const BASE_MONTHLY_COUNT = 4;
-      const billable = Math.max(0, BASE_MONTHLY_COUNT - prev_carryover_in);
+      const computed_billable = Math.max(0, BASE_MONTHLY_COUNT - prev_carryover_in);
+      const overrideVal = billableOverrides.get(student.student_name);
+      const billable_overridden = overrideVal !== undefined;
+      const billable = billable_overridden ? overrideVal! : computed_billable;
 
       // Pick instructor by majority of sessions IN THIS RANGE (handles transfer-pending duplicates correctly)
       const instructorCounts = new Map<string, number>();
