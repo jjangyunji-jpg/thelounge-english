@@ -273,7 +273,7 @@ export default function SessionCountReport() {
         }
       });
 
-      const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + unchecked + scheduled;
+      const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + unchecked + scheduled + carryover;
       const prev_carryover_in = prevCarryoverByStudent.get(student.student_name) || 0;
       // Actual lessons conducted (settlement-eligible base): completed + makeup + no-show
       const actual_lessons = completed + makeup_completed + no_show;
