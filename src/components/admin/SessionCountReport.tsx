@@ -371,11 +371,11 @@ export default function SessionCountReport() {
           // 미진행 전월 이월 — '이월(전월)' 컬럼에만 카운트
         } else if (direction === "next") {
           // 당월 이월 처리된 세션은 미체크/예정에 포함하지 않음
-        } else if (isMakeup) {
-          // 보강 세션은 보강 컬럼에서 이미 카운트됨 — 예정/미체크 중복 방지
         } else if (new Date(s.scheduled_at).getTime() < Date.now()) {
+          // 미진행 + 시간 지남 → 미체크 (보강도 동일하게 미체크 처리)
           unchecked++;
         } else {
+          // 미진행 + 미래 → 예정 (보강 미진행 세션도 예정에 포함)
           scheduled++;
         }
       });
