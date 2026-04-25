@@ -336,28 +336,52 @@ export default function CashReceiptManagement() {
     return ranges.some(r => isPauseCoveringPeriod(r.start, r.end));
   };
 
-  // Regular = active + within period + not paused for the whole period (current payment list)
+  // Regular = active + within period (DON'T hide paused/withdrawn that already have confirmation/receipts —
+  // they show as a row with a refund badge so admins can track them).
+  // Include any student that EITHER (a) is currently active and within period, OR
+  // (b) has any payment_confirmation/cash_receipt for this period (so existing records remain visible).
   const regularStudents = nonCorpStudents
-    .filter(s => s.status === "active")
-    .filter(isWithinPeriod)
-    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
-
-  // Paused = active status but full-period pause (already excluded from regular)
-  const pausedStudents = nonCorpStudents
-    .filter(s => s.status === "active")
     .filter(s => {
-      // Must have started by end of period
-      if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
-      return isPausedOnPeriod(s);
+      const baseEligible = s.status === "active" && isWithinPeriod(s);
+      const hasConfRecord = confMap.has(s.student_name);
+      return baseEligible || hasConfRecord;
     })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
-  // Withdrawn = inactive AND end_date falls within the selected period
-  const withdrawnStudents = nonCorpStudents
-    .filter(s => s.status === "inactive")
+  // Helper: total session count for a non-corporate student in this period (billable or raw).
+  const periodSessionCount = (name: string): number => {
+    if (billableCounts.has(name)) return billableCounts.get(name) || 0;
+    return sessionCounts.get(name) || 0;
+  };
+
+  // Paused = full-period pause OR (active status but 0 sessions in this period AND a current pause covers part of it)
+  const pausedStudents = nonCorpStudents
     .filter(s => {
-      if (!s.end_date || !pStartDate || !pEndDate) return false;
-      return s.end_date >= pStartDate && s.end_date <= pEndDate;
+      // Must have started by end of period
+      if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
+      // Original: full-period pause
+      if (isPausedOnPeriod(s)) return true;
+      // Carry-over rule (cnt=0 + currently paused)
+      const cnt = periodSessionCount(s.student_name);
+      if (cnt === 0 && s.status === "active") {
+        const today = new Date().toISOString().slice(0, 10);
+        const inlinePauseActive = s.pause_start && s.pause_start <= today && (!s.pause_end || s.pause_end >= today);
+        if (inlinePauseActive) return true;
+      }
+      return false;
+    })
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
+  // Withdrawn = inactive AND (end_date in period OR no end_date but 0 sessions in period)
+  const withdrawnStudents = nonCorpStudents
+    .filter(s => {
+      if (s.status !== "inactive") return false;
+      if (s.end_date && pStartDate && pEndDate && s.end_date >= pStartDate && s.end_date <= pEndDate) return true;
+      // Inactive but end_date outside period — only count if they had ZERO sessions this period
+      // (i.e. the withdrawal effectively applies to this billing month)
+      const cnt = periodSessionCount(s.student_name);
+      if (cnt === 0) return true;
+      return false;
     })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
