@@ -703,9 +703,13 @@ export default function CashReceiptManagement() {
     const credit = creditMap.get(s.student_name);
     const ded = dedMap.get(s.student_name);
     const hasPrepaid = !!credit && (credit.total_sessions - credit.used_sessions) > 0;
+    const isRefund = !isCorporate && refundFlags.has(s.student_name);
+    const isInactive = s.status === "inactive";
 
     return (
-      <tr key={s.student_name} className={cn("border-b border-border last:border-0 transition-colors", isConfirmed ? "bg-primary/5" : "hover:bg-muted/30")}>
+      <tr key={s.student_name} className={cn("border-b border-border last:border-0 transition-colors",
+        isRefund ? "bg-destructive/5" : isConfirmed ? "bg-primary/5" : "hover:bg-muted/30"
+      )}>
         <td className="px-4 py-3 text-center">
           <button
             onClick={() => toggleConfirm(s.student_name)}
@@ -735,6 +739,23 @@ export default function CashReceiptManagement() {
             if (isPaused) return <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-warning/15 text-warning font-semibold">휴강</span>;
             return null;
           })()}
+          {isInactive && (
+            <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">퇴원</span>
+          )}
+          {!isCorporate && (
+            <button
+              onClick={() => toggleRefund(s.student_name)}
+              className={cn(
+                "ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold transition-colors",
+                isRefund
+                  ? "bg-destructive/15 text-destructive hover:bg-destructive/25"
+                  : "border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+              )}
+              title={isRefund ? "환불 표시 — 클릭하여 제거" : "환불 표시 추가"}
+            >
+              {isRefund ? "환불" : "환불 표시"}
+            </button>
+          )}
         </td>
         <td className="px-4 py-3 text-right">
           {isCorporate ? (
