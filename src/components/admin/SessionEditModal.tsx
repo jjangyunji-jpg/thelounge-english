@@ -125,10 +125,23 @@ export default function SessionEditModal({
     }
     setSaving(true);
     try {
+      let deletedCount = 0;
+      let updatedCount = 0;
       for (const id of changedIds) {
         const edit = edits[id];
         const session = sessions.find(s => s.id === id);
         if (!session) continue;
+
+        // 사전취소: 세션 자체 삭제
+        if (edit.status === "advance_cancel") {
+          const { error } = await supabase
+            .from("class_sessions")
+            .delete()
+            .eq("id", id);
+          if (error) throw error;
+          deletedCount += 1;
+          continue;
+        }
 
         const update: Record<string, unknown> = {};
 
@@ -156,8 +169,12 @@ export default function SessionEditModal({
           .update(update)
           .eq("id", id);
         if (error) throw error;
+        updatedCount += 1;
       }
-      toast({ title: `${changedIds.length}개 수업이 업데이트되었습니다` });
+      const parts: string[] = [];
+      if (updatedCount) parts.push(`${updatedCount}건 업데이트`);
+      if (deletedCount) parts.push(`${deletedCount}건 삭제(사전취소)`);
+      toast({ title: parts.join(" · ") || "처리 완료" });
       onSaved?.();
       onClose();
     } catch (e) {
