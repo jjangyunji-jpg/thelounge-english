@@ -641,7 +641,8 @@ export default function SessionCountReport() {
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">사전취소 {totals.advance_cancel}</span>
         <span className="px-2 py-1 rounded bg-warning/10 text-warning font-semibold">미체크 {totals.unchecked}</span>
         <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">이월(당월) {totals.carryover}</span>
-        <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">전월차감 -{totals.prev_carryover_in}</span>
+        <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">이월(전월) {totals.carryover_in}</span>
+        <span className="px-2 py-1 rounded bg-muted/40 text-muted-foreground font-semibold">전월차감 -{totals.prev_carryover_in}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">예정 {totals.scheduled}</span>
         <span className="px-2 py-1 rounded bg-foreground/10 text-foreground font-bold">전체 {totals.total}</span>
         <span className="px-2 py-1 rounded bg-success/15 text-success font-bold ml-auto">실수업 {totals.actual_lessons}</span>
