@@ -473,8 +473,9 @@ export default function SessionCountReport() {
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">강사취소</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">사전</th>
                 <th className="px-2 py-2 font-semibold text-warning text-center">미체크</th>
-                <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10">이월(당월)</th>
-                <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10">이월(전월)</th>
+                <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10" title="당월에서 다음달로 이월">이월(당월)</th>
+                <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10" title="전월에서 당월로 이월된 수업">이월(전월)</th>
+                <th className="px-2 py-2 font-semibold text-muted-foreground text-center bg-muted/30" title="전월의 '당월 이월(next)' + 강사취소 → 당월 결제에서 차감">전월차감</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">예정</th>
                 <th className="px-2 py-2 font-semibold text-foreground text-center">전체</th>
                 <th className="px-2 py-2 font-semibold text-success text-center bg-success/5">실수업</th>
