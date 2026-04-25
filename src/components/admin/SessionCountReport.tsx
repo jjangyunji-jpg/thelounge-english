@@ -264,6 +264,8 @@ export default function SessionCountReport() {
         else if (s.ended_at) {
           if (isMakeup) makeup_completed++;
           else completed++;
+        } else if (s.is_carryover) {
+          // 이월 처리된 세션은 미체크/예정에 포함하지 않음 (이월 컬럼으로만 집계)
         } else if (new Date(s.scheduled_at).getTime() < Date.now()) {
           unchecked++;
         } else {
@@ -271,7 +273,7 @@ export default function SessionCountReport() {
         }
       });
 
-      const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + unchecked + scheduled;
+      const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + unchecked + scheduled + carryover;
       const prev_carryover_in = prevCarryoverByStudent.get(student.student_name) || 0;
       // Actual lessons conducted (settlement-eligible base): completed + makeup + no-show
       const actual_lessons = completed + makeup_completed + no_show;
