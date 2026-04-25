@@ -50,6 +50,7 @@ interface PrepaidCredit {
   total_sessions: number;
   used_sessions: number;
   note: string | null;
+  created_at: string;
 }
 
 interface PrepaidDeduction {
