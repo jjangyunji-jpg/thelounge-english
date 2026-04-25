@@ -657,6 +657,7 @@ export default function SessionCountReport() {
           studentName={editingStudent}
           rangeStart={currentRange.start}
           rangeEnd={currentRange.end}
+          computedBillable={rows.find(r => r.student_name === editingStudent)?.computed_billable}
           onSaved={loadData}
         />
       )}
