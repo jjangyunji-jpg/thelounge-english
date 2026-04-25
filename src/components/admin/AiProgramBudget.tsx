@@ -36,9 +36,11 @@ interface Props {
   /** Period month in YYYY-MM (same as payment confirmations period) */
   monthKey: string;
   monthLabel: string;
+  /** Called whenever subscriber/payment data changes so parent totals can refresh */
+  onChange?: () => void;
 }
 
-export default function AiProgramBudget({ monthKey, monthLabel }: Props) {
+export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Props) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
