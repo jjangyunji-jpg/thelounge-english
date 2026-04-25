@@ -112,34 +112,47 @@ export async function exportSessionCountPdf(
 
   let cursorY = 32;
 
-  if (regulars.length > 0) {
-    doc.setFontSize(11);
-    doc.setTextColor(30, 30, 30);
-    doc.text(`정규 수강생 (${regulars.length}명)`, 14, cursorY);
-    autoTable(doc, {
-      startY: cursorY + 3,
-      head: buildHead(),
-      body: buildBody(regulars),
-      foot: buildFoot(regulars),
-      ...commonOpts,
-    });
-    // @ts-ignore — jspdf-autotable adds lastAutoTable
-    cursorY = (doc as any).lastAutoTable.finalY + 10;
-  }
-
-  if (corporates.length > 0) {
+  const renderSegment = (segmentTitle: string, segmentRows: SessionCountRow[]) => {
+    if (segmentRows.length === 0) return;
     if (cursorY > 170) { doc.addPage(); cursorY = 14; }
+
     doc.setFontSize(11);
     doc.setTextColor(30, 30, 30);
-    doc.text(`기업 수강생 (${corporates.length}명)`, 14, cursorY);
-    autoTable(doc, {
-      startY: cursorY + 3,
-      head: buildHead(),
-      body: buildBody(corporates),
-      foot: buildFoot(corporates),
-      ...commonOpts,
+    doc.text(`${segmentTitle} (${segmentRows.length}명)`, 14, cursorY);
+    cursorY += 5;
+
+    // Group by instructor
+    const byInstructor = new Map<string, SessionCountRow[]>();
+    segmentRows.forEach(r => {
+      const key = r.instructor_name || "(미배정)";
+      const arr = byInstructor.get(key) || [];
+      arr.push(r);
+      byInstructor.set(key, arr);
     });
-  }
+    const groups = Array.from(byInstructor.entries()).sort(([a], [b]) => a.localeCompare(b, "ko"));
+
+    groups.forEach(([instructorName, list]) => {
+      if (cursorY > 180) { doc.addPage(); cursorY = 14; }
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 120);
+      doc.text(`▸ ${instructorName} (${list.length}명)`, 16, cursorY);
+
+      autoTable(doc, {
+        startY: cursorY + 2,
+        head: buildHead(),
+        body: buildBody(list),
+        foot: buildFoot(list),
+        ...commonOpts,
+      });
+      // @ts-ignore
+      cursorY = (doc as any).lastAutoTable.finalY + 6;
+    });
+
+    cursorY += 4;
+  };
+
+  renderSegment("정규 수강생", regulars);
+  renderSegment("기업 수강생", corporates);
 
   doc.save(`수업카운트_${periodLabel}.pdf`);
 }
