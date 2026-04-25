@@ -15,8 +15,9 @@ export interface SessionCountRow {
   makeup_completed: number; // 보강으로 처리되어 완료된 수업
   scheduled: number;        // 미진행
   carryover: number;        // 이번 달 이월 표시된 수업 수
-  prev_carryover_in: number;// 전월 이월 → 당월 결제 차감
-  billable: number;         // (완료 + 보강완료 + 노쇼) - prev_carryover_in
+  prev_carryover_in: number;// 전월 이월(이월플래그+강사취소) → 당월 결제 차감
+  actual_lessons: number;   // 실제 진행 = 완료 + 보강완료 + 노쇼
+  billable: number;         // 결제대상 = 4(기본) - prev_carryover_in
   total: number;            // 전체 (완료+취소+보강+예정)
 }
 
