@@ -584,6 +584,9 @@ export default function CashReceiptManagement() {
 
         {/* Tab 2: Payment Confirmation */}
         <TabsContent value="payment" className="mt-4 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (<>
           {/* Period Navigation */}
           <div className="flex items-center justify-end gap-3">
             <button onClick={prevPeriod} disabled={periodIdx >= periods.length - 1} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
