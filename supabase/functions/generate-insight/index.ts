@@ -124,6 +124,7 @@ Audience: a Korean adult professional working in ${profession}, at ${level} CEFR
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
+        temperature: 0.95,
       }),
     });
 
