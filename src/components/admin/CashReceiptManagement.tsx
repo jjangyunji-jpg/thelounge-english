@@ -135,7 +135,15 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     if (!currentPeriod) return;
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes] = await Promise.all([
+
+    // Find previous period for carryover deduction (same logic as SessionCountReport)
+    const sortedPeriods = [...periods].sort((a, b) => a.start_date.localeCompare(b.start_date));
+    const curIdx = sortedPeriods.findIndex(p => p.id === currentPeriod.id);
+    const prevPeriodRange = curIdx > 0 ? sortedPeriods[curIdx - 1] : null;
+    const prevStart = prevPeriodRange ? `${prevPeriodRange.start_date}T00:00:00+09:00` : "";
+    const prevEnd = prevPeriodRange ? `${prevPeriodRange.end_date}T23:59:59+09:00` : "";
+
+    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes, prevSessRes, billableOvRes] = await Promise.all([
       // Fetch all (active + paused + inactive) so we can show breakdown counts
       supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
@@ -152,6 +160,15 @@ export default function CashReceiptManagement() {
         .not("reschedule_origin_dates", "eq", "{}")
         .or(`scheduled_at.lt.${periodStart},scheduled_at.gt.${periodEnd}`),
       supabase.from("student_pauses").select("student_id, pause_start, pause_end"),
+      // Previous period sessions for carryover-in deduction
+      prevPeriodRange
+        ? supabase.from("class_sessions")
+            .select("student_name, is_carryover, carryover_direction, cancellation_type")
+            .gte("scheduled_at", prevStart).lte("scheduled_at", prevEnd)
+        : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; carryover_direction: string | null; cancellation_type: string | null }[] }),
+      // Billable count overrides for this period
+      supabase.from("billable_overrides").select("student_name, billable_count")
+        .eq("period_start", currentPeriod.start_date).eq("period_end", currentPeriod.end_date),
     ]);
     const studData = (studRes.data || []) as (StudentRecord & { id: string })[];
     setStudents(studData);
