@@ -25,9 +25,12 @@ interface SessionItem {
   topic: string | null;
   is_carryover: boolean;
   carryover_direction: "prev" | "next" | null;
+  carryover_reason: string | null;
 }
 
 type CarryoverDirection = "prev" | "next" | null;
+
+const AUTO_INSTRUCTOR_CANCEL_REASON = "강사 취소로 인한 자동 이월";
 
 type StatusKey =
   | "completed"
@@ -74,6 +77,7 @@ function formatKstDate(iso: string) {
 interface PendingEdit {
   status?: StatusKey;
   carryover_direction?: CarryoverDirection;
+  carryover_reason?: string;
 }
 
 export default function SessionEditModal({
@@ -109,14 +113,14 @@ export default function SessionEditModal({
     const [sessRes, originRes, ovRes] = await Promise.all([
       supabase
         .from("class_sessions")
-        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover, carryover_direction")
+        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover, carryover_direction, carryover_reason")
         .eq("student_name", studentName)
         .gte("scheduled_at", startTs)
         .lte("scheduled_at", endTs)
         .order("scheduled_at", { ascending: true }),
       supabase
         .from("class_sessions")
-        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover, carryover_direction")
+        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover, carryover_direction, carryover_reason")
         .eq("student_name", studentName)
         .gte("scheduled_at", wideStart.toISOString())
         .lte("scheduled_at", wideEnd.toISOString())
@@ -169,13 +173,32 @@ export default function SessionEditModal({
   useEffect(() => { load(); }, [load]);
 
   const handleStatusChange = (sessionId: string, status: StatusKey) => {
-    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], status } }));
+    setEdits(prev => {
+      const cur = prev[sessionId] || {};
+      const next: PendingEdit = { ...cur, status };
+      // 강사취소 선택 시 자동으로 당월 이월 + 자동 사유 입력
+      if (status === "instructor_cancel") {
+        next.carryover_direction = "next";
+        if (!cur.carryover_reason) next.carryover_reason = AUTO_INSTRUCTOR_CANCEL_REASON;
+      }
+      return { ...prev, [sessionId]: next };
+    });
   };
 
   const handleCarryoverDirection = (sessionId: string, current: CarryoverDirection, target: "prev" | "next") => {
     // Toggle: clicking the active direction clears it
     const next: CarryoverDirection = current === target ? null : target;
-    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], carryover_direction: next } }));
+    setEdits(prev => {
+      const cur = prev[sessionId] || {};
+      const updated: PendingEdit = { ...cur, carryover_direction: next };
+      // 이월 해제 시 사유도 비움
+      if (next === null) updated.carryover_reason = "";
+      return { ...prev, [sessionId]: updated };
+    });
+  };
+
+  const handleReasonChange = (sessionId: string, reason: string) => {
+    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], carryover_reason: reason } }));
   };
 
   const handleSave = async () => {
@@ -224,6 +247,10 @@ export default function SessionEditModal({
         if (edit.carryover_direction !== undefined) {
           update.carryover_direction = edit.carryover_direction;
           update.is_carryover = edit.carryover_direction !== null;
+          // 이월 해제 시 사유 초기화
+          if (edit.carryover_direction === null) {
+            update.carryover_reason = null;
+          }
           // 이월(당월/전월) 설정 시 기존 취소 카테고리를 자동 해제하여 중복 카운트 방지
           // (사용자가 이번 편집에서 명시적으로 status를 지정한 경우는 그 값을 우선)
           if (edit.carryover_direction !== null && edit.status === undefined) {
@@ -231,6 +258,10 @@ export default function SessionEditModal({
             update.cancellation_resolution = null;
             update.ended_at = null;
           }
+        }
+
+        if (edit.carryover_reason !== undefined) {
+          update.carryover_reason = edit.carryover_reason.trim() || null;
         }
 
         const { error } = await supabase
@@ -403,6 +434,28 @@ export default function SessionEditModal({
                         당월 이월
                       </button>
                     </div>
+                    {currentDirection !== null && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
+                          이월 사유
+                        </span>
+                        <input
+                          type="text"
+                          value={
+                            editEntry?.carryover_reason !== undefined
+                              ? editEntry.carryover_reason
+                              : (s.carryover_reason ?? "")
+                          }
+                          onChange={(e) => handleReasonChange(s.id, e.target.value)}
+                          placeholder={
+                            currentStatus === "instructor_cancel"
+                              ? AUTO_INSTRUCTOR_CANCEL_REASON
+                              : "사유를 입력하세요 (예: 학생 요청, 일정 조율 등)"
+                          }
+                          className="flex-1 h-7 px-2 rounded border border-input bg-background text-[11px]"
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
