@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import SessionCountReport from "./SessionCountReport";
-import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare } from "lucide-react";
+import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare, Download, PauseCircle, UserMinus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -20,6 +20,7 @@ interface StudentRecord {
   start_date: string | null;
   pause_start: string | null;
   pause_end: string | null;
+  end_date: string | null;
 }
 
 interface ScheduleSlot { day: string; time: string; frequency?: string; }
@@ -135,7 +136,8 @@ export default function CashReceiptManagement() {
     if (!currentPeriod) return;
     setLoading(true);
     const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes] = await Promise.all([
-      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end").eq("status", "active"),
+      // Fetch all (active + paused + inactive) so we can show breakdown counts
+      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based — also fetch reschedule_origin_dates
@@ -254,10 +256,36 @@ export default function CashReceiptManagement() {
     return true;
   };
 
-  const regularStudents = deduped
-    .filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
+  // Non-corporate students for breakdown counts (active / paused / withdrawn)
+  const nonCorpStudents = deduped.filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name));
+
+  const isPausedOnPeriod = (s: StudentRecord) => {
+    if (s.pause_start && isPauseCoveringPeriod(s.pause_start, s.pause_end)) return true;
+    const ranges = pauseRanges.get(s.student_name) || [];
+    return ranges.some(r => isPauseCoveringPeriod(r.start, r.end));
+  };
+
+  // Regular = active + within period + not paused for the whole period (current payment list)
+  const regularStudents = nonCorpStudents
+    .filter(s => s.status === "active")
     .filter(isWithinPeriod)
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
+  // Paused = active status but full-period pause (already excluded from regular)
+  const pausedStudents = nonCorpStudents
+    .filter(s => s.status === "active")
+    .filter(s => {
+      // Must have started by end of period
+      if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
+      return isPausedOnPeriod(s);
+    })
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
+  // Withdrawn = inactive status
+  const withdrawnStudents = nonCorpStudents
+    .filter(s => s.status === "inactive")
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
   const corporateStudents = deduped
     .filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
     .filter(isWithinPeriod)
@@ -414,6 +442,24 @@ export default function CashReceiptManagement() {
 
   const confirmedCount = regularStudents.filter(s => confMap.get(s.student_name)?.confirmed).length;
   const totalFee = regularStudents.reduce((sum, s) => sum + getFee(s), 0);
+
+  const handleDownloadPdf = async () => {
+    try {
+      const { exportPaymentListPdf } = await import("@/lib/exportPaymentListPdf");
+      await exportPaymentListPdf({
+        periodLabel: periodLabel || "수강생 리스트",
+        rows: regularStudents.map(s => ({
+          student_name: s.student_name,
+          fee: getFee(s),
+          session_count: sessionCounts.get(s.student_name) || 0,
+        })),
+      });
+      toast({ title: "PDF 다운로드 완료" });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "PDF 생성 실패", variant: "destructive" });
+    }
+  };
 
   const renderStudentRow = (s: StudentRecord, isCorporate = false) => {
     const conf = confMap.get(s.student_name);
@@ -617,15 +663,29 @@ export default function CashReceiptManagement() {
           </div>
 
           {/* Summary */}
-          <div className="flex gap-4">
-            <div className="rounded-lg border border-border bg-card p-4 flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground">정규 수강생</p>
               <p className="text-xl font-bold text-foreground mt-1">{regularStudents.length}명</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 확인 완료 <span className="text-primary font-semibold">{confirmedCount}</span> / {regularStudents.length}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-4 flex-1">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <PauseCircle className="w-3 h-3" /> 휴강생
+              </p>
+              <p className="text-xl font-bold text-warning mt-1">{pausedStudents.length}명</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{periodLabel} 전체 휴강</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <UserMinus className="w-3 h-3" /> 퇴원생
+              </p>
+              <p className="text-xl font-bold text-muted-foreground mt-1">{withdrawnStudents.length}명</p>
+              <p className="text-xs text-muted-foreground mt-0.5">전체 누적</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground">예상 수강료 합계</p>
               <p className="text-xl font-bold text-foreground mt-1">₩{totalFee.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground mt-0.5">기업 수강생 별도</p>
@@ -635,7 +695,17 @@ export default function CashReceiptManagement() {
       {/* Regular Students Table */}
       {regularStudents.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">정규 수강생</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-muted-foreground">정규 수강생</p>
+            <button
+              onClick={handleDownloadPdf}
+              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md border border-border bg-card hover:bg-muted text-foreground transition-colors"
+              title={`${periodLabel} 수강생 리스트 PDF 다운로드`}
+            >
+              <Download className="w-3 h-3" />
+              PDF 다운로드
+            </button>
+          </div>
           <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
