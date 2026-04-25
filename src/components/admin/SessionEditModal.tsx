@@ -342,17 +342,30 @@ export default function SessionEditModal({
                         </button>
                       ))}
                       <button
-                        onClick={() => handleCarryoverToggle(s.id, currentCarryover)}
+                        onClick={() => handleCarryoverDirection(s.id, currentDirection, "prev")}
                         className={cn(
                           "px-2 py-1 rounded border text-[11px] font-semibold transition-colors min-h-[28px] inline-flex items-center gap-1",
-                          currentCarryover
+                          currentDirection === "prev"
                             ? "bg-accent/20 text-accent-foreground border-accent/40"
                             : "bg-background text-muted-foreground border-border hover:bg-muted"
                         )}
-                        title="다음 달 결제 횟수에서 차감"
+                        title="전월(예: 3월)에서 이월되어 온 수업. 이번 달 결제 카운트에 추가됨"
+                      >
+                        <ArrowLeftCircle className="w-3 h-3" />
+                        전월 이월
+                      </button>
+                      <button
+                        onClick={() => handleCarryoverDirection(s.id, currentDirection, "next")}
+                        className={cn(
+                          "px-2 py-1 rounded border text-[11px] font-semibold transition-colors min-h-[28px] inline-flex items-center gap-1",
+                          currentDirection === "next"
+                            ? "bg-warning/20 text-warning border-warning/40"
+                            : "bg-background text-muted-foreground border-border hover:bg-muted"
+                        )}
+                        title="이번 달 수업이지만 다음 달(예: 5월)로 이월. 다음 달 결제 카운트에서 1회 차감됨"
                       >
                         <ArrowRightCircle className="w-3 h-3" />
-                        이월 {currentCarryover ? "ON" : "OFF"}
+                        당월 이월
                       </button>
                     </div>
                   </div>
