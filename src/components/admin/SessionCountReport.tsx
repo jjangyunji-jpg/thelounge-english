@@ -116,6 +116,7 @@ export default function SessionCountReport() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [pauses, setPauses] = useState<StudentPause[]>([]);
   const [prevCarryoverByStudent, setPrevCarryoverByStudent] = useState<Map<string, number>>(new Map());
+  const [billableOverrides, setBillableOverrides] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [editingStudent, setEditingStudent] = useState<string | null>(null);
@@ -218,7 +219,14 @@ export default function SessionCountReport() {
           .then(r => r)
       : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[] });
 
-    const results = await Promise.all([studPromise, pausePromise, sessInRangePromise, prevPromise, sessOriginPromise]);
+    const overridePromise = supabase
+      .from("billable_overrides")
+      .select("student_name, billable_count")
+      .eq("period_start", currentRange.start)
+      .eq("period_end", currentRange.end)
+      .then(r => r);
+
+    const results = await Promise.all([studPromise, pausePromise, sessInRangePromise, prevPromise, sessOriginPromise, overridePromise]);
     setStudents((results[0].data || []) as StudentRecord[]);
     setPauses((results[1].data || []) as StudentPause[]);
 
@@ -259,13 +267,18 @@ export default function SessionCountReport() {
     }
     setPrevCarryoverByStudent(prevMap);
 
+    const ovMap = new Map<string, number>();
+    const ovRows = (results[5]?.data || []) as { student_name: string; billable_count: number }[];
+    ovRows.forEach(o => ovMap.set(o.student_name, o.billable_count));
+    setBillableOverrides(ovMap);
+
     setLoading(false);
   }, [currentRange, previousRange]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   // Aggregate per student
-  const rows = useMemo<(SessionCountRow & { instructor_name: string })[]>(() => {
+  const rows = useMemo<(SessionCountRow & { instructor_name: string; billable_overridden: boolean; computed_billable: number })[]>(() => {
     const dedupedStudents = Array.from(
       new Map(students.map(s => [s.student_name, s])).values()
     ).filter(s => !TEST_ACCOUNTS.includes(s.student_name));
@@ -320,7 +333,10 @@ export default function SessionCountReport() {
       // Billable = base monthly count (4) - previous month's carryovers (carryover flag + instructor cancel)
       // All students pay for 4 sessions per month by default
       const BASE_MONTHLY_COUNT = 4;
-      const billable = Math.max(0, BASE_MONTHLY_COUNT - prev_carryover_in);
+      const computed_billable = Math.max(0, BASE_MONTHLY_COUNT - prev_carryover_in);
+      const overrideVal = billableOverrides.get(student.student_name);
+      const billable_overridden = overrideVal !== undefined;
+      const billable = billable_overridden ? overrideVal! : computed_billable;
 
       // Pick instructor by majority of sessions IN THIS RANGE (handles transfer-pending duplicates correctly)
       const instructorCounts = new Map<string, number>();
@@ -353,6 +369,8 @@ export default function SessionCountReport() {
         prev_carryover_in,
         actual_lessons,
         billable,
+        billable_overridden,
+        computed_billable,
         total,
       };
     }).filter(r => r.total > 0 || r.prev_carryover_in > 0);
@@ -362,7 +380,7 @@ export default function SessionCountReport() {
       if (a.instructor_name !== b.instructor_name) return a.instructor_name.localeCompare(b.instructor_name, "ko");
       return a.student_name.localeCompare(b.student_name, "ko");
     });
-  }, [students, sessions, pauses, prevCarryoverByStudent, currentRange]);
+  }, [students, sessions, pauses, prevCarryoverByStudent, billableOverrides, currentRange]);
 
   // Group by instructor within each segment
   const groupByInstructor = (list: typeof rows) => {
@@ -479,7 +497,12 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
                   <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
                   <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
-                  <td className="px-2 py-2 text-center font-bold text-primary bg-primary/5">{r.billable}</td>
+                  <td className={cn(
+                    "px-2 py-2 text-center font-bold",
+                    r.billable_overridden ? "text-warning bg-warning/10" : "text-primary bg-primary/5"
+                  )} title={r.billable_overridden ? `자동값 ${r.computed_billable} → 수동 ${r.billable}` : undefined}>
+                    {r.billable}{r.billable_overridden && <span className="ml-0.5 text-[9px]">✎</span>}
+                  </td>
                   <td className="px-1 py-1 text-center">
                     <button
                       onClick={() => setEditingStudent(r.student_name)}
@@ -634,6 +657,7 @@ export default function SessionCountReport() {
           studentName={editingStudent}
           rangeStart={currentRange.start}
           rangeEnd={currentRange.end}
+          computedBillable={rows.find(r => r.student_name === editingStudent)?.computed_billable}
           onSaved={loadData}
         />
       )}

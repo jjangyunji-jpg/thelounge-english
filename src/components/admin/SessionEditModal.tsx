@@ -12,6 +12,7 @@ interface SessionEditModalProps {
   studentName: string;
   rangeStart: string; // YYYY-MM-DD
   rangeEnd: string;   // YYYY-MM-DD
+  computedBillable?: number; // current auto-computed billable (4 - prev carryover)
   onSaved?: () => void;
 }
 
@@ -78,6 +79,7 @@ export default function SessionEditModal({
   studentName,
   rangeStart,
   rangeEnd,
+  computedBillable,
   onSaved,
 }: SessionEditModalProps) {
   const { toast } = useToast();
@@ -85,27 +87,54 @@ export default function SessionEditModal({
   const [saving, setSaving] = useState(false);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [edits, setEdits] = useState<Record<string, PendingEdit>>({});
+  const [billableOverride, setBillableOverride] = useState<number | null>(null);
+  const [billableNote, setBillableNote] = useState<string>("");
+  const [billableInput, setBillableInput] = useState<string>("");
+  const [billableNoteInput, setBillableNoteInput] = useState<string>("");
+  const [billableDirty, setBillableDirty] = useState(false);
 
   const load = useCallback(async () => {
     if (!open) return;
     setLoading(true);
     const startTs = `${rangeStart}T00:00:00+09:00`;
     const endTs = `${rangeEnd}T23:59:59+09:00`;
-    const { data, error } = await supabase
-      .from("class_sessions")
-      .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover")
-      .eq("student_name", studentName)
-      .gte("scheduled_at", startTs)
-      .lte("scheduled_at", endTs)
-      .order("scheduled_at", { ascending: true });
-    if (error) {
-      toast({ title: "수업 조회 실패", description: error.message, variant: "destructive" });
+    const [sessRes, ovRes] = await Promise.all([
+      supabase
+        .from("class_sessions")
+        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover")
+        .eq("student_name", studentName)
+        .gte("scheduled_at", startTs)
+        .lte("scheduled_at", endTs)
+        .order("scheduled_at", { ascending: true }),
+      supabase
+        .from("billable_overrides")
+        .select("billable_count, note")
+        .eq("student_name", studentName)
+        .eq("period_start", rangeStart)
+        .eq("period_end", rangeEnd)
+        .maybeSingle(),
+    ]);
+    if (sessRes.error) {
+      toast({ title: "수업 조회 실패", description: sessRes.error.message, variant: "destructive" });
     }
-    const list = (data || []) as SessionItem[];
+    const list = (sessRes.data || []) as SessionItem[];
     setSessions(list);
     setEdits({});
+    const ov = ovRes.data as { billable_count: number; note: string | null } | null;
+    if (ov) {
+      setBillableOverride(ov.billable_count);
+      setBillableNote(ov.note || "");
+      setBillableInput(String(ov.billable_count));
+      setBillableNoteInput(ov.note || "");
+    } else {
+      setBillableOverride(null);
+      setBillableNote("");
+      setBillableInput(computedBillable !== undefined ? String(computedBillable) : "");
+      setBillableNoteInput("");
+    }
+    setBillableDirty(false);
     setLoading(false);
-  }, [open, studentName, rangeStart, rangeEnd, toast]);
+  }, [open, studentName, rangeStart, rangeEnd, computedBillable, toast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -119,7 +148,7 @@ export default function SessionEditModal({
 
   const handleSave = async () => {
     const changedIds = Object.keys(edits);
-    if (changedIds.length === 0) {
+    if (changedIds.length === 0 && !billableDirty) {
       toast({ title: "변경된 항목이 없습니다" });
       return;
     }
@@ -171,9 +200,45 @@ export default function SessionEditModal({
         if (error) throw error;
         updatedCount += 1;
       }
+
+      // Billable override save / clear
+      let billableMsg = "";
+      if (billableDirty) {
+        const trimmed = billableInput.trim();
+        if (trimmed === "") {
+          // Clear override (revert to auto-calculated)
+          const { error } = await supabase
+            .from("billable_overrides")
+            .delete()
+            .eq("student_name", studentName)
+            .eq("period_start", rangeStart)
+            .eq("period_end", rangeEnd);
+          if (error) throw error;
+          billableMsg = "결제대상 자동값 복원";
+        } else {
+          const num = parseInt(trimmed, 10);
+          if (!Number.isFinite(num) || num < 0) throw new Error("결제대상은 0 이상 정수여야 합니다.");
+          const { error } = await supabase
+            .from("billable_overrides")
+            .upsert(
+              {
+                student_name: studentName,
+                period_start: rangeStart,
+                period_end: rangeEnd,
+                billable_count: num,
+                note: billableNoteInput.trim() || null,
+              },
+              { onConflict: "student_name,period_start,period_end" },
+            );
+          if (error) throw error;
+          billableMsg = `결제대상 ${num}회 저장`;
+        }
+      }
+
       const parts: string[] = [];
       if (updatedCount) parts.push(`${updatedCount}건 업데이트`);
       if (deletedCount) parts.push(`${deletedCount}건 삭제(사전취소)`);
+      if (billableMsg) parts.push(billableMsg);
       toast({ title: parts.join(" · ") || "처리 완료" });
       onSaved?.();
       onClose();
@@ -184,7 +249,8 @@ export default function SessionEditModal({
     setSaving(false);
   };
 
-  const dirtyCount = Object.keys(edits).length;
+  const dirtyCount = Object.keys(edits).length + (billableDirty ? 1 : 0);
+  const hasOverride = billableOverride !== null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -281,6 +347,52 @@ export default function SessionEditModal({
             </div>
           )}
         </div>
+
+        {!loading && (
+          <div className="border-t border-border pt-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-semibold text-foreground">결제대상 수동 설정</span>
+                {hasOverride ? (
+                  <span className="px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 text-[10px] font-semibold">
+                    오버라이드 적용중
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">
+                    자동 계산값: {computedBillable ?? "-"}회
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-muted-foreground">비워두면 자동 계산값 사용</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="number"
+                min={0}
+                value={billableInput}
+                onChange={e => { setBillableInput(e.target.value); setBillableDirty(true); }}
+                placeholder={computedBillable !== undefined ? String(computedBillable) : "0"}
+                className="w-20 h-8 px-2 rounded border border-input bg-background text-xs"
+              />
+              <span className="text-xs text-muted-foreground">회</span>
+              <input
+                type="text"
+                value={billableNoteInput}
+                onChange={e => { setBillableNoteInput(e.target.value); setBillableDirty(true); }}
+                placeholder="메모 (선택)"
+                className="flex-1 min-w-[160px] h-8 px-2 rounded border border-input bg-background text-xs"
+              />
+              {hasOverride && (
+                <button
+                  onClick={() => { setBillableInput(""); setBillableNoteInput(""); setBillableDirty(true); }}
+                  className="text-[10px] text-muted-foreground underline hover:text-foreground"
+                >
+                  자동값으로 복원
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-border">
           <span className="text-xs text-muted-foreground">
