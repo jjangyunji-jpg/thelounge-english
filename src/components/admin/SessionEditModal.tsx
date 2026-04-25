@@ -104,6 +104,7 @@ export default function SessionEditModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [makeupByOriginDate, setMakeupByOriginDate] = useState<Map<string, SessionItem>>(new Map());
   const [edits, setEdits] = useState<Record<string, PendingEdit>>({});
   const [billableOverride, setBillableOverride] = useState<number | null>(null);
   const [billableNote, setBillableNote] = useState<string>("");
@@ -160,10 +161,37 @@ export default function SessionEditModal({
       const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
       return origins.some(d => d >= rangeStart && d <= rangeEnd);
     });
-    const list = [...inRangeFiltered, ...originExtras].sort((a, b) =>
-      a.scheduled_at.localeCompare(b.scheduled_at)
+    // Helper: KST date string for a session
+    const kstDate = (iso: string) =>
+      new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+
+    // Build map: origin date -> makeup session (the one with origin = origin date)
+    // Only consider makeup sessions whose origin matches a non-makeup (original) session's date in this range.
+    const allCandidates = [...inRangeFiltered, ...originExtras];
+    const originDateToMakeup = new Map<string, SessionItem>();
+    for (const s of allCandidates) {
+      const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+      if (origins.length === 0) continue;
+      for (const od of origins) {
+        if (!originDateToMakeup.has(od)) originDateToMakeup.set(od, s);
+      }
+    }
+    // Hide makeup rows whose origin date matches an existing original session row in the same list
+    const originalDates = new Set(
+      allCandidates
+        .filter(s => !Array.isArray(s.reschedule_origin_dates) || s.reschedule_origin_dates.length === 0)
+        .map(s => kstDate(s.scheduled_at))
     );
+    const list = allCandidates
+      .filter(s => {
+        const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+        if (origins.length === 0) return true;
+        // Hide this makeup row if any of its origin dates corresponds to an original row already shown
+        return !origins.some(od => originalDates.has(od));
+      })
+      .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
     setSessions(list);
+    setMakeupByOriginDate(originDateToMakeup);
     setEdits({});
     const ov = ovRes.data as { billable_count: number; note: string | null } | null;
     if (ov) {
@@ -369,6 +397,9 @@ export default function SessionEditModal({
                     : (s.carryover_direction ?? (s.is_carryover ? "prev" : null));
                 const isMakeup = Array.isArray(s.reschedule_origin_dates) && s.reschedule_origin_dates.length > 0;
                 const isDirty = !!editEntry;
+                // For original (non-makeup) rows, look up if a makeup session exists for this date
+                const sessionDateKst = new Date(s.scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                const linkedMakeup = !isMakeup ? makeupByOriginDate.get(sessionDateKst) : null;
                 return (
                   <div
                     key={s.id}
@@ -389,6 +420,16 @@ export default function SessionEditModal({
                           <span className="text-[10px] text-muted-foreground">
                             원래: {(s.reschedule_origin_dates ?? []).map(formatKstDateOnly).join(", ")}
                           </span>
+                        )}
+                        {linkedMakeup && (
+                          <>
+                            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">
+                              보강 잡힘
+                            </span>
+                            <span className="text-[10px] text-primary">
+                              → {formatKstDate(linkedMakeup.scheduled_at)}
+                            </span>
+                          </>
                         )}
                         {currentDirection === "prev" && (
                           <span className="px-1.5 py-0.5 rounded bg-accent/20 text-accent-foreground text-[10px] font-semibold border border-accent/30">

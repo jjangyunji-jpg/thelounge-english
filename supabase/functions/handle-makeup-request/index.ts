@@ -68,31 +68,40 @@ serve(async (req) => {
           original_scheduled_at: origSession.scheduled_at,
         }).eq("id", request_id);
 
-        // Release any previously booked makeup slot for the session's CURRENT time
-        // (handles the case where the session was moved here by a prior makeup request)
-        const curDate = new Date(origSession.scheduled_at);
-        const curDateStr = curDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-        const curTimeStr = curDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }) + ":00";
-        
-        // Find and release booked slots at the session's current time for this instructor
-        await sb.from("instructor_available_slots")
-          .update({ status: "open" })
-          .eq("instructor_name", slot.instructor_name)
-          .eq("slot_date", curDateStr)
-          .eq("slot_time", curTimeStr)
-          .eq("status", "booked");
-
-        // Extract original session's date and time for re-opening as available slot
+        // Compute KST date strings
         const origDate = new Date(origSession.scheduled_at);
         const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
         const origHour = origDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
 
-        // Update the session's scheduled_at
-        const { error: updateErr } = await sb
-          .from("class_sessions")
-          .update({ scheduled_at: newScheduledAt })
-          .eq("id", makeupReq.original_session_id);
-        if (updateErr) throw new Error("세션 업데이트 실패: " + updateErr.message);
+        // NEW MODEL: keep the original session as a 'sick' marker (병결) and create
+        // a separate makeup session at newScheduledAt with reschedule_origin_dates=[origDateStr].
+        // This way the edit modal can render the original date row with a "보강 잡힘" badge
+        // pointing to the new session, and counts (병결+1, 보강+1) work uniformly.
+
+        // 1) Mark original session as sick + makeup_completed, clear notes/topic/remarks
+        //    (notes will be transferred to the new makeup session below)
+        await sb.from("class_sessions").update({
+          cancellation_type: "sick",
+          cancellation_resolution: "makeup_completed",
+          ended_at: null,
+          notes: null,
+          topic: null,
+          remarks: null,
+        }).eq("id", makeupReq.original_session_id);
+
+        // 2) Create new makeup session at newScheduledAt
+        await sb.from("class_sessions").insert({
+          student_name: origSession.student_name,
+          instructor_name: origSession.instructor_name,
+          scheduled_at: newScheduledAt,
+          level: origSession.level || "B1",
+          meet_link: origSession.meet_link || null,
+          group_students: Array.isArray(origSession.group_students) ? origSession.group_students : [],
+          notes: origSession.notes || null,
+          topic: origSession.topic || null,
+          remarks: origSession.remarks || null,
+          reschedule_origin_dates: [origDateStr],
+        });
 
         // Re-open original time slot for other students (only if not already exists)
         const { data: existingSlot } = await sb.from("instructor_available_slots")
@@ -101,7 +110,7 @@ serve(async (req) => {
           .eq("slot_date", origDateStr)
           .eq("slot_time", origHour + ":00")
           .maybeSingle();
-        
+
         if (!existingSlot) {
           await sb.from("instructor_available_slots").insert({
             instructor_id: slot.instructor_id,
@@ -213,13 +222,39 @@ serve(async (req) => {
       const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
 
       if (makeupReq.request_type === "reschedule" && makeupReq.original_session_id) {
-        // Revert session to original time
+        // NEW MODEL: original session was kept as a sick marker; a separate makeup
+        // session was created at newScheduledAt. To cancel: delete the makeup session
+        // and clear the sick marker on the original.
         if (!makeupReq.original_scheduled_at) throw new Error("원래 일정 정보가 없습니다.");
-        const { error: revertErr } = await sb
+
+        // Delete the makeup session created at newScheduledAt for this student
+        // (try to match by scheduled_at + student_name; only delete one row)
+        const { data: makeupSessions } = await sb
           .from("class_sessions")
-          .update({ scheduled_at: makeupReq.original_scheduled_at })
-          .eq("id", makeupReq.original_session_id);
-        if (revertErr) throw new Error("세션 복원 실패: " + revertErr.message);
+          .select("id, notes, topic, remarks")
+          .eq("student_name", makeupReq.student_name)
+          .eq("scheduled_at", newScheduledAt);
+        const makeupRow = makeupSessions && makeupSessions.length > 0 ? makeupSessions[0] : null;
+
+        // Restore notes/topic/remarks back to the original session before deletion
+        if (makeupRow) {
+          await sb.from("class_sessions").update({
+            cancellation_type: null,
+            cancellation_resolution: null,
+            ended_at: null,
+            notes: makeupRow.notes || null,
+            topic: makeupRow.topic || null,
+            remarks: makeupRow.remarks || null,
+          }).eq("id", makeupReq.original_session_id);
+          await sb.from("class_sessions").delete().eq("id", makeupRow.id);
+        } else {
+          // Fallback: just clear sick marker on original
+          await sb.from("class_sessions").update({
+            cancellation_type: null,
+            cancellation_resolution: null,
+            ended_at: null,
+          }).eq("id", makeupReq.original_session_id);
+        }
 
         // Delete the re-opened original slot (if it exists) — the slot that was created when reschedule was approved
         const origDate = new Date(makeupReq.original_scheduled_at);
