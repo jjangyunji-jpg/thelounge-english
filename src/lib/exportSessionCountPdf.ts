@@ -15,11 +15,12 @@ export interface SessionCountRow {
   unchecked: number;        // 시간이 지났지만 완료/취소 상태가 없음
   makeup_completed: number; // 보강으로 처리되어 완료된 수업
   scheduled: number;        // 미진행
-  carryover: number;        // 이번 달 이월 표시된 수업 수
-  prev_carryover_in: number;// 전월 이월(이월플래그+강사취소) → 당월 결제 차감
-  actual_lessons: number;   // 실제 진행 = 완료 + 보강완료 + 노쇼
+  carryover: number;        // 이번 달 → 다음달 이월 표시된 수업 수 (next)
+  carryover_in: number;     // 전월에서 이월되어 들어온 수업 수 (prev) — 이번 달 실수업에 포함
+  prev_carryover_in: number;// 전월의 next + 강사취소 → 당월 결제 차감 수
+  actual_lessons: number;   // 실제 진행 = 완료 + 보강완료 + 노쇼 + 전월이월(prev)
   billable: number;         // 결제대상 = 4(기본) - prev_carryover_in
-  total: number;            // 전체 (완료+취소+보강+예정)
+  total: number;            // 전체 (완료+취소+보강+예정) — 이월(전월) 제외
 }
 
 async function registerKoreanFont(doc: jsPDF) {
@@ -67,6 +68,7 @@ export async function exportSessionCountPdf(
     "강사취소",
     "사전",
     "이월\n(당월)",
+    "이월\n(전월)",
     "전월\n차감",
     "예정",
     "전체",
@@ -85,6 +87,7 @@ export async function exportSessionCountPdf(
     String(r.advance_cancel),
     String(r.unchecked),
     String(r.carryover),
+    String(r.carryover_in),
     r.prev_carryover_in ? `-${r.prev_carryover_in}` : "0",
     String(r.scheduled),
     String(r.total),
@@ -105,6 +108,7 @@ export async function exportSessionCountPdf(
       String(sum("advance_cancel")),
       String(sum("unchecked")),
       String(sum("carryover")),
+      String(sum("carryover_in")),
       `-${sum("prev_carryover_in")}`,
       String(sum("scheduled")),
       String(sum("total")),
@@ -129,10 +133,11 @@ export async function exportSessionCountPdf(
       8: { halign: "center" as const },
       9: { halign: "center" as const, fillColor: [255, 248, 220] as [number, number, number] },
       10: { halign: "center" as const, fillColor: [255, 248, 220] as [number, number, number] },
-      11: { halign: "center" as const },
+      11: { halign: "center" as const, fillColor: [240, 240, 240] as [number, number, number] },
       12: { halign: "center" as const },
-      13: { halign: "center" as const, fillColor: [230, 250, 230] as [number, number, number] },
-      14: { halign: "center" as const, fillColor: [220, 235, 255] as [number, number, number], fontStyle: "normal" as const },
+      13: { halign: "center" as const },
+      14: { halign: "center" as const, fillColor: [230, 250, 230] as [number, number, number] },
+      15: { halign: "center" as const, fillColor: [220, 235, 255] as [number, number, number], fontStyle: "normal" as const },
     },
     margin: { left: 14, right: 14 },
   };
