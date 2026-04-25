@@ -242,8 +242,35 @@ export default function CashReceiptManagement() {
       corpCounts.set(s.student_name, (corpCounts.get(s.student_name) || 0) + 1);
     });
     setCorpSessionCounts(corpCounts);
+
+    // Compute billable count map (same formula as SessionCountReport):
+    // billable = override ?? max(0, 4 - prev_carryover_in)
+    // prev_carryover_in = prev period sessions where cancellation_type='instructor_cancel' OR carryover_direction='next'
+    const prevCarryMap = new Map<string, number>();
+    ((prevSessRes.data || []) as { student_name: string; carryover_direction: string | null; cancellation_type: string | null }[]).forEach(r => {
+      if (r.cancellation_type === "instructor_cancel" || r.carryover_direction === "next") {
+        prevCarryMap.set(r.student_name, (prevCarryMap.get(r.student_name) || 0) + 1);
+      }
+    });
+    const ovMap = new Map<string, number>();
+    ((billableOvRes.data || []) as { student_name: string; billable_count: number }[]).forEach(o => {
+      ovMap.set(o.student_name, o.billable_count);
+    });
+    const BASE = 4;
+    const billable = new Map<string, number>();
+    studData.forEach(s => {
+      const ov = ovMap.get(s.student_name);
+      if (ov !== undefined) {
+        billable.set(s.student_name, ov);
+      } else {
+        const prev = prevCarryMap.get(s.student_name) || 0;
+        billable.set(s.student_name, Math.max(0, BASE - prev));
+      }
+    });
+    setBillableCounts(billable);
+
     setLoading(false);
-  }, [currentPeriod, periodKey, periodStart, periodEnd, corpMonthStart, corpMonthEnd]);
+  }, [currentPeriod, periodKey, periodStart, periodEnd, corpMonthStart, corpMonthEnd, periods]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
