@@ -22,9 +22,12 @@ interface StudentRecord {
   pause_end: string | null;
   end_date: string | null;
   cash_payment: boolean;
+  corporate_rate: number | null;
+  tax_invoice: boolean;
 }
 
 const STORE_FEE_RATE = 0.0495; // 스마트스토어 수수료 4.95%
+const BIZ_INCOME_TAX_RATE = 0.033; // 사업소득 원천징수 3.3%
 
 interface ScheduleSlot { day: string; time: string; frequency?: string; }
 
@@ -105,6 +108,8 @@ export default function CashReceiptManagement() {
   const [refundFlags, setRefundFlags] = useState<Set<string>>(new Set());
   // Per-month cash payment override map (true = cash this month, false = store this month, undefined = use student default)
   const [cashOverrides, setCashOverrides] = useState<Map<string, boolean>>(new Map());
+  // Per-month tax-invoice override for corporate students (true = 계산서 발급, false = 사업소득 3.3%, undefined = use student default)
+  const [taxOverrides, setTaxOverrides] = useState<Map<string, boolean>>(new Map());
 
   // Receipt management state
   const [receiptModal, setReceiptModal] = useState<{ mode: "create" | "edit"; data?: CashReceipt } | null>(null);
@@ -162,7 +167,7 @@ export default function CashReceiptManagement() {
 
     const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes, prevSessRes, billableOvRes] = await Promise.all([
       // Fetch all (active + paused + inactive) so we can show breakdown counts
-      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date, cash_payment"),
+      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date, cash_payment, corporate_rate, tax_invoice"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based — also fetch reschedule_origin_dates
@@ -212,6 +217,7 @@ export default function CashReceiptManagement() {
     const overrides = new Map<string, number>();
     const refunds = new Set<string>();
     const cashOv = new Map<string, boolean>();
+    const taxOv = new Map<string, boolean>();
     confs.forEach(c => {
       if (c.note) {
         try {
@@ -225,12 +231,16 @@ export default function CashReceiptManagement() {
           if (typeof parsed.cash_override === "boolean") {
             cashOv.set(c.student_name, parsed.cash_override);
           }
+          if (typeof parsed.tax_invoice_override === "boolean") {
+            taxOv.set(c.student_name, parsed.tax_invoice_override);
+          }
         } catch { /* not JSON, ignore */ }
       }
     });
     setFeeOverrides(overrides);
     setRefundFlags(refunds);
     setCashOverrides(cashOv);
+    setTaxOverrides(taxOv);
 
     // Count sessions per student, attributing rescheduled sessions to their original period
     const pStart = currentPeriod.start_date;
@@ -593,6 +603,46 @@ export default function CashReceiptManagement() {
     loadData();
   };
 
+  // ===== Corporate tax-invoice toggle (계산서 발급 vs 사업소득 3.3% 공제) =====
+  // Resolve effective tax-invoice status: per-month override → student default
+  const isTaxInvoice = (s: StudentRecord): boolean => {
+    const override = taxOverrides.get(s.student_name);
+    if (override !== undefined) return override;
+    return s.tax_invoice === true;
+  };
+  const hasTaxOverride = (name: string) => taxOverrides.has(name);
+
+  // 3-state click cycle (mirrors cycleCashPayment)
+  const cycleTaxInvoice = async (s: StudentRecord) => {
+    const studentDefault = s.tax_invoice === true;
+    const currentOverride = taxOverrides.get(s.student_name);
+    let nextOverride: boolean | null;
+    if (currentOverride === undefined) nextOverride = !studentDefault;
+    else if (currentOverride !== studentDefault) nextOverride = studentDefault;
+    else nextOverride = null;
+
+    const existing = confMap.get(s.student_name);
+    const base = existing ? parseNote(existing.note) : {};
+    if (nextOverride === null) delete base.tax_invoice_override;
+    else base.tax_invoice_override = nextOverride;
+    const noteData = Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+
+    if (existing) {
+      await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
+    } else if (noteData) {
+      await supabase.from("payment_confirmations" as any).insert({ student_name: s.student_name, month: periodKey, confirmed: false, note: noteData } as any);
+    }
+    loadData();
+  };
+
+  // Toggle student-level tax-invoice default
+  const toggleStudentTaxDefault = async (s: StudentRecord) => {
+    const next = !s.tax_invoice;
+    await supabase.from("instructor_students").update({ tax_invoice: next } as any).eq("student_name", s.student_name);
+    toast({ title: next ? `${s.student_name} — 항상 계산서 발급` : `${s.student_name} — 항상 사업소득 3.3%` });
+    loadData();
+  };
+
 
   const openReceiptCreate = () => {
     setReceiptInput({ student_name: "", receipt_type: "phone", receipt_number: "", recurring: false, recurring_attendance: false });
@@ -685,10 +735,15 @@ export default function CashReceiptManagement() {
     loadData();
   };
 
+  // Per-session rate for a corporate student: explicit corporate_rate column overrides
+  // group/individual default. (Group default 70k, individual default 50k.)
+  const getCorpRate = (s: StudentRecord): number => {
+    if (typeof s.corporate_rate === "number" && s.corporate_rate > 0) return s.corporate_rate;
+    return s.group_students?.length > 0 ? GROUP_LESSON_PRICE : LESSON_PRICE;
+  };
   const getCorpFee = (s: StudentRecord) => {
     const count = corpSessionCounts.get(s.student_name) || 0;
-    const price = s.group_students?.length > 0 ? GROUP_LESSON_PRICE : LESSON_PRICE;
-    return count * price;
+    return count * getCorpRate(s);
   };
 
   const openCorpReport = async (s: StudentRecord) => {
@@ -833,6 +888,33 @@ export default function CashReceiptManagement() {
             >
               {isRefund ? "환불" : "환불 표시"}
             </button>
+          )}
+          {isCorporate && (() => {
+            const isInvoice = isTaxInvoice(s);
+            const overridden = hasTaxOverride(s.student_name);
+            return (
+              <button
+                onClick={() => cycleTaxInvoice(s)}
+                onContextMenu={(e) => { e.preventDefault(); toggleStudentTaxDefault(s); }}
+                className={cn(
+                  "ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold transition-colors inline-flex items-center gap-0.5",
+                  isInvoice
+                    ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 dark:text-emerald-400"
+                    : "bg-rose-500/15 text-rose-700 hover:bg-rose-500/25 dark:text-rose-400"
+                )}
+                title={`${isInvoice ? "계산서 발급(전액 지급)" : "사업소득 3.3% 공제"} ${overridden ? "(이번 달 오버라이드)" : "(기본)"} — 클릭: 이번 달 변경 / 우클릭: 학생 기본값 변경`}
+              >
+                {isInvoice ? "계산서" : "3.3%"}{overridden ? "*" : ""}
+              </button>
+            );
+          })()}
+          {isCorporate && (
+            <span
+              className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium"
+              title={`회당 단가 (그룹 기본 70,000 / 개별 기본 50,000)`}
+            >
+              ₩{getCorpRate(s).toLocaleString()}/회
+            </span>
           )}
         </td>
         <td className="px-4 py-3 text-right">
@@ -997,6 +1079,25 @@ export default function CashReceiptManagement() {
   // 선결제 차감(=금액 미반영)된 학생 수 — UI 안내용
   const prepaidExcludedCount = budgetRows.filter(r => r.isPrepaidDeducted).length;
 
+  // ===== 기업 수강생 예산 (당월 수업 회수 × 학생별 단가, 후불 가정 — 결제 시점은 다음 달이지만 발생액 기준으로 표시) =====
+  type CorpBudgetRow = { name: string; sessions: number; rate: number; gross: number; net: number; isInvoice: boolean };
+  const corpBudgetRows: CorpBudgetRow[] = corporateStudents.map(s => {
+    const sessions = corpSessionCounts.get(s.student_name) || 0;
+    const rate = getCorpRate(s);
+    const gross = sessions * rate;
+    const isInvoice = isTaxInvoice(s);
+    const net = isInvoice ? gross : Math.round(gross * (1 - BIZ_INCOME_TAX_RATE));
+    return { name: s.student_name, sessions, rate, gross, net, isInvoice };
+  }).filter(r => r.sessions > 0); // 회수 0인 기업 학생은 예산에 노출 안 함
+
+  const corpInvoiceRows = corpBudgetRows.filter(r => r.isInvoice);
+  const corpTaxRows = corpBudgetRows.filter(r => !r.isInvoice);
+  const corpInvoiceTotal = corpInvoiceRows.reduce((s, r) => s + r.gross, 0);
+  const corpTaxGrossTotal = corpTaxRows.reduce((s, r) => s + r.gross, 0);
+  const corpTaxNetTotal = corpTaxRows.reduce((s, r) => s + r.net, 0);
+  const corpTaxFeeTotal = corpTaxGrossTotal - corpTaxNetTotal;
+  const corpGrossTotal = corpInvoiceTotal + corpTaxGrossTotal;
+  const corpNetTotal = corpInvoiceTotal + corpTaxNetTotal;
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -1517,8 +1618,160 @@ export default function CashReceiptManagement() {
             </div>
           </div>
 
+          {/* ===== Corporate (기업) Section ===== */}
+          <div className="pt-4 mt-2 border-t border-border space-y-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">기업 결제 — {corpMonthLabel}</h3>
+              <span className="text-[10px] text-muted-foreground">후불 (당월 발생액 기준 · 입금은 다음 달)</span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-lg border border-border bg-card p-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Building2 className="w-3 h-3" /> 기업 총 발생액
+                </p>
+                <p className="text-2xl font-bold text-foreground mt-1">₩{corpGrossTotal.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{corpBudgetRows.length}명 합산</p>
+              </div>
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-emerald-600" /> 계산서 발급 (전액)
+                </p>
+                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-1">₩{corpInvoiceTotal.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{corpInvoiceRows.length}명 · 공제 없음</p>
+              </div>
+              <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <TrendingDown className="w-3 h-3 text-rose-600" /> 사업소득 3.3%
+                </p>
+                <p className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1">₩{corpTaxGrossTotal.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{corpTaxRows.length}명 · 공제 전</p>
+              </div>
+              <div className="rounded-lg border border-success/30 bg-success/5 p-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <TrendingDown className="w-3 h-3 text-success" /> 기업 실수령 합계
+                </p>
+                <p className="text-2xl font-bold text-success mt-1">₩{corpNetTotal.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">계산서 + 3.3% 공제 후</p>
+              </div>
+            </div>
+
+            {/* 사업소득 공제 내역 */}
+            {corpTaxRows.length > 0 && (
+              <div className="rounded-lg border border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                    <TrendingDown className="w-4 h-4 text-rose-600" /> 사업소득 3.3% 공제 내역
+                  </p>
+                  <span className="text-[10px] text-muted-foreground">공제율 3.3%</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">발생 총액</p>
+                    <p className="font-semibold text-foreground">₩{corpTaxGrossTotal.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">공제 (3.3%)</p>
+                    <p className="font-semibold text-destructive">-₩{corpTaxFeeTotal.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">실수령</p>
+                    <p className="font-semibold text-success">₩{corpTaxNetTotal.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 기업 학생 리스트 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* 계산서 발급 */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-emerald-600" /> 계산서 발급 — {corpInvoiceRows.length}명
+                </p>
+                <div className="border border-border rounded-lg overflow-hidden max-h-[420px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">학생명</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">회수</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">단가</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">금액</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {corpInvoiceRows.length === 0 ? (
+                        <tr><td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">계산서 발급 학생이 없습니다.</td></tr>
+                      ) : corpInvoiceRows.map(r => (
+                        <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <td className="px-3 py-2 text-foreground">{r.name}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">{r.sessions}회</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">₩{r.rate.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right font-medium text-foreground">₩{r.gross.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {corpInvoiceRows.length > 0 && (
+                      <tfoot className="bg-emerald-500/10 border-t border-border">
+                        <tr>
+                          <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-foreground">합계</td>
+                          <td className="px-3 py-2 text-right font-bold text-emerald-700 dark:text-emerald-400">₩{corpInvoiceTotal.toLocaleString()}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+
+              {/* 사업소득 3.3% */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                  <TrendingDown className="w-3 h-3 text-rose-600" /> 사업소득 3.3% — {corpTaxRows.length}명
+                </p>
+                <div className="border border-border rounded-lg overflow-hidden max-h-[420px] overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">학생명</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">회수</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">발생액</th>
+                        <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">실수령</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {corpTaxRows.length === 0 ? (
+                        <tr><td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">3.3% 공제 학생이 없습니다.</td></tr>
+                      ) : corpTaxRows.map(r => (
+                        <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <td className="px-3 py-2 text-foreground">
+                            {r.name}
+                            <span className="ml-1.5 text-[9px] text-muted-foreground">×{r.sessions}회 · ₩{r.rate.toLocaleString()}</span>
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">{r.sessions}회</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">₩{r.gross.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right font-medium text-foreground">₩{r.net.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {corpTaxRows.length > 0 && (
+                      <tfoot className="bg-rose-500/10 border-t border-border">
+                        <tr>
+                          <td className="px-3 py-2 text-xs font-semibold text-foreground">합계</td>
+                          <td className="px-3 py-2"></td>
+                          <td className="px-3 py-2 text-right text-xs text-muted-foreground">₩{corpTaxGrossTotal.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right font-bold text-rose-700 dark:text-rose-400">₩{corpTaxNetTotal.toLocaleString()}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <p className="text-[10px] text-muted-foreground">
-            💡 결제 확인 탭의 학생 이름 옆 결제수단 뱃지를 클릭하면 이번 달만 변경, 우클릭하면 학생 기본값을 변경합니다.
+            💡 결제 확인 탭의 학생 이름 옆 결제수단 뱃지(현금/스토어 또는 계산서/3.3%)를 <span className="font-semibold">클릭</span>하면 이번 달만 변경, <span className="font-semibold">우클릭</span>하면 학생 기본값을 변경합니다.
           </p>
           </>)}
         </TabsContent>
