@@ -137,15 +137,15 @@ export default function SessionCountReport() {
       .lte("scheduled_at", endTs)
       .then(r => r);
 
+    // Previous period: fetch carryovers + instructor cancels (both auto-deduct from current month's billable)
     const prevPromise = previousRange
       ? supabase
           .from("class_sessions")
-          .select("student_name, is_carryover")
-          .eq("is_carryover", true)
+          .select("student_name, is_carryover, cancellation_type")
           .gte("scheduled_at", `${previousRange.start}T00:00:00+09:00`)
           .lte("scheduled_at", `${previousRange.end}T23:59:59+09:00`)
           .then(r => r)
-      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean }[] });
+      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; cancellation_type: string | null }[] });
 
     const results = await Promise.all([studPromise, sessPromise, prevPromise]);
     setStudents((results[0].data || []) as StudentRecord[]);
@@ -153,9 +153,10 @@ export default function SessionCountReport() {
 
     const prevMap = new Map<string, number>();
     if (results[2]) {
-      const prevRows = (results[2].data || []) as { student_name: string; is_carryover: boolean }[];
+      const prevRows = (results[2].data || []) as { student_name: string; is_carryover: boolean; cancellation_type: string | null }[];
       prevRows.forEach(r => {
-        if (r.is_carryover) {
+        // Auto-carryover to next month: explicit carryover flag OR instructor cancel
+        if (r.is_carryover || r.cancellation_type === "instructor_cancel") {
           prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
         }
       });
@@ -205,10 +206,12 @@ export default function SessionCountReport() {
 
       const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + scheduled;
       const prev_carryover_in = prevCarryoverByStudent.get(student.student_name) || 0;
-      // Billable = (completed + makeup_completed + no_show) - previous month's carryover count
-      // Settlement memory: completed + no_show (excludes same_day/sick/instructor/advance cancels)
-      const actual_billable_base = completed + makeup_completed + no_show;
-      const billable = Math.max(0, actual_billable_base - prev_carryover_in);
+      // Actual lessons conducted (settlement-eligible base): completed + makeup + no-show
+      const actual_lessons = completed + makeup_completed + no_show;
+      // Billable = base monthly count (4) - previous month's carryovers (carryover flag + instructor cancel)
+      // All students pay for 4 sessions per month by default
+      const BASE_MONTHLY_COUNT = 4;
+      const billable = Math.max(0, BASE_MONTHLY_COUNT - prev_carryover_in);
 
       // Pick instructor by majority of sessions IN THIS RANGE (handles transfer-pending duplicates correctly)
       const instructorCounts = new Map<string, number>();
@@ -238,6 +241,7 @@ export default function SessionCountReport() {
         scheduled,
         carryover,
         prev_carryover_in,
+        actual_lessons,
         billable,
         total,
       };
@@ -277,6 +281,7 @@ export default function SessionCountReport() {
       scheduled: sum("scheduled"),
       carryover: sum("carryover"),
       prev_carryover_in: sum("prev_carryover_in"),
+      actual_lessons: sum("actual_lessons"),
       billable: sum("billable"),
       total: sum("total"),
     };
@@ -297,7 +302,7 @@ export default function SessionCountReport() {
 
   const renderInstructorGroup = (instructorName: string, list: typeof rows) => {
     const groupTotals = {
-      completed: list.reduce((s, r) => s + r.completed, 0),
+      actual_lessons: list.reduce((s, r) => s + r.actual_lessons, 0),
       billable: list.reduce((s, r) => s + r.billable, 0),
       total: list.reduce((s, r) => s + r.total, 0),
     };
@@ -307,7 +312,7 @@ export default function SessionCountReport() {
           <p className="text-xs font-semibold text-foreground">
             <span className="text-primary">{instructorName}</span>
             <span className="text-muted-foreground ml-1.5">
-              ({list.length}명 · 결제 {groupTotals.billable} / 실수업 {groupTotals.completed + list.reduce((s, r) => s + r.makeup_completed + r.no_show, 0)} / 전체 {groupTotals.total})
+              ({list.length}명 · 결제 {groupTotals.billable} / 실수업 {groupTotals.actual_lessons} / 전체 {groupTotals.total})
             </span>
           </p>
         </div>
@@ -327,6 +332,7 @@ export default function SessionCountReport() {
                 <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10">이월(전월)</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">예정</th>
                 <th className="px-2 py-2 font-semibold text-foreground text-center">전체</th>
+                <th className="px-2 py-2 font-semibold text-success text-center bg-success/5">실수업</th>
                 <th className="px-2 py-2 font-semibold text-primary text-center bg-primary/5">결제대상</th>
                 <th className="px-2 py-2 font-semibold text-foreground text-center w-10">편집</th>
               </tr>
@@ -349,6 +355,7 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.prev_carryover_in ? `-${r.prev_carryover_in}` : "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
                   <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
+                  <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
                   <td className="px-2 py-2 text-center font-bold text-primary bg-primary/5">{r.billable}</td>
                   <td className="px-1 py-1 text-center">
                     <button
@@ -470,14 +477,15 @@ export default function SessionCountReport() {
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">강사취소 {totals.instructor_cancel}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">사전취소 {totals.advance_cancel}</span>
         <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">이월(당월) {totals.carryover}</span>
-        <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">이월(전월차감) -{totals.prev_carryover_in}</span>
+        <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">전월차감 -{totals.prev_carryover_in}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">예정 {totals.scheduled}</span>
         <span className="px-2 py-1 rounded bg-foreground/10 text-foreground font-bold">전체 {totals.total}</span>
-        <span className="px-2 py-1 rounded bg-primary text-primary-foreground font-bold ml-auto">결제대상 {totals.billable}</span>
+        <span className="px-2 py-1 rounded bg-success/15 text-success font-bold ml-auto">실수업 {totals.actual_lessons}</span>
+        <span className="px-2 py-1 rounded bg-primary text-primary-foreground font-bold">결제대상 {totals.billable}</span>
       </div>
 
       <p className="text-[10px] text-muted-foreground -mt-2">
-        💡 결제대상 = (완료 + 보강완료 + 노쇼) - 전월 이월 횟수 · 이월은 강사-학생 협의로 표시
+        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · 강사취소/이월은 다음 달 결제에서 자동 차감
       </p>
 
       {loading ? (
