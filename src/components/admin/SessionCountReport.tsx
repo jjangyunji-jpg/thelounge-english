@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronRight, ClipboardList, Download, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardList, Download, Calendar as CalendarIcon, Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { exportSessionCountPdf, SessionCountRow } from "@/lib/exportSessionCountPdf";
 import { useToast } from "@/hooks/use-toast";
+import SessionEditModal from "./SessionEditModal";
 
 const TEST_ACCOUNTS = ["test", "test 2", "test2"];
 
@@ -23,6 +24,7 @@ interface StudentRecord {
   student_type: string;
   status: string | null;
   group_students: string[];
+  instructor_name: string | null;
 }
 
 interface SessionRow {
@@ -31,6 +33,7 @@ interface SessionRow {
   ended_at: string | null;
   cancellation_type: string | null;
   reschedule_origin_dates: string[] | null;
+  instructor_name: string | null;
 }
 
 type FilterMode = "period" | "month";
@@ -53,6 +56,7 @@ export default function SessionCountReport() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<string | null>(null);
 
   // Load schedule periods
   useEffect(() => {
@@ -68,26 +72,17 @@ export default function SessionCountReport() {
     })();
   }, []);
 
-  // Resolve current range
   const currentRange = useMemo(() => {
     if (mode === "period") {
       const p = periods[periodIdx];
       if (!p) return null;
-      return {
-        label: p.label,
-        start: p.start_date,
-        end: p.end_date,
-      };
+      return { label: p.label, start: p.start_date, end: p.end_date };
     } else {
       const y = monthDate.getFullYear();
       const m = monthDate.getMonth();
       const start = new Date(y, m, 1);
       const end = new Date(y, m + 1, 0);
-      return {
-        label: `${y}년 ${m + 1}월`,
-        start: ymd(start),
-        end: ymd(end),
-      };
+      return { label: `${y}년 ${m + 1}월`, start: ymd(start), end: ymd(end) };
     }
   }, [mode, periods, periodIdx, monthDate]);
 
@@ -100,11 +95,11 @@ export default function SessionCountReport() {
     const [studRes, sessRes] = await Promise.all([
       supabase
         .from("instructor_students")
-        .select("student_name, student_type, status, group_students")
+        .select("student_name, student_type, status, group_students, instructor_name")
         .eq("status", "active"),
       supabase
         .from("class_sessions")
-        .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates")
+        .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name")
         .gte("scheduled_at", startTs)
         .lte("scheduled_at", endTs),
     ]);
@@ -116,8 +111,7 @@ export default function SessionCountReport() {
   useEffect(() => { loadData(); }, [loadData]);
 
   // Aggregate per student
-  const rows = useMemo<SessionCountRow[]>(() => {
-    // Dedupe students by name (transfers create duplicates)
+  const rows = useMemo<(SessionCountRow & { instructor_name: string })[]>(() => {
     const dedupedStudents = Array.from(
       new Map(students.map(s => [s.student_name, s])).values()
     ).filter(s => !TEST_ACCOUNTS.includes(s.student_name));
@@ -129,16 +123,10 @@ export default function SessionCountReport() {
       byName.set(s.student_name, list);
     });
 
-    const result: SessionCountRow[] = dedupedStudents.map(student => {
+    const result = dedupedStudents.map(student => {
       const list = byName.get(student.student_name) || [];
-      let completed = 0;
-      let no_show = 0;
-      let same_day_cancel = 0;
-      let sick = 0;
-      let instructor_cancel = 0;
-      let advance_cancel = 0;
-      let makeup_completed = 0;
-      let scheduled = 0;
+      let completed = 0, no_show = 0, same_day_cancel = 0, sick = 0;
+      let instructor_cancel = 0, advance_cancel = 0, makeup_completed = 0, scheduled = 0;
 
       list.forEach(s => {
         const isMakeup = Array.isArray(s.reschedule_origin_dates) && s.reschedule_origin_dates.length > 0;
@@ -158,10 +146,14 @@ export default function SessionCountReport() {
 
       const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + scheduled;
 
+      // Use most recent session's instructor if student record lacks one
+      const instructorFromSession = list[0]?.instructor_name || null;
+
       return {
         student_name: student.student_name,
         is_corporate: student.student_type === "corporate",
         is_group: (student.group_students?.length || 0) > 0,
+        instructor_name: student.instructor_name || instructorFromSession || "(미배정)",
         completed,
         makeup_completed,
         no_show,
@@ -172,16 +164,28 @@ export default function SessionCountReport() {
         scheduled,
         total,
       };
-    }).filter(r => r.total > 0); // hide students with no sessions in range
+    }).filter(r => r.total > 0);
 
     return result.sort((a, b) => {
       if (a.is_corporate !== b.is_corporate) return a.is_corporate ? 1 : -1;
+      if (a.instructor_name !== b.instructor_name) return a.instructor_name.localeCompare(b.instructor_name, "ko");
       return a.student_name.localeCompare(b.student_name, "ko");
     });
   }, [students, sessions]);
 
-  const regulars = rows.filter(r => !r.is_corporate);
-  const corporates = rows.filter(r => r.is_corporate);
+  // Group by instructor within each segment
+  const groupByInstructor = (list: typeof rows) => {
+    const map = new Map<string, typeof rows>();
+    list.forEach(r => {
+      const arr = map.get(r.instructor_name) || [];
+      arr.push(r);
+      map.set(r.instructor_name, arr);
+    });
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, "ko"));
+  };
+
+  const regularGroups = useMemo(() => groupByInstructor(rows.filter(r => !r.is_corporate)), [rows]);
+  const corporateGroups = useMemo(() => groupByInstructor(rows.filter(r => r.is_corporate)), [rows]);
 
   const totals = useMemo(() => {
     const sum = (k: keyof SessionCountRow) => rows.reduce((s, r) => s + (r[k] as number), 0);
@@ -211,45 +215,77 @@ export default function SessionCountReport() {
     setExporting(false);
   };
 
-  const renderTable = (list: SessionCountRow[], title: string) => (
-    <div>
-      <p className="text-xs font-semibold text-muted-foreground mb-2">{title} ({list.length}명)</p>
-      <div className="border border-border rounded-lg overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-muted/50 border-b border-border">
-              <th className="text-left px-3 py-2 font-semibold text-foreground">학생명</th>
-              <th className="px-2 py-2 font-semibold text-success text-center">완료</th>
-              <th className="px-2 py-2 font-semibold text-primary text-center">보강완료</th>
-              <th className="px-2 py-2 font-semibold text-warning text-center">노쇼</th>
-              <th className="px-2 py-2 font-semibold text-muted-foreground text-center">당일취소</th>
-              <th className="px-2 py-2 font-semibold text-muted-foreground text-center">병결</th>
-              <th className="px-2 py-2 font-semibold text-muted-foreground text-center">강사취소</th>
-              <th className="px-2 py-2 font-semibold text-muted-foreground text-center">사전취소</th>
-              <th className="px-2 py-2 font-semibold text-muted-foreground text-center">예정</th>
-              <th className="px-2 py-2 font-semibold text-foreground text-center">전체</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map(r => (
-              <tr key={r.student_name} className="border-b border-border last:border-0 hover:bg-muted/30">
-                <td className="px-3 py-2 font-medium text-foreground">
-                  {r.student_name}
-                  {r.is_group && <span className="ml-1 text-[9px] text-muted-foreground">(그룹)</span>}
-                </td>
-                <td className="px-2 py-2 text-center font-semibold text-success">{r.completed || "-"}</td>
-                <td className="px-2 py-2 text-center font-semibold text-primary">{r.makeup_completed || "-"}</td>
-                <td className="px-2 py-2 text-center font-semibold text-warning">{r.no_show || "-"}</td>
-                <td className="px-2 py-2 text-center text-muted-foreground">{r.same_day_cancel || "-"}</td>
-                <td className="px-2 py-2 text-center text-muted-foreground">{r.sick || "-"}</td>
-                <td className="px-2 py-2 text-center text-muted-foreground">{r.instructor_cancel || "-"}</td>
-                <td className="px-2 py-2 text-center text-muted-foreground">{r.advance_cancel || "-"}</td>
-                <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
-                <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
+  const renderInstructorGroup = (instructorName: string, list: typeof rows) => {
+    const groupTotals = {
+      completed: list.reduce((s, r) => s + r.completed, 0),
+      total: list.reduce((s, r) => s + r.total, 0),
+    };
+    return (
+      <div key={instructorName} className="space-y-1">
+        <div className="flex items-center justify-between px-1">
+          <p className="text-xs font-semibold text-foreground">
+            <span className="text-primary">{instructorName}</span>
+            <span className="text-muted-foreground ml-1.5">({list.length}명 · 완료 {groupTotals.completed} / 전체 {groupTotals.total})</span>
+          </p>
+        </div>
+        <div className="border border-border rounded-lg overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-muted/50 border-b border-border">
+                <th className="text-left px-3 py-2 font-semibold text-foreground">학생명</th>
+                <th className="px-2 py-2 font-semibold text-success text-center">완료</th>
+                <th className="px-2 py-2 font-semibold text-primary text-center">보강</th>
+                <th className="px-2 py-2 font-semibold text-warning text-center">노쇼</th>
+                <th className="px-2 py-2 font-semibold text-muted-foreground text-center">당일</th>
+                <th className="px-2 py-2 font-semibold text-muted-foreground text-center">병결</th>
+                <th className="px-2 py-2 font-semibold text-muted-foreground text-center">강사취소</th>
+                <th className="px-2 py-2 font-semibold text-muted-foreground text-center">사전</th>
+                <th className="px-2 py-2 font-semibold text-muted-foreground text-center">예정</th>
+                <th className="px-2 py-2 font-semibold text-foreground text-center">전체</th>
+                <th className="px-2 py-2 font-semibold text-foreground text-center w-10">편집</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {list.map(r => (
+                <tr key={r.student_name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                  <td className="px-3 py-2 font-medium text-foreground">
+                    {r.student_name}
+                    {r.is_group && <span className="ml-1 text-[9px] text-muted-foreground">(그룹)</span>}
+                  </td>
+                  <td className="px-2 py-2 text-center font-semibold text-success">{r.completed || "-"}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-primary">{r.makeup_completed || "-"}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-warning">{r.no_show || "-"}</td>
+                  <td className="px-2 py-2 text-center text-muted-foreground">{r.same_day_cancel || "-"}</td>
+                  <td className="px-2 py-2 text-center text-muted-foreground">{r.sick || "-"}</td>
+                  <td className="px-2 py-2 text-center text-muted-foreground">{r.instructor_cancel || "-"}</td>
+                  <td className="px-2 py-2 text-center text-muted-foreground">{r.advance_cancel || "-"}</td>
+                  <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
+                  <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
+                  <td className="px-1 py-1 text-center">
+                    <button
+                      onClick={() => setEditingStudent(r.student_name)}
+                      className="p-1.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors min-h-[28px] min-w-[28px] inline-flex items-center justify-center"
+                      title="수업 상태 수정"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSegment = (groups: ReturnType<typeof groupByInstructor>, title: string) => (
+    <div className="space-y-3">
+      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+        {title} · 강사 {groups.length}명 · 학생 {groups.reduce((s, [, list]) => s + list.length, 0)}명
+      </p>
+      <div className="space-y-3">
+        {groups.map(([name, list]) => renderInstructorGroup(name, list))}
       </div>
     </div>
   );
@@ -264,7 +300,6 @@ export default function SessionCountReport() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Mode toggle */}
           <div className="flex items-center rounded-md border border-border overflow-hidden text-xs">
             <button
               onClick={() => setMode("period")}
@@ -286,7 +321,6 @@ export default function SessionCountReport() {
             </button>
           </div>
 
-          {/* Range navigation */}
           {mode === "period" ? (
             <div className="flex items-center gap-1">
               <button
@@ -326,7 +360,6 @@ export default function SessionCountReport() {
             </Popover>
           )}
 
-          {/* Export */}
           <Button
             onClick={handleExport}
             disabled={exporting || rows.length === 0}
@@ -339,7 +372,6 @@ export default function SessionCountReport() {
         </div>
       </div>
 
-      {/* Summary chips */}
       <div className="flex flex-wrap gap-2 text-[11px]">
         <span className="px-2 py-1 rounded bg-success/10 text-success font-semibold">완료 {totals.completed}</span>
         <span className="px-2 py-1 rounded bg-primary/10 text-primary font-semibold">보강완료 {totals.makeup_completed}</span>
@@ -352,7 +384,6 @@ export default function SessionCountReport() {
         <span className="px-2 py-1 rounded bg-foreground/10 text-foreground font-bold ml-auto">전체 {totals.total}</span>
       </div>
 
-      {/* Tables */}
       {loading ? (
         <div className="flex items-center justify-center py-10">
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -362,10 +393,21 @@ export default function SessionCountReport() {
           해당 기간에 수업 기록이 없습니다.
         </p>
       ) : (
-        <div className="space-y-4">
-          {regulars.length > 0 && renderTable(regulars, "정규 수강생")}
-          {corporates.length > 0 && renderTable(corporates, "기업 수강생")}
+        <div className="space-y-6">
+          {regularGroups.length > 0 && renderSegment(regularGroups, "정규 수강생")}
+          {corporateGroups.length > 0 && renderSegment(corporateGroups, "기업 수강생")}
         </div>
+      )}
+
+      {editingStudent && currentRange && (
+        <SessionEditModal
+          open={!!editingStudent}
+          onClose={() => setEditingStudent(null)}
+          studentName={editingStudent}
+          rangeStart={currentRange.start}
+          rangeEnd={currentRange.end}
+          onSaved={loadData}
+        />
       )}
     </div>
   );
