@@ -584,7 +584,6 @@ export default function CashReceiptManagement() {
           {isCorporate ? (
             <div>
               <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{getCorpFee(s).toLocaleString()}</span>
-              <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
             </div>
           ) : editingFee === s.student_name ? (
             <div className="flex items-center gap-1 justify-end">
