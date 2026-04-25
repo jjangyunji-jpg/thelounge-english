@@ -537,7 +537,7 @@ export default function SessionCountReport() {
                     "px-2 py-2 text-center font-bold",
                     r.total !== r.billable ? "text-warning bg-warning/10" : "text-foreground"
                   )} title={r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : undefined}>
-                    {r.total !== r.billable ? `⚠ ${r.total}` : r.total}
+                    {r.total !== r.billable && r.total + r.scheduled !== r.billable ? `⚠ ${r.total}` : r.total}
                   </td>
                   <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
                   <td className={cn(
