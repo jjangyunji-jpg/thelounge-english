@@ -185,34 +185,59 @@ export default function SessionCountReport() {
       .or(`pause_end.is.null,pause_end.gte.${currentRange.start}`)
       .then(r => r);
 
-    const sessPromise = supabase
+    // Fetch sessions whose scheduled_at is in range OR whose original (pre-reschedule) date is in range.
+    // This ensures sessions moved OUT of the period (e.g., 4/2 → 4/30) are still counted in the original month.
+    const sessInRangePromise = supabase
       .from("class_sessions")
       .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
       .gte("scheduled_at", startTs)
       .lte("scheduled_at", endTs)
       .then(r => r);
+    // Sessions rescheduled FROM within this period to outside it
+    const sessOriginPromise = supabase
+      .from("class_sessions")
+      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
+      .overlaps("reschedule_origin_dates", [currentRange.start, currentRange.end])
+      // overlaps with two endpoints isn't sufficient — fetch broader and filter client-side below
+      .then(r => r);
 
-    // Previous period: fetch carryovers + instructor cancels (both auto-deduct from current month's billable)
+    // Previous period: fetch carryovers that were NOT actually conducted (still pending) → deduct from this month's billable
     const prevPromise = previousRange
       ? supabase
           .from("class_sessions")
-          .select("student_name, is_carryover, cancellation_type")
+          .select("student_name, is_carryover, cancellation_type, ended_at, scheduled_at, reschedule_origin_dates")
           .gte("scheduled_at", `${previousRange.start}T00:00:00+09:00`)
           .lte("scheduled_at", `${previousRange.end}T23:59:59+09:00`)
           .then(r => r)
-      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; cancellation_type: string | null }[] });
+      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[] });
 
-    const results = await Promise.all([studPromise, pausePromise, sessPromise, prevPromise]);
+    const results = await Promise.all([studPromise, pausePromise, sessInRangePromise, prevPromise, sessOriginPromise]);
     setStudents((results[0].data || []) as StudentRecord[]);
     setPauses((results[1].data || []) as StudentPause[]);
-    setSessions((results[2].data || []) as SessionRow[]);
+
+    // Merge sessions: in-range + those whose origin falls in range (and scheduled_at is outside)
+    const inRange = (results[2].data || []) as SessionRow[];
+    const originExtras = ((results[4].data || []) as SessionRow[]).filter(s => {
+      const inRangeAlready = inRange.some(x => x.student_name === s.student_name && x.scheduled_at === s.scheduled_at);
+      if (inRangeAlready) return false;
+      const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+      return origins.some(d => d >= currentRange.start && d <= currentRange.end);
+    });
+    setSessions([...inRange, ...originExtras]);
 
     const prevMap = new Map<string, number>();
     if (results[3]) {
-      const prevRows = (results[3].data || []) as { student_name: string; is_carryover: boolean; cancellation_type: string | null }[];
+      const prevRows = (results[3].data || []) as { student_name: string; is_carryover: boolean; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[];
+      // Exclude sessions that were rescheduled OUT of the previous period (they'll be counted in their new month)
       prevRows.forEach(r => {
-        // Auto-carryover to next month: explicit carryover flag OR instructor cancel
-        if (r.is_carryover || r.cancellation_type === "instructor_cancel") {
+        // Carryover deduction applies only when the session was NOT actually conducted
+        // (no ended_at, no cancellation handled this month).
+        // Instructor cancel: always deducts (it's a guaranteed make-up next month).
+        // is_carryover: deducts only if still pending (not completed in previous month).
+        const isPending = !r.ended_at && !r.cancellation_type;
+        if (r.cancellation_type === "instructor_cancel") {
+          prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
+        } else if (r.is_carryover && isPending) {
           prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
         }
       });
