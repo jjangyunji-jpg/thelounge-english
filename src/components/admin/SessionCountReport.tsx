@@ -583,14 +583,14 @@ export default function SessionCountReport() {
                   </td>
                   <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
                   <td className={cn(
-                    "px-2 py-2 text-center font-bold",
+                    "px-2 py-2 text-center font-bold bg-primary/5",
                     r.billable_overridden
                       ? "text-warning bg-warning/10"
-                      : r.total !== r.billable
-                        ? "text-warning bg-warning/10"
-                        : r.billable !== 4
-                          ? "text-destructive bg-primary/5"
-                          : "text-primary bg-primary/5"
+                      : r.billable !== 4
+                        ? "text-destructive"
+                        : r.total !== r.billable
+                          ? "text-warning bg-warning/10"
+                          : "text-primary"
                   )} title={
                     r.billable_overridden
                       ? `자동값 ${r.computed_billable} → 수동 ${r.billable}`
