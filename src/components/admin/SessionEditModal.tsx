@@ -24,7 +24,10 @@ interface SessionItem {
   reschedule_origin_dates: string[] | null;
   topic: string | null;
   is_carryover: boolean;
+  carryover_direction: "prev" | "next" | null;
 }
+
+type CarryoverDirection = "prev" | "next" | null;
 
 type StatusKey =
   | "completed"
