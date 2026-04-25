@@ -1477,7 +1477,12 @@ export default function CashReceiptManagement() {
                       const net = Math.round(r.fee * (1 - STORE_FEE_RATE));
                       return (
                         <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
-                          <td className="px-3 py-2 text-foreground">{r.name}</td>
+                          <td className="px-3 py-2 text-foreground">
+                            {r.name}
+                            {r.isPrepaid && (
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30">선결제</span>
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-right text-muted-foreground text-xs">₩{r.fee.toLocaleString()}</td>
                           <td className="px-3 py-2 text-right font-medium text-foreground">₩{net.toLocaleString()}</td>
                         </tr>
