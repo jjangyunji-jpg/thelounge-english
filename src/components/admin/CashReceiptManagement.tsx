@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import SessionCountReport from "./SessionCountReport";
-import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare, Download, PauseCircle, UserMinus, UserPlus, AlertCircle } from "lucide-react";
+import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare, Download, PauseCircle, UserMinus, UserPlus, AlertCircle, Trash2, Settings2, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -98,6 +98,16 @@ export default function CashReceiptManagement() {
   const [deductCount, setDeductCount] = useState("");
   const [activeTab, setActiveTab] = useState<"count" | "payment">("count");
   const [pauseRanges, setPauseRanges] = useState<Map<string, { start: string; end: string | null }[]>>(new Map());
+  const [refundFlags, setRefundFlags] = useState<Set<string>>(new Set());
+
+  // Receipt management state
+  const [receiptModal, setReceiptModal] = useState<{ mode: "create" | "edit"; data?: CashReceipt } | null>(null);
+  const [receiptInput, setReceiptInput] = useState<{ student_name: string; receipt_type: string; receipt_number: string; recurring: boolean; recurring_attendance: boolean }>({ student_name: "", receipt_type: "phone", receipt_number: "", recurring: false, recurring_attendance: false });
+  const [showAllReceipts, setShowAllReceipts] = useState(false);
+
+  // Attendance request management state
+  const [attendModal, setAttendModal] = useState<{ mode: "create" | "edit"; data?: AttendanceRequest } | null>(null);
+  const [attendInput, setAttendInput] = useState<{ user_name: string; period_text: string }>({ user_name: "", period_text: "" });
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
@@ -192,8 +202,9 @@ export default function CashReceiptManagement() {
     });
     setPauseRanges(pauseMap);
 
-    // Extract fee overrides from confirmation notes
+    // Extract fee overrides + refund flags from confirmation notes
     const overrides = new Map<string, number>();
+    const refunds = new Set<string>();
     confs.forEach(c => {
       if (c.note) {
         try {
@@ -201,10 +212,14 @@ export default function CashReceiptManagement() {
           if (typeof parsed.fee_override === "number") {
             overrides.set(c.student_name, parsed.fee_override);
           }
+          if (parsed.refund === true) {
+            refunds.add(c.student_name);
+          }
         } catch { /* not JSON, ignore */ }
       }
     });
     setFeeOverrides(overrides);
+    setRefundFlags(refunds);
 
     // Count sessions per student, attributing rescheduled sessions to their original period
     const pStart = currentPeriod.start_date;
@@ -321,28 +336,52 @@ export default function CashReceiptManagement() {
     return ranges.some(r => isPauseCoveringPeriod(r.start, r.end));
   };
 
-  // Regular = active + within period + not paused for the whole period (current payment list)
+  // Regular = active + within period (DON'T hide paused/withdrawn that already have confirmation/receipts —
+  // they show as a row with a refund badge so admins can track them).
+  // Include any student that EITHER (a) is currently active and within period, OR
+  // (b) has any payment_confirmation/cash_receipt for this period (so existing records remain visible).
   const regularStudents = nonCorpStudents
-    .filter(s => s.status === "active")
-    .filter(isWithinPeriod)
-    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
-
-  // Paused = active status but full-period pause (already excluded from regular)
-  const pausedStudents = nonCorpStudents
-    .filter(s => s.status === "active")
     .filter(s => {
-      // Must have started by end of period
-      if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
-      return isPausedOnPeriod(s);
+      const baseEligible = s.status === "active" && isWithinPeriod(s);
+      const hasConfRecord = confMap.has(s.student_name);
+      return baseEligible || hasConfRecord;
     })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
-  // Withdrawn = inactive AND end_date falls within the selected period
-  const withdrawnStudents = nonCorpStudents
-    .filter(s => s.status === "inactive")
+  // Helper: total session count for a non-corporate student in this period (billable or raw).
+  const periodSessionCount = (name: string): number => {
+    if (billableCounts.has(name)) return billableCounts.get(name) || 0;
+    return sessionCounts.get(name) || 0;
+  };
+
+  // Paused = full-period pause OR (active status but 0 sessions in this period AND a current pause covers part of it)
+  const pausedStudents = nonCorpStudents
     .filter(s => {
-      if (!s.end_date || !pStartDate || !pEndDate) return false;
-      return s.end_date >= pStartDate && s.end_date <= pEndDate;
+      // Must have started by end of period
+      if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
+      // Original: full-period pause
+      if (isPausedOnPeriod(s)) return true;
+      // Carry-over rule (cnt=0 + currently paused)
+      const cnt = periodSessionCount(s.student_name);
+      if (cnt === 0 && s.status === "active") {
+        const today = new Date().toISOString().slice(0, 10);
+        const inlinePauseActive = s.pause_start && s.pause_start <= today && (!s.pause_end || s.pause_end >= today);
+        if (inlinePauseActive) return true;
+      }
+      return false;
+    })
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
+  // Withdrawn = inactive AND (end_date in period OR no end_date but 0 sessions in period)
+  const withdrawnStudents = nonCorpStudents
+    .filter(s => {
+      if (s.status !== "inactive") return false;
+      if (s.end_date && pStartDate && pEndDate && s.end_date >= pStartDate && s.end_date <= pEndDate) return true;
+      // Inactive but end_date outside period — only count if they had ZERO sessions this period
+      // (i.e. the withdrawal effectively applies to this billing month)
+      const cnt = periodSessionCount(s.student_name);
+      if (cnt === 0) return true;
+      return false;
     })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
@@ -449,9 +488,16 @@ export default function CashReceiptManagement() {
 
   const hasOverride = (name: string) => feeOverrides.has(name);
 
+  // Helper: parse existing note JSON safely
+  const parseNote = (note: string | null): Record<string, any> => {
+    if (!note) return {};
+    try { return JSON.parse(note); } catch { return {}; }
+  };
+
   const saveFeeOverride = async (studentName: string, fee: number) => {
     const existing = confMap.get(studentName);
-    const noteData = JSON.stringify({ fee_override: fee });
+    const baseNote = existing ? parseNote(existing.note) : {};
+    const noteData = JSON.stringify({ ...baseNote, fee_override: fee });
     if (existing) {
       await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
     } else {
@@ -465,8 +511,118 @@ export default function CashReceiptManagement() {
   const clearFeeOverride = async (studentName: string) => {
     const existing = confMap.get(studentName);
     if (existing) {
-      await supabase.from("payment_confirmations" as any).update({ note: null } as any).eq("id", existing.id);
+      const base = parseNote(existing.note);
+      delete base.fee_override;
+      const next = Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+      await supabase.from("payment_confirmations" as any).update({ note: next } as any).eq("id", existing.id);
     }
+    loadData();
+  };
+
+  const toggleRefund = async (studentName: string) => {
+    const existing = confMap.get(studentName);
+    const base = existing ? parseNote(existing.note) : {};
+    const next = !base.refund;
+    if (next) base.refund = true; else delete base.refund;
+    const noteData = Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+    if (existing) {
+      await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
+    } else if (next) {
+      await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: false, note: noteData } as any);
+    }
+    toast({ title: next ? "환불 표시 추가됨" : "환불 표시 제거됨" });
+    loadData();
+  };
+
+  // ========== Cash Receipt CRUD ==========
+  const openReceiptCreate = () => {
+    setReceiptInput({ student_name: "", receipt_type: "phone", receipt_number: "", recurring: false, recurring_attendance: false });
+    setReceiptModal({ mode: "create" });
+  };
+  const openReceiptEdit = (r: CashReceipt) => {
+    setReceiptInput({ student_name: r.student_name, receipt_type: r.receipt_type, receipt_number: r.receipt_number, recurring: r.recurring, recurring_attendance: r.recurring_attendance });
+    setReceiptModal({ mode: "edit", data: r });
+  };
+  const saveReceipt = async () => {
+    if (!receiptInput.student_name.trim()) { toast({ title: "학생명을 입력하세요", variant: "destructive" }); return; }
+    const payload = {
+      student_name: receiptInput.student_name.trim(),
+      receipt_type: receiptInput.receipt_type,
+      receipt_number: receiptInput.receipt_number.trim(),
+      recurring: receiptInput.recurring,
+      recurring_attendance: receiptInput.recurring_attendance,
+    };
+    if (receiptModal?.mode === "edit" && receiptModal.data) {
+      // Find by student_name (no id field on type) — match exact original record
+      const orig = receiptModal.data;
+      // Delete original then insert if name changed; otherwise upsert by student_name
+      if (orig.student_name !== payload.student_name) {
+        // student_name is the natural key in the table — delete the old row and insert a new one
+        await supabase.from("cash_receipts" as any).delete().eq("student_name", orig.student_name);
+        await supabase.from("cash_receipts" as any).insert(payload as any);
+      } else {
+        await supabase.from("cash_receipts" as any).update(payload as any).eq("student_name", orig.student_name);
+      }
+      toast({ title: "현금영수증 정보 수정됨" });
+    } else {
+      // Create — upsert by student_name in case row exists
+      const { error } = await supabase.from("cash_receipts" as any).upsert(payload as any, { onConflict: "student_name" } as any);
+      if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "현금영수증 정보 추가됨" });
+    }
+    setReceiptModal(null);
+    loadData();
+  };
+  const deleteReceipt = async (studentName: string) => {
+    if (!confirm(`${studentName}의 현금영수증 정보를 삭제하시겠습니까?`)) return;
+    await supabase.from("cash_receipts" as any).delete().eq("student_name", studentName);
+    toast({ title: "삭제됨" });
+    loadData();
+  };
+
+  // ========== Attendance Request CRUD ==========
+  const openAttendCreate = () => {
+    setAttendInput({ user_name: "", period_text: "" });
+    setAttendModal({ mode: "create" });
+  };
+  const openAttendEdit = (req: AttendanceRequest) => {
+    const periodLine = req.description.split("\n").find(l => l.startsWith("출석 기간:"));
+    const periodText = periodLine ? periodLine.replace("출석 기간: ", "") : "";
+    setAttendInput({ user_name: req.user_name, period_text: periodText });
+    setAttendModal({ mode: "edit", data: req });
+  };
+  const saveAttendRequest = async () => {
+    if (!attendInput.user_name.trim()) { toast({ title: "학생명을 입력하세요", variant: "destructive" }); return; }
+    const description = `출석 기간: ${attendInput.period_text.trim() || "-"}`;
+    if (attendModal?.mode === "edit" && attendModal.data) {
+      await supabase.from("support_requests").update({
+        user_name: attendInput.user_name.trim(),
+        description,
+      }).eq("id", attendModal.data.id);
+      toast({ title: "출석증 요청 수정됨" });
+    } else {
+      // Need user_id — use current admin's id as a fallback so RLS passes
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast({ title: "로그인이 필요합니다", variant: "destructive" }); return; }
+      const { error } = await supabase.from("support_requests").insert({
+        user_id: session.user.id,
+        user_name: attendInput.user_name.trim(),
+        role: "student",
+        category: "attendance",
+        title: "출석증 요청",
+        description,
+        status: "open",
+      });
+      if (error) { toast({ title: "추가 실패", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "출석증 요청 추가됨" });
+    }
+    setAttendModal(null);
+    loadData();
+  };
+  const deleteAttendRequest = async (id: string, name: string) => {
+    if (!confirm(`${name}의 출석증 요청을 삭제하시겠습니까?`)) return;
+    await supabase.from("support_requests").delete().eq("id", id);
+    toast({ title: "삭제됨" });
     loadData();
   };
 
@@ -547,9 +703,13 @@ export default function CashReceiptManagement() {
     const credit = creditMap.get(s.student_name);
     const ded = dedMap.get(s.student_name);
     const hasPrepaid = !!credit && (credit.total_sessions - credit.used_sessions) > 0;
+    const isRefund = !isCorporate && refundFlags.has(s.student_name);
+    const isInactive = s.status === "inactive";
 
     return (
-      <tr key={s.student_name} className={cn("border-b border-border last:border-0 transition-colors", isConfirmed ? "bg-primary/5" : "hover:bg-muted/30")}>
+      <tr key={s.student_name} className={cn("border-b border-border last:border-0 transition-colors",
+        isRefund ? "bg-destructive/5" : isConfirmed ? "bg-primary/5" : "hover:bg-muted/30"
+      )}>
         <td className="px-4 py-3 text-center">
           <button
             onClick={() => toggleConfirm(s.student_name)}
@@ -579,6 +739,23 @@ export default function CashReceiptManagement() {
             if (isPaused) return <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-warning/15 text-warning font-semibold">휴강</span>;
             return null;
           })()}
+          {isInactive && (
+            <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">퇴원</span>
+          )}
+          {!isCorporate && (
+            <button
+              onClick={() => toggleRefund(s.student_name)}
+              className={cn(
+                "ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold transition-colors",
+                isRefund
+                  ? "bg-destructive/15 text-destructive hover:bg-destructive/25"
+                  : "border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+              )}
+              title={isRefund ? "환불 표시 — 클릭하여 제거" : "환불 표시 추가"}
+            >
+              {isRefund ? "환불" : "환불 표시"}
+            </button>
+          )}
         </td>
         <td className="px-4 py-3 text-right">
           {isCorporate ? (
@@ -857,46 +1034,83 @@ export default function CashReceiptManagement() {
         </div>
       )}
 
-      {/* Cash Receipts Table */}
-      {receipts.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">현금영수증 정보</p>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50 border-b border-border">
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">유형</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">번호</th>
-                  <th className="text-center px-4 py-3 font-semibold text-foreground">자동발급</th>
-                </tr>
-              </thead>
-              <tbody>
-                {receipts.filter(r => r.receipt_number).map((r, i) => (
-                  <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 text-xs font-medium">
-                        {r.receipt_type === "phone" ? <><Phone className="w-3 h-3 text-primary" /> 휴대폰</> : <><Building2 className="w-3 h-3 text-amber-500" /> 사업자</>}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{r.receipt_number}</td>
-                    <td className="px-4 py-3 text-center">
-                      {r.recurring && (
-                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                          <RefreshCw className="w-3 h-3" /> 매달
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Cash Receipts Table — always show with add/edit/delete */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-muted-foreground">현금영수증 정보</p>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setShowAllReceipts(v => !v)}
+              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md border border-border bg-card hover:bg-muted text-foreground transition-colors"
+              title="전체(자동발급/매달 포함) 보기 토글"
+            >
+              <Settings2 className="w-3 h-3" />
+              {showAllReceipts ? "필터링" : "전체 관리"}
+            </button>
+            <button
+              onClick={openReceiptCreate}
+              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-3 h-3" /> 추가
+            </button>
           </div>
         </div>
-      )}
+        <div className="border border-border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 border-b border-border">
+                <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">유형</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">번호</th>
+                <th className="text-center px-4 py-3 font-semibold text-foreground">자동발급</th>
+                <th className="w-20 px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {(showAllReceipts ? receipts : receipts.filter(r => r.receipt_number)).map((r, i) => (
+                <tr key={`${r.student_name}-${i}`} className="border-b border-border last:border-0 hover:bg-muted/30 group/row">
+                  <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium">
+                      {r.receipt_type === "phone" ? <><Phone className="w-3 h-3 text-primary" /> 휴대폰</> : <><Building2 className="w-3 h-3 text-amber-500" /> 사업자</>}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-foreground">{r.receipt_number || <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      {r.recurring && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                          <RefreshCw className="w-3 h-3" /> 영수증
+                        </span>
+                      )}
+                      {r.recurring_attendance && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-accent/40 text-accent-foreground font-medium">
+                          <RefreshCw className="w-3 h-3" /> 출석증
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                      <button onClick={() => openReceiptEdit(r)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-primary" title="수정">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => deleteReceipt(r.student_name)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive" title="삭제">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {(showAllReceipts ? receipts : receipts.filter(r => r.receipt_number)).length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-xs text-muted-foreground">등록된 현금영수증 정보가 없습니다.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      {/* Recurring Attendance Requests */}
+      {/* Recurring Attendance Requests (auto-issue list) */}
       {receipts.some(r => r.recurring_attendance) && (
         <div>
           <p className="text-xs font-semibold text-muted-foreground mb-2">출석증 매달 자동 발급 대상</p>
@@ -915,58 +1129,86 @@ export default function CashReceiptManagement() {
         </div>
       )}
 
-      {/* Attendance Certificate Requests */}
-      {attendanceRequests.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2">출석증 요청</p>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50 border-b border-border">
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">출석 기간</th>
-                  <th className="text-left px-4 py-3 font-semibold text-foreground">요청일</th>
-                  <th className="text-center px-4 py-3 font-semibold text-foreground">상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendanceRequests.map((req) => {
-                  const periodLine = req.description.split("\n").find(l => l.startsWith("출석 기간:"));
-                  const periodText = periodLine ? periodLine.replace("출석 기간: ", "") : "-";
-                  const isResolved = req.status === "resolved";
-                  return (
-                    <tr key={req.id} className={cn("border-b border-border last:border-0 transition-colors", isResolved ? "bg-primary/5" : "hover:bg-muted/30")}>
-                      <td className="px-4 py-3 font-medium text-foreground">{req.user_name}</td>
-                      <td className="px-4 py-3 text-foreground">{periodText}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">
-                        {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {isResolved ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                            <CheckCircle className="w-3 h-3" /> 발급완료
-                          </span>
-                        ) : (
-                          <button
-                            onClick={async () => {
-                              await supabase.from("support_requests").update({ status: "resolved", resolved_at: new Date().toISOString() }).eq("id", req.id);
-                              toast({ title: "출석증 발급 완료 처리됨" });
-                              loadData();
-                            }}
-                            className="text-[10px] px-2 py-1 rounded bg-accent text-accent-foreground hover:bg-accent/80 transition-colors font-medium"
-                          >
-                            발급 완료
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+      {/* Attendance Certificate Requests — always show with add/edit/delete */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-muted-foreground">출석증 요청</p>
+          <button
+            onClick={openAttendCreate}
+            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-3 h-3" /> 추가
+          </button>
         </div>
-      )}
+        <div className="border border-border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 border-b border-border">
+                <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">출석 기간</th>
+                <th className="text-left px-4 py-3 font-semibold text-foreground">요청일</th>
+                <th className="text-center px-4 py-3 font-semibold text-foreground">상태</th>
+                <th className="w-24 px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {attendanceRequests.map((req) => {
+                const periodLine = req.description.split("\n").find(l => l.startsWith("출석 기간:"));
+                const periodText = periodLine ? periodLine.replace("출석 기간: ", "") : "-";
+                const isResolved = req.status === "resolved";
+                return (
+                  <tr key={req.id} className={cn("border-b border-border last:border-0 transition-colors group/row", isResolved ? "bg-primary/5" : "hover:bg-muted/30")}>
+                    <td className="px-4 py-3 font-medium text-foreground">{req.user_name}</td>
+                    <td className="px-4 py-3 text-foreground">{periodText}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {new Date(req.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {isResolved ? (
+                        <button
+                          onClick={async () => {
+                            await supabase.from("support_requests").update({ status: "open", resolved_at: null }).eq("id", req.id);
+                            toast({ title: "발급 완료 해제됨" });
+                            loadData();
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium hover:bg-primary/20"
+                          title="발급 완료 취소"
+                        >
+                          <CheckCircle className="w-3 h-3" /> 발급완료
+                        </button>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            await supabase.from("support_requests").update({ status: "resolved", resolved_at: new Date().toISOString() }).eq("id", req.id);
+                            toast({ title: "출석증 발급 완료 처리됨" });
+                            loadData();
+                          }}
+                          className="text-[10px] px-2 py-1 rounded bg-accent text-accent-foreground hover:bg-accent/80 transition-colors font-medium"
+                        >
+                          발급 완료
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        <button onClick={() => openAttendEdit(req)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-primary" title="수정">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => deleteAttendRequest(req.id, req.user_name)} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive" title="삭제">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {attendanceRequests.length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-xs text-muted-foreground">등록된 출석증 요청이 없습니다.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
           </>)}
         </TabsContent>
       </Tabs>
@@ -1092,6 +1334,105 @@ export default function CashReceiptManagement() {
             setReportPreview(null);
           }}
         />
+      )}
+
+      {/* Cash Receipt Add/Edit Modal */}
+      {receiptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setReceiptModal(null)}>
+          <div className="bg-card rounded-xl shadow-xl border border-border w-[360px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-sm font-bold text-foreground">현금영수증 정보 {receiptModal.mode === "edit" ? "수정" : "추가"}</h3>
+              <button onClick={() => setReceiptModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-foreground">학생명</label>
+                <input
+                  type="text"
+                  value={receiptInput.student_name}
+                  onChange={e => setReceiptInput(prev => ({ ...prev, student_name: e.target.value }))}
+                  placeholder="홍길동"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-foreground">유형</label>
+                <select
+                  value={receiptInput.receipt_type}
+                  onChange={e => setReceiptInput(prev => ({ ...prev, receipt_type: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="phone">휴대폰</option>
+                  <option value="business">사업자</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-foreground">번호</label>
+                <input
+                  type="text"
+                  value={receiptInput.receipt_number}
+                  onChange={e => setReceiptInput(prev => ({ ...prev, receipt_number: e.target.value }))}
+                  placeholder="010-0000-0000 / 사업자번호"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-xs text-foreground">
+                <input type="checkbox" checked={receiptInput.recurring} onChange={e => setReceiptInput(prev => ({ ...prev, recurring: e.target.checked }))} />
+                매달 자동 영수증 발급
+              </label>
+              <label className="flex items-center gap-2 text-xs text-foreground">
+                <input type="checkbox" checked={receiptInput.recurring_attendance} onChange={e => setReceiptInput(prev => ({ ...prev, recurring_attendance: e.target.checked }))} />
+                매달 자동 출석증 발급
+              </label>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setReceiptModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">취소</button>
+                <button onClick={saveReceipt} className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                  {receiptModal.mode === "edit" ? "수정" : "추가"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance Request Add/Edit Modal */}
+      {attendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setAttendModal(null)}>
+          <div className="bg-card rounded-xl shadow-xl border border-border w-[360px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-sm font-bold text-foreground">출석증 요청 {attendModal.mode === "edit" ? "수정" : "추가"}</h3>
+              <button onClick={() => setAttendModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-foreground">학생명</label>
+                <input
+                  type="text"
+                  value={attendInput.user_name}
+                  onChange={e => setAttendInput(prev => ({ ...prev, user_name: e.target.value }))}
+                  placeholder="홍길동"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-foreground">출석 기간</label>
+                <input
+                  type="text"
+                  value={attendInput.period_text}
+                  onChange={e => setAttendInput(prev => ({ ...prev, period_text: e.target.value }))}
+                  placeholder="예: 2026-04-01 ~ 2026-04-30"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setAttendModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">취소</button>
+                <button onClick={saveAttendRequest} className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                  {attendModal.mode === "edit" ? "수정" : "추가"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
