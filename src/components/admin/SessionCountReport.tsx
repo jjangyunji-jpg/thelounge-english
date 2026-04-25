@@ -477,14 +477,15 @@ export default function SessionCountReport() {
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">강사취소 {totals.instructor_cancel}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">사전취소 {totals.advance_cancel}</span>
         <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">이월(당월) {totals.carryover}</span>
-        <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">이월(전월차감) -{totals.prev_carryover_in}</span>
+        <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">전월차감 -{totals.prev_carryover_in}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">예정 {totals.scheduled}</span>
         <span className="px-2 py-1 rounded bg-foreground/10 text-foreground font-bold">전체 {totals.total}</span>
-        <span className="px-2 py-1 rounded bg-primary text-primary-foreground font-bold ml-auto">결제대상 {totals.billable}</span>
+        <span className="px-2 py-1 rounded bg-success/15 text-success font-bold ml-auto">실수업 {totals.actual_lessons}</span>
+        <span className="px-2 py-1 rounded bg-primary text-primary-foreground font-bold">결제대상 {totals.billable}</span>
       </div>
 
       <p className="text-[10px] text-muted-foreground -mt-2">
-        💡 결제대상 = (완료 + 보강완료 + 노쇼) - 전월 이월 횟수 · 이월은 강사-학생 협의로 표시
+        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · 강사취소/이월은 다음 달 결제에서 자동 차감
       </p>
 
       {loading ? (
