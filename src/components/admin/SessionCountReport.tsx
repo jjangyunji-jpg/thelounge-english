@@ -217,6 +217,7 @@ export default function SessionCountReport() {
 
     // Merge sessions: in-range + those whose origin falls in range (and scheduled_at is outside).
     // Also exclude in-range sessions whose origin is in a DIFFERENT period (they belong to the original month's report).
+    const inRange = (results[2].data || []) as SessionRow[];
     const inRangeFiltered = inRange.filter(s => {
       const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
       if (origins.length === 0) return true;
