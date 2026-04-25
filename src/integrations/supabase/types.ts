@@ -725,6 +725,7 @@ export type Database = {
       instructor_students: {
         Row: {
           cash_payment: boolean
+          corporate_rate: number | null
           created_at: string
           end_date: string | null
           english_name: string | null
@@ -747,6 +748,7 @@ export type Database = {
           status: string | null
           student_name: string
           student_type: string
+          tax_invoice: boolean
           transfer_date: string | null
           transfer_from_id: string | null
           transfer_status: string | null
@@ -755,6 +757,7 @@ export type Database = {
         }
         Insert: {
           cash_payment?: boolean
+          corporate_rate?: number | null
           created_at?: string
           end_date?: string | null
           english_name?: string | null
@@ -777,6 +780,7 @@ export type Database = {
           status?: string | null
           student_name: string
           student_type?: string
+          tax_invoice?: boolean
           transfer_date?: string | null
           transfer_from_id?: string | null
           transfer_status?: string | null
@@ -785,6 +789,7 @@ export type Database = {
         }
         Update: {
           cash_payment?: boolean
+          corporate_rate?: number | null
           created_at?: string
           end_date?: string | null
           english_name?: string | null
@@ -807,6 +812,7 @@ export type Database = {
           status?: string | null
           student_name?: string
           student_type?: string
+          tax_invoice?: boolean
           transfer_date?: string | null
           transfer_from_id?: string | null
           transfer_status?: string | null
