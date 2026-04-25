@@ -378,11 +378,16 @@ export default function SessionEditModal({
                     )}
                   >
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 text-xs">
+                      <div className="flex items-center gap-2 text-xs flex-wrap">
                         <span className="font-semibold text-foreground">{formatKstDate(s.scheduled_at)}</span>
                         {isMakeup && (
                           <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold">
                             보강
+                          </span>
+                        )}
+                        {isMakeup && (
+                          <span className="text-[10px] text-muted-foreground">
+                            원래: {(s.reschedule_origin_dates ?? []).map(formatKstDateOnly).join(", ")}
                           </span>
                         )}
                         {currentDirection === "prev" && (
