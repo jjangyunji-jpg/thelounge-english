@@ -104,6 +104,7 @@ export default function SessionEditModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [makeupByOriginDate, setMakeupByOriginDate] = useState<Map<string, SessionItem>>(new Map());
   const [edits, setEdits] = useState<Record<string, PendingEdit>>({});
   const [billableOverride, setBillableOverride] = useState<number | null>(null);
   const [billableNote, setBillableNote] = useState<string>("");
