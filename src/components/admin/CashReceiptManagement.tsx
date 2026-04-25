@@ -1335,6 +1335,105 @@ export default function CashReceiptManagement() {
           }}
         />
       )}
+
+      {/* Cash Receipt Add/Edit Modal */}
+      {receiptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setReceiptModal(null)}>
+          <div className="bg-card rounded-xl shadow-xl border border-border w-[360px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-sm font-bold text-foreground">현금영수증 정보 {receiptModal.mode === "edit" ? "수정" : "추가"}</h3>
+              <button onClick={() => setReceiptModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-foreground">학생명</label>
+                <input
+                  type="text"
+                  value={receiptInput.student_name}
+                  onChange={e => setReceiptInput(prev => ({ ...prev, student_name: e.target.value }))}
+                  placeholder="홍길동"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-foreground">유형</label>
+                <select
+                  value={receiptInput.receipt_type}
+                  onChange={e => setReceiptInput(prev => ({ ...prev, receipt_type: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="phone">휴대폰</option>
+                  <option value="business">사업자</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-foreground">번호</label>
+                <input
+                  type="text"
+                  value={receiptInput.receipt_number}
+                  onChange={e => setReceiptInput(prev => ({ ...prev, receipt_number: e.target.value }))}
+                  placeholder="010-0000-0000 / 사업자번호"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-xs text-foreground">
+                <input type="checkbox" checked={receiptInput.recurring} onChange={e => setReceiptInput(prev => ({ ...prev, recurring: e.target.checked }))} />
+                매달 자동 영수증 발급
+              </label>
+              <label className="flex items-center gap-2 text-xs text-foreground">
+                <input type="checkbox" checked={receiptInput.recurring_attendance} onChange={e => setReceiptInput(prev => ({ ...prev, recurring_attendance: e.target.checked }))} />
+                매달 자동 출석증 발급
+              </label>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setReceiptModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">취소</button>
+                <button onClick={saveReceipt} className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                  {receiptModal.mode === "edit" ? "수정" : "추가"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance Request Add/Edit Modal */}
+      {attendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setAttendModal(null)}>
+          <div className="bg-card rounded-xl shadow-xl border border-border w-[360px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-sm font-bold text-foreground">출석증 요청 {attendModal.mode === "edit" ? "수정" : "추가"}</h3>
+              <button onClick={() => setAttendModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-foreground">학생명</label>
+                <input
+                  type="text"
+                  value={attendInput.user_name}
+                  onChange={e => setAttendInput(prev => ({ ...prev, user_name: e.target.value }))}
+                  placeholder="홍길동"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-foreground">출석 기간</label>
+                <input
+                  type="text"
+                  value={attendInput.period_text}
+                  onChange={e => setAttendInput(prev => ({ ...prev, period_text: e.target.value }))}
+                  placeholder="예: 2026-04-01 ~ 2026-04-30"
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setAttendModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">취소</button>
+                <button onClick={saveAttendRequest} className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                  {attendModal.mode === "edit" ? "수정" : "추가"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
