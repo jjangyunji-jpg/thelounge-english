@@ -509,7 +509,8 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.advance_cancel || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-warning">{r.unchecked || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.carryover || "-"}</td>
-                  <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.prev_carryover_in ? `-${r.prev_carryover_in}` : "-"}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.carryover_in || "-"}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-muted-foreground bg-muted/20">{r.prev_carryover_in ? `-${r.prev_carryover_in}` : "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
                   <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
                   <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
