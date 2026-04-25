@@ -496,8 +496,8 @@ export default function SessionCountReport() {
                       {r.is_group && <span className="text-[9px] text-muted-foreground">(그룹)</span>}
                       <button
                         type="button"
-                        title="학생 대시보드 열기 (새 탭)"
-                        onClick={() => window.open(`/t/student-dashboard?student_name=${encodeURIComponent(r.student_name)}`, "_blank", "noopener,noreferrer")}
+                        title="강사 수업노트 열기 (새 탭)"
+                        onClick={() => window.open(`/my/classnote?name=${encodeURIComponent(r.student_name)}&sidebar=open`, "_blank", "noopener,noreferrer")}
                         className="text-muted-foreground hover:text-primary transition-colors"
                       >
                         <ExternalLink className="w-3 h-3" />
