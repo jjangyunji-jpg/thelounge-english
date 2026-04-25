@@ -219,8 +219,30 @@ export default function CashReceiptManagement() {
 
   // Deduplicate by student_name (transfer creates multiple records for same student)
   const deduped = Array.from(new Map(students.map(s => [s.student_name, s])).values());
-  const regularStudents = deduped.filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name)).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
-  const corporateStudents = deduped.filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name)).sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
+  // Filter helpers based on the currently selected period
+  const pStartDate = currentPeriod?.start_date || "";
+  const pEndDate = currentPeriod?.end_date || "";
+  const isWithinPeriod = (s: StudentRecord) => {
+    // Exclude students who haven't started yet by the end of this period (e.g. enrolled May → not in April list)
+    if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
+    // Exclude students whose pause fully covers the period (entire period is within pause range)
+    if (s.pause_start && pStartDate && pEndDate) {
+      const pauseStartCoversPeriod = s.pause_start <= pStartDate;
+      const pauseEndCoversPeriod = !s.pause_end || s.pause_end >= pEndDate;
+      if (pauseStartCoversPeriod && pauseEndCoversPeriod) return false;
+    }
+    return true;
+  };
+
+  const regularStudents = deduped
+    .filter(s => s.student_type !== "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
+    .filter(isWithinPeriod)
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+  const corporateStudents = deduped
+    .filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
+    .filter(isWithinPeriod)
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
   const toggleConfirm = async (studentName: string) => {
     const existing = confMap.get(studentName);
