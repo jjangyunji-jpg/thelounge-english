@@ -148,7 +148,7 @@ export default function SessionEditModal({
 
   const handleSave = async () => {
     const changedIds = Object.keys(edits);
-    if (changedIds.length === 0) {
+    if (changedIds.length === 0 && !billableDirty) {
       toast({ title: "변경된 항목이 없습니다" });
       return;
     }
@@ -200,9 +200,45 @@ export default function SessionEditModal({
         if (error) throw error;
         updatedCount += 1;
       }
+
+      // Billable override save / clear
+      let billableMsg = "";
+      if (billableDirty) {
+        const trimmed = billableInput.trim();
+        if (trimmed === "") {
+          // Clear override (revert to auto-calculated)
+          const { error } = await supabase
+            .from("billable_overrides")
+            .delete()
+            .eq("student_name", studentName)
+            .eq("period_start", rangeStart)
+            .eq("period_end", rangeEnd);
+          if (error) throw error;
+          billableMsg = "결제대상 자동값 복원";
+        } else {
+          const num = parseInt(trimmed, 10);
+          if (!Number.isFinite(num) || num < 0) throw new Error("결제대상은 0 이상 정수여야 합니다.");
+          const { error } = await supabase
+            .from("billable_overrides")
+            .upsert(
+              {
+                student_name: studentName,
+                period_start: rangeStart,
+                period_end: rangeEnd,
+                billable_count: num,
+                note: billableNoteInput.trim() || null,
+              },
+              { onConflict: "student_name,period_start,period_end" },
+            );
+          if (error) throw error;
+          billableMsg = `결제대상 ${num}회 저장`;
+        }
+      }
+
       const parts: string[] = [];
       if (updatedCount) parts.push(`${updatedCount}건 업데이트`);
       if (deletedCount) parts.push(`${deletedCount}건 삭제(사전취소)`);
+      if (billableMsg) parts.push(billableMsg);
       toast({ title: parts.join(" · ") || "처리 완료" });
       onSaved?.();
       onClose();
@@ -213,7 +249,8 @@ export default function SessionEditModal({
     setSaving(false);
   };
 
-  const dirtyCount = Object.keys(edits).length;
+  const dirtyCount = Object.keys(edits).length + (billableDirty ? 1 : 0);
+  const hasOverride = billableOverride !== null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
