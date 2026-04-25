@@ -1079,6 +1079,25 @@ export default function CashReceiptManagement() {
   // 선결제 차감(=금액 미반영)된 학생 수 — UI 안내용
   const prepaidExcludedCount = budgetRows.filter(r => r.isPrepaidDeducted).length;
 
+  // ===== 기업 수강생 예산 (당월 수업 회수 × 학생별 단가, 후불 가정 — 결제 시점은 다음 달이지만 발생액 기준으로 표시) =====
+  type CorpBudgetRow = { name: string; sessions: number; rate: number; gross: number; net: number; isInvoice: boolean };
+  const corpBudgetRows: CorpBudgetRow[] = corporateStudents.map(s => {
+    const sessions = corpSessionCounts.get(s.student_name) || 0;
+    const rate = getCorpRate(s);
+    const gross = sessions * rate;
+    const isInvoice = isTaxInvoice(s);
+    const net = isInvoice ? gross : Math.round(gross * (1 - BIZ_INCOME_TAX_RATE));
+    return { name: s.student_name, sessions, rate, gross, net, isInvoice };
+  }).filter(r => r.sessions > 0); // 회수 0인 기업 학생은 예산에 노출 안 함
+
+  const corpInvoiceRows = corpBudgetRows.filter(r => r.isInvoice);
+  const corpTaxRows = corpBudgetRows.filter(r => !r.isInvoice);
+  const corpInvoiceTotal = corpInvoiceRows.reduce((s, r) => s + r.gross, 0);
+  const corpTaxGrossTotal = corpTaxRows.reduce((s, r) => s + r.gross, 0);
+  const corpTaxNetTotal = corpTaxRows.reduce((s, r) => s + r.net, 0);
+  const corpTaxFeeTotal = corpTaxGrossTotal - corpTaxNetTotal;
+  const corpGrossTotal = corpInvoiceTotal + corpTaxGrossTotal;
+  const corpNetTotal = corpInvoiceTotal + corpTaxNetTotal;
   return (
     <div className="space-y-4">
       {/* Header */}
