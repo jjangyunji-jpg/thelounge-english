@@ -43,6 +43,7 @@ interface SessionRow {
   reschedule_origin_dates: string[] | null;
   instructor_name: string | null;
   is_carryover: boolean;
+  carryover_direction: "prev" | "next" | null;
 }
 
 type FilterMode = "period" | "month";
@@ -190,7 +191,7 @@ export default function SessionCountReport() {
     // This ensures sessions moved OUT of the period (e.g., 4/2 → 4/30) are still counted in the original month.
     const sessInRangePromise = supabase
       .from("class_sessions")
-      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
+      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover, carryover_direction")
       .gte("scheduled_at", startTs)
       .lte("scheduled_at", endTs)
       .then(r => r);
@@ -203,7 +204,7 @@ export default function SessionCountReport() {
     wideEnd.setDate(wideEnd.getDate() + 60);
     const sessOriginPromise = supabase
       .from("class_sessions")
-      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
+      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover, carryover_direction")
       .gte("scheduled_at", wideStart.toISOString())
       .lte("scheduled_at", wideEnd.toISOString())
       .not("reschedule_origin_dates", "eq", "{}")
@@ -213,11 +214,11 @@ export default function SessionCountReport() {
     const prevPromise = previousRange
       ? supabase
           .from("class_sessions")
-          .select("student_name, is_carryover, cancellation_type, ended_at, scheduled_at, reschedule_origin_dates")
+          .select("student_name, is_carryover, carryover_direction, cancellation_type, ended_at, scheduled_at, reschedule_origin_dates")
           .gte("scheduled_at", `${previousRange.start}T00:00:00+09:00`)
           .lte("scheduled_at", `${previousRange.end}T23:59:59+09:00`)
           .then(r => r)
-      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[] });
+      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; carryover_direction: "prev" | "next" | null; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[] });
 
     const overridePromise = supabase
       .from("billable_overrides")
@@ -250,17 +251,14 @@ export default function SessionCountReport() {
 
     const prevMap = new Map<string, number>();
     if (results[3]) {
-      const prevRows = (results[3].data || []) as { student_name: string; is_carryover: boolean; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[];
-      // Exclude sessions that were rescheduled OUT of the previous period (they'll be counted in their new month)
+      const prevRows = (results[3].data || []) as { student_name: string; is_carryover: boolean; carryover_direction: "prev" | "next" | null; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[];
       prevRows.forEach(r => {
-        // Carryover deduction applies only when the session was NOT actually conducted
-        // (no ended_at, no cancellation handled this month).
-        // Instructor cancel: always deducts (it's a guaranteed make-up next month).
-        // is_carryover: deducts only if still pending (not completed in previous month).
-        const isPending = !r.ended_at && !r.cancellation_type;
+        // Carryover deduction (전월에서 이번 달로 차감되는 케이스):
+        // 1) instructor_cancel: 강사 사정 취소는 다음달 보강 보장 → 차감
+        // 2) carryover_direction = 'next': 전월에 명시적으로 '다음달 이월'로 표시한 세션 → 차감
         if (r.cancellation_type === "instructor_cancel") {
           prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
-        } else if (r.is_carryover && isPending) {
+        } else if (r.carryover_direction === "next") {
           prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
         }
       });
@@ -308,7 +306,9 @@ export default function SessionCountReport() {
         const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
         const isMakeup = origins.some(d => d !== kstDateStr) && !matchesRegularSchedule(s, student);
         const ct = s.cancellation_type;
-        if (s.is_carryover) carryover++;
+        const direction = s.carryover_direction ?? (s.is_carryover ? "prev" : null);
+        // '당월 이월'(next)만 carryover 컬럼에 집계 — 다음달 결제에서 차감되는 케이스
+        if (direction === "next") carryover++;
         if (ct === "no_show") no_show++;
         else if (ct === "student_cancel") same_day_cancel++;
         else if (ct === "sick") sick++;
@@ -317,8 +317,8 @@ export default function SessionCountReport() {
         else if (s.ended_at) {
           if (isMakeup) makeup_completed++;
           else completed++;
-        } else if (s.is_carryover) {
-          // 이월 처리된 세션은 미체크/예정에 포함하지 않음 (이월 컬럼으로만 집계)
+        } else if (direction === "next") {
+          // 당월 이월 처리된 세션은 미체크/예정에 포함하지 않음 (이월 컬럼으로만 집계)
         } else if (new Date(s.scheduled_at).getTime() < Date.now()) {
           unchecked++;
         } else {
@@ -632,7 +632,7 @@ export default function SessionCountReport() {
       </div>
 
       <p className="text-[10px] text-muted-foreground -mt-2">
-        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · 미체크는 수업 시간이 지났지만 상태가 저장되지 않은 항목
+        💡 결제대상 = 4회(기본 월 결제) - 전월 차감(당월 이월 + 강사취소) · 실수업 = 완료+보강+노쇼 · <span className="font-semibold">이월(당월)</span>: 이번 달 → 다음달로 이월 · <span className="font-semibold">이월(전월)</span>: 지난달의 '당월 이월'이 이번 달 결제에서 차감된 횟수
       </p>
 
       {loading ? (

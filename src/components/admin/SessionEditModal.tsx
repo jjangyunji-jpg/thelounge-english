@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, X, ArrowRightCircle } from "lucide-react";
+import { Loader2, Save, X, ArrowRightCircle, ArrowLeftCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,10 @@ interface SessionItem {
   reschedule_origin_dates: string[] | null;
   topic: string | null;
   is_carryover: boolean;
+  carryover_direction: "prev" | "next" | null;
 }
+
+type CarryoverDirection = "prev" | "next" | null;
 
 type StatusKey =
   | "completed"
@@ -70,7 +73,7 @@ function formatKstDate(iso: string) {
 
 interface PendingEdit {
   status?: StatusKey;
-  carryover?: boolean;
+  carryover_direction?: CarryoverDirection;
 }
 
 export default function SessionEditModal({
@@ -101,7 +104,7 @@ export default function SessionEditModal({
     const [sessRes, ovRes] = await Promise.all([
       supabase
         .from("class_sessions")
-        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover")
+        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover, carryover_direction")
         .eq("student_name", studentName)
         .gte("scheduled_at", startTs)
         .lte("scheduled_at", endTs)
@@ -142,8 +145,10 @@ export default function SessionEditModal({
     setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], status } }));
   };
 
-  const handleCarryoverToggle = (sessionId: string, current: boolean) => {
-    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], carryover: !current } }));
+  const handleCarryoverDirection = (sessionId: string, current: CarryoverDirection, target: "prev" | "next") => {
+    // Toggle: clicking the active direction clears it
+    const next: CarryoverDirection = current === target ? null : target;
+    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], carryover_direction: next } }));
   };
 
   const handleSave = async () => {
@@ -189,8 +194,9 @@ export default function SessionEditModal({
           }
         }
 
-        if (edit.carryover !== undefined) {
-          update.is_carryover = edit.carryover;
+        if (edit.carryover_direction !== undefined) {
+          update.carryover_direction = edit.carryover_direction;
+          update.is_carryover = edit.carryover_direction !== null;
         }
 
         const { error } = await supabase
@@ -261,7 +267,8 @@ export default function SessionEditModal({
           </DialogTitle>
           <p className="text-xs text-muted-foreground">{rangeStart} ~ {rangeEnd}</p>
           <p className="text-[11px] text-muted-foreground">
-            💡 <span className="font-semibold">이월</span>: 강사-학생 협의로 다음 달 결제 횟수에서 1회 차감됩니다.<br />
+            💡 <span className="font-semibold">전월 이월</span>: 지난달에서 넘어온 수업 (이번 달 카운트 +1).<br />
+            ➡️ <span className="font-semibold">당월 이월</span>: 이번 달 수업이 다음달로 이월 (다음달 결제에서 1회 차감).<br />
             🗑️ <span className="font-semibold">사전취소</span>: 직전 월 사전 통보 1회 차감 — 저장 시 세션이 삭제됩니다.
           </p>
         </DialogHeader>
@@ -280,7 +287,10 @@ export default function SessionEditModal({
               {sessions.map(s => {
                 const editEntry = edits[s.id];
                 const currentStatus = editEntry?.status || deriveStatus(s);
-                const currentCarryover = editEntry?.carryover !== undefined ? editEntry.carryover : s.is_carryover;
+                const currentDirection: CarryoverDirection =
+                  editEntry?.carryover_direction !== undefined
+                    ? editEntry.carryover_direction
+                    : (s.carryover_direction ?? (s.is_carryover ? "prev" : null));
                 const isMakeup = Array.isArray(s.reschedule_origin_dates) && s.reschedule_origin_dates.length > 0;
                 const isDirty = !!editEntry;
                 return (
@@ -299,9 +309,14 @@ export default function SessionEditModal({
                             보강
                           </span>
                         )}
-                        {currentCarryover && (
+                        {currentDirection === "prev" && (
                           <span className="px-1.5 py-0.5 rounded bg-accent/20 text-accent-foreground text-[10px] font-semibold border border-accent/30">
-                            이월
+                            전월 이월
+                          </span>
+                        )}
+                        {currentDirection === "next" && (
+                          <span className="px-1.5 py-0.5 rounded bg-warning/15 text-warning text-[10px] font-semibold border border-warning/30">
+                            당월 이월
                           </span>
                         )}
                         {s.topic && (
@@ -328,17 +343,30 @@ export default function SessionEditModal({
                         </button>
                       ))}
                       <button
-                        onClick={() => handleCarryoverToggle(s.id, currentCarryover)}
+                        onClick={() => handleCarryoverDirection(s.id, currentDirection, "prev")}
                         className={cn(
                           "px-2 py-1 rounded border text-[11px] font-semibold transition-colors min-h-[28px] inline-flex items-center gap-1",
-                          currentCarryover
+                          currentDirection === "prev"
                             ? "bg-accent/20 text-accent-foreground border-accent/40"
                             : "bg-background text-muted-foreground border-border hover:bg-muted"
                         )}
-                        title="다음 달 결제 횟수에서 차감"
+                        title="전월(예: 3월)에서 이월되어 온 수업. 이번 달 결제 카운트에 추가됨"
+                      >
+                        <ArrowLeftCircle className="w-3 h-3" />
+                        전월 이월
+                      </button>
+                      <button
+                        onClick={() => handleCarryoverDirection(s.id, currentDirection, "next")}
+                        className={cn(
+                          "px-2 py-1 rounded border text-[11px] font-semibold transition-colors min-h-[28px] inline-flex items-center gap-1",
+                          currentDirection === "next"
+                            ? "bg-warning/20 text-warning border-warning/40"
+                            : "bg-background text-muted-foreground border-border hover:bg-muted"
+                        )}
+                        title="이번 달 수업이지만 다음 달(예: 5월)로 이월. 다음 달 결제 카운트에서 1회 차감됨"
                       >
                         <ArrowRightCircle className="w-3 h-3" />
-                        이월 {currentCarryover ? "ON" : "OFF"}
+                        당월 이월
                       </button>
                     </div>
                   </div>

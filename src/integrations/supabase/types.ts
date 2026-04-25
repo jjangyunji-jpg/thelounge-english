@@ -290,6 +290,7 @@ export type Database = {
         Row: {
           cancellation_resolution: string | null
           cancellation_type: string | null
+          carryover_direction: string | null
           created_at: string
           ended_at: string | null
           group_students: string[]
@@ -310,6 +311,7 @@ export type Database = {
         Insert: {
           cancellation_resolution?: string | null
           cancellation_type?: string | null
+          carryover_direction?: string | null
           created_at?: string
           ended_at?: string | null
           group_students?: string[]
@@ -330,6 +332,7 @@ export type Database = {
         Update: {
           cancellation_resolution?: string | null
           cancellation_type?: string | null
+          carryover_direction?: string | null
           created_at?: string
           ended_at?: string | null
           group_students?: string[]
