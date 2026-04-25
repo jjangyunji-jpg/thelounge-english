@@ -380,7 +380,7 @@ export default function SessionCountReport() {
       if (a.instructor_name !== b.instructor_name) return a.instructor_name.localeCompare(b.instructor_name, "ko");
       return a.student_name.localeCompare(b.student_name, "ko");
     });
-  }, [students, sessions, pauses, prevCarryoverByStudent, currentRange]);
+  }, [students, sessions, pauses, prevCarryoverByStudent, billableOverrides, currentRange]);
 
   // Group by instructor within each segment
   const groupByInstructor = (list: typeof rows) => {
