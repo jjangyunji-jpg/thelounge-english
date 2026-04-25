@@ -397,10 +397,6 @@ export default function CashReceiptManagement() {
   const confirmedCount = regularStudents.filter(s => confMap.get(s.student_name)?.confirmed).length;
   const totalFee = regularStudents.reduce((sum, s) => sum + getFee(s), 0);
 
-  if (loading) {
-    return <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
-  }
-
   const renderStudentRow = (s: StudentRecord, isCorporate = false) => {
     const conf = confMap.get(s.student_name);
     const isConfirmed = conf?.confirmed || false;
