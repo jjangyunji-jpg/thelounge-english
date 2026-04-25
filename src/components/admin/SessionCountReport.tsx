@@ -267,6 +267,11 @@ export default function SessionCountReport() {
     }
     setPrevCarryoverByStudent(prevMap);
 
+    const ovMap = new Map<string, number>();
+    const ovRows = (results[5]?.data || []) as { student_name: string; billable_count: number }[];
+    ovRows.forEach(o => ovMap.set(o.student_name, o.billable_count));
+    setBillableOverrides(ovMap);
+
     setLoading(false);
   }, [currentRange, previousRange]);
 
