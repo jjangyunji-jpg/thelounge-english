@@ -1435,14 +1435,19 @@ export default function CashReceiptManagement() {
                     {budgetCashRows.length === 0 ? (
                       <tr><td colSpan={2} className="px-3 py-6 text-center text-xs text-muted-foreground">현금결제 학생이 없습니다.</td></tr>
                     ) : budgetCashRows.map(r => (
-                      <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                      <tr key={r.name} className={cn("border-b border-border last:border-0 hover:bg-muted/30", r.isPrepaidDeducted && "opacity-70")}>
                         <td className="px-3 py-2 text-foreground">
                           {r.name}
                           {r.isPrepaid && (
                             <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30">선결제</span>
                           )}
+                          {r.isPrepaidDeducted && (
+                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">선결제 (차감)</span>
+                          )}
                         </td>
-                        <td className="px-3 py-2 text-right font-medium text-foreground">₩{r.fee.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right font-medium text-foreground">
+                          {r.isPrepaidDeducted ? <span className="text-muted-foreground">—</span> : <>₩{r.fee.toLocaleString()}</>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
