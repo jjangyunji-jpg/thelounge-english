@@ -203,7 +203,7 @@ export default function SessionCountReport() {
     wideEnd.setDate(wideEnd.getDate() + 60);
     const sessOriginPromise = supabase
       .from("class_sessions")
-      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
+      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover, carryover_direction")
       .gte("scheduled_at", wideStart.toISOString())
       .lte("scheduled_at", wideEnd.toISOString())
       .not("reschedule_origin_dates", "eq", "{}")
