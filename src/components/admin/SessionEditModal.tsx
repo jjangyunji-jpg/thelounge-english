@@ -247,6 +247,10 @@ export default function SessionEditModal({
         if (edit.carryover_direction !== undefined) {
           update.carryover_direction = edit.carryover_direction;
           update.is_carryover = edit.carryover_direction !== null;
+          // 이월 해제 시 사유 초기화
+          if (edit.carryover_direction === null) {
+            update.carryover_reason = null;
+          }
           // 이월(당월/전월) 설정 시 기존 취소 카테고리를 자동 해제하여 중복 카운트 방지
           // (사용자가 이번 편집에서 명시적으로 status를 지정한 경우는 그 값을 우선)
           if (edit.carryover_direction !== null && edit.status === undefined) {
@@ -254,6 +258,10 @@ export default function SessionEditModal({
             update.cancellation_resolution = null;
             update.ended_at = null;
           }
+        }
+
+        if (edit.carryover_reason !== undefined) {
+          update.carryover_reason = edit.carryover_reason.trim() || null;
         }
 
         const { error } = await supabase
