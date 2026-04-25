@@ -546,10 +546,19 @@ export default function SessionCountReport() {
                     </div>
                   </td>
                   <td className="px-2 py-2 text-center font-semibold text-success">{r.completed || "-"}</td>
-                  <td className="px-2 py-2 text-center font-semibold text-primary">{r.makeup_completed || "-"}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-primary">{r.makeup || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-warning">{r.no_show || "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.same_day_cancel || "-"}</td>
-                  <td className="px-2 py-2 text-center text-muted-foreground">{r.sick || "-"}</td>
+                  <td className="px-2 py-2 text-center text-muted-foreground">
+                    {r.sick ? (
+                      <span className="inline-flex items-center gap-0.5">
+                        {r.sick}
+                        {r.sick_unmatched ? (
+                          <span title={`보강이 아직 잡히지 않은 병결 ${r.sick_unmatched}건`} className="text-warning font-bold">⚠</span>
+                        ) : null}
+                      </span>
+                    ) : "-"}
+                  </td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.instructor_cancel || "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.advance_cancel || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-warning">{r.unchecked || "-"}</td>
