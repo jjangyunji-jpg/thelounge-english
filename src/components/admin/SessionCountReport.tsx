@@ -219,7 +219,14 @@ export default function SessionCountReport() {
           .then(r => r)
       : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[] });
 
-    const results = await Promise.all([studPromise, pausePromise, sessInRangePromise, prevPromise, sessOriginPromise]);
+    const overridePromise = supabase
+      .from("billable_overrides")
+      .select("student_name, billable_count")
+      .eq("period_start", currentRange.start)
+      .eq("period_end", currentRange.end)
+      .then(r => r);
+
+    const results = await Promise.all([studPromise, pausePromise, sessInRangePromise, prevPromise, sessOriginPromise, overridePromise]);
     setStudents((results[0].data || []) as StudentRecord[]);
     setPauses((results[1].data || []) as StudentPause[]);
 
