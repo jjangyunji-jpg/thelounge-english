@@ -43,6 +43,7 @@ interface SessionRow {
   reschedule_origin_dates: string[] | null;
   instructor_name: string | null;
   is_carryover: boolean;
+  carryover_direction: "prev" | "next" | null;
 }
 
 type FilterMode = "period" | "month";
