@@ -281,9 +281,13 @@ export default function CashReceiptManagement() {
     })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
-  // Withdrawn = inactive status
+  // Withdrawn = inactive AND end_date falls within the selected period
   const withdrawnStudents = nonCorpStudents
     .filter(s => s.status === "inactive")
+    .filter(s => {
+      if (!s.end_date || !pStartDate || !pEndDate) return false;
+      return s.end_date >= pStartDate && s.end_date <= pEndDate;
+    })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
   const corporateStudents = deduped
@@ -671,19 +675,35 @@ export default function CashReceiptManagement() {
                 확인 완료 <span className="text-primary font-semibold">{confirmedCount}</span> / {regularStudents.length}
               </p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-4">
+            <div className="relative group rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <PauseCircle className="w-3 h-3" /> 휴강생
               </p>
               <p className="text-xl font-bold text-warning mt-1">{pausedStudents.length}명</p>
               <p className="text-xs text-muted-foreground mt-0.5">{periodLabel} 전체 휴강</p>
+              {pausedStudents.length > 0 && (
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 hidden group-hover:block w-max max-w-[260px] rounded-md border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+                  <p className="font-semibold mb-1 text-warning">휴강생 ({pausedStudents.length}명)</p>
+                  <p className="leading-relaxed whitespace-normal break-keep">
+                    {pausedStudents.map(s => s.student_name).join(", ")}
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="rounded-lg border border-border bg-card p-4">
+            <div className="relative group rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <UserMinus className="w-3 h-3" /> 퇴원생
               </p>
               <p className="text-xl font-bold text-muted-foreground mt-1">{withdrawnStudents.length}명</p>
-              <p className="text-xs text-muted-foreground mt-0.5">전체 누적</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{periodLabel} 퇴원</p>
+              {withdrawnStudents.length > 0 && (
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 hidden group-hover:block w-max max-w-[260px] rounded-md border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+                  <p className="font-semibold mb-1 text-muted-foreground">퇴원생 ({withdrawnStudents.length}명)</p>
+                  <p className="leading-relaxed whitespace-normal break-keep">
+                    {withdrawnStudents.map(s => s.student_name).join(", ")}
+                  </p>
+                </div>
+              )}
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground">예상 수강료 합계</p>
