@@ -278,7 +278,7 @@ export default function SessionCountReport() {
   useEffect(() => { loadData(); }, [loadData]);
 
   // Aggregate per student
-  const rows = useMemo<(SessionCountRow & { instructor_name: string })[]>(() => {
+  const rows = useMemo<(SessionCountRow & { instructor_name: string; billable_overridden: boolean; computed_billable: number })[]>(() => {
     const dedupedStudents = Array.from(
       new Map(students.map(s => [s.student_name, s])).values()
     ).filter(s => !TEST_ACCOUNTS.includes(s.student_name));
