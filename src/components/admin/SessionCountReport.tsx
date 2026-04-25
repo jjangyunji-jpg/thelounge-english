@@ -589,7 +589,7 @@ export default function SessionCountReport() {
                       : r.total !== r.billable
                         ? "text-warning bg-warning/10"
                         : r.billable !== 4
-                          ? "text-muted-foreground bg-muted"
+                          ? "text-destructive bg-primary/5"
                           : "text-primary bg-primary/5"
                   )} title={
                     r.billable_overridden
