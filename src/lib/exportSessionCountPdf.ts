@@ -108,6 +108,7 @@ export async function exportSessionCountPdf(
       String(sum("advance_cancel")),
       String(sum("unchecked")),
       String(sum("carryover")),
+      String(sum("carryover_in")),
       `-${sum("prev_carryover_in")}`,
       String(sum("scheduled")),
       String(sum("total")),
