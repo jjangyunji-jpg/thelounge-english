@@ -224,14 +224,13 @@ export default function CashReceiptManagement() {
 
   const toggleConfirm = async (studentName: string) => {
     const existing = confMap.get(studentName);
-    if (existing?.confirmed) return; // Already confirmed — do nothing
     const nowIso = new Date().toISOString();
     if (existing) {
-      // Optimistic update — flip confirmed locally without refetch
-      setConfirmations(prev => prev.map(c => c.id === existing.id ? { ...c, confirmed: true } : c));
-      await supabase.from("payment_confirmations" as any).update({ confirmed: true, confirmed_at: nowIso } as any).eq("id", existing.id);
+      // Toggle confirmed flag locally first, then persist
+      const next = !existing.confirmed;
+      setConfirmations(prev => prev.map(c => c.id === existing.id ? { ...c, confirmed: next } : c));
+      await supabase.from("payment_confirmations" as any).update({ confirmed: next, confirmed_at: next ? nowIso : null } as any).eq("id", existing.id);
     } else {
-      // Insert and merge returned row into local state
       const { data } = await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: true, confirmed_at: nowIso } as any).select().single();
       if (data) setConfirmations(prev => [...prev, data as unknown as PaymentConfirmation]);
     }
@@ -250,12 +249,14 @@ export default function CashReceiptManagement() {
     if (existingDed) {
       toast({ title: "이미 차감됨", description: `${periodLabel} 이미 ${existingDed.deducted_sessions}회 차감됨` }); return;
     }
-    await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: periodKey, deducted_sessions: toDeduct } as any);
+    const { data: newDed } = await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: periodKey, deducted_sessions: toDeduct } as any).select().single();
     await supabase.from("prepaid_credits" as any).update({ used_sessions: credit.used_sessions + toDeduct, updated_at: new Date().toISOString() } as any).eq("id", credit.id);
+    // Optimistic local update
+    if (newDed) setDeductions(prev => [...prev, newDed as unknown as PrepaidDeduction]);
+    setPrepaidCredits(prev => prev.map(c => c.id === credit.id ? { ...c, used_sessions: c.used_sessions + toDeduct } : c));
     toast({ title: `${toDeduct}회 차감 완료` });
     setDeductModal(null);
     setDeductCount("");
-    loadData();
   };
 
   // Undo deduction
@@ -265,8 +266,10 @@ export default function CashReceiptManagement() {
     if (!ded || !credit) return;
     await supabase.from("prepaid_deductions" as any).delete().eq("student_name", studentName).eq("month", periodKey);
     await supabase.from("prepaid_credits" as any).update({ used_sessions: Math.max(0, credit.used_sessions - ded.deducted_sessions), updated_at: new Date().toISOString() } as any).eq("id", credit.id);
+    // Optimistic local update
+    setDeductions(prev => prev.filter(d => !(d.student_name === studentName && d.month === periodKey)));
+    setPrepaidCredits(prev => prev.map(c => c.id === credit.id ? { ...c, used_sessions: Math.max(0, c.used_sessions - ded.deducted_sessions) } : c));
     toast({ title: "차감 취소 완료" });
-    loadData();
   };
 
   const savePrepaidCredit = async () => {
