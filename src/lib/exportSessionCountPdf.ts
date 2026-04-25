@@ -5,6 +5,7 @@ export interface SessionCountRow {
   student_name: string;
   is_corporate: boolean;
   is_group: boolean;
+  instructor_name?: string;
   completed: number;        // ended_at 있고 cancellation_type 없음
   no_show: number;          // no_show
   same_day_cancel: number;  // student_cancel
