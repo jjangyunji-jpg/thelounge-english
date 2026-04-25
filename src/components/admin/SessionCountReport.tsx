@@ -302,7 +302,7 @@ export default function SessionCountReport() {
 
   const renderInstructorGroup = (instructorName: string, list: typeof rows) => {
     const groupTotals = {
-      completed: list.reduce((s, r) => s + r.completed, 0),
+      actual_lessons: list.reduce((s, r) => s + r.actual_lessons, 0),
       billable: list.reduce((s, r) => s + r.billable, 0),
       total: list.reduce((s, r) => s + r.total, 0),
     };
@@ -312,7 +312,7 @@ export default function SessionCountReport() {
           <p className="text-xs font-semibold text-foreground">
             <span className="text-primary">{instructorName}</span>
             <span className="text-muted-foreground ml-1.5">
-              ({list.length}명 · 결제 {groupTotals.billable} / 실수업 {groupTotals.completed + list.reduce((s, r) => s + r.makeup_completed + r.no_show, 0)} / 전체 {groupTotals.total})
+              ({list.length}명 · 결제 {groupTotals.billable} / 실수업 {groupTotals.actual_lessons} / 전체 {groupTotals.total})
             </span>
           </p>
         </div>
@@ -332,6 +332,7 @@ export default function SessionCountReport() {
                 <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10">이월(전월)</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">예정</th>
                 <th className="px-2 py-2 font-semibold text-foreground text-center">전체</th>
+                <th className="px-2 py-2 font-semibold text-success text-center bg-success/5">실수업</th>
                 <th className="px-2 py-2 font-semibold text-primary text-center bg-primary/5">결제대상</th>
                 <th className="px-2 py-2 font-semibold text-foreground text-center w-10">편집</th>
               </tr>
@@ -354,6 +355,7 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.prev_carryover_in ? `-${r.prev_carryover_in}` : "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
                   <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
+                  <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
                   <td className="px-2 py-2 text-center font-bold text-primary bg-primary/5">{r.billable}</td>
                   <td className="px-1 py-1 text-center">
                     <button
