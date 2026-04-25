@@ -644,8 +644,12 @@ export default function Classroom() {
           data.filter(d => !d.is_preset && !d.preset_origin_id && d.session_id === session.sessionId)
             .map(d => `${d.title.trim()}__${d.student_name}`)
         );
+        // Only copy presets that were created BEFORE this session — new presets must not
+        // retroactively appear on past sessions
+        const sessionStartMs = session.scheduledAt.getTime();
         const presetsNeedingCopy = data.filter(d =>
           d.is_preset
+          && new Date(d.created_at).getTime() < sessionStartMs
           && !existingCopyOriginIds.has(`${d.id}__${d.student_name}`)
           && !existingManualTitles.has(`${d.title.trim()}__${d.student_name}`)
         );
@@ -712,7 +716,7 @@ export default function Classroom() {
       if (prevSessData?.id) {
         const { data: prevHwData } = await supabase
           .from("homework_assignments")
-          .select("id, type, title, description, is_preset, preset_origin_id, session_id")
+          .select("id, type, title, description, is_preset, preset_origin_id, session_id, created_at")
           .eq("student_name", session.dbStudentName)
           .or(`session_id.eq.${prevSessData.id},is_preset.eq.true`)
           .order("created_at", { ascending: true });
@@ -728,9 +732,13 @@ export default function Classroom() {
             prevHwData.filter(d => d.preset_origin_id && d.session_id === prevSessData.id)
               .map(d => [d.title.trim(), d.id])
           );
+          const prevSessionMs = new Date(prevSessData.scheduled_at).getTime();
           const filteredPrev = prevHwData.filter(d => {
             // Hide preset templates that have session copies
             if (d.is_preset && prevCopyOriginIds.has(d.id)) return false;
+            // Hide preset templates created AFTER the prev session — newly added presets
+            // must not retroactively appear on past "지난 숙제" lists
+            if (d.is_preset && new Date(d.created_at).getTime() >= prevSessionMs) return false;
             // Hide manual assignments that duplicate a session copy (same title, no preset_origin)
             if (d.session_id === prevSessData.id && !d.preset_origin_id && !d.is_preset) {
               if (prevCopyTitles.has(d.title.trim())) return false;
