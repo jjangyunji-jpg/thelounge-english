@@ -735,10 +735,15 @@ export default function CashReceiptManagement() {
     loadData();
   };
 
+  // Per-session rate for a corporate student: explicit corporate_rate column overrides
+  // group/individual default. (Group default 70k, individual default 50k.)
+  const getCorpRate = (s: StudentRecord): number => {
+    if (typeof s.corporate_rate === "number" && s.corporate_rate > 0) return s.corporate_rate;
+    return s.group_students?.length > 0 ? GROUP_LESSON_PRICE : LESSON_PRICE;
+  };
   const getCorpFee = (s: StudentRecord) => {
     const count = corpSessionCounts.get(s.student_name) || 0;
-    const price = s.group_students?.length > 0 ? GROUP_LESSON_PRICE : LESSON_PRICE;
-    return count * price;
+    return count * getCorpRate(s);
   };
 
   const openCorpReport = async (s: StudentRecord) => {
