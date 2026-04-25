@@ -111,7 +111,14 @@ export default function SessionCountReport() {
   const [mode, setMode] = useState<FilterMode>("period");
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
   const [periodIdx, setPeriodIdx] = useState(0);
-  const [monthDate, setMonthDate] = useState<Date>(() => new Date());
+  const [monthDate, setMonthDate] = useState<Date>(() => {
+    // KST 기준: 매월 1~10일은 전월을 기본으로 표시 (이월/정산 확정 기간)
+    const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    if (kstNow.getDate() <= 10) {
+      return new Date(kstNow.getFullYear(), kstNow.getMonth() - 1, 1);
+    }
+    return new Date(kstNow.getFullYear(), kstNow.getMonth(), 1);
+  });
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
