@@ -82,6 +82,7 @@ export default function CashReceiptManagement() {
   const [receipts, setReceipts] = useState<CashReceipt[]>([]);
   const [confirmations, setConfirmations] = useState<PaymentConfirmation[]>([]);
   const [sessionCounts, setSessionCounts] = useState<Map<string, number>>(new Map());
+  const [billableCounts, setBillableCounts] = useState<Map<string, number>>(new Map());
   const [corpSessionCounts, setCorpSessionCounts] = useState<Map<string, number>>(new Map());
   const [prepaidCredits, setPrepaidCredits] = useState<PrepaidCredit[]>([]);
   const [deductions, setDeductions] = useState<PrepaidDeduction[]>([]);
@@ -135,7 +136,15 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     if (!currentPeriod) return;
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes] = await Promise.all([
+
+    // Find previous period for carryover deduction (same logic as SessionCountReport)
+    const sortedPeriods = [...periods].sort((a, b) => a.start_date.localeCompare(b.start_date));
+    const curIdx = sortedPeriods.findIndex(p => p.id === currentPeriod.id);
+    const prevPeriodRange = curIdx > 0 ? sortedPeriods[curIdx - 1] : null;
+    const prevStart = prevPeriodRange ? `${prevPeriodRange.start_date}T00:00:00+09:00` : "";
+    const prevEnd = prevPeriodRange ? `${prevPeriodRange.end_date}T23:59:59+09:00` : "";
+
+    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes, prevSessRes, billableOvRes] = await Promise.all([
       // Fetch all (active + paused + inactive) so we can show breakdown counts
       supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
@@ -152,6 +161,15 @@ export default function CashReceiptManagement() {
         .not("reschedule_origin_dates", "eq", "{}")
         .or(`scheduled_at.lt.${periodStart},scheduled_at.gt.${periodEnd}`),
       supabase.from("student_pauses").select("student_id, pause_start, pause_end"),
+      // Previous period sessions for carryover-in deduction
+      prevPeriodRange
+        ? supabase.from("class_sessions")
+            .select("student_name, is_carryover, carryover_direction, cancellation_type")
+            .gte("scheduled_at", prevStart).lte("scheduled_at", prevEnd)
+        : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; carryover_direction: string | null; cancellation_type: string | null }[] }),
+      // Billable count overrides for this period
+      supabase.from("billable_overrides").select("student_name, billable_count")
+        .eq("period_start", currentPeriod.start_date).eq("period_end", currentPeriod.end_date),
     ]);
     const studData = (studRes.data || []) as (StudentRecord & { id: string })[];
     setStudents(studData);
@@ -225,8 +243,35 @@ export default function CashReceiptManagement() {
       corpCounts.set(s.student_name, (corpCounts.get(s.student_name) || 0) + 1);
     });
     setCorpSessionCounts(corpCounts);
+
+    // Compute billable count map (same formula as SessionCountReport):
+    // billable = override ?? max(0, 4 - prev_carryover_in)
+    // prev_carryover_in = prev period sessions where cancellation_type='instructor_cancel' OR carryover_direction='next'
+    const prevCarryMap = new Map<string, number>();
+    ((prevSessRes.data || []) as { student_name: string; carryover_direction: string | null; cancellation_type: string | null }[]).forEach(r => {
+      if (r.cancellation_type === "instructor_cancel" || r.carryover_direction === "next") {
+        prevCarryMap.set(r.student_name, (prevCarryMap.get(r.student_name) || 0) + 1);
+      }
+    });
+    const ovMap = new Map<string, number>();
+    ((billableOvRes.data || []) as { student_name: string; billable_count: number }[]).forEach(o => {
+      ovMap.set(o.student_name, o.billable_count);
+    });
+    const BASE = 4;
+    const billable = new Map<string, number>();
+    studData.forEach(s => {
+      const ov = ovMap.get(s.student_name);
+      if (ov !== undefined) {
+        billable.set(s.student_name, ov);
+      } else {
+        const prev = prevCarryMap.get(s.student_name) || 0;
+        billable.set(s.student_name, Math.max(0, BASE - prev));
+      }
+    });
+    setBillableCounts(billable);
+
     setLoading(false);
-  }, [currentPeriod, periodKey, periodStart, periodEnd, corpMonthStart, corpMonthEnd]);
+  }, [currentPeriod, periodKey, periodStart, periodEnd, corpMonthStart, corpMonthEnd, periods]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -394,7 +439,11 @@ export default function CashReceiptManagement() {
   const getFee = (s: StudentRecord) => {
     const override = feeOverrides.get(s.student_name);
     if (override !== undefined) return override;
-    const count = sessionCounts.get(s.student_name) || 0;
+    // Use billable count (= 결제대상) from session count report logic, not raw session count.
+    // Falls back to raw session count if billable hasn't loaded yet.
+    const count = billableCounts.has(s.student_name)
+      ? (billableCounts.get(s.student_name) || 0)
+      : (sessionCounts.get(s.student_name) || 0);
     return count * LESSON_PRICE;
   };
 
@@ -475,7 +524,9 @@ export default function CashReceiptManagement() {
         rows: regularStudents.map(s => ({
           student_name: s.student_name,
           fee: getFee(s),
-          session_count: sessionCounts.get(s.student_name) || 0,
+          session_count: billableCounts.has(s.student_name)
+            ? (billableCounts.get(s.student_name) || 0)
+            : (sessionCounts.get(s.student_name) || 0),
         })),
       });
       toast({ title: "PDF 다운로드 완료" });
