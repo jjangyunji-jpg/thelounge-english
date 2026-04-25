@@ -25,6 +25,13 @@ type: feature
 - **스토어 실수령** = `Math.round(total × (1 - 0.0495))`
 - **수수료** = 결제총액 - 실수령
 
+## 선결제(Prepaid) 처리
+- `prepaid_credits.created_at`이 현재 period(start_date~end_date) 안 → **선결제 등록 달**
+  - 해당 학생 행: fee 대신 `total_sessions × LESSON_PRICE` 일시 반영 (스토어 분류)
+  - 학생명 옆 "선결제" 보라색 뱃지
+- created_at < pStartDate → **이후 달**: 예산에서 완전 제외 (차감만 진행)
+- 카드 상단 안내 문구에 제외된 학생 수 표시
+
 ## UI 구성
 1. 4개 요약 카드: 총수입(예상) / 현금 / 스토어 결제 / 실수령 합계
 2. 스토어 수수료 내역 박스 (결제총액·수수료·실수령 3분할)
