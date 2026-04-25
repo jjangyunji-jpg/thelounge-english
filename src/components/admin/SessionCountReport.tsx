@@ -213,11 +213,11 @@ export default function SessionCountReport() {
     const prevPromise = previousRange
       ? supabase
           .from("class_sessions")
-          .select("student_name, is_carryover, cancellation_type, ended_at, scheduled_at, reschedule_origin_dates")
+          .select("student_name, is_carryover, carryover_direction, cancellation_type, ended_at, scheduled_at, reschedule_origin_dates")
           .gte("scheduled_at", `${previousRange.start}T00:00:00+09:00`)
           .lte("scheduled_at", `${previousRange.end}T23:59:59+09:00`)
           .then(r => r)
-      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[] });
+      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; carryover_direction: "prev" | "next" | null; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[] });
 
     const overridePromise = supabase
       .from("billable_overrides")
