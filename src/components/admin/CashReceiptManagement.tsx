@@ -524,7 +524,9 @@ export default function CashReceiptManagement() {
         rows: regularStudents.map(s => ({
           student_name: s.student_name,
           fee: getFee(s),
-          session_count: sessionCounts.get(s.student_name) || 0,
+          session_count: billableCounts.has(s.student_name)
+            ? (billableCounts.get(s.student_name) || 0)
+            : (sessionCounts.get(s.student_name) || 0),
         })),
       });
       toast({ title: "PDF 다운로드 완료" });
