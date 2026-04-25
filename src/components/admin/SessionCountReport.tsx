@@ -331,6 +331,10 @@ export default function SessionCountReport() {
           else completed++;
         } else if (direction === "next") {
           // 당월 이월 처리된 세션은 미체크/예정에 포함하지 않음 (이월 컬럼으로만 집계)
+        } else if (isMakeup) {
+          // 보강으로 일정 변경된 세션은 완료(ended_at) 전까지는 항상 '예정'으로 분류
+          // (시간이 지나도 미체크에 들어가지 않음 — 강사가 완료 처리 시 보강으로 이동)
+          scheduled++;
         } else if (new Date(s.scheduled_at).getTime() < Date.now()) {
           unchecked++;
         } else {
