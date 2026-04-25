@@ -544,7 +544,55 @@ export default function CashReceiptManagement() {
     loadData();
   };
 
-  // ========== Cash Receipt CRUD ==========
+  // Resolve effective cash payment status: per-month override → student default
+  const isCashPayment = (s: StudentRecord): boolean => {
+    const override = cashOverrides.get(s.student_name);
+    if (override !== undefined) return override;
+    return s.cash_payment === true;
+  };
+  // Whether this row has a per-month override (different from student default)
+  const hasCashOverride = (name: string) => cashOverrides.has(name);
+
+  // Cycle: default → opposite (override) → default (clear override) → ...
+  // 3-state click: store-default → cash(override) → store(override) → store-default(clear)
+  const cycleCashPayment = async (s: StudentRecord) => {
+    const studentDefault = s.cash_payment === true;
+    const currentOverride = cashOverrides.get(s.student_name);
+    let nextOverride: boolean | null;
+    if (currentOverride === undefined) {
+      // No override → flip default
+      nextOverride = !studentDefault;
+    } else if (currentOverride !== studentDefault) {
+      // Has override that flipped → switch to "explicit same as default" (still treated as override so it shows badge)
+      nextOverride = studentDefault;
+    } else {
+      // Override already matches default → clear override
+      nextOverride = null;
+    }
+
+    const existing = confMap.get(s.student_name);
+    const base = existing ? parseNote(existing.note) : {};
+    if (nextOverride === null) delete base.cash_override;
+    else base.cash_override = nextOverride;
+    const noteData = Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+
+    if (existing) {
+      await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
+    } else if (noteData) {
+      await supabase.from("payment_confirmations" as any).insert({ student_name: s.student_name, month: periodKey, confirmed: false, note: noteData } as any);
+    }
+    loadData();
+  };
+
+  // Toggle student-level default (instructor_students.cash_payment)
+  const toggleStudentCashDefault = async (s: StudentRecord) => {
+    const next = !s.cash_payment;
+    await supabase.from("instructor_students").update({ cash_payment: next }).eq("student_name", s.student_name);
+    toast({ title: next ? `${s.student_name} — 항상 현금결제로 설정` : `${s.student_name} — 항상 스토어결제로 설정` });
+    loadData();
+  };
+
+
   const openReceiptCreate = () => {
     setReceiptInput({ student_name: "", receipt_type: "phone", receipt_number: "", recurring: false, recurring_attendance: false });
     setReceiptModal({ mode: "create" });
