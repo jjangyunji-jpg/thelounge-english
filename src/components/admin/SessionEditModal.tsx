@@ -195,7 +195,8 @@ export default function SessionEditModal({
           </DialogTitle>
           <p className="text-xs text-muted-foreground">{rangeStart} ~ {rangeEnd}</p>
           <p className="text-[11px] text-muted-foreground">
-            💡 <span className="font-semibold">이월</span>: 강사-학생 협의로 다음 달 결제 횟수에서 1회 차감됩니다 (취소 사유와 별개로 토글).
+            💡 <span className="font-semibold">이월</span>: 강사-학생 협의로 다음 달 결제 횟수에서 1회 차감됩니다.<br />
+            🗑️ <span className="font-semibold">사전취소</span>: 직전 월 사전 통보 1회 차감 — 저장 시 세션이 삭제됩니다.
           </p>
         </DialogHeader>
 
