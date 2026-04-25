@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronRight, ClipboardList, Download, Calendar as CalendarIcon, Loader2, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardList, Download, Calendar as CalendarIcon, Loader2, Pencil, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
