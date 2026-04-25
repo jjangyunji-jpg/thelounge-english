@@ -47,7 +47,7 @@ function deriveStatus(s: SessionItem): StatusKey {
   if (s.cancellation_type === "student_cancel") return "student_cancel";
   if (s.cancellation_type === "sick") return "sick";
   if (s.cancellation_type === "instructor_cancel") return "instructor_cancel";
-  if (s.cancellation_type === "advance_cancel") return "advance_cancel";
+  
   if (s.ended_at) return "completed";
   return "scheduled";
 }
