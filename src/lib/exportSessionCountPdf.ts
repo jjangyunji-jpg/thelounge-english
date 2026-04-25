@@ -54,7 +54,7 @@ export async function exportSessionCountPdf(
   doc.text(`생성일: ${new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}`, 14, 25);
   doc.setFontSize(8);
   doc.setTextColor(100);
-  doc.text(`결제대상 = (완료 + 보강완료 + 노쇼) - 전월 이월 횟수`, 14, 30);
+  doc.text(`결제대상 = 4회(기본 월결제) - 전월차감(이월+강사취소) · 실수업 = 완료+보강+노쇼`, 14, 30);
 
   const buildHead = () => [[
     "학생명",
@@ -66,9 +66,10 @@ export async function exportSessionCountPdf(
     "강사취소",
     "사전",
     "이월\n(당월)",
-    "이월\n(전월)",
+    "전월\n차감",
     "예정",
     "전체",
+    "실수업",
     "결제\n대상",
   ]];
 
@@ -85,6 +86,7 @@ export async function exportSessionCountPdf(
     r.prev_carryover_in ? `-${r.prev_carryover_in}` : "0",
     String(r.scheduled),
     String(r.total),
+    String(r.actual_lessons),
     String(r.billable),
   ]);
 
@@ -103,6 +105,7 @@ export async function exportSessionCountPdf(
       `-${sum("prev_carryover_in")}`,
       String(sum("scheduled")),
       String(sum("total")),
+      String(sum("actual_lessons")),
       String(sum("billable")),
     ]];
   };
@@ -112,7 +115,7 @@ export async function exportSessionCountPdf(
     headStyles: { fillColor: [30, 58, 95] as [number, number, number], textColor: 255, font: "SpoqaHanSansNeo", fontStyle: "normal" as const, halign: "center" as const, fontSize: 7 },
     footStyles: { fillColor: [240, 240, 240] as [number, number, number], textColor: [30, 30, 30] as [number, number, number], font: "SpoqaHanSansNeo", fontStyle: "normal" as const, halign: "center" as const },
     columnStyles: {
-      0: { cellWidth: 42 },
+      0: { cellWidth: 40 },
       1: { halign: "center" as const },
       2: { halign: "center" as const },
       3: { halign: "center" as const },
@@ -124,7 +127,8 @@ export async function exportSessionCountPdf(
       9: { halign: "center" as const, fillColor: [255, 248, 220] as [number, number, number] },
       10: { halign: "center" as const },
       11: { halign: "center" as const },
-      12: { halign: "center" as const, fillColor: [220, 235, 255] as [number, number, number], fontStyle: "normal" as const },
+      12: { halign: "center" as const, fillColor: [230, 250, 230] as [number, number, number] },
+      13: { halign: "center" as const, fillColor: [220, 235, 255] as [number, number, number], fontStyle: "normal" as const },
     },
     margin: { left: 14, right: 14 },
   };
