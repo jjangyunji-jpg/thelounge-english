@@ -348,6 +348,52 @@ export default function SessionEditModal({
           )}
         </div>
 
+        {!loading && (
+          <div className="border-t border-border pt-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-semibold text-foreground">결제대상 수동 설정</span>
+                {hasOverride ? (
+                  <span className="px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 text-[10px] font-semibold">
+                    오버라이드 적용중
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">
+                    자동 계산값: {computedBillable ?? "-"}회
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-muted-foreground">비워두면 자동 계산값 사용</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="number"
+                min={0}
+                value={billableInput}
+                onChange={e => { setBillableInput(e.target.value); setBillableDirty(true); }}
+                placeholder={computedBillable !== undefined ? String(computedBillable) : "0"}
+                className="w-20 h-8 px-2 rounded border border-input bg-background text-xs"
+              />
+              <span className="text-xs text-muted-foreground">회</span>
+              <input
+                type="text"
+                value={billableNoteInput}
+                onChange={e => { setBillableNoteInput(e.target.value); setBillableDirty(true); }}
+                placeholder="메모 (선택)"
+                className="flex-1 min-w-[160px] h-8 px-2 rounded border border-input bg-background text-xs"
+              />
+              {hasOverride && (
+                <button
+                  onClick={() => { setBillableInput(""); setBillableNoteInput(""); setBillableDirty(true); }}
+                  className="text-[10px] text-muted-foreground underline hover:text-foreground"
+                >
+                  자동값으로 복원
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-border">
           <span className="text-xs text-muted-foreground">
             {dirtyCount > 0 ? `${dirtyCount}개 변경 대기` : "변경 사항 없음"}
