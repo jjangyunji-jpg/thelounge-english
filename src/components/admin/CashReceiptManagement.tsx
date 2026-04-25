@@ -1779,6 +1779,9 @@ export default function CashReceiptManagement() {
             </div>
           </div>
 
+          {/* ===== AI Program Section ===== */}
+          <AiProgramBudget monthKey={aiMonthKey} monthLabel={aiMonthLabel} />
+
           <p className="text-[10px] text-muted-foreground">
             💡 결제 확인 탭의 학생 이름 옆 결제수단 뱃지(현금/스토어 또는 계산서/3.3%)를 <span className="font-semibold">클릭</span>하면 이번 달만 변경, <span className="font-semibold">우클릭</span>하면 학생 기본값을 변경합니다.
           </p>
