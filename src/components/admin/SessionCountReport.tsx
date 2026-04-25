@@ -501,7 +501,7 @@ export default function SessionCountReport() {
   const renderInstructorGroup = (instructorName: string, list: typeof rows) => {
     const groupTotals = {
       actual_lessons: list.reduce((s, r) => s + r.actual_lessons, 0),
-      billable: list.reduce((s, r) => s + r.billable, 0),
+      billable: list.reduce((s, r) => s + (r.is_corporate ? 0 : r.billable), 0),
       total: list.reduce((s, r) => s + r.total, 0),
     };
     return (
