@@ -138,8 +138,15 @@ export default function SessionCountReport() {
         .order("start_date", { ascending: false });
       const all = (data || []) as SchedulePeriod[];
       setPeriods(all);
+      // KST 기준: 매월 1~10일은 전월을 우선 (해당 월의 period가 없으면 active로 fallback)
+      const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+      const targetDate = kstNow.getDate() <= 10
+        ? new Date(kstNow.getFullYear(), kstNow.getMonth() - 1, 15)
+        : kstNow;
+      const targetStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}-${String(targetDate.getDate()).padStart(2, "0")}`;
+      const containingIdx = all.findIndex(p => p.start_date <= targetStr && p.end_date >= targetStr);
       const activeIdx = all.findIndex(p => p.is_active);
-      setPeriodIdx(activeIdx >= 0 ? activeIdx : 0);
+      setPeriodIdx(containingIdx >= 0 ? containingIdx : (activeIdx >= 0 ? activeIdx : 0));
     })();
   }, []);
 
