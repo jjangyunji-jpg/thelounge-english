@@ -286,7 +286,10 @@ export default function SessionEditModal({
               {sessions.map(s => {
                 const editEntry = edits[s.id];
                 const currentStatus = editEntry?.status || deriveStatus(s);
-                const currentCarryover = editEntry?.carryover !== undefined ? editEntry.carryover : s.is_carryover;
+                const currentDirection: CarryoverDirection =
+                  editEntry?.carryover_direction !== undefined
+                    ? editEntry.carryover_direction
+                    : (s.carryover_direction ?? (s.is_carryover ? "prev" : null));
                 const isMakeup = Array.isArray(s.reschedule_origin_dates) && s.reschedule_origin_dates.length > 0;
                 const isDirty = !!editEntry;
                 return (
