@@ -584,22 +584,30 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
                   <td className={cn(
                     "px-2 py-2 text-center font-bold bg-primary/5",
-                    r.billable_overridden
-                      ? "text-warning bg-warning/10"
-                      : r.total !== r.billable
+                    r.is_corporate
+                      ? "text-muted-foreground"
+                      : r.billable_overridden
                         ? "text-warning bg-warning/10"
-                        : "text-primary"
+                        : r.total !== r.billable
+                          ? "text-warning bg-warning/10"
+                          : "text-primary"
                   )} title={
-                    r.billable_overridden
-                      ? `자동값 ${r.computed_billable} → 수동 ${r.billable}`
-                      : (r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : (r.billable !== 4 ? `결제대상이 4회가 아님 (${r.billable}회)` : undefined))
+                    r.is_corporate
+                      ? "기업 수강생은 결제대상 미산정"
+                      : r.billable_overridden
+                        ? `자동값 ${r.computed_billable} → 수동 ${r.billable}`
+                        : (r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : (r.billable !== 4 ? `결제대상이 4회가 아님 (${r.billable}회)` : undefined))
                   }>
-                    <span className="inline-flex items-center justify-center gap-1">
-                      {r.billable !== 4 && (
-                        <AlertCircle className="w-3.5 h-3.5 text-destructive" />
-                      )}
-                      {r.billable}
-                    </span>
+                    {r.is_corporate ? (
+                      <span className="text-muted-foreground/40">—</span>
+                    ) : (
+                      <span className="inline-flex items-center justify-center gap-1">
+                        {r.billable !== 4 && (
+                          <AlertCircle className="w-3.5 h-3.5 text-destructive" />
+                        )}
+                        {r.billable}
+                      </span>
+                    )}
                   </td>
                   <td className="px-1 py-1 text-center">
                     <button
