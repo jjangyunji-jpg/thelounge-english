@@ -768,6 +768,7 @@ export default function CashReceiptManagement() {
           </div>
         </div>
       )}
+          </>)}
         </TabsContent>
       </Tabs>
 
