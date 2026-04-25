@@ -101,7 +101,12 @@ export default function SessionEditModal({
     setLoading(true);
     const startTs = `${rangeStart}T00:00:00+09:00`;
     const endTs = `${rangeEnd}T23:59:59+09:00`;
-    const [sessRes, ovRes] = await Promise.all([
+    // Wide range to catch makeups whose origin falls inside [rangeStart, rangeEnd]
+    const wideStart = new Date(`${rangeStart}T00:00:00+09:00`);
+    wideStart.setDate(wideStart.getDate() - 60);
+    const wideEnd = new Date(`${rangeEnd}T23:59:59+09:00`);
+    wideEnd.setDate(wideEnd.getDate() + 60);
+    const [sessRes, originRes, ovRes] = await Promise.all([
       supabase
         .from("class_sessions")
         .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover, carryover_direction")
@@ -109,6 +114,13 @@ export default function SessionEditModal({
         .gte("scheduled_at", startTs)
         .lte("scheduled_at", endTs)
         .order("scheduled_at", { ascending: true }),
+      supabase
+        .from("class_sessions")
+        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover, carryover_direction")
+        .eq("student_name", studentName)
+        .gte("scheduled_at", wideStart.toISOString())
+        .lte("scheduled_at", wideEnd.toISOString())
+        .not("reschedule_origin_dates", "eq", "{}"),
       supabase
         .from("billable_overrides")
         .select("billable_count, note")
@@ -120,7 +132,22 @@ export default function SessionEditModal({
     if (sessRes.error) {
       toast({ title: "수업 조회 실패", description: sessRes.error.message, variant: "destructive" });
     }
-    const list = (sessRes.data || []) as SessionItem[];
+    // Same logic as SessionCountReport: include sessions whose origins fall in range,
+    // exclude in-range sessions whose origins all fall outside the range (they belong to origin month).
+    const inRange = (sessRes.data || []) as SessionItem[];
+    const inRangeFiltered = inRange.filter(s => {
+      const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+      if (origins.length === 0) return true;
+      return origins.some(d => d >= rangeStart && d <= rangeEnd);
+    });
+    const originExtras = ((originRes.data || []) as SessionItem[]).filter(s => {
+      if (inRangeFiltered.some(x => x.id === s.id)) return false;
+      const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+      return origins.some(d => d >= rangeStart && d <= rangeEnd);
+    });
+    const list = [...inRangeFiltered, ...originExtras].sort((a, b) =>
+      a.scheduled_at.localeCompare(b.scheduled_at)
+    );
     setSessions(list);
     setEdits({});
     const ov = ovRes.data as { billable_count: number; note: string | null } | null;
