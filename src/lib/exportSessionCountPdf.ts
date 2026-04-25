@@ -81,10 +81,10 @@ export async function exportSessionCountPdf(
   const buildBody = (list: SessionCountRow[]) => list.map(r => [
     r.student_name + (r.is_group ? " (그룹)" : ""),
     String(r.completed),
-    String(r.makeup_completed),
+    String(r.makeup ?? r.makeup_completed),
     String(r.no_show),
     String(r.same_day_cancel),
-    String(r.sick),
+    r.sick_unmatched ? `${r.sick} ⚠` : String(r.sick),
     String(r.instructor_cancel),
     String(r.advance_cancel),
     String(r.unchecked),
