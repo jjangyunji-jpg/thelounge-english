@@ -301,6 +301,15 @@ export default function CashReceiptManagement() {
     })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
+  // New = active AND start_date falls within the selected period (first month of class)
+  const newStudents = nonCorpStudents
+    .filter(s => s.status === "active")
+    .filter(s => {
+      if (!s.start_date || !pStartDate || !pEndDate) return false;
+      return s.start_date >= pStartDate && s.start_date <= pEndDate;
+    })
+    .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
+
   const corporateStudents = deduped
     .filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
     .filter(isWithinPeriod)
