@@ -1303,6 +1303,167 @@ export default function CashReceiptManagement() {
       </div>
           </>)}
         </TabsContent>
+
+        {/* Tab 3: Budget Management */}
+        <TabsContent value="budget" className="mt-4 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (<>
+          {/* Period Navigation */}
+          <div className="flex items-center justify-end gap-3">
+            <button onClick={prevPeriod} disabled={periodIdx >= periods.length - 1} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <span className="text-sm font-semibold text-foreground min-w-[140px] text-center">{periodLabel || "—"}</span>
+            <button onClick={nextPeriod} disabled={periodIdx <= 0} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            정규 수강생 기준 · 환불 표시된 학생은 제외 · 결제대상 회수 × 50,000원으로 자동 산출
+          </p>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Receipt className="w-3 h-3" /> 총 수입 (예상)
+              </p>
+              <p className="text-2xl font-bold text-foreground mt-1">₩{budgetGrossTotal.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{budgetEligible.length}명 합산</p>
+            </div>
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Wallet className="w-3 h-3 text-amber-600" /> 현금 (이체)
+              </p>
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1">₩{budgetCashTotal.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{budgetCashRows.length}명 · 수수료 없음</p>
+            </div>
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Store className="w-3 h-3 text-blue-600" /> 스마트스토어 결제
+              </p>
+              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1">₩{budgetStoreTotal.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{budgetStoreRows.length}명 · 수수료 4.95% 차감 전</p>
+            </div>
+            <div className="rounded-lg border border-success/30 bg-success/5 p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <TrendingDown className="w-3 h-3 text-success" /> 실수령 합계
+              </p>
+              <p className="text-2xl font-bold text-success mt-1">₩{budgetNetTotal.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">현금 + 스토어 실수령</p>
+            </div>
+          </div>
+
+          {/* Store fee breakdown */}
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <Store className="w-4 h-4 text-blue-600" /> 스마트스토어 수수료 내역
+              </p>
+              <span className="text-[10px] text-muted-foreground">수수료율 4.95%</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">결제 총액</p>
+                <p className="font-semibold text-foreground">₩{budgetStoreTotal.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">수수료 (4.95%)</p>
+                <p className="font-semibold text-destructive">-₩{budgetStoreFee.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">실수령</p>
+                <p className="font-semibold text-success">₩{budgetStoreNet.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Lists */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Cash list */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <Wallet className="w-3 h-3 text-amber-600" /> 현금 (이체) 결제 — {budgetCashRows.length}명
+              </p>
+              <div className="border border-border rounded-lg overflow-hidden max-h-[420px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">학생명</th>
+                      <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">금액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {budgetCashRows.length === 0 ? (
+                      <tr><td colSpan={2} className="px-3 py-6 text-center text-xs text-muted-foreground">현금결제 학생이 없습니다.</td></tr>
+                    ) : budgetCashRows.map(r => (
+                      <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                        <td className="px-3 py-2 text-foreground">{r.name}</td>
+                        <td className="px-3 py-2 text-right font-medium text-foreground">₩{r.fee.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {budgetCashRows.length > 0 && (
+                    <tfoot className="bg-amber-500/10 border-t border-border">
+                      <tr>
+                        <td className="px-3 py-2 text-xs font-semibold text-foreground">합계</td>
+                        <td className="px-3 py-2 text-right font-bold text-amber-700 dark:text-amber-400">₩{budgetCashTotal.toLocaleString()}</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            {/* Store list */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <Store className="w-3 h-3 text-blue-600" /> 스마트스토어 결제 — {budgetStoreRows.length}명
+              </p>
+              <div className="border border-border rounded-lg overflow-hidden max-h-[420px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">학생명</th>
+                      <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">결제액</th>
+                      <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">실수령</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {budgetStoreRows.length === 0 ? (
+                      <tr><td colSpan={3} className="px-3 py-6 text-center text-xs text-muted-foreground">스토어 결제 학생이 없습니다.</td></tr>
+                    ) : budgetStoreRows.map(r => {
+                      const net = Math.round(r.fee * (1 - STORE_FEE_RATE));
+                      return (
+                        <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <td className="px-3 py-2 text-foreground">{r.name}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">₩{r.fee.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right font-medium text-foreground">₩{net.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {budgetStoreRows.length > 0 && (
+                    <tfoot className="bg-blue-500/10 border-t border-border">
+                      <tr>
+                        <td className="px-3 py-2 text-xs font-semibold text-foreground">합계</td>
+                        <td className="px-3 py-2 text-right text-xs text-muted-foreground">₩{budgetStoreTotal.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right font-bold text-blue-700 dark:text-blue-400">₩{budgetStoreNet.toLocaleString()}</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground">
+            💡 결제 확인 탭의 학생 이름 옆 결제수단 뱃지를 클릭하면 이번 달만 변경, 우클릭하면 학생 기본값을 변경합니다.
+          </p>
+          </>)}
+        </TabsContent>
       </Tabs>
 
       {/* Deduction Count Modal */}
