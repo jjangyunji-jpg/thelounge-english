@@ -423,6 +423,7 @@ export default function SessionCountReport() {
       unchecked: sum("unchecked"),
       scheduled: sum("scheduled"),
       carryover: sum("carryover"),
+      carryover_in: sum("carryover_in"),
       prev_carryover_in: sum("prev_carryover_in"),
       actual_lessons: sum("actual_lessons"),
       billable: sum("billable"),
