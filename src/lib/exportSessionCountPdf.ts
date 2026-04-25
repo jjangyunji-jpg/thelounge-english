@@ -12,8 +12,11 @@ export interface SessionCountRow {
   sick: number;             // sick
   instructor_cancel: number;// instructor_cancel
   advance_cancel: number;   // advance_cancel
-  makeup_completed: number; // 보강으로 처리되어 완료된 수업 (reschedule_origin_dates 있음 + ended_at)
-  scheduled: number;        // 미진행(아직 시작 안 함, 취소 아님)
+  makeup_completed: number; // 보강으로 처리되어 완료된 수업
+  scheduled: number;        // 미진행
+  carryover: number;        // 이번 달 이월 표시된 수업 수
+  prev_carryover_in: number;// 전월 이월 → 당월 결제 차감
+  billable: number;         // (완료 + 보강완료 + 노쇼) - prev_carryover_in
   total: number;            // 전체 (완료+취소+보강+예정)
 }
 
@@ -48,18 +51,24 @@ export async function exportSessionCountPdf(
   doc.setTextColor(120);
   doc.text(`기간: ${periodRange.start} ~ ${periodRange.end}`, 14, 20);
   doc.text(`생성일: ${new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}`, 14, 25);
+  doc.setFontSize(8);
+  doc.setTextColor(100);
+  doc.text(`결제대상 = (완료 + 보강완료 + 노쇼) - 전월 이월 횟수`, 14, 30);
 
   const buildHead = () => [[
     "학생명",
     "완료",
-    "보강완료",
+    "보강",
     "노쇼",
-    "당일취소",
+    "당일",
     "병결",
     "강사취소",
-    "사전취소",
+    "사전",
+    "이월\n(당월)",
+    "이월\n(전월)",
     "예정",
     "전체",
+    "결제\n대상",
   ]];
 
   const buildBody = (list: SessionCountRow[]) => list.map(r => [
@@ -71,12 +80,15 @@ export async function exportSessionCountPdf(
     String(r.sick),
     String(r.instructor_cancel),
     String(r.advance_cancel),
+    String(r.carryover),
+    r.prev_carryover_in ? `-${r.prev_carryover_in}` : "0",
     String(r.scheduled),
     String(r.total),
+    String(r.billable),
   ]);
 
   const buildFoot = (list: SessionCountRow[]) => {
-    const sum = (k: keyof SessionCountRow) => list.reduce((s, r) => s + (r[k] as number), 0);
+    const sum = (k: keyof SessionCountRow) => list.reduce((s, r) => s + ((r[k] as number) || 0), 0);
     return [[
       "합계",
       String(sum("completed")),
@@ -86,17 +98,20 @@ export async function exportSessionCountPdf(
       String(sum("sick")),
       String(sum("instructor_cancel")),
       String(sum("advance_cancel")),
+      String(sum("carryover")),
+      `-${sum("prev_carryover_in")}`,
       String(sum("scheduled")),
       String(sum("total")),
+      String(sum("billable")),
     ]];
   };
 
   const commonOpts = {
-    styles: { fontSize: 8, cellPadding: 1.8, font: "SpoqaHanSansNeo" },
-    headStyles: { fillColor: [30, 58, 95] as [number, number, number], textColor: 255, font: "SpoqaHanSansNeo", fontStyle: "normal" as const, halign: "center" as const },
+    styles: { fontSize: 7.5, cellPadding: 1.4, font: "SpoqaHanSansNeo" },
+    headStyles: { fillColor: [30, 58, 95] as [number, number, number], textColor: 255, font: "SpoqaHanSansNeo", fontStyle: "normal" as const, halign: "center" as const, fontSize: 7 },
     footStyles: { fillColor: [240, 240, 240] as [number, number, number], textColor: [30, 30, 30] as [number, number, number], font: "SpoqaHanSansNeo", fontStyle: "normal" as const, halign: "center" as const },
     columnStyles: {
-      0: { cellWidth: 50 },
+      0: { cellWidth: 42 },
       1: { halign: "center" as const },
       2: { halign: "center" as const },
       3: { halign: "center" as const },
@@ -104,13 +119,16 @@ export async function exportSessionCountPdf(
       5: { halign: "center" as const },
       6: { halign: "center" as const },
       7: { halign: "center" as const },
-      8: { halign: "center" as const },
-      9: { halign: "center" as const, fontStyle: "normal" as const },
+      8: { halign: "center" as const, fillColor: [255, 248, 220] as [number, number, number] },
+      9: { halign: "center" as const, fillColor: [255, 248, 220] as [number, number, number] },
+      10: { halign: "center" as const },
+      11: { halign: "center" as const },
+      12: { halign: "center" as const, fillColor: [220, 235, 255] as [number, number, number], fontStyle: "normal" as const },
     },
     margin: { left: 14, right: 14 },
   };
 
-  let cursorY = 32;
+  let cursorY = 36;
 
   const renderSegment = (segmentTitle: string, segmentRows: SessionCountRow[]) => {
     if (segmentRows.length === 0) return;

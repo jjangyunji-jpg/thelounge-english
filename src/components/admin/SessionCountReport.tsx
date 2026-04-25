@@ -34,6 +34,7 @@ interface SessionRow {
   cancellation_type: string | null;
   reschedule_origin_dates: string[] | null;
   instructor_name: string | null;
+  is_carryover: boolean;
 }
 
 type FilterMode = "period" | "month";
@@ -45,6 +46,18 @@ function ymd(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+// Compute the immediately preceding range (used to fetch previous month's carryover counts)
+function getPreviousRange(start: string, end: string): { start: string; end: string } {
+  // start/end are YYYY-MM-DD (KST calendar dates)
+  const startD = new Date(`${start}T00:00:00+09:00`);
+  const prevEnd = new Date(startD.getTime() - 24 * 60 * 60 * 1000);
+  const endD = new Date(`${end}T00:00:00+09:00`);
+  // length = days
+  const lengthMs = endD.getTime() - startD.getTime();
+  const prevStart = new Date(prevEnd.getTime() - lengthMs);
+  return { start: ymd(prevStart), end: ymd(prevEnd) };
+}
+
 export default function SessionCountReport() {
   const { toast } = useToast();
   const [mode, setMode] = useState<FilterMode>("period");
@@ -54,6 +67,7 @@ export default function SessionCountReport() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [prevCarryoverByStudent, setPrevCarryoverByStudent] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [editingStudent, setEditingStudent] = useState<string | null>(null);
@@ -86,27 +100,72 @@ export default function SessionCountReport() {
     }
   }, [mode, periods, periodIdx, monthDate]);
 
+  // Determine previous range:
+  //  - mode=period: previous schedule_period (one index up since list is desc)
+  //  - mode=month: previous calendar month
+  const previousRange = useMemo(() => {
+    if (!currentRange) return null;
+    if (mode === "period") {
+      const prev = periods[periodIdx + 1];
+      if (prev) return { start: prev.start_date, end: prev.end_date };
+      return getPreviousRange(currentRange.start, currentRange.end);
+    } else {
+      const y = monthDate.getFullYear();
+      const m = monthDate.getMonth();
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0);
+      return { start: ymd(start), end: ymd(end) };
+    }
+  }, [mode, currentRange, periods, periodIdx, monthDate]);
+
   const loadData = useCallback(async () => {
     if (!currentRange) return;
     setLoading(true);
     const startTs = `${currentRange.start}T00:00:00+09:00`;
     const endTs = `${currentRange.end}T23:59:59+09:00`;
 
-    const [studRes, sessRes] = await Promise.all([
+    const queries: Promise<unknown>[] = [
       supabase
         .from("instructor_students")
         .select("student_name, student_type, status, group_students, instructor_name")
         .eq("status", "active"),
       supabase
         .from("class_sessions")
-        .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name")
+        .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
         .gte("scheduled_at", startTs)
         .lte("scheduled_at", endTs),
-    ]);
-    setStudents((studRes.data || []) as StudentRecord[]);
-    setSessions((sessRes.data || []) as SessionRow[]);
+    ];
+
+    if (previousRange) {
+      const prevStartTs = `${previousRange.start}T00:00:00+09:00`;
+      const prevEndTs = `${previousRange.end}T23:59:59+09:00`;
+      queries.push(
+        supabase
+          .from("class_sessions")
+          .select("student_name, is_carryover")
+          .eq("is_carryover", true)
+          .gte("scheduled_at", prevStartTs)
+          .lte("scheduled_at", prevEndTs)
+      );
+    }
+
+    const results = await Promise.all(queries) as Array<{ data: unknown }>;
+    setStudents((results[0].data || []) as StudentRecord[]);
+    setSessions((results[1].data || []) as SessionRow[]);
+
+    const prevMap = new Map<string, number>();
+    if (results[2]) {
+      const prevRows = (results[2].data || []) as { student_name: string; is_carryover: boolean }[];
+      prevRows.forEach(r => {
+        if (r.is_carryover) {
+          prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
+        }
+      });
+    }
+    setPrevCarryoverByStudent(prevMap);
+
     setLoading(false);
-  }, [currentRange]);
+  }, [currentRange, previousRange]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -127,10 +186,12 @@ export default function SessionCountReport() {
       const list = byName.get(student.student_name) || [];
       let completed = 0, no_show = 0, same_day_cancel = 0, sick = 0;
       let instructor_cancel = 0, advance_cancel = 0, makeup_completed = 0, scheduled = 0;
+      let carryover = 0;
 
       list.forEach(s => {
         const isMakeup = Array.isArray(s.reschedule_origin_dates) && s.reschedule_origin_dates.length > 0;
         const ct = s.cancellation_type;
+        if (s.is_carryover) carryover++;
         if (ct === "no_show") no_show++;
         else if (ct === "student_cancel") same_day_cancel++;
         else if (ct === "sick") sick++;
@@ -145,6 +206,11 @@ export default function SessionCountReport() {
       });
 
       const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + scheduled;
+      const prev_carryover_in = prevCarryoverByStudent.get(student.student_name) || 0;
+      // Billable = (completed + makeup_completed + no_show) - previous month's carryover count
+      // Settlement memory: completed + no_show (excludes same_day/sick/instructor/advance cancels)
+      const actual_billable_base = completed + makeup_completed + no_show;
+      const billable = Math.max(0, actual_billable_base - prev_carryover_in);
 
       // Pick instructor by majority of sessions IN THIS RANGE (handles transfer-pending duplicates correctly)
       const instructorCounts = new Map<string, number>();
@@ -163,7 +229,6 @@ export default function SessionCountReport() {
         student_name: student.student_name,
         is_corporate: student.student_type === "corporate",
         is_group: (student.group_students?.length || 0) > 0,
-        // Priority: actual session instructor in this range > student record > fallback
         instructor_name: dominantInstructor || student.instructor_name || "(미배정)",
         completed,
         makeup_completed,
@@ -173,16 +238,19 @@ export default function SessionCountReport() {
         instructor_cancel,
         advance_cancel,
         scheduled,
+        carryover,
+        prev_carryover_in,
+        billable,
         total,
       };
-    }).filter(r => r.total > 0);
+    }).filter(r => r.total > 0 || r.prev_carryover_in > 0);
 
     return result.sort((a, b) => {
       if (a.is_corporate !== b.is_corporate) return a.is_corporate ? 1 : -1;
       if (a.instructor_name !== b.instructor_name) return a.instructor_name.localeCompare(b.instructor_name, "ko");
       return a.student_name.localeCompare(b.student_name, "ko");
     });
-  }, [students, sessions]);
+  }, [students, sessions, prevCarryoverByStudent]);
 
   // Group by instructor within each segment
   const groupByInstructor = (list: typeof rows) => {
@@ -199,7 +267,7 @@ export default function SessionCountReport() {
   const corporateGroups = useMemo(() => groupByInstructor(rows.filter(r => r.is_corporate)), [rows]);
 
   const totals = useMemo(() => {
-    const sum = (k: keyof SessionCountRow) => rows.reduce((s, r) => s + (r[k] as number), 0);
+    const sum = (k: keyof SessionCountRow) => rows.reduce((s, r) => s + ((r[k] as number) || 0), 0);
     return {
       completed: sum("completed"),
       makeup_completed: sum("makeup_completed"),
@@ -209,6 +277,9 @@ export default function SessionCountReport() {
       instructor_cancel: sum("instructor_cancel"),
       advance_cancel: sum("advance_cancel"),
       scheduled: sum("scheduled"),
+      carryover: sum("carryover"),
+      prev_carryover_in: sum("prev_carryover_in"),
+      billable: sum("billable"),
       total: sum("total"),
     };
   }, [rows]);
@@ -229,6 +300,7 @@ export default function SessionCountReport() {
   const renderInstructorGroup = (instructorName: string, list: typeof rows) => {
     const groupTotals = {
       completed: list.reduce((s, r) => s + r.completed, 0),
+      billable: list.reduce((s, r) => s + r.billable, 0),
       total: list.reduce((s, r) => s + r.total, 0),
     };
     return (
@@ -236,7 +308,9 @@ export default function SessionCountReport() {
         <div className="flex items-center justify-between px-1">
           <p className="text-xs font-semibold text-foreground">
             <span className="text-primary">{instructorName}</span>
-            <span className="text-muted-foreground ml-1.5">({list.length}명 · 완료 {groupTotals.completed} / 전체 {groupTotals.total})</span>
+            <span className="text-muted-foreground ml-1.5">
+              ({list.length}명 · 결제 {groupTotals.billable} / 실수업 {groupTotals.completed + list.reduce((s, r) => s + r.makeup_completed + r.no_show, 0)} / 전체 {groupTotals.total})
+            </span>
           </p>
         </div>
         <div className="border border-border rounded-lg overflow-x-auto">
@@ -251,8 +325,11 @@ export default function SessionCountReport() {
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">병결</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">강사취소</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">사전</th>
+                <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10">이월(당월)</th>
+                <th className="px-2 py-2 font-semibold text-accent-foreground text-center bg-accent/10">이월(전월)</th>
                 <th className="px-2 py-2 font-semibold text-muted-foreground text-center">예정</th>
                 <th className="px-2 py-2 font-semibold text-foreground text-center">전체</th>
+                <th className="px-2 py-2 font-semibold text-primary text-center bg-primary/5">결제대상</th>
                 <th className="px-2 py-2 font-semibold text-foreground text-center w-10">편집</th>
               </tr>
             </thead>
@@ -270,8 +347,11 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.sick || "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.instructor_cancel || "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.advance_cancel || "-"}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.carryover || "-"}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.prev_carryover_in ? `-${r.prev_carryover_in}` : "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
                   <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
+                  <td className="px-2 py-2 text-center font-bold text-primary bg-primary/5">{r.billable}</td>
                   <td className="px-1 py-1 text-center">
                     <button
                       onClick={() => setEditingStudent(r.student_name)}
@@ -391,9 +471,16 @@ export default function SessionCountReport() {
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">병결 {totals.sick}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">강사취소 {totals.instructor_cancel}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">사전취소 {totals.advance_cancel}</span>
+        <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">이월(당월) {totals.carryover}</span>
+        <span className="px-2 py-1 rounded bg-accent/15 text-accent-foreground font-semibold border border-accent/30">이월(전월차감) -{totals.prev_carryover_in}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">예정 {totals.scheduled}</span>
-        <span className="px-2 py-1 rounded bg-foreground/10 text-foreground font-bold ml-auto">전체 {totals.total}</span>
+        <span className="px-2 py-1 rounded bg-foreground/10 text-foreground font-bold">전체 {totals.total}</span>
+        <span className="px-2 py-1 rounded bg-primary text-primary-foreground font-bold ml-auto">결제대상 {totals.billable}</span>
       </div>
+
+      <p className="text-[10px] text-muted-foreground -mt-2">
+        💡 결제대상 = (완료 + 보강완료 + 노쇼) - 전월 이월 횟수 · 이월은 강사-학생 협의로 표시
+      </p>
 
       {loading ? (
         <div className="flex items-center justify-center py-10">
