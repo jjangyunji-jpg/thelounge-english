@@ -146,14 +146,25 @@ export default function SessionCountReport() {
 
       const total = completed + makeup_completed + no_show + same_day_cancel + sick + instructor_cancel + advance_cancel + scheduled;
 
-      // Use most recent session's instructor if student record lacks one
-      const instructorFromSession = list[0]?.instructor_name || null;
+      // Pick instructor by majority of sessions IN THIS RANGE (handles transfer-pending duplicates correctly)
+      const instructorCounts = new Map<string, number>();
+      list.forEach(s => {
+        const name = s.instructor_name?.trim();
+        if (!name) return;
+        instructorCounts.set(name, (instructorCounts.get(name) || 0) + 1);
+      });
+      let dominantInstructor: string | null = null;
+      let maxCount = 0;
+      instructorCounts.forEach((count, name) => {
+        if (count > maxCount) { maxCount = count; dominantInstructor = name; }
+      });
 
       return {
         student_name: student.student_name,
         is_corporate: student.student_type === "corporate",
         is_group: (student.group_students?.length || 0) > 0,
-        instructor_name: student.instructor_name || instructorFromSession || "(미배정)",
+        // Priority: actual session instructor in this range > student record > fallback
+        instructor_name: dominantInstructor || student.instructor_name || "(미배정)",
         completed,
         makeup_completed,
         no_show,
