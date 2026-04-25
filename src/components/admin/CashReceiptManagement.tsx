@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import SessionCountReport from "./SessionCountReport";
-import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare, Download, PauseCircle, UserMinus, UserPlus } from "lucide-react";
+import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare, Download, PauseCircle, UserMinus, UserPlus, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -616,7 +616,12 @@ export default function CashReceiptManagement() {
             </div>
           ) : (
             <div className="flex items-center gap-1.5 justify-end group/fee">
-              <div>
+              <div className="flex items-center gap-1">
+                {fee !== 200000 && (
+                  <span className="relative group/feealert" title={`기준 수강료(₩200,000)와 다릅니다 — 현재 ₩${fee!.toLocaleString()}`}>
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                  </span>
+                )}
                 <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{fee!.toLocaleString()}</span>
                 <span className="text-[10px] text-muted-foreground ml-1">({count}회)</span>
               </div>
