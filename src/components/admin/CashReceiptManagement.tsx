@@ -134,8 +134,8 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     if (!currentPeriod) return;
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes] = await Promise.all([
-      supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end").eq("status", "active"),
+    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes] = await Promise.all([
+      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based — also fetch reschedule_origin_dates
@@ -149,14 +149,28 @@ export default function CashReceiptManagement() {
       supabase.from("class_sessions").select("student_name, scheduled_at, reschedule_origin_dates")
         .not("reschedule_origin_dates", "eq", "{}")
         .or(`scheduled_at.lt.${periodStart},scheduled_at.gt.${periodEnd}`),
+      supabase.from("student_pauses").select("student_id, pause_start, pause_end"),
     ]);
-    setStudents((studRes.data || []) as StudentRecord[]);
+    const studData = (studRes.data || []) as (StudentRecord & { id: string })[];
+    setStudents(studData);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
     const confs = (confRes.data as any as PaymentConfirmation[]) || [];
     setConfirmations(confs);
     setPrepaidCredits((creditRes.data as any as PrepaidCredit[]) || []);
     setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
     setAttendanceRequests((attendRes.data as any as AttendanceRequest[]) || []);
+
+    // Build pauses by student_name (resolved via instructor_students.id)
+    const idToName = new Map(studData.map(s => [s.id, s.student_name]));
+    const pauseMap = new Map<string, { start: string; end: string | null }[]>();
+    ((pauseRes.data || []) as { student_id: string; pause_start: string; pause_end: string | null }[]).forEach(p => {
+      const name = idToName.get(p.student_id);
+      if (!name) return;
+      const arr = pauseMap.get(name) || [];
+      arr.push({ start: p.pause_start, end: p.pause_end });
+      pauseMap.set(name, arr);
+    });
+    setPauseRanges(pauseMap);
 
     // Extract fee overrides from confirmation notes
     const overrides = new Map<string, number>();
