@@ -147,6 +147,10 @@ export default function CashReceiptManagement() {
   const corpMonthEnd = `${corpNextYear}-${String(corpNextMon).padStart(2, "0")}-01T00:00:00+09:00`;
   const corpMonthLabel = `${corpYear}년 ${corpMon}월`;
 
+  // AI program month key: derived from current period's start_date (YYYY-MM)
+  const aiMonthKey = currentPeriod ? currentPeriod.start_date.slice(0, 7) : "";
+  const aiMonthLabel = currentPeriod ? `${corpAnchorYear}년 ${corpAnchorMon}월` : "";
+
   // Load periods first, then data
   useEffect(() => {
     (async () => {
