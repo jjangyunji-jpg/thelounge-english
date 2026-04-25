@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronRight, ClipboardList, Download, Calendar as CalendarIcon, Loader2, Pencil, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardList, Download, Calendar as CalendarIcon, Loader2, Pencil, ExternalLink, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -586,17 +586,20 @@ export default function SessionCountReport() {
                     "px-2 py-2 text-center font-bold bg-primary/5",
                     r.billable_overridden
                       ? "text-warning bg-warning/10"
-                      : r.billable !== 4
-                        ? "text-destructive"
-                        : r.total !== r.billable
-                          ? "text-warning bg-warning/10"
-                          : "text-primary"
+                      : r.total !== r.billable
+                        ? "text-warning bg-warning/10"
+                        : "text-primary"
                   )} title={
                     r.billable_overridden
                       ? `자동값 ${r.computed_billable} → 수동 ${r.billable}`
-                      : (r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : undefined)
+                      : (r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : (r.billable !== 4 ? `결제대상이 4회가 아님 (${r.billable}회)` : undefined))
                   }>
-                    {r.billable}
+                    <span className="inline-flex items-center justify-center gap-1">
+                      {r.billable !== 4 && !r.billable_overridden && r.total === r.billable && (
+                        <AlertCircle className="w-3.5 h-3.5 text-destructive" />
+                      )}
+                      {r.billable}
+                    </span>
                   </td>
                   <td className="px-1 py-1 text-center">
                     <button
