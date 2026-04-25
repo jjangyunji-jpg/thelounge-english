@@ -12,6 +12,7 @@ interface SessionEditModalProps {
   studentName: string;
   rangeStart: string; // YYYY-MM-DD
   rangeEnd: string;   // YYYY-MM-DD
+  computedBillable?: number; // current auto-computed billable (4 - prev carryover)
   onSaved?: () => void;
 }
 
