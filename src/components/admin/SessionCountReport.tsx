@@ -533,12 +533,21 @@ export default function SessionCountReport() {
                   <td className="px-2 py-2 text-center font-semibold text-accent-foreground bg-accent/5">{r.carryover_in || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-muted-foreground bg-muted/20">{r.prev_carryover_in ? `-${r.prev_carryover_in}` : "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.scheduled || "-"}</td>
-                  <td className="px-2 py-2 text-center font-bold text-foreground">{r.total}</td>
+                  <td className={cn(
+                    "px-2 py-2 text-center font-bold",
+                    r.total !== r.billable ? "text-warning bg-warning/10" : "text-foreground"
+                  )} title={r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : undefined}>
+                    {r.total !== r.billable ? `⚠ ${r.total}` : r.total}
+                  </td>
                   <td className="px-2 py-2 text-center font-bold text-success bg-success/5">{r.actual_lessons}</td>
                   <td className={cn(
                     "px-2 py-2 text-center font-bold",
-                    r.billable_overridden ? "text-warning bg-warning/10" : "text-primary bg-primary/5"
-                  )} title={r.billable_overridden ? `자동값 ${r.computed_billable} → 수동 ${r.billable}` : undefined}>
+                    r.billable_overridden ? "text-warning bg-warning/10" : (r.total !== r.billable ? "text-warning bg-warning/10" : "text-primary bg-primary/5")
+                  )} title={
+                    r.billable_overridden
+                      ? `자동값 ${r.computed_billable} → 수동 ${r.billable}`
+                      : (r.total !== r.billable ? `전체(${r.total}) ≠ 결제대상(${r.billable})` : undefined)
+                  }>
                     {r.billable}
                   </td>
                   <td className="px-1 py-1 text-center">
