@@ -800,6 +800,25 @@ export default function CashReceiptManagement() {
           {isInactive && (
             <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">퇴원</span>
           )}
+          {!isCorporate && (() => {
+            const isCash = isCashPayment(s);
+            const overridden = hasCashOverride(s.student_name);
+            return (
+              <button
+                onClick={() => cycleCashPayment(s)}
+                onContextMenu={(e) => { e.preventDefault(); toggleStudentCashDefault(s); }}
+                className={cn(
+                  "ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold transition-colors inline-flex items-center gap-0.5",
+                  isCash
+                    ? "bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 dark:text-amber-400"
+                    : "bg-blue-500/15 text-blue-700 hover:bg-blue-500/25 dark:text-blue-400"
+                )}
+                title={`${isCash ? "현금(이체)" : "스토어"} ${overridden ? "(이번 달 오버라이드)" : "(기본)"} — 클릭: 이번 달 변경 / 우클릭: 학생 기본값 변경`}
+              >
+                {isCash ? "현금" : "스토어"}{overridden ? "*" : ""}
+              </button>
+            );
+          })()}
           {!isCorporate && (
             <button
               onClick={() => toggleRefund(s.student_name)}
