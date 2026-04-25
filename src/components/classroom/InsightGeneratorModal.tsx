@@ -139,9 +139,9 @@ export default function InsightGeneratorModal({
 
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">직업 / 직무 *</Label>
+            <Label className="text-xs text-muted-foreground">전문 분야 / 직무 * (여러 개는 쉼표로 구분 — 매번 1개 랜덤 선택)</Label>
             <Input
-              placeholder="예: Bond manager at investment bank"
+              placeholder="예: AI technology, bond investing, ESG"
               value={profession}
               onChange={(e) => setProfession(e.target.value)}
               maxLength={300}
