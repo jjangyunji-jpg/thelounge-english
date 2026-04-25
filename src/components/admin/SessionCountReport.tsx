@@ -324,7 +324,8 @@ export default function SessionCountReport() {
         const direction = s.carryover_direction ?? (s.is_carryover ? "prev" : null);
 
         // 이월 마크 카운트 (취소 카테고리와 독립, 진행 여부 무관)
-        if (direction === "next") carryover++;
+        // 강사취소(instructor_cancel)는 자동 다음달 보강 보장이므로 이월(당월)에 자동 포함
+        if (direction === "next" || ct === "instructor_cancel") carryover++;
         if (direction === "prev") carryover_in++;
 
         // 분류 우선순위:
