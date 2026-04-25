@@ -50,6 +50,7 @@ interface PrepaidCredit {
   total_sessions: number;
   used_sessions: number;
   note: string | null;
+  created_at: string;
 }
 
 interface PrepaidDeduction {
@@ -956,15 +957,48 @@ export default function CashReceiptManagement() {
   };
 
   // ========== Budget calculations (정규 only, 환불 제외) ==========
+  // 선결제 처리 규칙:
+  //  - 선결제 등록 달(creditMap.created_at이 현재 period 안): fee 대신 total_sessions × LESSON_PRICE를 1회 입금으로 반영 (스토어 분류)
+  //  - 선결제 등록 이후 달(created_at < period_start): 결제 입금이 없으므로 예산에서 제외 (차감만 발생)
+  //  - 선결제 없음: 기존 getFee 사용
+  type BudgetRow = { name: string; fee: number; isPrepaid?: boolean };
+  const budgetRows: BudgetRow[] = [];
   const budgetEligible = regularStudents.filter(s => !refundFlags.has(s.student_name));
-  const budgetCashRows = budgetEligible.filter(s => isCashPayment(s)).map(s => ({ name: s.student_name, fee: getFee(s) }));
-  const budgetStoreRows = budgetEligible.filter(s => !isCashPayment(s)).map(s => ({ name: s.student_name, fee: getFee(s) }));
+  for (const s of budgetEligible) {
+    const credit = creditMap.get(s.student_name);
+    if (credit) {
+      const createdDate = (credit.created_at || "").slice(0, 10);
+      const isRegisteredThisPeriod = createdDate >= pStartDate && createdDate <= pEndDate;
+      if (isRegisteredThisPeriod) {
+        // 선결제 등록 달: 총액 일시 반영
+        budgetRows.push({ name: s.student_name, fee: credit.total_sessions * LESSON_PRICE, isPrepaid: true });
+      }
+      // 이후 달: 예산 제외 (skip)
+      continue;
+    }
+    budgetRows.push({ name: s.student_name, fee: getFee(s) });
+  }
+  const budgetCashRows = budgetRows.filter(r => {
+    const stu = budgetEligible.find(s => s.student_name === r.name);
+    return stu ? isCashPayment(stu) : false;
+  });
+  const budgetStoreRows = budgetRows.filter(r => {
+    const stu = budgetEligible.find(s => s.student_name === r.name);
+    return stu ? !isCashPayment(stu) : false;
+  });
   const budgetCashTotal = budgetCashRows.reduce((s, r) => s + r.fee, 0);
   const budgetStoreTotal = budgetStoreRows.reduce((s, r) => s + r.fee, 0);
   const budgetStoreNet = Math.round(budgetStoreTotal * (1 - STORE_FEE_RATE));
   const budgetStoreFee = budgetStoreTotal - budgetStoreNet;
   const budgetGrossTotal = budgetCashTotal + budgetStoreTotal;
   const budgetNetTotal = budgetCashTotal + budgetStoreNet;
+  // 선결제 차감(=예산 제외)된 학생 수 — UI 안내용
+  const prepaidExcludedCount = budgetEligible.filter(s => {
+    const credit = creditMap.get(s.student_name);
+    if (!credit) return false;
+    const createdDate = (credit.created_at || "").slice(0, 10);
+    return !(createdDate >= pStartDate && createdDate <= pEndDate);
+  }).length;
 
   return (
     <div className="space-y-4">
@@ -1322,6 +1356,11 @@ export default function CashReceiptManagement() {
 
           <p className="text-xs text-muted-foreground">
             정규 수강생 기준 · 환불 표시된 학생은 제외 · 결제대상 회수 × 50,000원으로 자동 산출
+            <br />
+            <span className="text-purple-700 dark:text-purple-400">선결제 학생은 등록 달에 총액 일시 반영(스토어), 이후 달은 예산 제외</span>
+            {prepaidExcludedCount > 0 && (
+              <span className="ml-1 text-muted-foreground">· 이번 달 선결제 차감으로 제외된 학생 {prepaidExcludedCount}명</span>
+            )}
           </p>
 
           {/* Summary Cards */}
@@ -1400,7 +1439,12 @@ export default function CashReceiptManagement() {
                       <tr><td colSpan={2} className="px-3 py-6 text-center text-xs text-muted-foreground">현금결제 학생이 없습니다.</td></tr>
                     ) : budgetCashRows.map(r => (
                       <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
-                        <td className="px-3 py-2 text-foreground">{r.name}</td>
+                        <td className="px-3 py-2 text-foreground">
+                          {r.name}
+                          {r.isPrepaid && (
+                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30">선결제</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-right font-medium text-foreground">₩{r.fee.toLocaleString()}</td>
                       </tr>
                     ))}
@@ -1438,7 +1482,12 @@ export default function CashReceiptManagement() {
                       const net = Math.round(r.fee * (1 - STORE_FEE_RATE));
                       return (
                         <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
-                          <td className="px-3 py-2 text-foreground">{r.name}</td>
+                          <td className="px-3 py-2 text-foreground">
+                            {r.name}
+                            {r.isPrepaid && (
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30">선결제</span>
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-right text-muted-foreground text-xs">₩{r.fee.toLocaleString()}</td>
                           <td className="px-3 py-2 text-right font-medium text-foreground">₩{net.toLocaleString()}</td>
                         </tr>
