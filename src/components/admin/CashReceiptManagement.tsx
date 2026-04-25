@@ -549,6 +549,9 @@ export default function CashReceiptManagement() {
         </div>
       </div>
 
+      {/* Monthly session count report */}
+      <SessionCountReport />
+
       {/* Summary */}
       <div className="flex gap-4">
         <div className="rounded-lg border border-border bg-card p-4 flex-1">
