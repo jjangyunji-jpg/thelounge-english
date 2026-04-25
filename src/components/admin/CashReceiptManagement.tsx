@@ -392,11 +392,11 @@ export default function CashReceiptManagement() {
       <tr key={s.student_name} className={cn("border-b border-border last:border-0 transition-colors", isConfirmed ? "bg-primary/5" : "hover:bg-muted/30")}>
         <td className="px-4 py-3 text-center">
           <button
-            onClick={() => !isConfirmed && toggleConfirm(s.student_name)}
-            disabled={isConfirmed}
-            className={cn("w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all",
-              isConfirmed ? "bg-primary border-primary text-primary-foreground cursor-default opacity-70" : "border-muted-foreground/30 hover:border-primary/50 cursor-pointer"
+            onClick={() => toggleConfirm(s.student_name)}
+            className={cn("w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer",
+              isConfirmed ? "bg-primary border-primary text-primary-foreground hover:opacity-80" : "border-muted-foreground/30 hover:border-primary/50"
             )}
+            title={isConfirmed ? "클릭하여 확인 해제" : "클릭하여 확인"}
           >
             {isConfirmed && <Check className="w-3.5 h-3.5" />}
           </button>
