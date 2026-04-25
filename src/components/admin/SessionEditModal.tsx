@@ -104,7 +104,7 @@ export default function SessionEditModal({
     const [sessRes, ovRes] = await Promise.all([
       supabase
         .from("class_sessions")
-        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover")
+        .select("id, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, topic, is_carryover, carryover_direction")
         .eq("student_name", studentName)
         .gte("scheduled_at", startTs)
         .lte("scheduled_at", endTs)
