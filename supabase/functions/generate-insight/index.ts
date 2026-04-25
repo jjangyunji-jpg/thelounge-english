@@ -30,68 +30,87 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const profession = String(body.profession || "").trim().slice(0, 300);
+    const professionRaw = String(body.profession || "").trim().slice(0, 300);
     const topic = String(body.topic || "").trim().slice(0, 500);
     const level = String(body.level || "B1").trim().slice(0, 10);
     const duration = String(body.duration || "40").trim().slice(0, 10);
 
-    if (!profession) {
+    if (!professionRaw) {
       return new Response(JSON.stringify({ error: "직업/직무를 입력해주세요." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Split multiple professions/fields by comma, slash, semicolon, or " and "
+    const professionList = professionRaw
+      .split(/[,/;]|\s+and\s+/i)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    // Randomly pick ONE field for this generation
+    const profession = professionList[Math.floor(Math.random() * professionList.length)];
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `You are an expert ESL/EFL lesson material creator specializing in profession-relevant English lessons for Korean adult learners.
+    const systemPrompt = `You are a senior subject-matter expert AND an experienced ESL/EFL lesson material creator for Korean adult professionals.
 
-You will receive a student's profession (and optional focus topic), and create a concise "Insight" briefing for an English speaking lesson.
+Your job: produce a SHORT, DENSE, EXPERT-LEVEL "Insight" briefing on a SPECIFIC, CONCRETE concept, technology, trend, or recent development from the student's professional field — written in the style of a high-quality industry explainer or business/tech magazine article (think The Economist, MIT Technology Review, Harvard Business Review, Bloomberg).
 
-IMPORTANT RULES:
-- Tailor the concept and examples to the student's actual profession/industry
-- The concept paragraph must be 1 well-crafted English paragraph (5-7 sentences) at ${level} CEFR level
-- Vocabulary table: exactly 8 essential industry/topic terms with simple English definitions and natural Korean translations
-- Discussion Questions: exactly 5 thought-provoking, profession-relevant questions in English
-- Keep tone professional but conversational; avoid jargon overload`;
+CRITICAL CONTENT RULES:
+- DO NOT write generic overviews of the field ("AI is a fast-growing area..."). Pick ONE concrete, named, specific topic inside the field.
+  - For "AI technology" → pick something specific like "What an LLM actually is", "Retrieval-Augmented Generation (RAG)", "Mixture-of-Experts architectures", "the rise of small on-device models", "AI agents and tool use", a specific recent model release, etc.
+  - For "Bond manager" → pick something specific like "Duration risk in a rising-rate environment", "How credit spreads signal recession risk", "The mechanics of a bond auction", "Why the yield curve inverted", etc.
+  - For "Marketing" → "Performance marketing vs. brand marketing trade-offs", "How attribution broke after iOS 14.5", "The shift from third-party cookies to first-party data", etc.
+- Prefer recent, currently-relevant topics (developments, debates, or shifts that a working professional would actually be discussing in 2024-2025) when natural.
+- Vary the angle every time: sometimes explain a core concept, sometimes a recent industry event/trend, sometimes a debate, sometimes a tool/technique, sometimes a case study.
+- Write with the authority and precision of someone who works in the field. Use real terminology, real names of frameworks/companies/standards/people when appropriate, and concrete numbers/examples.
+
+LANGUAGE RULES:
+- Concept paragraph: 1 paragraph, 6-9 sentences, written at ${level} CEFR level but with PRECISE professional vocabulary preserved. Do not water down technical terms — define them naturally inline.
+- Vocabulary: exactly 8 terms that are SPECIFIC to the chosen concept (not generic field words). Definitions in simple English + natural Korean translation.
+- Discussion Questions: exactly 5, profession-relevant, opinion- or analysis-eliciting (not yes/no, not factual recall).
+- Tone: confident, informative, slightly editorial — like a briefing memo, not a textbook.`;
 
     const userPrompt = `Create an Insight lesson briefing.
 
-Student Profession / Role: ${profession}
-${topic ? `Focus Topic / Interest: ${topic}` : ""}
+Student's professional field for THIS briefing: ${profession}
+${topic ? `Optional focus topic / interest: ${topic}` : ""}
 CEFR Level: ${level}
 Lesson Duration: ${duration} min
 
-Generate the output in this EXACT HTML format (no markdown, no code fences):
+STEP 1 (think internally, do not output): Pick ONE specific, concrete, named concept / technology / recent development / trend / debate inside "${profession}"${topic ? ` that connects to "${topic}"` : ""}. It must be specific enough that an expert in the field would recognize it as a real, discussable topic — NOT a generic overview of the field.
+
+STEP 2: Write the briefing in this EXACT HTML format (no markdown, no code fences):
 
 <div style="border-left:4px solid #8b5cf6;padding:12px 16px;background:#f5f3ff;margin-bottom:16px;border-radius:4px">
-<p style="margin:0;font-weight:bold;font-size:14px">[Insight Title — relevant to profession${topic ? " and topic" : ""}] / ${duration} min</p>
+<p style="margin:0;font-weight:bold;font-size:14px">[Specific topic title — e.g. "What an LLM Actually Is" or "Duration Risk When Rates Rise"] / ${duration} min</p>
+<p style="margin:4px 0 0 0;font-size:11px;color:#6b7280">Field: ${profession}</p>
 </div>
 
 <h2>💡 Concept</h2>
 <p style="line-height:1.7;font-size:14px">
-(One well-written English paragraph, 5-7 sentences, explaining a concept commonly encountered in this profession${topic ? " related to the focus topic" : ""}. Include a concrete example.)
+(ONE dense, expert-style English paragraph, 6-9 sentences. Explain the specific concept/technology/development you picked. Include at least one concrete example, real name, real number, or real recent event. Sound like an industry explainer article.)
 </p>
 
 <h2>📚 Key Vocabulary</h2>
 <table>
 <thead><tr><th>No.</th><th>Term</th><th>Meaning (English)</th><th>한국어 뜻</th></tr></thead>
 <tbody>
-<tr><td>1</td><td><strong>term</strong></td><td>simple English definition</td><td>한국어</td></tr>
-...8 rows total...
+<tr><td>1</td><td><strong>specific term</strong></td><td>precise English definition</td><td>한국어 뜻</td></tr>
+...exactly 8 rows, all terms specific to the chosen topic, not generic field vocabulary...
 </tbody>
 </table>
 
 <h2>💬 Discussion Questions</h2>
 <ol>
-<li style="color:#1a0dab">Question 1?</li>
+<li style="color:#1a0dab">Opinion/analysis question 1?</li>
 <li style="color:#1a0dab">Question 2?</li>
 <li style="color:#1a0dab">Question 3?</li>
 <li style="color:#1a0dab">Question 4?</li>
 <li style="color:#1a0dab">Question 5?</li>
 </ol>
 
-Make everything educational and appropriate for ${level} level Korean adult learners working as ${profession}.`;
+Audience: a Korean adult professional working in ${profession}, at ${level} CEFR. Be specific, be expert, avoid generic "introduction to the field" content.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -105,6 +124,7 @@ Make everything educational and appropriate for ${level} level Korean adult lear
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
+        temperature: 0.95,
       }),
     });
 
