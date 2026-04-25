@@ -281,9 +281,13 @@ export default function CashReceiptManagement() {
     })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
-  // Withdrawn = inactive status
+  // Withdrawn = inactive AND end_date falls within the selected period
   const withdrawnStudents = nonCorpStudents
     .filter(s => s.status === "inactive")
+    .filter(s => {
+      if (!s.end_date || !pStartDate || !pEndDate) return false;
+      return s.end_date >= pStartDate && s.end_date <= pEndDate;
+    })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
   const corporateStudents = deduped
