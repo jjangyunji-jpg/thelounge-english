@@ -739,6 +739,8 @@ export default function CashReceiptManagement() {
           </div>
         </div>
       )}
+        </TabsContent>
+      </Tabs>
 
       {/* Deduction Count Modal */}
       {deductModal && (() => {
