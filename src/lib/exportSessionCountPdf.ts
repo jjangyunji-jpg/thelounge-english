@@ -102,7 +102,7 @@ export async function exportSessionCountPdf(
     return [[
       "합계",
       String(sum("completed")),
-      String(sum("makeup_completed")),
+      String(list.reduce((s, r) => s + (r.makeup ?? r.makeup_completed ?? 0), 0)),
       String(sum("no_show")),
       String(sum("same_day_cancel")),
       String(sum("sick")),
