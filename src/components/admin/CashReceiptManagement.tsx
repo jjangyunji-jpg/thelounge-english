@@ -239,15 +239,18 @@ export default function CashReceiptManagement() {
   // Filter helpers based on the currently selected period
   const pStartDate = currentPeriod?.start_date || "";
   const pEndDate = currentPeriod?.end_date || "";
+  const isPauseCoveringPeriod = (start: string, end: string | null) => {
+    if (!pStartDate || !pEndDate) return false;
+    return start <= pStartDate && (!end || end >= pEndDate);
+  };
   const isWithinPeriod = (s: StudentRecord) => {
     // Exclude students who haven't started yet by the end of this period (e.g. enrolled May → not in April list)
     if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
-    // Exclude students whose pause fully covers the period (entire period is within pause range)
-    if (s.pause_start && pStartDate && pEndDate) {
-      const pauseStartCoversPeriod = s.pause_start <= pStartDate;
-      const pauseEndCoversPeriod = !s.pause_end || s.pause_end >= pEndDate;
-      if (pauseStartCoversPeriod && pauseEndCoversPeriod) return false;
-    }
+    // Exclude students whose pause fully covers the period — check inline pause fields…
+    if (s.pause_start && isPauseCoveringPeriod(s.pause_start, s.pause_end)) return false;
+    // …and also any pause range stored in student_pauses table
+    const ranges = pauseRanges.get(s.student_name) || [];
+    if (ranges.some(r => isPauseCoveringPeriod(r.start, r.end))) return false;
     return true;
   };
 
