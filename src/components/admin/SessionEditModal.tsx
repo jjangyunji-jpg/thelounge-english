@@ -30,6 +30,7 @@ type StatusKey =
   | "scheduled"
   | "no_show"
   | "student_cancel"
+  | "advance_cancel"
   | "sick"
   | "instructor_cancel";
 
@@ -38,6 +39,7 @@ const STATUS_OPTIONS: { key: StatusKey; label: string; tone: string }[] = [
   { key: "scheduled", label: "예정", tone: "bg-muted text-muted-foreground border-border" },
   { key: "no_show", label: "노쇼", tone: "bg-warning/15 text-warning border-warning/30" },
   { key: "student_cancel", label: "당일취소", tone: "bg-muted text-muted-foreground border-border" },
+  { key: "advance_cancel", label: "사전취소", tone: "bg-muted text-muted-foreground border-border" },
   { key: "sick", label: "병결", tone: "bg-muted text-muted-foreground border-border" },
   { key: "instructor_cancel", label: "강사취소", tone: "bg-muted text-muted-foreground border-border" },
 ];
@@ -45,6 +47,7 @@ const STATUS_OPTIONS: { key: StatusKey; label: string; tone: string }[] = [
 function deriveStatus(s: SessionItem): StatusKey {
   if (s.cancellation_type === "no_show") return "no_show";
   if (s.cancellation_type === "student_cancel") return "student_cancel";
+  if (s.cancellation_type === "advance_cancel") return "advance_cancel";
   if (s.cancellation_type === "sick") return "sick";
   if (s.cancellation_type === "instructor_cancel") return "instructor_cancel";
   
