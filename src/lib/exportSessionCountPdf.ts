@@ -68,6 +68,7 @@ export async function exportSessionCountPdf(
     "강사취소",
     "사전",
     "이월\n(당월)",
+    "이월\n(전월)",
     "전월\n차감",
     "예정",
     "전체",
