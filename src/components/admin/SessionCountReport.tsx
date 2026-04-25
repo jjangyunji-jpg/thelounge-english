@@ -188,7 +188,10 @@ export default function SessionCountReport() {
       let carryover = 0;
 
       list.forEach(s => {
-        const isMakeup = Array.isArray(s.reschedule_origin_dates) && s.reschedule_origin_dates.length > 0;
+        // KST 날짜로 변환하여 origin과 비교 — 같은 KST 날짜면 시간만 변경된 것이므로 보강 아님
+        const kstDateStr = new Date(s.scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+        const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+        const isMakeup = origins.some(d => d !== kstDateStr);
         const ct = s.cancellation_type;
         if (s.is_carryover) carryover++;
         if (ct === "no_show") no_show++;
