@@ -314,6 +314,22 @@ export default function SessionCountReport() {
       let instructor_cancel = 0, advance_cancel = 0, makeup_completed = 0, scheduled = 0, unchecked = 0;
       let carryover = 0;     // 당월 → 다음달 이월 (next)
       let carryover_in = 0;  // 전월 → 당월 이월 (prev)
+      // 보강 카운트: 완료 + 예정된(미완료) 보강 모두 포함
+      let makeup = 0;
+      // 보강 매칭이 잡히지 않은 병결 건수 (UI에 ⚠ 아이콘 표시용)
+      let sick_unmatched = 0;
+
+      // 보강 origin 날짜 집합 (KST) — 매칭된 보강이 있는지 확인용
+      const makeupOriginDates = new Set<string>();
+      list.forEach(s => {
+        const kstDateStr = getKstDate(s.scheduled_at);
+        const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+        const isMakeup = origins.some(d => d !== kstDateStr) && !matchesRegularSchedule(s, student);
+        if (!isMakeup) return;
+        // 취소된 보강(노쇼/당일취소 등)은 매칭으로 인정하지 않음
+        if (s.cancellation_type) return;
+        origins.forEach(d => { if (d !== kstDateStr) makeupOriginDates.add(d); });
+      });
 
       list.forEach(s => {
         // KST 날짜로 변환하여 origin과 비교하고, 현재 정규 요일/시간과 일치하면 단순 일정 변경 이력으로 간주
@@ -328,18 +344,24 @@ export default function SessionCountReport() {
         if (direction === "next" || ct === "instructor_cancel") carryover++;
         if (direction === "prev") carryover_in++;
 
+        // 보강 카운트: 완료/예정 무관하게 보강 세션이면 +1 (단, 취소된 보강은 제외)
+        if (isMakeup && !ct) makeup++;
+
         // 분류 우선순위:
         // 1) 취소 카테고리가 있으면 해당 카테고리로 분류 (이월 여부와 독립)
-        // 2) 완료(ended_at) → 완료 +1, 보강이면 추가로 보강 +1 (더블카운트)
-        //    이월(전월)이 완료된 경우도 완료에 포함 — 별도 컬럼은 위에서 이미 +1
-        // 3) 미진행 prev 이월 → 이월(전월) 컬럼만 (예정/미체크에서 제외)
+        // 2) 완료(ended_at) → 완료 +1, 보강이면 보강 카운트는 위에서 이미 처리됨
+        // 3) 미진행 prev 이월 → 이월(전월) 컬럼만
         // 4) 미진행 next 이월 → 이월(당월) 컬럼만
-        // 5) 미진행 보강 → 항상 '예정'
+        // 5) 미진행 보강 → 보강 카운트는 위에서, 추가 분류는 안 함 (예정에도 미체크에도 안 들어감)
         // 6) 시간 지남 → 미체크
         // 7) 그 외 → 예정
         if (ct === "no_show") no_show++;
         else if (ct === "student_cancel") same_day_cancel++;
-        else if (ct === "sick") sick++;
+        else if (ct === "sick") {
+          sick++;
+          // 이 병결 원본의 KST 날짜에 매칭되는 보강이 없으면 unmatched
+          if (!makeupOriginDates.has(kstDateStr)) sick_unmatched++;
+        }
         else if (ct === "instructor_cancel") instructor_cancel++;
         else if (ct === "advance_cancel") advance_cancel++;
         else if (s.ended_at) {
@@ -350,8 +372,7 @@ export default function SessionCountReport() {
         } else if (direction === "next") {
           // 당월 이월 처리된 세션은 미체크/예정에 포함하지 않음
         } else if (isMakeup) {
-          // 보강으로 일정 변경된 세션은 완료 전까지는 '예정'으로 분류
-          scheduled++;
+          // 보강 세션은 보강 컬럼에서 이미 카운트됨 — 예정/미체크 중복 방지
         } else if (new Date(s.scheduled_at).getTime() < Date.now()) {
           unchecked++;
         } else {
@@ -393,6 +414,8 @@ export default function SessionCountReport() {
         instructor_name: dominantInstructor || student.instructor_name || "(미배정)",
         completed,
         makeup_completed,
+        makeup,
+        sick_unmatched,
         no_show,
         same_day_cancel,
         sick,
@@ -437,6 +460,8 @@ export default function SessionCountReport() {
     return {
       completed: sum("completed"),
       makeup_completed: sum("makeup_completed"),
+      makeup: sum("makeup"),
+      sick_unmatched: sum("sick_unmatched"),
       no_show: sum("no_show"),
       same_day_cancel: sum("same_day_cancel"),
       sick: sum("sick"),
@@ -523,10 +548,19 @@ export default function SessionCountReport() {
                     </div>
                   </td>
                   <td className="px-2 py-2 text-center font-semibold text-success">{r.completed || "-"}</td>
-                  <td className="px-2 py-2 text-center font-semibold text-primary">{r.makeup_completed || "-"}</td>
+                  <td className="px-2 py-2 text-center font-semibold text-primary">{r.makeup || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-warning">{r.no_show || "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.same_day_cancel || "-"}</td>
-                  <td className="px-2 py-2 text-center text-muted-foreground">{r.sick || "-"}</td>
+                  <td className="px-2 py-2 text-center text-muted-foreground">
+                    {r.sick ? (
+                      <span className="inline-flex items-center gap-0.5">
+                        {r.sick}
+                        {r.sick_unmatched ? (
+                          <span title={`보강이 아직 잡히지 않은 병결 ${r.sick_unmatched}건`} className="text-warning font-bold">⚠</span>
+                        ) : null}
+                      </span>
+                    ) : "-"}
+                  </td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.instructor_cancel || "-"}</td>
                   <td className="px-2 py-2 text-center text-muted-foreground">{r.advance_cancel || "-"}</td>
                   <td className="px-2 py-2 text-center font-semibold text-warning">{r.unchecked || "-"}</td>
@@ -664,10 +698,13 @@ export default function SessionCountReport() {
 
       <div className="flex flex-wrap gap-2 text-[11px]">
         <span className="px-2 py-1 rounded bg-success/10 text-success font-semibold">완료 {totals.completed}</span>
-        <span className="px-2 py-1 rounded bg-primary/10 text-primary font-semibold">보강완료 {totals.makeup_completed}</span>
+        <span className="px-2 py-1 rounded bg-primary/10 text-primary font-semibold">보강 {totals.makeup}</span>
         <span className="px-2 py-1 rounded bg-warning/10 text-warning font-semibold">노쇼 {totals.no_show}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">당일취소 {totals.same_day_cancel}</span>
-        <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">병결 {totals.sick}</span>
+        <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">
+          병결 {totals.sick}
+          {totals.sick_unmatched ? <span className="text-warning ml-0.5" title={`보강 미배정 ${totals.sick_unmatched}건`}>⚠</span> : null}
+        </span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">강사취소 {totals.instructor_cancel}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">사전취소 {totals.advance_cancel}</span>
         <span className="px-2 py-1 rounded bg-warning/10 text-warning font-semibold">미체크 {totals.unchecked}</span>

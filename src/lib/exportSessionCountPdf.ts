@@ -10,10 +10,12 @@ export interface SessionCountRow {
   no_show: number;          // no_show
   same_day_cancel: number;  // student_cancel
   sick: number;             // sick
+  sick_unmatched?: number;  // 보강이 잡히지 않은 병결 건수 (UI 경고용)
   instructor_cancel: number;// instructor_cancel
   advance_cancel: number;   // advance_cancel
   unchecked: number;        // 시간이 지났지만 완료/취소 상태가 없음
   makeup_completed: number; // 보강으로 처리되어 완료된 수업
+  makeup?: number;          // 보강 세션 (완료+예정 모두)
   scheduled: number;        // 미진행
   carryover: number;        // 이번 달 → 다음달 이월 표시된 수업 수 (next)
   carryover_in: number;     // 전월에서 이월되어 들어온 수업 수 (prev) — 이번 달 실수업에 포함
@@ -79,10 +81,10 @@ export async function exportSessionCountPdf(
   const buildBody = (list: SessionCountRow[]) => list.map(r => [
     r.student_name + (r.is_group ? " (그룹)" : ""),
     String(r.completed),
-    String(r.makeup_completed),
+    String(r.makeup ?? r.makeup_completed),
     String(r.no_show),
     String(r.same_day_cancel),
-    String(r.sick),
+    r.sick_unmatched ? `${r.sick} ⚠` : String(r.sick),
     String(r.instructor_cancel),
     String(r.advance_cancel),
     String(r.unchecked),
@@ -100,7 +102,7 @@ export async function exportSessionCountPdf(
     return [[
       "합계",
       String(sum("completed")),
-      String(sum("makeup_completed")),
+      String(list.reduce((s, r) => s + (r.makeup ?? r.makeup_completed ?? 0), 0)),
       String(sum("no_show")),
       String(sum("same_day_cancel")),
       String(sum("sick")),
