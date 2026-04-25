@@ -644,8 +644,12 @@ export default function Classroom() {
           data.filter(d => !d.is_preset && !d.preset_origin_id && d.session_id === session.sessionId)
             .map(d => `${d.title.trim()}__${d.student_name}`)
         );
+        // Only copy presets that were created BEFORE this session — new presets must not
+        // retroactively appear on past sessions
+        const sessionStartMs = session.scheduledAt.getTime();
         const presetsNeedingCopy = data.filter(d =>
           d.is_preset
+          && new Date(d.created_at).getTime() < sessionStartMs
           && !existingCopyOriginIds.has(`${d.id}__${d.student_name}`)
           && !existingManualTitles.has(`${d.title.trim()}__${d.student_name}`)
         );
