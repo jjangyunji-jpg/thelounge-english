@@ -957,15 +957,48 @@ export default function CashReceiptManagement() {
   };
 
   // ========== Budget calculations (정규 only, 환불 제외) ==========
+  // 선결제 처리 규칙:
+  //  - 선결제 등록 달(creditMap.created_at이 현재 period 안): fee 대신 total_sessions × LESSON_PRICE를 1회 입금으로 반영 (스토어 분류)
+  //  - 선결제 등록 이후 달(created_at < period_start): 결제 입금이 없으므로 예산에서 제외 (차감만 발생)
+  //  - 선결제 없음: 기존 getFee 사용
+  type BudgetRow = { name: string; fee: number; isPrepaid?: boolean };
+  const budgetRows: BudgetRow[] = [];
   const budgetEligible = regularStudents.filter(s => !refundFlags.has(s.student_name));
-  const budgetCashRows = budgetEligible.filter(s => isCashPayment(s)).map(s => ({ name: s.student_name, fee: getFee(s) }));
-  const budgetStoreRows = budgetEligible.filter(s => !isCashPayment(s)).map(s => ({ name: s.student_name, fee: getFee(s) }));
+  for (const s of budgetEligible) {
+    const credit = creditMap.get(s.student_name);
+    if (credit) {
+      const createdDate = (credit.created_at || "").slice(0, 10);
+      const isRegisteredThisPeriod = createdDate >= pStartDate && createdDate <= pEndDate;
+      if (isRegisteredThisPeriod) {
+        // 선결제 등록 달: 총액 일시 반영
+        budgetRows.push({ name: s.student_name, fee: credit.total_sessions * LESSON_PRICE, isPrepaid: true });
+      }
+      // 이후 달: 예산 제외 (skip)
+      continue;
+    }
+    budgetRows.push({ name: s.student_name, fee: getFee(s) });
+  }
+  const budgetCashRows = budgetRows.filter(r => {
+    const stu = budgetEligible.find(s => s.student_name === r.name);
+    return stu ? isCashPayment(stu) : false;
+  });
+  const budgetStoreRows = budgetRows.filter(r => {
+    const stu = budgetEligible.find(s => s.student_name === r.name);
+    return stu ? !isCashPayment(stu) : false;
+  });
   const budgetCashTotal = budgetCashRows.reduce((s, r) => s + r.fee, 0);
   const budgetStoreTotal = budgetStoreRows.reduce((s, r) => s + r.fee, 0);
   const budgetStoreNet = Math.round(budgetStoreTotal * (1 - STORE_FEE_RATE));
   const budgetStoreFee = budgetStoreTotal - budgetStoreNet;
   const budgetGrossTotal = budgetCashTotal + budgetStoreTotal;
   const budgetNetTotal = budgetCashTotal + budgetStoreNet;
+  // 선결제 차감(=예산 제외)된 학생 수 — UI 안내용
+  const prepaidExcludedCount = budgetEligible.filter(s => {
+    const credit = creditMap.get(s.student_name);
+    if (!credit) return false;
+    const createdDate = (credit.created_at || "").slice(0, 10);
+    return !(createdDate >= pStartDate && createdDate <= pEndDate);
+  }).length;
 
   return (
     <div className="space-y-4">
