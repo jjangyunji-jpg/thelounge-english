@@ -167,7 +167,7 @@ export default function CashReceiptManagement() {
 
     const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes, prevSessRes, billableOvRes] = await Promise.all([
       // Fetch all (active + paused + inactive) so we can show breakdown counts
-      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date, cash_payment"),
+      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date, cash_payment, corporate_rate, tax_invoice"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based — also fetch reschedule_origin_dates
