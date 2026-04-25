@@ -222,13 +222,39 @@ serve(async (req) => {
       const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
 
       if (makeupReq.request_type === "reschedule" && makeupReq.original_session_id) {
-        // Revert session to original time
+        // NEW MODEL: original session was kept as a sick marker; a separate makeup
+        // session was created at newScheduledAt. To cancel: delete the makeup session
+        // and clear the sick marker on the original.
         if (!makeupReq.original_scheduled_at) throw new Error("원래 일정 정보가 없습니다.");
-        const { error: revertErr } = await sb
+
+        // Delete the makeup session created at newScheduledAt for this student
+        // (try to match by scheduled_at + student_name; only delete one row)
+        const { data: makeupSessions } = await sb
           .from("class_sessions")
-          .update({ scheduled_at: makeupReq.original_scheduled_at })
-          .eq("id", makeupReq.original_session_id);
-        if (revertErr) throw new Error("세션 복원 실패: " + revertErr.message);
+          .select("id, notes, topic, remarks")
+          .eq("student_name", makeupReq.student_name)
+          .eq("scheduled_at", newScheduledAt);
+        const makeupRow = makeupSessions && makeupSessions.length > 0 ? makeupSessions[0] : null;
+
+        // Restore notes/topic/remarks back to the original session before deletion
+        if (makeupRow) {
+          await sb.from("class_sessions").update({
+            cancellation_type: null,
+            cancellation_resolution: null,
+            ended_at: null,
+            notes: makeupRow.notes || null,
+            topic: makeupRow.topic || null,
+            remarks: makeupRow.remarks || null,
+          }).eq("id", makeupReq.original_session_id);
+          await sb.from("class_sessions").delete().eq("id", makeupRow.id);
+        } else {
+          // Fallback: just clear sick marker on original
+          await sb.from("class_sessions").update({
+            cancellation_type: null,
+            cancellation_resolution: null,
+            ended_at: null,
+          }).eq("id", makeupReq.original_session_id);
+        }
 
         // Delete the re-opened original slot (if it exists) — the slot that was created when reschedule was approved
         const origDate = new Date(makeupReq.original_scheduled_at);
