@@ -326,6 +326,39 @@ export default function CashReceiptManagement() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Load AI program totals + store reward whenever the period changes
+  const aiMonthKeyForEffect = currentPeriod ? currentPeriod.start_date.slice(0, 7) : "";
+  const loadSummaryExtras = useCallback(async () => {
+    if (!aiMonthKeyForEffect) return;
+    const [totals, rewardRes] = await Promise.all([
+      fetchAiProgramTotals(aiMonthKeyForEffect),
+      supabase.from("store_rewards" as any).select("amount, note").eq("month", aiMonthKeyForEffect).maybeSingle(),
+    ]);
+    setAiTotals(totals);
+    const r = rewardRes.data as { amount: number; note: string | null } | null;
+    setStoreReward(r ? { amount: r.amount, note: r.note } : { amount: 0, note: null });
+  }, [aiMonthKeyForEffect]);
+  useEffect(() => { loadSummaryExtras(); }, [loadSummaryExtras]);
+
+  const saveStoreReward = async () => {
+    if (!aiMonthKeyForEffect || !rewardEdit) return;
+    const amount = Math.max(0, parseInt(rewardEdit.amount.replace(/[^0-9]/g, ""), 10) || 0);
+    setRewardSaving(true);
+    const { error } = await supabase.from("store_rewards" as any).upsert(
+      { month: aiMonthKeyForEffect, amount, note: rewardEdit.note?.trim() || null },
+      { onConflict: "month" }
+    );
+    setRewardSaving(false);
+    if (error) {
+      toast({ title: "리워드 저장 실패", description: error.message, variant: "destructive" });
+      return;
+    }
+    setStoreReward({ amount, note: rewardEdit.note?.trim() || null });
+    setRewardEdit(null);
+    toast({ title: "스마트스토어 리워드가 저장되었습니다." });
+  };
+
+
   const confMap = new Map(confirmations.map(c => [c.student_name, c]));
   const creditMap = new Map(prepaidCredits.map(c => [c.student_name, c]));
   const dedMap = new Map(deductions.map(d => [d.student_name, d]));
