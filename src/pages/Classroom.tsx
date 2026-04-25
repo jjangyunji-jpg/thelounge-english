@@ -732,9 +732,13 @@ export default function Classroom() {
             prevHwData.filter(d => d.preset_origin_id && d.session_id === prevSessData.id)
               .map(d => [d.title.trim(), d.id])
           );
+          const prevSessionMs = new Date(prevSessData.scheduled_at).getTime();
           const filteredPrev = prevHwData.filter(d => {
             // Hide preset templates that have session copies
             if (d.is_preset && prevCopyOriginIds.has(d.id)) return false;
+            // Hide preset templates created AFTER the prev session — newly added presets
+            // must not retroactively appear on past "지난 숙제" lists
+            if (d.is_preset && new Date(d.created_at).getTime() >= prevSessionMs) return false;
             // Hide manual assignments that duplicate a session copy (same title, no preset_origin)
             if (d.session_id === prevSessData.id && !d.preset_origin_id && !d.is_preset) {
               if (prevCopyTitles.has(d.title.trim())) return false;
