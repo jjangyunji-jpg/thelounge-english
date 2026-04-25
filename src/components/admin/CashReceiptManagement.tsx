@@ -99,9 +99,11 @@ export default function CashReceiptManagement() {
   const [editingFeeValue, setEditingFeeValue] = useState("");
   const [deductModal, setDeductModal] = useState<string | null>(null);
   const [deductCount, setDeductCount] = useState("");
-  const [activeTab, setActiveTab] = useState<"count" | "payment">("count");
+  const [activeTab, setActiveTab] = useState<"count" | "payment" | "budget">("count");
   const [pauseRanges, setPauseRanges] = useState<Map<string, { start: string; end: string | null }[]>>(new Map());
   const [refundFlags, setRefundFlags] = useState<Set<string>>(new Set());
+  // Per-month cash payment override map (true = cash this month, false = store this month, undefined = use student default)
+  const [cashOverrides, setCashOverrides] = useState<Map<string, boolean>>(new Map());
 
   // Receipt management state
   const [receiptModal, setReceiptModal] = useState<{ mode: "create" | "edit"; data?: CashReceipt } | null>(null);
