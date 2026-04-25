@@ -698,10 +698,13 @@ export default function SessionCountReport() {
 
       <div className="flex flex-wrap gap-2 text-[11px]">
         <span className="px-2 py-1 rounded bg-success/10 text-success font-semibold">완료 {totals.completed}</span>
-        <span className="px-2 py-1 rounded bg-primary/10 text-primary font-semibold">보강완료 {totals.makeup_completed}</span>
+        <span className="px-2 py-1 rounded bg-primary/10 text-primary font-semibold">보강 {totals.makeup}</span>
         <span className="px-2 py-1 rounded bg-warning/10 text-warning font-semibold">노쇼 {totals.no_show}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">당일취소 {totals.same_day_cancel}</span>
-        <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">병결 {totals.sick}</span>
+        <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">
+          병결 {totals.sick}
+          {totals.sick_unmatched ? <span className="text-warning ml-0.5" title={`보강 미배정 ${totals.sick_unmatched}건`}>⚠</span> : null}
+        </span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">강사취소 {totals.instructor_cancel}</span>
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground font-semibold">사전취소 {totals.advance_cancel}</span>
         <span className="px-2 py-1 rounded bg-warning/10 text-warning font-semibold">미체크 {totals.unchecked}</span>
