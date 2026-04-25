@@ -1154,8 +1154,8 @@ export default function CashReceiptManagement() {
         <h2 className="text-lg font-bold text-foreground">결제확인</h2>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "count" | "payment" | "budget")} className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "count" | "payment" | "budget" | "summary")} className="w-full">
+        <TabsList className="grid w-full max-w-3xl grid-cols-4">
           <TabsTrigger value="count" className="flex items-center gap-1.5">
             <BarChart3 className="w-3.5 h-3.5" />
             월별 수업 카운트
@@ -1167,6 +1167,10 @@ export default function CashReceiptManagement() {
           <TabsTrigger value="budget" className="flex items-center gap-1.5">
             <Wallet className="w-3.5 h-3.5" />
             예산 관리
+          </TabsTrigger>
+          <TabsTrigger value="summary" className="flex items-center gap-1.5">
+            <PieChart className="w-3.5 h-3.5" />
+            예산 요약
           </TabsTrigger>
         </TabsList>
 
