@@ -955,6 +955,17 @@ export default function CashReceiptManagement() {
     );
   };
 
+  // ========== Budget calculations (정규 only, 환불 제외) ==========
+  const budgetEligible = regularStudents.filter(s => !refundFlags.has(s.student_name));
+  const budgetCashRows = budgetEligible.filter(s => isCashPayment(s)).map(s => ({ name: s.student_name, fee: getFee(s) }));
+  const budgetStoreRows = budgetEligible.filter(s => !isCashPayment(s)).map(s => ({ name: s.student_name, fee: getFee(s) }));
+  const budgetCashTotal = budgetCashRows.reduce((s, r) => s + r.fee, 0);
+  const budgetStoreTotal = budgetStoreRows.reduce((s, r) => s + r.fee, 0);
+  const budgetStoreNet = Math.round(budgetStoreTotal * (1 - STORE_FEE_RATE));
+  const budgetStoreFee = budgetStoreTotal - budgetStoreNet;
+  const budgetGrossTotal = budgetCashTotal + budgetStoreTotal;
+  const budgetNetTotal = budgetCashTotal + budgetStoreNet;
+
   return (
     <div className="space-y-4">
       {/* Header */}
