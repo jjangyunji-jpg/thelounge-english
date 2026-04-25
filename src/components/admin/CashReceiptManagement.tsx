@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import SessionCountReport from "./SessionCountReport";
-import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil } from "lucide-react";
+import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const TEST_ACCOUNTS = ["test", "test 2", "test2"];
 const LESSON_PRICE = 50000;
@@ -533,40 +534,56 @@ export default function CashReceiptManagement() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Receipt className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-bold text-foreground">결제확인</h2>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={prevPeriod} disabled={periodIdx >= periods.length - 1} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <span className="text-sm font-semibold text-foreground min-w-[140px] text-center">{periodLabel || "—"}</span>
-          <button onClick={nextPeriod} disabled={periodIdx <= 0} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+      <div className="flex items-center gap-2">
+        <Receipt className="w-5 h-5 text-primary" />
+        <h2 className="text-lg font-bold text-foreground">결제확인</h2>
       </div>
 
-      {/* Monthly session count report */}
-      <SessionCountReport />
+      <Tabs defaultValue="count" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="count" className="flex items-center gap-1.5">
+            <BarChart3 className="w-3.5 h-3.5" />
+            월별 수업 카운트
+          </TabsTrigger>
+          <TabsTrigger value="payment" className="flex items-center gap-1.5">
+            <CheckSquare className="w-3.5 h-3.5" />
+            결제 확인
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Summary */}
-      <div className="flex gap-4">
-        <div className="rounded-lg border border-border bg-card p-4 flex-1">
-          <p className="text-xs text-muted-foreground">정규 수강생</p>
-          <p className="text-xl font-bold text-foreground mt-1">{regularStudents.length}명</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            확인 완료 <span className="text-primary font-semibold">{confirmedCount}</span> / {regularStudents.length}
-          </p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4 flex-1">
-          <p className="text-xs text-muted-foreground">예상 수강료 합계</p>
-          <p className="text-xl font-bold text-foreground mt-1">₩{totalFee.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">기업 수강생 별도</p>
-        </div>
-      </div>
+        {/* Tab 1: Session Count Report */}
+        <TabsContent value="count" className="mt-4">
+          <SessionCountReport />
+        </TabsContent>
+
+        {/* Tab 2: Payment Confirmation */}
+        <TabsContent value="payment" className="mt-4 space-y-4">
+          {/* Period Navigation */}
+          <div className="flex items-center justify-end gap-3">
+            <button onClick={prevPeriod} disabled={periodIdx >= periods.length - 1} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <span className="text-sm font-semibold text-foreground min-w-[140px] text-center">{periodLabel || "—"}</span>
+            <button onClick={nextPeriod} disabled={periodIdx <= 0} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+
+          {/* Summary */}
+          <div className="flex gap-4">
+            <div className="rounded-lg border border-border bg-card p-4 flex-1">
+              <p className="text-xs text-muted-foreground">정규 수강생</p>
+              <p className="text-xl font-bold text-foreground mt-1">{regularStudents.length}명</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                확인 완료 <span className="text-primary font-semibold">{confirmedCount}</span> / {regularStudents.length}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4 flex-1">
+              <p className="text-xs text-muted-foreground">예상 수강료 합계</p>
+              <p className="text-xl font-bold text-foreground mt-1">₩{totalFee.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">기업 수강생 별도</p>
+            </div>
+          </div>
 
       {/* Regular Students Table */}
       {regularStudents.length > 0 && (
@@ -722,6 +739,8 @@ export default function CashReceiptManagement() {
           </div>
         </div>
       )}
+        </TabsContent>
+      </Tabs>
 
       {/* Deduction Count Modal */}
       {deductModal && (() => {
