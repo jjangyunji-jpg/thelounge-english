@@ -308,9 +308,14 @@ export default function SessionEditModal({
                             보강
                           </span>
                         )}
-                        {currentCarryover && (
+                        {currentDirection === "prev" && (
                           <span className="px-1.5 py-0.5 rounded bg-accent/20 text-accent-foreground text-[10px] font-semibold border border-accent/30">
-                            이월
+                            전월 이월
+                          </span>
+                        )}
+                        {currentDirection === "next" && (
+                          <span className="px-1.5 py-0.5 rounded bg-warning/15 text-warning text-[10px] font-semibold border border-warning/30">
+                            당월 이월
                           </span>
                         )}
                         {s.topic && (
