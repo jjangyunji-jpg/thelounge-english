@@ -22,9 +22,12 @@ interface StudentRecord {
   pause_end: string | null;
   end_date: string | null;
   cash_payment: boolean;
+  corporate_rate: number | null;
+  tax_invoice: boolean;
 }
 
 const STORE_FEE_RATE = 0.0495; // 스마트스토어 수수료 4.95%
+const BIZ_INCOME_TAX_RATE = 0.033; // 사업소득 원천징수 3.3%
 
 interface ScheduleSlot { day: string; time: string; frequency?: string; }
 
