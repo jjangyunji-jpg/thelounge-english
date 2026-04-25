@@ -262,6 +262,7 @@ export type Database = {
           group_students: string[]
           id: string
           instructor_name: string
+          is_carryover: boolean
           level: string
           meet_link: string | null
           notes: string | null
@@ -281,6 +282,7 @@ export type Database = {
           group_students?: string[]
           id?: string
           instructor_name: string
+          is_carryover?: boolean
           level?: string
           meet_link?: string | null
           notes?: string | null
@@ -300,6 +302,7 @@ export type Database = {
           group_students?: string[]
           id?: string
           instructor_name?: string
+          is_carryover?: boolean
           level?: string
           meet_link?: string | null
           notes?: string | null
