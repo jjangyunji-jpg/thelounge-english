@@ -215,15 +215,22 @@ export default function SessionCountReport() {
     setStudents((results[0].data || []) as StudentRecord[]);
     setPauses((results[1].data || []) as StudentPause[]);
 
-    // Merge sessions: in-range + those whose origin falls in range (and scheduled_at is outside)
-    const inRange = (results[2].data || []) as SessionRow[];
+    // Merge sessions: in-range + those whose origin falls in range (and scheduled_at is outside).
+    // Also exclude in-range sessions whose origin is in a DIFFERENT period (they belong to the original month's report).
+    const inRangeFiltered = inRange.filter(s => {
+      const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
+      if (origins.length === 0) return true;
+      // If any origin date falls within current period, this session belongs here.
+      // If all origins are outside current period, this session should be reported in its origin month.
+      return origins.some(d => d >= currentRange.start && d <= currentRange.end);
+    });
     const originExtras = ((results[4].data || []) as SessionRow[]).filter(s => {
-      const inRangeAlready = inRange.some(x => x.student_name === s.student_name && x.scheduled_at === s.scheduled_at);
-      if (inRangeAlready) return false;
+      const inAlready = inRangeFiltered.some(x => x.student_name === s.student_name && x.scheduled_at === s.scheduled_at);
+      if (inAlready) return false;
       const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
       return origins.some(d => d >= currentRange.start && d <= currentRange.end);
     });
-    setSessions([...inRange, ...originExtras]);
+    setSessions([...inRangeFiltered, ...originExtras]);
 
     const prevMap = new Map<string, number>();
     if (results[3]) {
