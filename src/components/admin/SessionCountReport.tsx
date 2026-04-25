@@ -480,7 +480,7 @@ export default function SessionCountReport() {
       carryover_in: sum("carryover_in"),
       prev_carryover_in: sum("prev_carryover_in"),
       actual_lessons: sum("actual_lessons"),
-      billable: sum("billable"),
+      billable: rows.reduce((s, r) => s + (r.is_corporate ? 0 : r.billable), 0),
       total: sum("total"),
     };
   }, [rows]);
