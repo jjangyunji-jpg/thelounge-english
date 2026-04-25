@@ -324,7 +324,8 @@ export default function SessionCountReport() {
         const direction = s.carryover_direction ?? (s.is_carryover ? "prev" : null);
 
         // 이월 마크 카운트 (취소 카테고리와 독립, 진행 여부 무관)
-        if (direction === "next") carryover++;
+        // 강사취소(instructor_cancel)는 자동 다음달 보강 보장이므로 이월(당월)에 자동 포함
+        if (direction === "next" || ct === "instructor_cancel") carryover++;
         if (direction === "prev") carryover_in++;
 
         // 분류 우선순위:
@@ -680,7 +681,7 @@ export default function SessionCountReport() {
       </div>
 
       <p className="text-[10px] text-muted-foreground -mt-2">
-        💡 <span className="font-semibold">전체</span> = 완료 + 노쇼 + 당일 − 이월(전월) · <span className="font-semibold">실수업</span> = 완료 (보강·이월(전월) 완료 포함) · <span className="font-semibold">결제대상</span> = 4 − 이월(전월) − 전월 강사취소 · <span className="text-warning font-semibold">⚠ 전체 ≠ 결제대상이면 표시</span>
+        💡 <span className="font-semibold">전체</span> = 완료 + 노쇼 + 당일 − 이월(전월) · <span className="font-semibold">실수업</span> = 완료 (보강·이월(전월) 완료 포함) · <span className="font-semibold">이월(당월)</span> = 수동 next 토글 + 강사취소 자동 합산 · <span className="font-semibold">결제대상</span> = 4 − 이월(전월) · <span className="text-warning font-semibold">⚠ 전체 ≠ 결제대상이면 표시</span>
       </p>
 
       {loading ? (
