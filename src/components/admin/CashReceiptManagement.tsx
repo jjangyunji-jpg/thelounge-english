@@ -95,6 +95,7 @@ export default function CashReceiptManagement() {
   const [deductModal, setDeductModal] = useState<string | null>(null);
   const [deductCount, setDeductCount] = useState("");
   const [activeTab, setActiveTab] = useState<"count" | "payment">("count");
+  const [pauseRanges, setPauseRanges] = useState<Map<string, { start: string; end: string | null }[]>>(new Map());
 
   interface SchedulePeriod { id: string; label: string; start_date: string; end_date: string; is_active: boolean; }
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
@@ -133,8 +134,8 @@ export default function CashReceiptManagement() {
   const loadData = useCallback(async () => {
     if (!currentPeriod) return;
     setLoading(true);
-    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes] = await Promise.all([
-      supabase.from("instructor_students").select("student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end").eq("status", "active"),
+    const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes] = await Promise.all([
+      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end").eq("status", "active"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based — also fetch reschedule_origin_dates
@@ -148,14 +149,28 @@ export default function CashReceiptManagement() {
       supabase.from("class_sessions").select("student_name, scheduled_at, reschedule_origin_dates")
         .not("reschedule_origin_dates", "eq", "{}")
         .or(`scheduled_at.lt.${periodStart},scheduled_at.gt.${periodEnd}`),
+      supabase.from("student_pauses").select("student_id, pause_start, pause_end"),
     ]);
-    setStudents((studRes.data || []) as StudentRecord[]);
+    const studData = (studRes.data || []) as (StudentRecord & { id: string })[];
+    setStudents(studData);
     setReceipts((receiptRes.data as any as CashReceipt[]) || []);
     const confs = (confRes.data as any as PaymentConfirmation[]) || [];
     setConfirmations(confs);
     setPrepaidCredits((creditRes.data as any as PrepaidCredit[]) || []);
     setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
     setAttendanceRequests((attendRes.data as any as AttendanceRequest[]) || []);
+
+    // Build pauses by student_name (resolved via instructor_students.id)
+    const idToName = new Map(studData.map(s => [s.id, s.student_name]));
+    const pauseMap = new Map<string, { start: string; end: string | null }[]>();
+    ((pauseRes.data || []) as { student_id: string; pause_start: string; pause_end: string | null }[]).forEach(p => {
+      const name = idToName.get(p.student_id);
+      if (!name) return;
+      const arr = pauseMap.get(name) || [];
+      arr.push({ start: p.pause_start, end: p.pause_end });
+      pauseMap.set(name, arr);
+    });
+    setPauseRanges(pauseMap);
 
     // Extract fee overrides from confirmation notes
     const overrides = new Map<string, number>();
@@ -224,15 +239,18 @@ export default function CashReceiptManagement() {
   // Filter helpers based on the currently selected period
   const pStartDate = currentPeriod?.start_date || "";
   const pEndDate = currentPeriod?.end_date || "";
+  const isPauseCoveringPeriod = (start: string, end: string | null) => {
+    if (!pStartDate || !pEndDate) return false;
+    return start <= pStartDate && (!end || end >= pEndDate);
+  };
   const isWithinPeriod = (s: StudentRecord) => {
     // Exclude students who haven't started yet by the end of this period (e.g. enrolled May → not in April list)
     if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
-    // Exclude students whose pause fully covers the period (entire period is within pause range)
-    if (s.pause_start && pStartDate && pEndDate) {
-      const pauseStartCoversPeriod = s.pause_start <= pStartDate;
-      const pauseEndCoversPeriod = !s.pause_end || s.pause_end >= pEndDate;
-      if (pauseStartCoversPeriod && pauseEndCoversPeriod) return false;
-    }
+    // Exclude students whose pause fully covers the period — check inline pause fields…
+    if (s.pause_start && isPauseCoveringPeriod(s.pause_start, s.pause_end)) return false;
+    // …and also any pause range stored in student_pauses table
+    const ranges = pauseRanges.get(s.student_name) || [];
+    if (ranges.some(r => isPauseCoveringPeriod(r.start, r.end))) return false;
     return true;
   };
 
