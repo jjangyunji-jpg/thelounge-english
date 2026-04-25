@@ -193,12 +193,19 @@ export default function SessionCountReport() {
       .gte("scheduled_at", startTs)
       .lte("scheduled_at", endTs)
       .then(r => r);
-    // Sessions rescheduled FROM within this period to outside it
+    // Sessions rescheduled FROM within this period to outside it.
+    // Fetch sessions in a wide window (±60 days around current period) that have any reschedule origin,
+    // then filter client-side for origins inside currentRange.
+    const wideStart = new Date(`${currentRange.start}T00:00:00+09:00`);
+    wideStart.setDate(wideStart.getDate() - 60);
+    const wideEnd = new Date(`${currentRange.end}T23:59:59+09:00`);
+    wideEnd.setDate(wideEnd.getDate() + 60);
     const sessOriginPromise = supabase
       .from("class_sessions")
       .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover")
-      .overlaps("reschedule_origin_dates", [currentRange.start, currentRange.end])
-      // overlaps with two endpoints isn't sufficient — fetch broader and filter client-side below
+      .gte("scheduled_at", wideStart.toISOString())
+      .lte("scheduled_at", wideEnd.toISOString())
+      .not("reschedule_origin_dates", "eq", "{}")
       .then(r => r);
 
     // Previous period: fetch carryovers that were NOT actually conducted (still pending) → deduct from this month's billable
