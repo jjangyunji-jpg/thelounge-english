@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import SessionCountReport from "./SessionCountReport";
-import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare, Download, PauseCircle, UserMinus, UserPlus, AlertCircle, Trash2, Settings2, RotateCcw } from "lucide-react";
+import { Receipt, Loader2, ChevronLeft, ChevronRight, Check, Phone, Building2, Plus, Minus, X, FileText, ClipboardList, CheckCircle, RefreshCw, Pencil, BarChart3, CheckSquare, Download, PauseCircle, UserMinus, UserPlus, AlertCircle, Trash2, Settings2, RotateCcw, Wallet, Store, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -21,7 +21,10 @@ interface StudentRecord {
   pause_start: string | null;
   pause_end: string | null;
   end_date: string | null;
+  cash_payment: boolean;
 }
+
+const STORE_FEE_RATE = 0.0495; // 스마트스토어 수수료 4.95%
 
 interface ScheduleSlot { day: string; time: string; frequency?: string; }
 
@@ -96,9 +99,11 @@ export default function CashReceiptManagement() {
   const [editingFeeValue, setEditingFeeValue] = useState("");
   const [deductModal, setDeductModal] = useState<string | null>(null);
   const [deductCount, setDeductCount] = useState("");
-  const [activeTab, setActiveTab] = useState<"count" | "payment">("count");
+  const [activeTab, setActiveTab] = useState<"count" | "payment" | "budget">("count");
   const [pauseRanges, setPauseRanges] = useState<Map<string, { start: string; end: string | null }[]>>(new Map());
   const [refundFlags, setRefundFlags] = useState<Set<string>>(new Set());
+  // Per-month cash payment override map (true = cash this month, false = store this month, undefined = use student default)
+  const [cashOverrides, setCashOverrides] = useState<Map<string, boolean>>(new Map());
 
   // Receipt management state
   const [receiptModal, setReceiptModal] = useState<{ mode: "create" | "edit"; data?: CashReceipt } | null>(null);
@@ -156,7 +161,7 @@ export default function CashReceiptManagement() {
 
     const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes, prevSessRes, billableOvRes] = await Promise.all([
       // Fetch all (active + paused + inactive) so we can show breakdown counts
-      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date"),
+      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date, cash_payment"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based — also fetch reschedule_origin_dates
@@ -202,9 +207,10 @@ export default function CashReceiptManagement() {
     });
     setPauseRanges(pauseMap);
 
-    // Extract fee overrides + refund flags from confirmation notes
+    // Extract fee overrides + refund flags + cash overrides from confirmation notes
     const overrides = new Map<string, number>();
     const refunds = new Set<string>();
+    const cashOv = new Map<string, boolean>();
     confs.forEach(c => {
       if (c.note) {
         try {
@@ -215,11 +221,15 @@ export default function CashReceiptManagement() {
           if (parsed.refund === true) {
             refunds.add(c.student_name);
           }
+          if (typeof parsed.cash_override === "boolean") {
+            cashOv.set(c.student_name, parsed.cash_override);
+          }
         } catch { /* not JSON, ignore */ }
       }
     });
     setFeeOverrides(overrides);
     setRefundFlags(refunds);
+    setCashOverrides(cashOv);
 
     // Count sessions per student, attributing rescheduled sessions to their original period
     const pStart = currentPeriod.start_date;
@@ -534,7 +544,55 @@ export default function CashReceiptManagement() {
     loadData();
   };
 
-  // ========== Cash Receipt CRUD ==========
+  // Resolve effective cash payment status: per-month override → student default
+  const isCashPayment = (s: StudentRecord): boolean => {
+    const override = cashOverrides.get(s.student_name);
+    if (override !== undefined) return override;
+    return s.cash_payment === true;
+  };
+  // Whether this row has a per-month override (different from student default)
+  const hasCashOverride = (name: string) => cashOverrides.has(name);
+
+  // Cycle: default → opposite (override) → default (clear override) → ...
+  // 3-state click: store-default → cash(override) → store(override) → store-default(clear)
+  const cycleCashPayment = async (s: StudentRecord) => {
+    const studentDefault = s.cash_payment === true;
+    const currentOverride = cashOverrides.get(s.student_name);
+    let nextOverride: boolean | null;
+    if (currentOverride === undefined) {
+      // No override → flip default
+      nextOverride = !studentDefault;
+    } else if (currentOverride !== studentDefault) {
+      // Has override that flipped → switch to "explicit same as default" (still treated as override so it shows badge)
+      nextOverride = studentDefault;
+    } else {
+      // Override already matches default → clear override
+      nextOverride = null;
+    }
+
+    const existing = confMap.get(s.student_name);
+    const base = existing ? parseNote(existing.note) : {};
+    if (nextOverride === null) delete base.cash_override;
+    else base.cash_override = nextOverride;
+    const noteData = Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+
+    if (existing) {
+      await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
+    } else if (noteData) {
+      await supabase.from("payment_confirmations" as any).insert({ student_name: s.student_name, month: periodKey, confirmed: false, note: noteData } as any);
+    }
+    loadData();
+  };
+
+  // Toggle student-level default (instructor_students.cash_payment)
+  const toggleStudentCashDefault = async (s: StudentRecord) => {
+    const next = !s.cash_payment;
+    await supabase.from("instructor_students").update({ cash_payment: next }).eq("student_name", s.student_name);
+    toast({ title: next ? `${s.student_name} — 항상 현금결제로 설정` : `${s.student_name} — 항상 스토어결제로 설정` });
+    loadData();
+  };
+
+
   const openReceiptCreate = () => {
     setReceiptInput({ student_name: "", receipt_type: "phone", receipt_number: "", recurring: false, recurring_attendance: false });
     setReceiptModal({ mode: "create" });
@@ -742,6 +800,25 @@ export default function CashReceiptManagement() {
           {isInactive && (
             <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">퇴원</span>
           )}
+          {!isCorporate && (() => {
+            const isCash = isCashPayment(s);
+            const overridden = hasCashOverride(s.student_name);
+            return (
+              <button
+                onClick={() => cycleCashPayment(s)}
+                onContextMenu={(e) => { e.preventDefault(); toggleStudentCashDefault(s); }}
+                className={cn(
+                  "ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold transition-colors inline-flex items-center gap-0.5",
+                  isCash
+                    ? "bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 dark:text-amber-400"
+                    : "bg-blue-500/15 text-blue-700 hover:bg-blue-500/25 dark:text-blue-400"
+                )}
+                title={`${isCash ? "현금(이체)" : "스토어"} ${overridden ? "(이번 달 오버라이드)" : "(기본)"} — 클릭: 이번 달 변경 / 우클릭: 학생 기본값 변경`}
+              >
+                {isCash ? "현금" : "스토어"}{overridden ? "*" : ""}
+              </button>
+            );
+          })()}
           {!isCorporate && (
             <button
               onClick={() => toggleRefund(s.student_name)}
@@ -878,6 +955,17 @@ export default function CashReceiptManagement() {
     );
   };
 
+  // ========== Budget calculations (정규 only, 환불 제외) ==========
+  const budgetEligible = regularStudents.filter(s => !refundFlags.has(s.student_name));
+  const budgetCashRows = budgetEligible.filter(s => isCashPayment(s)).map(s => ({ name: s.student_name, fee: getFee(s) }));
+  const budgetStoreRows = budgetEligible.filter(s => !isCashPayment(s)).map(s => ({ name: s.student_name, fee: getFee(s) }));
+  const budgetCashTotal = budgetCashRows.reduce((s, r) => s + r.fee, 0);
+  const budgetStoreTotal = budgetStoreRows.reduce((s, r) => s + r.fee, 0);
+  const budgetStoreNet = Math.round(budgetStoreTotal * (1 - STORE_FEE_RATE));
+  const budgetStoreFee = budgetStoreTotal - budgetStoreNet;
+  const budgetGrossTotal = budgetCashTotal + budgetStoreTotal;
+  const budgetNetTotal = budgetCashTotal + budgetStoreNet;
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -886,8 +974,8 @@ export default function CashReceiptManagement() {
         <h2 className="text-lg font-bold text-foreground">결제확인</h2>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "count" | "payment")} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "count" | "payment" | "budget")} className="w-full">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3">
           <TabsTrigger value="count" className="flex items-center gap-1.5">
             <BarChart3 className="w-3.5 h-3.5" />
             월별 수업 카운트
@@ -895,6 +983,10 @@ export default function CashReceiptManagement() {
           <TabsTrigger value="payment" className="flex items-center gap-1.5">
             <CheckSquare className="w-3.5 h-3.5" />
             결제 확인
+          </TabsTrigger>
+          <TabsTrigger value="budget" className="flex items-center gap-1.5">
+            <Wallet className="w-3.5 h-3.5" />
+            예산 관리
           </TabsTrigger>
         </TabsList>
 
@@ -1209,6 +1301,167 @@ export default function CashReceiptManagement() {
           </table>
         </div>
       </div>
+          </>)}
+        </TabsContent>
+
+        {/* Tab 3: Budget Management */}
+        <TabsContent value="budget" className="mt-4 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (<>
+          {/* Period Navigation */}
+          <div className="flex items-center justify-end gap-3">
+            <button onClick={prevPeriod} disabled={periodIdx >= periods.length - 1} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <span className="text-sm font-semibold text-foreground min-w-[140px] text-center">{periodLabel || "—"}</span>
+            <button onClick={nextPeriod} disabled={periodIdx <= 0} className="p-1.5 rounded-md hover:bg-muted transition-colors disabled:opacity-30">
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            정규 수강생 기준 · 환불 표시된 학생은 제외 · 결제대상 회수 × 50,000원으로 자동 산출
+          </p>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Receipt className="w-3 h-3" /> 총 수입 (예상)
+              </p>
+              <p className="text-2xl font-bold text-foreground mt-1">₩{budgetGrossTotal.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{budgetEligible.length}명 합산</p>
+            </div>
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Wallet className="w-3 h-3 text-amber-600" /> 현금 (이체)
+              </p>
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1">₩{budgetCashTotal.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{budgetCashRows.length}명 · 수수료 없음</p>
+            </div>
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Store className="w-3 h-3 text-blue-600" /> 스마트스토어 결제
+              </p>
+              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1">₩{budgetStoreTotal.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{budgetStoreRows.length}명 · 수수료 4.95% 차감 전</p>
+            </div>
+            <div className="rounded-lg border border-success/30 bg-success/5 p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <TrendingDown className="w-3 h-3 text-success" /> 실수령 합계
+              </p>
+              <p className="text-2xl font-bold text-success mt-1">₩{budgetNetTotal.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">현금 + 스토어 실수령</p>
+            </div>
+          </div>
+
+          {/* Store fee breakdown */}
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <Store className="w-4 h-4 text-blue-600" /> 스마트스토어 수수료 내역
+              </p>
+              <span className="text-[10px] text-muted-foreground">수수료율 4.95%</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">결제 총액</p>
+                <p className="font-semibold text-foreground">₩{budgetStoreTotal.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">수수료 (4.95%)</p>
+                <p className="font-semibold text-destructive">-₩{budgetStoreFee.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">실수령</p>
+                <p className="font-semibold text-success">₩{budgetStoreNet.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Lists */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Cash list */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <Wallet className="w-3 h-3 text-amber-600" /> 현금 (이체) 결제 — {budgetCashRows.length}명
+              </p>
+              <div className="border border-border rounded-lg overflow-hidden max-h-[420px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">학생명</th>
+                      <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">금액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {budgetCashRows.length === 0 ? (
+                      <tr><td colSpan={2} className="px-3 py-6 text-center text-xs text-muted-foreground">현금결제 학생이 없습니다.</td></tr>
+                    ) : budgetCashRows.map(r => (
+                      <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                        <td className="px-3 py-2 text-foreground">{r.name}</td>
+                        <td className="px-3 py-2 text-right font-medium text-foreground">₩{r.fee.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {budgetCashRows.length > 0 && (
+                    <tfoot className="bg-amber-500/10 border-t border-border">
+                      <tr>
+                        <td className="px-3 py-2 text-xs font-semibold text-foreground">합계</td>
+                        <td className="px-3 py-2 text-right font-bold text-amber-700 dark:text-amber-400">₩{budgetCashTotal.toLocaleString()}</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            {/* Store list */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <Store className="w-3 h-3 text-blue-600" /> 스마트스토어 결제 — {budgetStoreRows.length}명
+              </p>
+              <div className="border border-border rounded-lg overflow-hidden max-h-[420px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">학생명</th>
+                      <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">결제액</th>
+                      <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">실수령</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {budgetStoreRows.length === 0 ? (
+                      <tr><td colSpan={3} className="px-3 py-6 text-center text-xs text-muted-foreground">스토어 결제 학생이 없습니다.</td></tr>
+                    ) : budgetStoreRows.map(r => {
+                      const net = Math.round(r.fee * (1 - STORE_FEE_RATE));
+                      return (
+                        <tr key={r.name} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <td className="px-3 py-2 text-foreground">{r.name}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground text-xs">₩{r.fee.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right font-medium text-foreground">₩{net.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {budgetStoreRows.length > 0 && (
+                    <tfoot className="bg-blue-500/10 border-t border-border">
+                      <tr>
+                        <td className="px-3 py-2 text-xs font-semibold text-foreground">합계</td>
+                        <td className="px-3 py-2 text-right text-xs text-muted-foreground">₩{budgetStoreTotal.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right font-bold text-blue-700 dark:text-blue-400">₩{budgetStoreNet.toLocaleString()}</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground">
+            💡 결제 확인 탭의 학생 이름 옆 결제수단 뱃지를 클릭하면 이번 달만 변경, 우클릭하면 학생 기본값을 변경합니다.
+          </p>
           </>)}
         </TabsContent>
       </Tabs>

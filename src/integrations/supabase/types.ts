@@ -724,6 +724,7 @@ export type Database = {
       }
       instructor_students: {
         Row: {
+          cash_payment: boolean
           created_at: string
           end_date: string | null
           english_name: string | null
@@ -753,6 +754,7 @@ export type Database = {
           withdrawal_reason: string | null
         }
         Insert: {
+          cash_payment?: boolean
           created_at?: string
           end_date?: string | null
           english_name?: string | null
@@ -782,6 +784,7 @@ export type Database = {
           withdrawal_reason?: string | null
         }
         Update: {
+          cash_payment?: boolean
           created_at?: string
           end_date?: string | null
           english_name?: string | null
