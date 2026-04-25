@@ -173,13 +173,32 @@ export default function SessionEditModal({
   useEffect(() => { load(); }, [load]);
 
   const handleStatusChange = (sessionId: string, status: StatusKey) => {
-    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], status } }));
+    setEdits(prev => {
+      const cur = prev[sessionId] || {};
+      const next: PendingEdit = { ...cur, status };
+      // 강사취소 선택 시 자동으로 당월 이월 + 자동 사유 입력
+      if (status === "instructor_cancel") {
+        next.carryover_direction = "next";
+        if (!cur.carryover_reason) next.carryover_reason = AUTO_INSTRUCTOR_CANCEL_REASON;
+      }
+      return { ...prev, [sessionId]: next };
+    });
   };
 
   const handleCarryoverDirection = (sessionId: string, current: CarryoverDirection, target: "prev" | "next") => {
     // Toggle: clicking the active direction clears it
     const next: CarryoverDirection = current === target ? null : target;
-    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], carryover_direction: next } }));
+    setEdits(prev => {
+      const cur = prev[sessionId] || {};
+      const updated: PendingEdit = { ...cur, carryover_direction: next };
+      // 이월 해제 시 사유도 비움
+      if (next === null) updated.carryover_reason = "";
+      return { ...prev, [sessionId]: updated };
+    });
+  };
+
+  const handleReasonChange = (sessionId: string, reason: string) => {
+    setEdits(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], carryover_reason: reason } }));
   };
 
   const handleSave = async () => {
