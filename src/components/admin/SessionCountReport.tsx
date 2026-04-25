@@ -306,7 +306,9 @@ export default function SessionCountReport() {
         const origins = Array.isArray(s.reschedule_origin_dates) ? s.reschedule_origin_dates : [];
         const isMakeup = origins.some(d => d !== kstDateStr) && !matchesRegularSchedule(s, student);
         const ct = s.cancellation_type;
-        if (s.is_carryover) carryover++;
+        const direction = s.carryover_direction ?? (s.is_carryover ? "prev" : null);
+        // '당월 이월'(next)만 carryover 컬럼에 집계 — 다음달 결제에서 차감되는 케이스
+        if (direction === "next") carryover++;
         if (ct === "no_show") no_show++;
         else if (ct === "student_cancel") same_day_cancel++;
         else if (ct === "sick") sick++;
@@ -315,8 +317,8 @@ export default function SessionCountReport() {
         else if (s.ended_at) {
           if (isMakeup) makeup_completed++;
           else completed++;
-        } else if (s.is_carryover) {
-          // 이월 처리된 세션은 미체크/예정에 포함하지 않음 (이월 컬럼으로만 집계)
+        } else if (direction === "next") {
+          // 당월 이월 처리된 세션은 미체크/예정에 포함하지 않음 (이월 컬럼으로만 집계)
         } else if (new Date(s.scheduled_at).getTime() < Date.now()) {
           unchecked++;
         } else {
