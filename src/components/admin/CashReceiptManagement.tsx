@@ -889,6 +889,33 @@ export default function CashReceiptManagement() {
               {isRefund ? "환불" : "환불 표시"}
             </button>
           )}
+          {isCorporate && (() => {
+            const isInvoice = isTaxInvoice(s);
+            const overridden = hasTaxOverride(s.student_name);
+            return (
+              <button
+                onClick={() => cycleTaxInvoice(s)}
+                onContextMenu={(e) => { e.preventDefault(); toggleStudentTaxDefault(s); }}
+                className={cn(
+                  "ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold transition-colors inline-flex items-center gap-0.5",
+                  isInvoice
+                    ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 dark:text-emerald-400"
+                    : "bg-rose-500/15 text-rose-700 hover:bg-rose-500/25 dark:text-rose-400"
+                )}
+                title={`${isInvoice ? "계산서 발급(전액 지급)" : "사업소득 3.3% 공제"} ${overridden ? "(이번 달 오버라이드)" : "(기본)"} — 클릭: 이번 달 변경 / 우클릭: 학생 기본값 변경`}
+              >
+                {isInvoice ? "계산서" : "3.3%"}{overridden ? "*" : ""}
+              </button>
+            );
+          })()}
+          {isCorporate && (
+            <span
+              className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium"
+              title={`회당 단가 (그룹 기본 70,000 / 개별 기본 50,000)`}
+            >
+              ₩{getCorpRate(s).toLocaleString()}/회
+            </span>
+          )}
         </td>
         <td className="px-4 py-3 text-right">
           {isCorporate ? (
