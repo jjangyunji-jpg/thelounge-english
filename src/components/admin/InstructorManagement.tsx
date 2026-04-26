@@ -233,6 +233,7 @@ export default function InstructorManagement() {
     const { error } = await supabase
       .from("instructors")
       .update({
+        english_name: editFields.english_name || null,
         phone: editFields.phone || null,
         join_date: editFields.join_date || null,
         gender: editFields.gender || null,
@@ -251,6 +252,7 @@ export default function InstructorManagement() {
       setInstructors((prev) =>
         prev.map((i) => (i.id === id ? {
           ...i,
+          english_name: editFields.english_name || null,
           phone: editFields.phone || null,
           join_date: editFields.join_date || null,
           gender: editFields.gender || null,
