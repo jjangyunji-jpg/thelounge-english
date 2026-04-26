@@ -1,6 +1,6 @@
 ---
 name: 수업 취소 5종 분류 및 정산/결제 영향
-description: 노쇼/당일취소/병결/강사취소/사전취소 각 카테고리의 정산·결제대상·후속조치 규칙
+description: 노쇼/당일취소/병결/강사취소/사전취소 각 카테고리의 정산·결제대상·후속조치 규칙 + 이월 처리 미러 세션 모델
 type: feature
 ---
 
@@ -12,6 +12,18 @@ type: feature
 - **강사 취소(instructor_cancel)**: 정산 미반영. 후속조치(보강/이월/환불) 선택 필수. 자동으로 다음달 결제대상에서 -1 차감. 보강 진행 시에만 강사 수당 지급.
 - **사전 취소(advance_cancel)**: 48시간 전 취소. 후속조치 3가지(보강/이월/취소). "취소" 선택 시 당월 결제대상에서 -1 차감.
 
-이월(carry_over) 처리 정책: 세션 레코드는 DB에 유지하고 cancellation_resolution='carry_over'만 저장. 결제확인(SessionCountReport)에서 다음달 prev_carryover_in으로 -1 차감하여 다음달 결제대상에 자동 반영. 세션 삭제는 하지 않아 가상 세션/캘린더 정합성 보존.
+## 이월(carry_over) 처리 정책 — 미러 세션 모델
 
-배지 표시: SessionSidebar(강사 클래스룸 + 학생 /my/classnote)에서 cancellation_type 배지와 cancellation_resolution 배지를 함께 표시. 색상 구분(노쇼=warning, 당일취소·취소=destructive, 보강=gold, 그 외=muted).
+`InstructorDashboard.tsx`의 `SessionCancellationModal` `onConfirm` 핸들러에서 처리:
+
+1. **원본 세션(당월)**: `cancellation_type` + `cancellation_resolution='carry_over'` 유지. 추가로 `is_carryover=true, carryover_direction='next', carryover_reason=<type>` 마크.
+2. **미러 세션(다음달)**: `INSERT` 신규 행. 같은 학생/강사/레벨/그룹, 다음달 같은 요일·시간 빈 슬롯(주 단위로 advance, 충돌 회피). `is_carryover=true, carryover_direction='prev', carryover_reason=<type>`. `cancellation_type=null`.
+
+이 모델로 어드민 결제확인 `SessionCountReport`가 다음과 같이 자동 집계:
+- 당월 **이월(당월)** +1 (`direction='next'`)
+- 다음달 **이월(전월)** +1 (`direction='prev'`) → 다음달 결제대상에서 자연스럽게 카운트
+
+원본을 삭제하지 않으므로 가상 세션/캘린더 정합성 보존. Google Calendar 이벤트는 `delete-calendar-event-by-search`로 best-effort 삭제.
+
+## 배지 표시
+SessionSidebar(강사 클래스룸 + 학생 /my/classnote)에서 `cancellation_type` 배지와 `cancellation_resolution` 배지를 함께 표시. 색상 구분(노쇼=warning, 당일취소·취소=destructive, 보강=gold, 그 외=muted).
