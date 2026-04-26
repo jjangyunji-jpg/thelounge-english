@@ -82,7 +82,7 @@ export async function deleteCalendarEvent(eventToken: string | null | undefined)
       eventId = eventToken.slice(idx + 2);
     }
     const res = await fetch(
-      `${GATEWAY_URL}/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(eventId)}`,
+      `${GATEWAY_URL}/calendars/${calId}/events/${eventId}`,
       { method: "DELETE", headers: authHeaders() }
     );
     if (!res.ok && res.status !== 404 && res.status !== 410) {
