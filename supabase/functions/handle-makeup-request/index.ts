@@ -126,6 +126,7 @@ serve(async (req) => {
           startISO: newScheduledAt,
           meetLink: stuInfo.meet_link || origSession.meet_link,
           description: `보강 (강사: ${origSession.instructor_name})`,
+          calendarId: await fetchInstructorCalendarId(origSession.instructor_name),
         });
 
         // 2) Create new makeup session at newScheduledAt
