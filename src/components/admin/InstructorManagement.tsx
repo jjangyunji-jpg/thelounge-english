@@ -37,6 +37,7 @@ interface FeedbackRecord {
 interface Instructor {
   id: string;
   name: string;
+  english_name: string | null;
   email: string;
   phone: string | null;
   active: boolean;
@@ -83,7 +84,7 @@ export default function InstructorManagement() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFields, setEditFields] = useState({ phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "", meet_link: "", position: "강사", lesson_rate: "30000" });
+  const [editFields, setEditFields] = useState({ english_name: "", phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "", meet_link: "", position: "강사", lesson_rate: "30000" });
   const [savingId, setSavingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -214,6 +215,7 @@ export default function InstructorManagement() {
   const startEdit = (ins: Instructor) => {
     setEditingId(ins.id);
     setEditFields({
+      english_name: ins.english_name || "",
       phone: ins.phone || "",
       join_date: ins.join_date || "",
       gender: ins.gender || "",
@@ -231,6 +233,7 @@ export default function InstructorManagement() {
     const { error } = await supabase
       .from("instructors")
       .update({
+        english_name: editFields.english_name || null,
         phone: editFields.phone || null,
         join_date: editFields.join_date || null,
         gender: editFields.gender || null,
@@ -249,6 +252,7 @@ export default function InstructorManagement() {
       setInstructors((prev) =>
         prev.map((i) => (i.id === id ? {
           ...i,
+          english_name: editFields.english_name || null,
           phone: editFields.phone || null,
           join_date: editFields.join_date || null,
           gender: editFields.gender || null,
@@ -275,9 +279,9 @@ export default function InstructorManagement() {
 
     const { error } = await supabase.from("instructors").insert({
       name: form.name,
+      english_name: form.englishName,
       join_date: form.joinDate || null,
       active: true,
-      bio_notes: form.englishName ? `영어이름: ${form.englishName}` : null,
     });
 
     if (error) {
@@ -451,7 +455,7 @@ export default function InstructorManagement() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-foreground">{ins.name}</p>
+                  <p className="font-semibold text-foreground">{ins.name}{ins.english_name ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">({ins.english_name})</span> : null}</p>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     ins.position === '대표' ? 'bg-gold/20 text-gold-dark' :
                     ins.position === '매니저' ? 'bg-navy/10 text-navy' :
@@ -703,6 +707,10 @@ export default function InstructorManagement() {
                                   </div>
                                 )}
                                 <div>
+                                  <Label className="text-[10px] text-muted-foreground">영어이름</Label>
+                                  <Input className="h-7 text-xs mt-0.5" placeholder="Reina" value={editFields.english_name} onChange={(e) => setEditFields(f => ({ ...f, english_name: e.target.value }))} />
+                                </div>
+                                <div>
                                   <Label className="text-[10px] text-muted-foreground">연락처</Label>
                                   <Input className="h-7 text-xs mt-0.5" value={editFields.phone} onChange={(e) => setEditFields(f => ({ ...f, phone: e.target.value }))} />
                                 </div>
@@ -741,6 +749,7 @@ export default function InstructorManagement() {
                           ) : (
                             <div className="space-y-1.5 text-sm">
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">직책</span><span className="text-xs font-medium">{ins.position || '강사'}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">영어이름</span><span className="text-xs font-medium">{ins.english_name || "—"}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">이메일</span><span className="text-xs font-medium">{ins.email}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">연락처</span><span className="text-xs font-medium">{ins.phone || "—"}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">입사일</span><span className="text-xs font-medium">{ins.join_date || "—"}</span></div>

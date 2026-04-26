@@ -13,12 +13,13 @@ type: feature
 
 ## 캘린더 라우팅 (강사별 분리)
 - 매핑 테이블: `public.instructor_calendar_mapping(instructor_name UNIQUE, gcal_calendar_id, display_name)`
-- `display_name`은 캘린더 이벤트 제목용 표시 이름 (예: 장리원 → "Reina"). 없으면 instructor_name을 그대로 사용
-- `handle-makeup-request`가 강사명으로 매핑을 조회해 `createCalendarEvent({ calendarId })`로 전달하고, 제목에는 `display_name`을 사용
+- 이벤트 제목용 영어 이름은 **`instructors.english_name`** 우선 사용 (강사 관리 UI에서 편집 가능)
+  - 없으면 `instructor_calendar_mapping.display_name`, 그래도 없으면 instructor_name(한글) 사용
+- `handle-makeup-request`가 강사명으로 `instructors`와 `instructor_calendar_mapping`을 동시 조회해 calendarId/displayName을 결정하고, `createCalendarEvent({ calendarId })`에 전달
 - 매핑이 없으면 기본 캘린더 `reina@thelounge-english.co.kr` (Organizer)로 폴백
 - 초기 매핑:
-  - `장리원 → Class-Reina` (`c_b613a8fa91...@group.calendar.google.com`), display_name = `Reina`
-- 새 강사 추가는 매니저가 매핑 테이블에 row 추가 (Lovable에서 직접 INSERT 또는 추후 어드민 UI)
+  - `장리원 → Class-Reina` (`c_b613a8fa91...@group.calendar.google.com`), english_name = `Reina`
+- 새 강사 추가는 매니저가 강사 관리에서 영어이름 입력 + 매핑 테이블에 캘린더 row 추가
 
 ## DB
 - `class_sessions.gcal_event_id text` — `"<calendarId>::<eventId>"` 형식 토큰 저장
