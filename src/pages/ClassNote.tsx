@@ -27,6 +27,8 @@ interface ClassSession {
   remarks: string | null;
   started_at: string | null;
   ended_at: string | null;
+  cancellation_type: string | null;
+  cancellation_resolution: string | null;
 }
 
 function formatDate(dateStr: string) {
