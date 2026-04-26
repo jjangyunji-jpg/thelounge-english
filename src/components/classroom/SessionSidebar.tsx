@@ -10,7 +10,23 @@ interface SessionItem {
   started_at?: string | null;
   ended_at?: string | null;
   cancellation_type?: string | null;
+  cancellation_resolution?: string | null;
 }
+
+const CANCEL_BADGES: Record<string, { label: string; cls: string }> = {
+  no_show: { label: "노쇼", cls: "bg-warning/15 text-warning" },
+  student_cancel: { label: "당일 취소", cls: "bg-destructive/15 text-destructive" },
+  sick: { label: "병결", cls: "bg-muted text-muted-foreground" },
+  instructor_cancel: { label: "강사 취소", cls: "bg-muted text-muted-foreground" },
+  advance_cancel: { label: "사전 취소", cls: "bg-muted text-muted-foreground" },
+};
+
+const RESOLUTION_BADGES: Record<string, { label: string; cls: string }> = {
+  makeup: { label: "보강", cls: "bg-gold/15 text-gold" },
+  carry_over: { label: "이월", cls: "bg-muted text-muted-foreground" },
+  refund: { label: "환불", cls: "bg-muted text-muted-foreground" },
+  cancel: { label: "취소", cls: "bg-destructive/15 text-destructive" },
+};
 
 interface SessionSidebarProps {
   sessions: SessionItem[];
