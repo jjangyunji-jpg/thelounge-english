@@ -202,6 +202,7 @@ serve(async (req) => {
           startISO: newScheduledAt,
           meetLink: studentRec?.meet_link || null,
           description: `보강 (강사: ${makeupReq.instructor_name})`,
+          calendarId: await fetchInstructorCalendarId(makeupReq.instructor_name),
         });
 
         await sb.from("class_sessions").insert({
