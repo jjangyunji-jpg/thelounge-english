@@ -707,6 +707,10 @@ export default function InstructorManagement() {
                                   </div>
                                 )}
                                 <div>
+                                  <Label className="text-[10px] text-muted-foreground">영어이름</Label>
+                                  <Input className="h-7 text-xs mt-0.5" placeholder="Reina" value={editFields.english_name} onChange={(e) => setEditFields(f => ({ ...f, english_name: e.target.value }))} />
+                                </div>
+                                <div>
                                   <Label className="text-[10px] text-muted-foreground">연락처</Label>
                                   <Input className="h-7 text-xs mt-0.5" value={editFields.phone} onChange={(e) => setEditFields(f => ({ ...f, phone: e.target.value }))} />
                                 </div>
