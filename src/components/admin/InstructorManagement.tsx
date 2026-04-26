@@ -279,9 +279,9 @@ export default function InstructorManagement() {
 
     const { error } = await supabase.from("instructors").insert({
       name: form.name,
+      english_name: form.englishName,
       join_date: form.joinDate || null,
       active: true,
-      bio_notes: form.englishName ? `영어이름: ${form.englishName}` : null,
     });
 
     if (error) {
