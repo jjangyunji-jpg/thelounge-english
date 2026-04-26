@@ -215,6 +215,7 @@ export default function InstructorManagement() {
   const startEdit = (ins: Instructor) => {
     setEditingId(ins.id);
     setEditFields({
+      english_name: ins.english_name || "",
       phone: ins.phone || "",
       join_date: ins.join_date || "",
       gender: ins.gender || "",
