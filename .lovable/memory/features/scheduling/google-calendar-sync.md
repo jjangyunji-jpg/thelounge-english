@@ -26,8 +26,8 @@ type: feature
   - 레거시(`::` 없는 값)는 기본 캘린더에서 삭제 시도
 
 ## 이벤트 제목 규칙 (`gcal.ts` formatEventTitle)
-- 보강: `강사명_학생명 (보강)` 또는 `강사명_학생명 / English (보강)`
-- 예: `Reina_장현민 (보강)`
+- 보강: `(보) 강사영어이름_학생한글이름`
+- 예: `(보) Reina_장현민`
 
 ## 동작 (action별)
 ### approve · reschedule
