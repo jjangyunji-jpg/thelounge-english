@@ -120,6 +120,7 @@ serve(async (req) => {
           studentName: origSession.student_name,
           englishName: stuInfo.english_name,
           studentType: stuInfo.student_type,
+          instructorName: origSession.instructor_name,
         });
         const newEventId = await createCalendarEvent({
           title,
