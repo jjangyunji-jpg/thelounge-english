@@ -1409,6 +1409,74 @@ export default function InstructorDashboard() {
   const [studentFeedbackModal, setStudentFeedbackModal] = useState<{ students: { student_name: string; level: string | null; learning_objective: string | null }[]; periodId: string; periodLabel: string; periodStartDate: string; periodEndDate: string } | null>(null);
   const [cancellationModal, setCancellationModal] = useState<{ session: ClassSession } | null>(null);
   const [preClassChecklist, setPreClassChecklist] = useState<ClassSession | null>(null);
+
+  const handleRestoreCancellation = async (s: ClassSession) => {
+    const wasCarryOverNext = s.is_carryover && s.carryover_direction === "next";
+
+    const { error } = await supabase.from("class_sessions").update({
+      cancellation_type: null,
+      cancellation_resolution: null,
+      is_carryover: false,
+      carryover_direction: null,
+      carryover_reason: null,
+    } as any).eq("id", s.id);
+
+    if (error) {
+      toast({ title: "복원 실패", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    // Auto-delete mirror session in next month (only if untouched)
+    let mirrorDeletedNote = "";
+    if (wasCarryOverNext) {
+      const { data: mirrors } = await supabase
+        .from("class_sessions")
+        .select("id, scheduled_at, started_at, ended_at, notes, gcal_event_id")
+        .eq("student_name", s.student_name)
+        .eq("carryover_direction", "prev")
+        .gt("scheduled_at", s.scheduled_at)
+        .order("scheduled_at", { ascending: true })
+        .limit(1);
+      const mirror = mirrors?.[0] as { id: string; scheduled_at: string; started_at: string | null; ended_at: string | null; notes: string | null; gcal_event_id: string | null } | undefined;
+      if (mirror && !mirror.started_at && !mirror.ended_at && (!mirror.notes || mirror.notes.replace(/<[^>]*>/g, "").trim() === "")) {
+        await supabase.from("class_sessions").delete().eq("id", mirror.id);
+        // Best-effort: delete mirror calendar event too
+        try {
+          await supabase.functions.invoke("sync-calendar-event", {
+            body: {
+              action: "delete",
+              session_id: mirror.id,
+              instructor_name: s.instructor_name,
+              student_name: s.student_name,
+              scheduled_at: mirror.scheduled_at,
+              gcal_event_id: mirror.gcal_event_id,
+            },
+          });
+        } catch (e) { console.warn("[gcal mirror delete] skipped", e); }
+        setSessions(prev => prev.filter(sess => sess.id !== mirror.id));
+        mirrorDeletedNote = " · 다음달 이월 세션도 삭제됨";
+      }
+    }
+
+    toast({ title: `취소 상태가 복원되었습니다${mirrorDeletedNote}` });
+    setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null, is_carryover: false, carryover_direction: null, carryover_reason: null } : sess));
+
+    // Best-effort: re-create the calendar event that was removed on cancel
+    try {
+      await supabase.functions.invoke("sync-calendar-event", {
+        body: {
+          action: "create",
+          session_id: s.id,
+          instructor_name: s.instructor_name,
+          student_name: s.student_name,
+          scheduled_at: s.scheduled_at,
+          meet_link: s.meet_link,
+          gcal_event_id: s.gcal_event_id,
+        },
+      });
+    } catch (e) { console.warn("[gcal restore] skipped", e); }
+  };
+
   useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
