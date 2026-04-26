@@ -136,7 +136,7 @@ export default function ClassNote() {
       // Query sessions for all related student names
       let query = supabase
         .from("class_sessions")
-        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
+        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at, cancellation_type, cancellation_resolution")
         .in("student_name", allNames)
         .order("scheduled_at", { ascending: false })
         .limit(50);
@@ -151,7 +151,7 @@ export default function ClassNote() {
       // Also include sessions where this student appears in group_students column
       const { data: groupSessions } = await supabase
         .from("class_sessions")
-        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at")
+        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at, cancellation_type, cancellation_resolution")
         .contains("group_students", [student])
         .order("scheduled_at", { ascending: false })
         .limit(50);
