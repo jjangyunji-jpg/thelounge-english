@@ -69,14 +69,17 @@ serve(async (req) => {
       };
     };
 
-    // Helper: lookup which Google Calendar to write to for an instructor.
-    // Returns null if no mapping exists (gcal helper falls back to default).
-    const fetchInstructorCalendarId = async (instructorName: string): Promise<string | null> => {
+    // Helper: lookup which Google Calendar to write to for an instructor,
+    // and an optional display_name (e.g. "Reina") to use in event titles.
+    const fetchInstructorMapping = async (instructorName: string): Promise<{ calendarId: string | null; displayName: string | null }> => {
       const { data } = await sb.from("instructor_calendar_mapping")
-        .select("gcal_calendar_id")
+        .select("gcal_calendar_id, display_name")
         .eq("instructor_name", instructorName)
         .maybeSingle();
-      return data?.gcal_calendar_id || null;
+      return {
+        calendarId: data?.gcal_calendar_id || null,
+        displayName: data?.display_name || null,
+      };
     };
 
     if (action === "approve") {
@@ -116,18 +119,19 @@ serve(async (req) => {
 
         // GCAL: create a new event at the new time
         const stuInfo = await fetchStudentInfo(origSession.student_name);
+        const instMapping = await fetchInstructorMapping(origSession.instructor_name);
         const title = formatEventTitle({
           studentName: origSession.student_name,
           englishName: stuInfo.english_name,
           studentType: stuInfo.student_type,
-          instructorName: origSession.instructor_name,
+          instructorName: instMapping.displayName || origSession.instructor_name,
         });
         const newEventId = await createCalendarEvent({
           title,
           startISO: newScheduledAt,
           meetLink: stuInfo.meet_link || origSession.meet_link,
           description: `보강 (강사: ${origSession.instructor_name})`,
-          calendarId: await fetchInstructorCalendarId(origSession.instructor_name),
+          calendarId: instMapping.calendarId,
         });
 
         // 2) Create new makeup session at newScheduledAt
@@ -193,18 +197,19 @@ serve(async (req) => {
         }
 
         // GCAL: create event for the new extra session
+        const instMapping = await fetchInstructorMapping(makeupReq.instructor_name);
         const title = formatEventTitle({
           studentName: makeupReq.student_name,
           englishName: studentRec?.english_name || null,
           studentType: studentRec?.student_type || "regular",
-          instructorName: makeupReq.instructor_name,
+          instructorName: instMapping.displayName || makeupReq.instructor_name,
         });
         const newEventId = await createCalendarEvent({
           title,
           startISO: newScheduledAt,
           meetLink: studentRec?.meet_link || null,
           description: `보강 (강사: ${makeupReq.instructor_name})`,
-          calendarId: await fetchInstructorCalendarId(makeupReq.instructor_name),
+          calendarId: instMapping.calendarId,
         });
 
         await sb.from("class_sessions").insert({
@@ -296,18 +301,19 @@ serve(async (req) => {
 
         // GCAL: re-create the original event (since we deleted it on approve)
         const stuInfo = await fetchStudentInfo(makeupReq.student_name);
+        const instMapping = await fetchInstructorMapping(makeupReq.instructor_name);
         const title = formatEventTitle({
           studentName: makeupReq.student_name,
           englishName: stuInfo.english_name,
           studentType: stuInfo.student_type,
-          instructorName: makeupReq.instructor_name,
+          instructorName: instMapping.displayName || makeupReq.instructor_name,
         });
         const restoredEventId = await createCalendarEvent({
           title,
           startISO: makeupReq.original_scheduled_at,
           meetLink: stuInfo.meet_link || makeupRow?.meet_link || null,
           description: `정규 수업 (강사: ${makeupReq.instructor_name})`,
-          calendarId: await fetchInstructorCalendarId(makeupReq.instructor_name),
+          calendarId: instMapping.calendarId,
         });
 
         // Restore notes/topic/remarks back to the original session before deletion

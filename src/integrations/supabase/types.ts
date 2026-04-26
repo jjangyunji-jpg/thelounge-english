@@ -755,6 +755,7 @@ export type Database = {
       instructor_calendar_mapping: {
         Row: {
           created_at: string
+          display_name: string | null
           gcal_calendar_id: string
           id: string
           instructor_name: string
@@ -762,6 +763,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          display_name?: string | null
           gcal_calendar_id: string
           id?: string
           instructor_name: string
@@ -769,6 +771,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          display_name?: string | null
           gcal_calendar_id?: string
           id?: string
           instructor_name?: string
