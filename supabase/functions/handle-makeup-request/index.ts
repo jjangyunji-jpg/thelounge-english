@@ -304,6 +304,7 @@ serve(async (req) => {
           startISO: makeupReq.original_scheduled_at,
           meetLink: stuInfo.meet_link || makeupRow?.meet_link || null,
           description: `정규 수업 (강사: ${makeupReq.instructor_name})`,
+          calendarId: await fetchInstructorCalendarId(makeupReq.instructor_name),
         });
 
         // Restore notes/topic/remarks back to the original session before deletion
