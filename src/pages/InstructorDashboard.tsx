@@ -1303,6 +1303,21 @@ function RescheduleModal({
         .eq("slot_time", newSlotTime)
         .eq("status", "open");
 
+      // Best-effort: move the calendar event to the new time
+      try {
+        await supabase.functions.invoke("sync-calendar-event", {
+          body: {
+            action: "move",
+            session_id: session.id,
+            instructor_name: session.instructor_name,
+            student_name: session.student_name,
+            old_scheduled_at: session.scheduled_at,
+            new_scheduled_at: newScheduled,
+            gcal_event_id: session.gcal_event_id,
+          },
+        });
+      } catch (e) { console.warn("[gcal move] skipped", e); }
+
       toast({ title: "수업 일정이 변경되었습니다 ✓" });
       onSaved();
       onClose();
@@ -2324,6 +2339,18 @@ export default function InstructorDashboard() {
                                   const { error } = await supabase.from("class_sessions").delete().eq("id", s.id);
                                   if (error) { toast({ title: "삭제 실패", description: error.message, variant: "destructive" }); return; }
                                   setSessions(prev => prev.filter(x => x.id !== s.id));
+                                  // Best-effort: remove the linked Google Calendar event
+                                  try {
+                                    await supabase.functions.invoke("sync-calendar-event", {
+                                      body: {
+                                        action: "delete",
+                                        instructor_name: s.instructor_name,
+                                        student_name: s.student_name,
+                                        scheduled_at: s.scheduled_at,
+                                        gcal_event_id: s.gcal_event_id,
+                                      },
+                                    });
+                                  } catch (e) { console.warn("[gcal cleanup] skipped", e); }
                                   toast({ title: "수업 삭제 완료" });
                                 }}
                                 className="text-[10px] text-muted-foreground hover:text-destructive px-1.5 py-1 rounded hover:bg-destructive/10"
