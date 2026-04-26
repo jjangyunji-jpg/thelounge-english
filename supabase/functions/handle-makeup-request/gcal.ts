@@ -50,7 +50,9 @@ export async function createCalendarEvent(input: CreateEventInput): Promise<stri
     };
 
     const calId = pickCalendarId(input.calendarId);
-    const res = await fetch(`${GATEWAY_URL}/calendars/${encodeURIComponent(calId)}/events`, {
+    // NOTE: do NOT encodeURIComponent the calendar ID — the connector gateway
+    // returns 404 when "@" is encoded as "%40". Pass the raw ID instead.
+    const res = await fetch(`${GATEWAY_URL}/calendars/${calId}/events`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify(body),
