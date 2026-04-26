@@ -3937,14 +3937,27 @@ export default function InstructorDashboard() {
           onConfirm={async (type, resolution, remark) => {
             const updates: any = { cancellation_type: type, cancellation_resolution: resolution };
             if (remark) updates.remarks = remark;
+            const sess = cancellationModal.session;
             const { error } = await supabase
               .from("class_sessions")
               .update(updates)
-              .eq("id", cancellationModal.session.id);
+              .eq("id", sess.id);
             if (error) {
               toast({ title: "취소 처리 실패", description: error.message, variant: "destructive" });
             } else {
               toast({ title: "수업이 취소 처리되었습니다" });
+              // Best-effort: remove matching Google Calendar event (manual entries)
+              try {
+                await supabase.functions.invoke("delete-calendar-event-by-search", {
+                  body: {
+                    instructor_name: sess.instructor_name,
+                    student_name: sess.student_name,
+                    scheduled_at: sess.scheduled_at,
+                  },
+                });
+              } catch (e) {
+                console.warn("[gcal cleanup] skipped", e);
+              }
               if (instructor) loadData(instructor);
             }
             setCancellationModal(null);

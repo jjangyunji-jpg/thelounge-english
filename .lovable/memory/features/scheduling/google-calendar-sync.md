@@ -53,3 +53,11 @@ type: feature
 - 시간대: `Asia/Seoul`
 - Meet 링크: 학생 `instructor_students.meet_link` 고정 사용 (Calendar 자동 생성 X)
 - 캘린더 호출 실패는 로그만 남기고 DB 작업은 계속 진행 (eventId=null 허용)
+
+## 정규 수업 취소 시 캘린더 정리 (`delete-calendar-event-by-search`)
+- 정규 수업 세션은 시스템이 캘린더 이벤트를 만들지 않으므로 `gcal_event_id`가 비어있음. Reina/강사가 수동 등록한 이벤트만 존재.
+- 강사가 SessionCancellationModal로 취소 처리 시 InstructorDashboard가 best-effort로 호출:
+  - 강사명 → `instructor_calendar_mapping` → calendarId (없으면 기본 Reina 캘린더)
+  - `scheduled_at ±30분` 윈도우 `events.list`
+  - 제목(`summary`)에 학생명 포함된 모든 이벤트 삭제
+- 매칭 0건이거나 API 실패는 토스트 없이 무시 (취소 처리 자체는 성공)
