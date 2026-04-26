@@ -71,14 +71,22 @@ serve(async (req) => {
 
     // Helper: lookup which Google Calendar to write to for an instructor,
     // and an optional display_name (e.g. "Reina") to use in event titles.
+    // Priority for display name: instructors.english_name > mapping.display_name > instructor_name
     const fetchInstructorMapping = async (instructorName: string): Promise<{ calendarId: string | null; displayName: string | null }> => {
-      const { data } = await sb.from("instructor_calendar_mapping")
-        .select("gcal_calendar_id, display_name")
-        .eq("instructor_name", instructorName)
-        .maybeSingle();
+      const [mapRes, instRes] = await Promise.all([
+        sb.from("instructor_calendar_mapping")
+          .select("gcal_calendar_id, display_name")
+          .eq("instructor_name", instructorName)
+          .maybeSingle(),
+        sb.from("instructors")
+          .select("english_name")
+          .eq("name", instructorName)
+          .maybeSingle(),
+      ]);
+      const englishName = instRes.data?.english_name || null;
       return {
-        calendarId: data?.gcal_calendar_id || null,
-        displayName: data?.display_name || null,
+        calendarId: mapRes.data?.gcal_calendar_id || null,
+        displayName: englishName || mapRes.data?.display_name || null,
       };
     };
 
