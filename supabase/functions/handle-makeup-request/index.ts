@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createCalendarEvent, deleteCalendarEvent, formatEventTitle } from "./gcal.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,6 +55,20 @@ serve(async (req) => {
       .from("instructor_available_slots").select("*").eq("id", makeupReq.slot_id).single();
     if (!slot) throw new Error("슬롯 정보를 찾을 수 없습니다.");
 
+    // Helper: lookup student details for calendar title/meet link
+    const fetchStudentInfo = async (studentName: string) => {
+      const { data } = await sb.from("instructor_students")
+        .select("english_name, student_type, meet_link")
+        .eq("student_name", studentName)
+        .eq("status", "active")
+        .maybeSingle();
+      return {
+        english_name: data?.english_name || null,
+        student_type: data?.student_type || "regular",
+        meet_link: data?.meet_link || null,
+      };
+    };
+
     if (action === "approve") {
       const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
 
@@ -73,13 +88,12 @@ serve(async (req) => {
         const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
         const origHour = origDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
 
-        // NEW MODEL: keep the original session as a 'sick' marker (병결) and create
-        // a separate makeup session at newScheduledAt with reschedule_origin_dates=[origDateStr].
-        // This way the edit modal can render the original date row with a "보강 잡힘" badge
-        // pointing to the new session, and counts (병결+1, 보강+1) work uniformly.
+        // GCAL: delete the original event (if any) — original time slot disappears from calendar
+        if (origSession.gcal_event_id) {
+          await deleteCalendarEvent(origSession.gcal_event_id);
+        }
 
-        // 1) Mark original session as sick + makeup_completed, clear notes/topic/remarks
-        //    (notes will be transferred to the new makeup session below)
+        // 1) Mark original session as sick + makeup_completed, clear notes/topic/remarks/gcal_event_id
         await sb.from("class_sessions").update({
           cancellation_type: "sick",
           cancellation_resolution: "makeup_completed",
@@ -87,7 +101,22 @@ serve(async (req) => {
           notes: null,
           topic: null,
           remarks: null,
+          gcal_event_id: null,
         }).eq("id", makeupReq.original_session_id);
+
+        // GCAL: create a new event at the new time
+        const stuInfo = await fetchStudentInfo(origSession.student_name);
+        const title = formatEventTitle({
+          studentName: origSession.student_name,
+          englishName: stuInfo.english_name,
+          studentType: stuInfo.student_type,
+        });
+        const newEventId = await createCalendarEvent({
+          title,
+          startISO: newScheduledAt,
+          meetLink: stuInfo.meet_link || origSession.meet_link,
+          description: `보강 (강사: ${origSession.instructor_name})`,
+        });
 
         // 2) Create new makeup session at newScheduledAt
         await sb.from("class_sessions").insert({
@@ -101,6 +130,7 @@ serve(async (req) => {
           topic: origSession.topic || null,
           remarks: origSession.remarks || null,
           reschedule_origin_dates: [origDateStr],
+          gcal_event_id: newEventId,
         });
 
         // Re-open original time slot for other students (only if not already exists)
@@ -130,7 +160,7 @@ serve(async (req) => {
     } else if (makeupReq.request_type === "extra") {
         // Create new session
         const { data: studentRec } = await sb.from("instructor_students")
-          .select("level, meet_link, group_students")
+          .select("level, meet_link, group_students, english_name, student_type")
           .eq("student_name", makeupReq.student_name)
           .eq("status", "active")
           .maybeSingle();
@@ -150,6 +180,19 @@ serve(async (req) => {
           }
         }
 
+        // GCAL: create event for the new extra session
+        const title = formatEventTitle({
+          studentName: makeupReq.student_name,
+          englishName: studentRec?.english_name || null,
+          studentType: studentRec?.student_type || "regular",
+        });
+        const newEventId = await createCalendarEvent({
+          title,
+          startISO: newScheduledAt,
+          meetLink: studentRec?.meet_link || null,
+          description: `보강 (강사: ${makeupReq.instructor_name})`,
+        });
+
         await sb.from("class_sessions").insert({
           student_name: makeupReq.student_name,
           instructor_name: makeupReq.instructor_name,
@@ -162,11 +205,11 @@ serve(async (req) => {
           notes: transferNotes,
           topic: transferTopic,
           remarks: transferRemarks,
+          gcal_event_id: newEventId,
         });
 
         // Clear notes/topic from original cancelled session (moved, not copied)
         if (makeupReq.original_session_id && (transferNotes || transferTopic)) {
-          // Use direct SQL-like approach: set notes to empty to avoid trigger blocking null
           await sb.from("class_sessions").update({
             notes: null,
             topic: null,
@@ -222,19 +265,34 @@ serve(async (req) => {
       const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
 
       if (makeupReq.request_type === "reschedule" && makeupReq.original_session_id) {
-        // NEW MODEL: original session was kept as a sick marker; a separate makeup
-        // session was created at newScheduledAt. To cancel: delete the makeup session
-        // and clear the sick marker on the original.
         if (!makeupReq.original_scheduled_at) throw new Error("원래 일정 정보가 없습니다.");
 
-        // Delete the makeup session created at newScheduledAt for this student
-        // (try to match by scheduled_at + student_name; only delete one row)
+        // Find the makeup session
         const { data: makeupSessions } = await sb
           .from("class_sessions")
-          .select("id, notes, topic, remarks")
+          .select("id, notes, topic, remarks, gcal_event_id, instructor_name, student_name, meet_link")
           .eq("student_name", makeupReq.student_name)
           .eq("scheduled_at", newScheduledAt);
         const makeupRow = makeupSessions && makeupSessions.length > 0 ? makeupSessions[0] : null;
+
+        // GCAL: delete the makeup event
+        if (makeupRow?.gcal_event_id) {
+          await deleteCalendarEvent(makeupRow.gcal_event_id);
+        }
+
+        // GCAL: re-create the original event (since we deleted it on approve)
+        const stuInfo = await fetchStudentInfo(makeupReq.student_name);
+        const title = formatEventTitle({
+          studentName: makeupReq.student_name,
+          englishName: stuInfo.english_name,
+          studentType: stuInfo.student_type,
+        });
+        const restoredEventId = await createCalendarEvent({
+          title,
+          startISO: makeupReq.original_scheduled_at,
+          meetLink: stuInfo.meet_link || makeupRow?.meet_link || null,
+          description: `정규 수업 (강사: ${makeupReq.instructor_name})`,
+        });
 
         // Restore notes/topic/remarks back to the original session before deletion
         if (makeupRow) {
@@ -245,6 +303,7 @@ serve(async (req) => {
             notes: makeupRow.notes || null,
             topic: makeupRow.topic || null,
             remarks: makeupRow.remarks || null,
+            gcal_event_id: restoredEventId,
           }).eq("id", makeupReq.original_session_id);
           await sb.from("class_sessions").delete().eq("id", makeupRow.id);
         } else {
@@ -253,10 +312,11 @@ serve(async (req) => {
             cancellation_type: null,
             cancellation_resolution: null,
             ended_at: null,
+            gcal_event_id: restoredEventId,
           }).eq("id", makeupReq.original_session_id);
         }
 
-        // Delete the re-opened original slot (if it exists) — the slot that was created when reschedule was approved
+        // Delete the re-opened original slot (if it exists)
         const origDate = new Date(makeupReq.original_scheduled_at);
         const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
         const origHour = origDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
@@ -269,13 +329,16 @@ serve(async (req) => {
 
       } else if (makeupReq.request_type === "extra") {
         // Delete the extra session that was created
-        // Find session matching student_name + scheduled_at
         const { data: extraSessions } = await sb
           .from("class_sessions")
-          .select("id")
+          .select("id, gcal_event_id")
           .eq("student_name", makeupReq.student_name)
           .eq("scheduled_at", newScheduledAt);
         if (extraSessions && extraSessions.length > 0) {
+          // GCAL: delete the extra event
+          if (extraSessions[0].gcal_event_id) {
+            await deleteCalendarEvent(extraSessions[0].gcal_event_id);
+          }
           await sb.from("class_sessions").delete().eq("id", extraSessions[0].id);
         }
       }
