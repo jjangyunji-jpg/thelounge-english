@@ -79,14 +79,20 @@ export default function AddSessionModal({
 
     const groupStudents = (isData as any)?.group_students || [];
 
-    const { error } = await supabase.from("class_sessions").insert({
-      student_name: selectedStudent,
-      instructor_name: student?.instructor_name || instructorName,
-      level: student?.level || "B1",
-      scheduled_at: scheduledAt,
-      meet_link: student?.meet_link || null,
-      group_students: groupStudents,
-    } as any);
+    const finalInstructorName = student?.instructor_name || instructorName;
+    const finalMeetLink = student?.meet_link || null;
+    const { data: inserted, error } = await supabase
+      .from("class_sessions")
+      .insert({
+        student_name: selectedStudent,
+        instructor_name: finalInstructorName,
+        level: student?.level || "B1",
+        scheduled_at: scheduledAt,
+        meet_link: finalMeetLink,
+        group_students: groupStudents,
+      } as any)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       toast({ title: "추가 실패", description: error.message, variant: "destructive" });
@@ -99,6 +105,22 @@ export default function AddSessionModal({
         .eq("slot_date", date)
         .eq("slot_time", slotTime)
         .eq("status", "open");
+
+      // Best-effort: create matching Google Calendar event
+      try {
+        await supabase.functions.invoke("sync-calendar-event", {
+          body: {
+            action: "create",
+            session_id: (inserted as { id?: string } | null)?.id,
+            instructor_name: finalInstructorName,
+            student_name: selectedStudent,
+            scheduled_at: scheduledAt,
+            meet_link: finalMeetLink,
+          },
+        });
+      } catch (e) {
+        console.error("[AddSessionModal] calendar sync failed", e);
+      }
 
       toast({ title: "수업이 추가되었습니다 ✓" });
       onAdded();
