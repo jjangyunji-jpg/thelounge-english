@@ -47,6 +47,7 @@ Use student_name as primary ID for sync; apply atomic updates on makeup slots.
 - [Homework Review Edit](mem://features/homework/review-and-edit) — Minimal diff correction, friendly YouTube comment tone
 - [Scheduling Logic](mem://features/scheduling/logic) — 6 cancel types, makeup linkage, session transfer, hidden logic
 - [Makeup Period Boundary](mem://features/scheduling/makeup-period-boundary) — Reschedule/makeup must stay within original session's monthly schedule_period
+- [Google Calendar Sync](mem://features/scheduling/google-calendar-sync) — 보강 승인/취소 시 관리자 Google Calendar에 자동 이벤트 생성·삭제, 제목 규칙 개인_/기업_
 - [Instructor Transitions](mem://features/user-management/instructor-transitions) — Scheduled transfer, read-only past notes, future gen sync
 - [Access Control Dashboards](mem://features/dashboards/access-control) — View modes for managers/instructors, browser history routing
 - [Student Dashboard System](mem://features/student-dashboard/system-and-ui) — Combine schedules on transfer, user_id to name fallback

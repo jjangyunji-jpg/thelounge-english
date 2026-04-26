@@ -1,0 +1,1 @@
+ALTER TABLE public.class_sessions ADD COLUMN IF NOT EXISTS gcal_event_id text;
