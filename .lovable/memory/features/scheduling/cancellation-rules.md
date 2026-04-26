@@ -25,5 +25,13 @@ type: feature
 
 원본을 삭제하지 않으므로 가상 세션/캘린더 정합성 보존. Google Calendar 이벤트는 `delete-calendar-event-by-search`로 best-effort 삭제.
 
+## 취소 복원(Undo Cancellation)
+
+강사 대시보드의 취소된 세션 카드에 **복원 버튼**(RotateCcw 아이콘)이 항상 노출됩니다(시간 제약 없음). `handleRestoreCancellation` 헬퍼가 단일 진입점:
+
+1. 원본 세션의 `cancellation_type`, `cancellation_resolution`, `is_carryover`, `carryover_direction`, `carryover_reason` 모두 null/false 처리.
+2. 원본이 `is_carryover=true, carryover_direction='next'`였다면(이월 처리), 같은 학생의 미래 `carryover_direction='prev'` 미러 세션을 자동 탐색하여 **시작 안 했고 노트가 없는 경우에만** DB와 캘린더에서 함께 삭제. 미러가 손상되면 자동 삭제 안 됨(수동 처리).
+3. `sync-calendar-event` 함수의 `create` 액션으로 원본 캘린더 이벤트 best-effort 복원.
+
 ## 배지 표시
 SessionSidebar(강사 클래스룸 + 학생 /my/classnote)에서 `cancellation_type` 배지와 `cancellation_resolution` 배지를 함께 표시. 색상 구분(노쇼=warning, 당일취소·취소=destructive, 보강=gold, 그 외=muted).
