@@ -2,7 +2,9 @@
 // Uses Lovable connector gateway with the developer's connected Google Calendar.
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
-const CALENDAR_ID = "primary";
+// Default calendar (Reina's "Organizer" workspace calendar) used when no
+// instructor-specific mapping is configured.
+const DEFAULT_CALENDAR_ID = "reina@thelounge-english.co.kr";
 
 function authHeaders() {
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
@@ -22,11 +24,16 @@ export interface CreateEventInput {
   durationMinutes?: number;
   description?: string;
   meetLink?: string | null;
+  calendarId?: string | null; // override target calendar
+}
+
+function pickCalendarId(calendarId?: string | null): string {
+  return calendarId && calendarId.trim().length > 0 ? calendarId : DEFAULT_CALENDAR_ID;
 }
 
 export async function createCalendarEvent(input: CreateEventInput): Promise<string | null> {
   try {
-    const duration = input.durationMinutes ?? 50;
+    const duration = input.durationMinutes ?? 60;
     const start = new Date(input.startISO);
     const end = new Date(start.getTime() + duration * 60 * 1000);
 
@@ -42,7 +49,8 @@ export async function createCalendarEvent(input: CreateEventInput): Promise<stri
       end: { dateTime: end.toISOString(), timeZone: "Asia/Seoul" },
     };
 
-    const res = await fetch(`${GATEWAY_URL}/calendars/${encodeURIComponent(CALENDAR_ID)}/events`, {
+    const calId = pickCalendarId(input.calendarId);
+    const res = await fetch(`${GATEWAY_URL}/calendars/${encodeURIComponent(calId)}/events`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify(body),
@@ -52,18 +60,27 @@ export async function createCalendarEvent(input: CreateEventInput): Promise<stri
       console.error("[gcal] create failed", res.status, JSON.stringify(data));
       return null;
     }
-    return data.id || null;
+    // Encode calendar id into the returned token so we can later delete from
+    // the right calendar without another DB column. Format: "<calId>::<eventId>"
+    return `${calId}::${data.id}`;
   } catch (e) {
     console.error("[gcal] create error", e);
     return null;
   }
 }
 
-export async function deleteCalendarEvent(eventId: string | null | undefined): Promise<void> {
-  if (!eventId) return;
+export async function deleteCalendarEvent(eventToken: string | null | undefined): Promise<void> {
+  if (!eventToken) return;
   try {
+    let calId = DEFAULT_CALENDAR_ID;
+    let eventId = eventToken;
+    const idx = eventToken.indexOf("::");
+    if (idx > 0) {
+      calId = eventToken.slice(0, idx);
+      eventId = eventToken.slice(idx + 2);
+    }
     const res = await fetch(
-      `${GATEWAY_URL}/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+      `${GATEWAY_URL}/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(eventId)}`,
       { method: "DELETE", headers: authHeaders() }
     );
     if (!res.ok && res.status !== 404 && res.status !== 410) {

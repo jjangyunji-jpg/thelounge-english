@@ -69,6 +69,16 @@ serve(async (req) => {
       };
     };
 
+    // Helper: lookup which Google Calendar to write to for an instructor.
+    // Returns null if no mapping exists (gcal helper falls back to default).
+    const fetchInstructorCalendarId = async (instructorName: string): Promise<string | null> => {
+      const { data } = await sb.from("instructor_calendar_mapping")
+        .select("gcal_calendar_id")
+        .eq("instructor_name", instructorName)
+        .maybeSingle();
+      return data?.gcal_calendar_id || null;
+    };
+
     if (action === "approve") {
       const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
 
@@ -116,6 +126,7 @@ serve(async (req) => {
           startISO: newScheduledAt,
           meetLink: stuInfo.meet_link || origSession.meet_link,
           description: `보강 (강사: ${origSession.instructor_name})`,
+          calendarId: await fetchInstructorCalendarId(origSession.instructor_name),
         });
 
         // 2) Create new makeup session at newScheduledAt
@@ -191,6 +202,7 @@ serve(async (req) => {
           startISO: newScheduledAt,
           meetLink: studentRec?.meet_link || null,
           description: `보강 (강사: ${makeupReq.instructor_name})`,
+          calendarId: await fetchInstructorCalendarId(makeupReq.instructor_name),
         });
 
         await sb.from("class_sessions").insert({
@@ -292,6 +304,7 @@ serve(async (req) => {
           startISO: makeupReq.original_scheduled_at,
           meetLink: stuInfo.meet_link || makeupRow?.meet_link || null,
           description: `정규 수업 (강사: ${makeupReq.instructor_name})`,
+          calendarId: await fetchInstructorCalendarId(makeupReq.instructor_name),
         });
 
         // Restore notes/topic/remarks back to the original session before deletion

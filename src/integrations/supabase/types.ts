@@ -752,6 +752,30 @@ export type Database = {
           },
         ]
       }
+      instructor_calendar_mapping: {
+        Row: {
+          created_at: string
+          gcal_calendar_id: string
+          id: string
+          instructor_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gcal_calendar_id: string
+          id?: string
+          instructor_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gcal_calendar_id?: string
+          id?: string
+          instructor_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       instructor_student_feedback: {
         Row: {
           applied_goals: boolean
