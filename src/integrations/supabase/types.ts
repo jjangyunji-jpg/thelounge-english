@@ -956,6 +956,7 @@ export type Database = {
           deactivation_reason: string | null
           education: string | null
           email: string | null
+          english_name: string | null
           gender: string | null
           id: string
           join_date: string | null
@@ -976,6 +977,7 @@ export type Database = {
           deactivation_reason?: string | null
           education?: string | null
           email?: string | null
+          english_name?: string | null
           gender?: string | null
           id?: string
           join_date?: string | null
@@ -996,6 +998,7 @@ export type Database = {
           deactivation_reason?: string | null
           education?: string | null
           email?: string | null
+          english_name?: string | null
           gender?: string | null
           id?: string
           join_date?: string | null
