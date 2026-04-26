@@ -3939,36 +3939,15 @@ export default function InstructorDashboard() {
             const updates: any = { cancellation_type: type, cancellation_resolution: resolution };
             if (remark) updates.remarks = remark;
 
-            // Carry-over (이월): move the session to the next month on the same
-            // weekday/time so that the count report shows it as "이월(전월)" in
-            // the next month and decrements the current month accordingly.
+            // Carry-over (이월): mark the original session in the current month
+            // as "next" (당월→다음달 이월) AND create a mirror session in the
+            // next month marked as "prev" so the count report shows:
+            //   • current month "이월(당월)" +1
+            //   • next month "이월(전월)" +1
             if (resolution === "carry_over") {
-              const orig = new Date(sess.scheduled_at);
-              const next = new Date(orig.getTime());
-              const origMonthKey = orig.getUTCFullYear() * 12 + orig.getUTCMonth();
-              // Advance by 7-day increments until we are in a later calendar
-              // month AND the slot does not collide with an existing session
-              // for this student.
-              const collidesWith = (iso: string) =>
-                sessions.some(
-                  (x) =>
-                    x.id !== sess.id &&
-                    x.student_name === sess.student_name &&
-                    x.scheduled_at === iso,
-                );
-              while (true) {
-                next.setUTCDate(next.getUTCDate() + 7);
-                const isLaterMonth =
-                  next.getUTCFullYear() * 12 + next.getUTCMonth() > origMonthKey;
-                if (isLaterMonth && !collidesWith(next.toISOString())) break;
-                // Safety stop after ~2 months
-                if (next.getTime() - orig.getTime() > 70 * 24 * 60 * 60 * 1000) break;
-              }
-              updates.scheduled_at = next.toISOString();
               updates.is_carryover = true;
-              updates.carryover_direction = "prev";
+              updates.carryover_direction = "next";
               updates.carryover_reason = type;
-              updates.cancellation_type = null;
             }
 
             const { error } = await supabase
@@ -3977,26 +3956,68 @@ export default function InstructorDashboard() {
               .eq("id", sess.id);
             if (error) {
               toast({ title: "취소 처리 실패", description: error.message, variant: "destructive" });
-            } else {
-              toast({
-                title: resolution === "carry_over"
-                  ? "다음달로 이월되었습니다"
-                  : "수업이 취소 처리되었습니다",
-              });
-              // Best-effort: remove matching Google Calendar event (manual entries)
-              try {
-                await supabase.functions.invoke("delete-calendar-event-by-search", {
-                  body: {
-                    instructor_name: sess.instructor_name,
-                    student_name: sess.student_name,
-                    scheduled_at: sess.scheduled_at,
-                  },
-                });
-              } catch (e) {
-                console.warn("[gcal cleanup] skipped", e);
-              }
-              if (instructor) loadData(instructor);
+              setCancellationModal(null);
+              return;
             }
+
+            // Create mirror session in next month for carry-over
+            if (resolution === "carry_over") {
+              const orig = new Date(sess.scheduled_at);
+              const next = new Date(orig.getTime());
+              const origMonthKey = orig.getUTCFullYear() * 12 + orig.getUTCMonth();
+              const collidesWith = (iso: string) =>
+                sessions.some(
+                  (x) =>
+                    x.student_name === sess.student_name &&
+                    x.scheduled_at === iso,
+                );
+              while (true) {
+                next.setUTCDate(next.getUTCDate() + 7);
+                const isLaterMonth =
+                  next.getUTCFullYear() * 12 + next.getUTCMonth() > origMonthKey;
+                if (isLaterMonth && !collidesWith(next.toISOString())) break;
+                if (next.getTime() - orig.getTime() > 70 * 24 * 60 * 60 * 1000) break;
+              }
+              const { error: mirrorErr } = await supabase
+                .from("class_sessions")
+                .insert({
+                  student_name: sess.student_name,
+                  instructor_name: sess.instructor_name,
+                  scheduled_at: next.toISOString(),
+                  level: (sess as any).level || "B1",
+                  group_students: (sess as any).group_students || [],
+                  is_carryover: true,
+                  carryover_direction: "prev",
+                  carryover_reason: type,
+                });
+              if (mirrorErr) {
+                console.error("[carry-over mirror] failed", mirrorErr);
+                toast({
+                  title: "이월 미러 세션 생성 실패",
+                  description: mirrorErr.message,
+                  variant: "destructive",
+                });
+              }
+            }
+
+            toast({
+              title: resolution === "carry_over"
+                ? "다음달로 이월 처리되었습니다"
+                : "수업이 취소 처리되었습니다",
+            });
+            // Best-effort: remove matching Google Calendar event (manual entries)
+            try {
+              await supabase.functions.invoke("delete-calendar-event-by-search", {
+                body: {
+                  instructor_name: sess.instructor_name,
+                  student_name: sess.student_name,
+                  scheduled_at: sess.scheduled_at,
+                },
+              });
+            } catch (e) {
+              console.warn("[gcal cleanup] skipped", e);
+            }
+            if (instructor) loadData(instructor);
             setCancellationModal(null);
           }}
         />
