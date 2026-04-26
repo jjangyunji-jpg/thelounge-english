@@ -50,7 +50,9 @@ export async function createCalendarEvent(input: CreateEventInput): Promise<stri
     };
 
     const calId = pickCalendarId(input.calendarId);
-    const res = await fetch(`${GATEWAY_URL}/calendars/${encodeURIComponent(calId)}/events`, {
+    // NOTE: do NOT encodeURIComponent the calendar ID — the connector gateway
+    // returns 404 when "@" is encoded as "%40". Pass the raw ID instead.
+    const res = await fetch(`${GATEWAY_URL}/calendars/${calId}/events`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify(body),
@@ -80,7 +82,7 @@ export async function deleteCalendarEvent(eventToken: string | null | undefined)
       eventId = eventToken.slice(idx + 2);
     }
     const res = await fetch(
-      `${GATEWAY_URL}/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(eventId)}`,
+      `${GATEWAY_URL}/calendars/${calId}/events/${eventId}`,
       { method: "DELETE", headers: authHeaders() }
     );
     if (!res.ok && res.status !== 404 && res.status !== 410) {
