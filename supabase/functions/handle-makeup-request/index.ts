@@ -197,6 +197,7 @@ serve(async (req) => {
           studentName: makeupReq.student_name,
           englishName: studentRec?.english_name || null,
           studentType: studentRec?.student_type || "regular",
+          instructorName: makeupReq.instructor_name,
         });
         const newEventId = await createCalendarEvent({
           title,
