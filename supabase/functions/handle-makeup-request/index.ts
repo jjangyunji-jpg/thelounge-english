@@ -69,14 +69,17 @@ serve(async (req) => {
       };
     };
 
-    // Helper: lookup which Google Calendar to write to for an instructor.
-    // Returns null if no mapping exists (gcal helper falls back to default).
-    const fetchInstructorCalendarId = async (instructorName: string): Promise<string | null> => {
+    // Helper: lookup which Google Calendar to write to for an instructor,
+    // and an optional display_name (e.g. "Reina") to use in event titles.
+    const fetchInstructorMapping = async (instructorName: string): Promise<{ calendarId: string | null; displayName: string | null }> => {
       const { data } = await sb.from("instructor_calendar_mapping")
-        .select("gcal_calendar_id")
+        .select("gcal_calendar_id, display_name")
         .eq("instructor_name", instructorName)
         .maybeSingle();
-      return data?.gcal_calendar_id || null;
+      return {
+        calendarId: data?.gcal_calendar_id || null,
+        displayName: data?.display_name || null,
+      };
     };
 
     if (action === "approve") {
