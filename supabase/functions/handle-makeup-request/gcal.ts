@@ -93,19 +93,18 @@ export async function deleteCalendarEvent(eventToken: string | null | undefined)
 }
 
 /**
- * Format event title:
- *  - corporate: "기업_홍길동"
- *  - regular:   "개인_홍길동" or "개인_홍길동 / John" (if english_name)
+ * Format event title for makeup sessions:
+ *  - "강사명_학생명 (보강)"
+ *  - english_name 있으면: "강사명_학생명 / English (보강)"
  */
 export function formatEventTitle(opts: {
   studentName: string;
   englishName?: string | null;
-  studentType?: string | null;
+  studentType?: string | null; // kept for backward compat (unused)
+  instructorName: string;
 }): string {
-  const isCorporate = opts.studentType === "corporate";
-  const prefix = isCorporate ? "기업" : "개인";
   const namePart = opts.englishName
     ? `${opts.studentName} / ${opts.englishName}`
     : opts.studentName;
-  return `${prefix}_${namePart}`;
+  return `${opts.instructorName}_${namePart} (보강)`;
 }

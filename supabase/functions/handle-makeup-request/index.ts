@@ -120,6 +120,7 @@ serve(async (req) => {
           studentName: origSession.student_name,
           englishName: stuInfo.english_name,
           studentType: stuInfo.student_type,
+          instructorName: origSession.instructor_name,
         });
         const newEventId = await createCalendarEvent({
           title,
@@ -196,6 +197,7 @@ serve(async (req) => {
           studentName: makeupReq.student_name,
           englishName: studentRec?.english_name || null,
           studentType: studentRec?.student_type || "regular",
+          instructorName: makeupReq.instructor_name,
         });
         const newEventId = await createCalendarEvent({
           title,
@@ -298,6 +300,7 @@ serve(async (req) => {
           studentName: makeupReq.student_name,
           englishName: stuInfo.english_name,
           studentType: stuInfo.student_type,
+          instructorName: makeupReq.instructor_name,
         });
         const restoredEventId = await createCalendarEvent({
           title,

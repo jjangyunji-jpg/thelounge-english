@@ -15,7 +15,9 @@ type: feature
 - 매핑 테이블: `public.instructor_calendar_mapping(instructor_name UNIQUE, gcal_calendar_id)`
 - `handle-makeup-request`가 강사명으로 매핑을 조회해 `createCalendarEvent({ calendarId })`로 전달
 - 매핑이 없으면 기본 캘린더 `reina@thelounge-english.co.kr` (Organizer)로 폴백
-- 초기 매핑: `Reina → Class-Reina` (`c_b613a8fa91...@group.calendar.google.com`)
+- 초기 매핑:
+  - `Reina → Class-Reina` (`c_b613a8fa91...@group.calendar.google.com`)
+  - `장리원 → Class-Reina` (동일 캘린더 사용)
 - 새 강사 추가는 매니저가 매핑 테이블에 row 추가 (Lovable에서 직접 INSERT 또는 추후 어드민 UI)
 
 ## DB
@@ -24,8 +26,8 @@ type: feature
   - 레거시(`::` 없는 값)는 기본 캘린더에서 삭제 시도
 
 ## 이벤트 제목 규칙 (`gcal.ts` formatEventTitle)
-- 정규: `개인_홍길동` 또는 `개인_홍길동 / English`
-- 기업(`instructor_students.student_type='corporate'`): `기업_홍길동`
+- 보강: `강사명_학생명 (보강)` 또는 `강사명_학생명 / English (보강)`
+- 예: `Reina_장현민 (보강)`
 
 ## 동작 (action별)
 ### approve · reschedule
