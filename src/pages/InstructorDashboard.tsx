@@ -101,6 +101,7 @@ interface ClassSession {
   reschedule_origin_dates?: string[];
   cancellation_type?: CancellationType | null;
   cancellation_resolution?: CancellationResolution | null;
+  gcal_event_id?: string | null;
 }
 
 interface HomeworkAssignment {
@@ -1302,6 +1303,21 @@ function RescheduleModal({
         .eq("slot_time", newSlotTime)
         .eq("status", "open");
 
+      // Best-effort: move the calendar event to the new time
+      try {
+        await supabase.functions.invoke("sync-calendar-event", {
+          body: {
+            action: "move",
+            session_id: session.id,
+            instructor_name: session.instructor_name,
+            student_name: session.student_name,
+            old_scheduled_at: session.scheduled_at,
+            new_scheduled_at: newScheduled,
+            gcal_event_id: session.gcal_event_id,
+          },
+        });
+      } catch (e) { console.warn("[gcal move] skipped", e); }
+
       toast({ title: "수업 일정이 변경되었습니다 ✓" });
       onSaved();
       onClose();
@@ -2277,6 +2293,20 @@ export default function InstructorDashboard() {
                                       } else {
                                         toast({ title: "취소 상태가 복원되었습니다" });
                                         setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null } : sess));
+                                        // Best-effort: re-create the calendar event that was removed on cancel
+                                        try {
+                                          await supabase.functions.invoke("sync-calendar-event", {
+                                            body: {
+                                              action: "create",
+                                              session_id: s.id,
+                                              instructor_name: s.instructor_name,
+                                              student_name: s.student_name,
+                                              scheduled_at: s.scheduled_at,
+                                              meet_link: s.meet_link,
+                                              gcal_event_id: s.gcal_event_id,
+                                            },
+                                          });
+                                        } catch (e) { console.warn("[gcal restore] skipped", e); }
                                       }
                                     }}
                                   >
@@ -2309,6 +2339,18 @@ export default function InstructorDashboard() {
                                   const { error } = await supabase.from("class_sessions").delete().eq("id", s.id);
                                   if (error) { toast({ title: "삭제 실패", description: error.message, variant: "destructive" }); return; }
                                   setSessions(prev => prev.filter(x => x.id !== s.id));
+                                  // Best-effort: remove the linked Google Calendar event
+                                  try {
+                                    await supabase.functions.invoke("sync-calendar-event", {
+                                      body: {
+                                        action: "delete",
+                                        instructor_name: s.instructor_name,
+                                        student_name: s.student_name,
+                                        scheduled_at: s.scheduled_at,
+                                        gcal_event_id: s.gcal_event_id,
+                                      },
+                                    });
+                                  } catch (e) { console.warn("[gcal cleanup] skipped", e); }
                                   toast({ title: "수업 삭제 완료" });
                                 }}
                                 className="text-[10px] text-muted-foreground hover:text-destructive px-1.5 py-1 rounded hover:bg-destructive/10"
@@ -2615,6 +2657,19 @@ export default function InstructorDashboard() {
                                                   } else {
                                                     toast({ title: "취소 상태가 복원되었습니다" });
                                                     setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null } : sess));
+                                                    try {
+                                                      await supabase.functions.invoke("sync-calendar-event", {
+                                                        body: {
+                                                          action: "create",
+                                                          session_id: s.id,
+                                                          instructor_name: s.instructor_name,
+                                                          student_name: s.student_name,
+                                                          scheduled_at: s.scheduled_at,
+                                                          meet_link: s.meet_link,
+                                                          gcal_event_id: s.gcal_event_id,
+                                                        },
+                                                      });
+                                                    } catch (e) { console.warn("[gcal restore] skipped", e); }
                                                   }
                                                 }}
                                               >
