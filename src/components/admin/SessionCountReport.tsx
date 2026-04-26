@@ -269,9 +269,10 @@ export default function SessionCountReport() {
       const prevRows = (results[3].data || []) as { student_name: string; is_carryover: boolean; carryover_direction: "prev" | "next" | null; cancellation_type: string | null; cancellation_resolution: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[];
       prevRows.forEach(r => {
         // Carryover deduction (전월에서 이번 달로 차감되는 케이스):
-        // 1) instructor_cancel: 강사 사정 취소는 다음달 보강 보장 → 차감
-        // 2) sick / instructor_cancel + carry_over resolution: 명시적 다음달 이월 → 차감
-        // 3) carryover_direction = 'next': 전월에 명시적으로 '다음달 이월'로 표시한 세션 → 차감
+        // 1) instructor_cancel: 강사 사정 취소는 자동으로 다음달 보강 보장 → 차감
+        // 2) sick + carry_over resolution: 병결을 다음달로 이월 → 차감
+        // 3) advance_cancel + carry_over resolution: 사전취소를 다음달로 이월 → 차감
+        // 4) carryover_direction = 'next': 명시적 '다음달 이월' 마크 → 차감 (legacy)
         if (r.cancellation_type === "instructor_cancel") {
           prevMap.set(r.student_name, (prevMap.get(r.student_name) || 0) + 1);
         } else if (r.cancellation_resolution === "carry_over") {
