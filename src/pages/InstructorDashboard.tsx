@@ -3945,19 +3945,29 @@ export default function InstructorDashboard() {
             if (resolution === "carry_over") {
               const orig = new Date(sess.scheduled_at);
               const next = new Date(orig.getTime());
-              // Advance by 7-day increments until we land in a later calendar
-              // month (works for all month lengths and weekday alignment).
               const origMonthKey = orig.getUTCFullYear() * 12 + orig.getUTCMonth();
-              while (next.getUTCFullYear() * 12 + next.getUTCMonth() <= origMonthKey) {
+              // Advance by 7-day increments until we are in a later calendar
+              // month AND the slot does not collide with an existing session
+              // for this student.
+              const collidesWith = (iso: string) =>
+                sessions.some(
+                  (x) =>
+                    x.id !== sess.id &&
+                    x.student_name === sess.student_name &&
+                    x.scheduled_at === iso,
+                );
+              while (true) {
                 next.setUTCDate(next.getUTCDate() + 7);
+                const isLaterMonth =
+                  next.getUTCFullYear() * 12 + next.getUTCMonth() > origMonthKey;
+                if (isLaterMonth && !collidesWith(next.toISOString())) break;
+                // Safety stop after ~2 months
+                if (next.getTime() - orig.getTime() > 70 * 24 * 60 * 60 * 1000) break;
               }
               updates.scheduled_at = next.toISOString();
               updates.is_carryover = true;
-              updates.carryover_direction = "prev"; // viewed from next month
+              updates.carryover_direction = "prev";
               updates.carryover_reason = type;
-              // Cleared so that the moved session appears as a fresh upcoming
-              // class in the next month (not visually struck-through), while
-              // retaining cancellation_resolution='carry_over' for audit/badge.
               updates.cancellation_type = null;
             }
 
