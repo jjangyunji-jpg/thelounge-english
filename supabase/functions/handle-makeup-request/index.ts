@@ -197,18 +197,19 @@ serve(async (req) => {
         }
 
         // GCAL: create event for the new extra session
+        const instMapping = await fetchInstructorMapping(makeupReq.instructor_name);
         const title = formatEventTitle({
           studentName: makeupReq.student_name,
           englishName: studentRec?.english_name || null,
           studentType: studentRec?.student_type || "regular",
-          instructorName: makeupReq.instructor_name,
+          instructorName: instMapping.displayName || makeupReq.instructor_name,
         });
         const newEventId = await createCalendarEvent({
           title,
           startISO: newScheduledAt,
           meetLink: studentRec?.meet_link || null,
           description: `보강 (강사: ${makeupReq.instructor_name})`,
-          calendarId: await fetchInstructorCalendarId(makeupReq.instructor_name),
+          calendarId: instMapping.calendarId,
         });
 
         await sb.from("class_sessions").insert({
