@@ -69,6 +69,16 @@ serve(async (req) => {
       };
     };
 
+    // Helper: lookup which Google Calendar to write to for an instructor.
+    // Returns null if no mapping exists (gcal helper falls back to default).
+    const fetchInstructorCalendarId = async (instructorName: string): Promise<string | null> => {
+      const { data } = await sb.from("instructor_calendar_mapping")
+        .select("gcal_calendar_id")
+        .eq("instructor_name", instructorName)
+        .maybeSingle();
+      return data?.gcal_calendar_id || null;
+    };
+
     if (action === "approve") {
       const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
 
