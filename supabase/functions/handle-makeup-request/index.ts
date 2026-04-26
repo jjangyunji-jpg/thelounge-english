@@ -301,18 +301,19 @@ serve(async (req) => {
 
         // GCAL: re-create the original event (since we deleted it on approve)
         const stuInfo = await fetchStudentInfo(makeupReq.student_name);
+        const instMapping = await fetchInstructorMapping(makeupReq.instructor_name);
         const title = formatEventTitle({
           studentName: makeupReq.student_name,
           englishName: stuInfo.english_name,
           studentType: stuInfo.student_type,
-          instructorName: makeupReq.instructor_name,
+          instructorName: instMapping.displayName || makeupReq.instructor_name,
         });
         const restoredEventId = await createCalendarEvent({
           title,
           startISO: makeupReq.original_scheduled_at,
           meetLink: stuInfo.meet_link || makeupRow?.meet_link || null,
           description: `정규 수업 (강사: ${makeupReq.instructor_name})`,
-          calendarId: await fetchInstructorCalendarId(makeupReq.instructor_name),
+          calendarId: instMapping.calendarId,
         });
 
         // Restore notes/topic/remarks back to the original session before deletion
