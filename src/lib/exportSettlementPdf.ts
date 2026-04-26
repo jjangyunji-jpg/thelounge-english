@@ -61,8 +61,21 @@ export function buildSettlementRows(sessions: Session[], meetings: Meeting[], pe
   sessions.forEach((s) => {
     const d = new Date(s.scheduled_at);
     if (d >= start && d <= end && d <= now) {
-      // Skip cancellation types that don't count for settlement
-      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return;
+      // Skip cancellation types that don't count for settlement at all
+      if (s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return;
+
+      // 당일 취소: 기본급여(11,000원)만 정산에 반영, 보강은 진행되지 않음
+      if (s.cancellation_type === 'student_cancel') {
+        rows.push({
+          date: d,
+          type: "수업",
+          description: `${s.student_name} (${getLevelCategory(s.level)}) [당일 취소]`,
+          durationHours: 1,
+          pay: BASE_PAY,
+        });
+        return;
+      }
+
       const levelRate = LEVEL_RATES[s.level] || 19000;
       const pay = flatRate ? flatRate : (BASE_PAY + levelRate);
       rows.push({

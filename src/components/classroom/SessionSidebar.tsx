@@ -10,7 +10,23 @@ interface SessionItem {
   started_at?: string | null;
   ended_at?: string | null;
   cancellation_type?: string | null;
+  cancellation_resolution?: string | null;
 }
+
+const CANCEL_BADGES: Record<string, { label: string; cls: string }> = {
+  no_show: { label: "노쇼", cls: "bg-warning/15 text-warning" },
+  student_cancel: { label: "당일 취소", cls: "bg-destructive/15 text-destructive" },
+  sick: { label: "병결", cls: "bg-muted text-muted-foreground" },
+  instructor_cancel: { label: "강사 취소", cls: "bg-muted text-muted-foreground" },
+  advance_cancel: { label: "사전 취소", cls: "bg-muted text-muted-foreground" },
+};
+
+const RESOLUTION_BADGES: Record<string, { label: string; cls: string }> = {
+  makeup: { label: "보강", cls: "bg-gold/15 text-gold" },
+  carry_over: { label: "이월", cls: "bg-muted text-muted-foreground" },
+  refund: { label: "환불", cls: "bg-muted text-muted-foreground" },
+  cancel: { label: "취소", cls: "bg-destructive/15 text-destructive" },
+};
 
 interface SessionSidebarProps {
   sessions: SessionItem[];
@@ -130,13 +146,24 @@ export default function SessionSidebar({
           onClick={() => onSelect(s.id)}
           className="w-full text-left"
         >
-          <div className="flex items-center gap-1.5 pr-5">
+          <div className="flex items-center gap-1 pr-5 flex-wrap">
             <p className="text-[11px] font-semibold text-foreground leading-tight">
               {fmtDate(s.scheduled_at)}
             </p>
-            {s.cancellation_type && (
-              <span className="inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold bg-destructive/15 text-destructive leading-relaxed flex-shrink-0">
-                취소
+            {s.cancellation_type && CANCEL_BADGES[s.cancellation_type] && (
+              <span className={cn(
+                "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
+                CANCEL_BADGES[s.cancellation_type].cls
+              )}>
+                {CANCEL_BADGES[s.cancellation_type].label}
+              </span>
+            )}
+            {s.cancellation_resolution && RESOLUTION_BADGES[s.cancellation_resolution] && (
+              <span className={cn(
+                "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
+                RESOLUTION_BADGES[s.cancellation_resolution].cls
+              )}>
+                {RESOLUTION_BADGES[s.cancellation_resolution].label}
               </span>
             )}
           </div>

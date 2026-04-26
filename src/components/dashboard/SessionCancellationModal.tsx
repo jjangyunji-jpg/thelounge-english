@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 export type CancellationType = "student_cancel" | "no_show" | "sick" | "instructor_cancel" | "advance_cancel";
-export type CancellationResolution = "makeup" | "carry_over" | "refund";
+export type CancellationResolution = "makeup" | "carry_over" | "refund" | "cancel";
 
 interface CancellationOption {
   type: CancellationType;
@@ -29,7 +29,7 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
     type: "no_show",
     label: "노쇼",
-    description: "수강생이 무단 불참. 정산에 반영됩니다.",
+    description: "수업 전 2시간 ~ 수업 후 20분까지 미참여(병결 제외)한 경우, 수업수당으로 정산에 반영되며 보강은 진행되지 않습니다.",
     icon: UserX,
     settlement: true,
     needsResolution: false,
@@ -37,15 +37,15 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
     type: "student_cancel",
     label: "당일 취소",
-    description: "48시간 이내 취소. 보강 불가, 정산 미반영.",
+    description: "수업 전 2시간 ~ 24시간 이내 취소 시 기본급여(11,000원)로 정산에 반영되며, 보강은 진행되지 않습니다.",
     icon: BanIcon,
-    settlement: false,
+    settlement: true,
     needsResolution: false,
   },
   {
     type: "sick",
     label: "병결",
-    description: "수강생 또는 강사 병가. 보강/이월/환불 선택.",
+    description: "당일 수강생의 병가로 보강 / 이월 / 환불 중 선택하며, 보강이 진행된 경우 수업 수당이 지급됩니다.",
     icon: Thermometer,
     settlement: false,
     needsResolution: true,
@@ -53,7 +53,7 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
     type: "instructor_cancel",
     label: "강사 취소",
-    description: "강사 사정으로 취소. 보강/이월/환불 선택.",
+    description: "강사의 사정으로 인해 갑자기 취소된 경우 보강 / 이월 / 환불 중 선택하며, 보강이 진행된 경우 수업 수당이 지급됩니다.",
     icon: Clock,
     settlement: false,
     needsResolution: true,
@@ -61,18 +61,23 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
     type: "advance_cancel",
     label: "사전 취소",
-    description: "48시간 전 취소. 보강으로 자동 처리됩니다.",
+    description: "수업 48시간 전에 취소한 경우 보강 / 이월 / 취소 중 선택할 수 있습니다. 취소 시 결제대상 횟수에서 차감됩니다.",
     icon: CalendarOff,
     settlement: false,
-    needsResolution: false,
-    fixedResolution: "makeup",
+    needsResolution: true,
   },
 ];
 
-const RESOLUTION_OPTIONS: { value: CancellationResolution; label: string; description: string }[] = [
+const RESOLUTION_OPTIONS_DEFAULT: { value: CancellationResolution; label: string; description: string }[] = [
   { value: "makeup", label: "보강", description: "보강 수업을 진행합니다" },
   { value: "carry_over", label: "다음달 이월", description: "다음달로 수업을 이월합니다" },
   { value: "refund", label: "환불", description: "해당 수업료를 환불합니다" },
+];
+
+const RESOLUTION_OPTIONS_ADVANCE: { value: CancellationResolution; label: string; description: string }[] = [
+  { value: "makeup", label: "보강", description: "보강 수업을 진행합니다" },
+  { value: "carry_over", label: "다음달 이월", description: "다음달로 수업을 이월합니다" },
+  { value: "cancel", label: "취소", description: "결제대상 횟수에서 1회 차감합니다" },
 ];
 
 interface Props {
@@ -191,7 +196,7 @@ export default function SessionCancellationModal({
 
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">후속 조치를 선택하세요</p>
-              {RESOLUTION_OPTIONS.map(opt => (
+              {(selectedType === "advance_cancel" ? RESOLUTION_OPTIONS_ADVANCE : RESOLUTION_OPTIONS_DEFAULT).map(opt => (
                 <button
                   key={opt.value}
                   onClick={() => setResolution(opt.value)}
@@ -216,7 +221,7 @@ export default function SessionCancellationModal({
               ))}
             </div>
 
-            {(resolution === "carry_over" || resolution === "refund") && (
+            {(resolution === "carry_over" || resolution === "refund" || resolution === "cancel") && (
               <Textarea
                 placeholder="메모 (선택사항)"
                 value={remark}
