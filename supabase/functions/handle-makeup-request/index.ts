@@ -119,18 +119,19 @@ serve(async (req) => {
 
         // GCAL: create a new event at the new time
         const stuInfo = await fetchStudentInfo(origSession.student_name);
+        const instMapping = await fetchInstructorMapping(origSession.instructor_name);
         const title = formatEventTitle({
           studentName: origSession.student_name,
           englishName: stuInfo.english_name,
           studentType: stuInfo.student_type,
-          instructorName: origSession.instructor_name,
+          instructorName: instMapping.displayName || origSession.instructor_name,
         });
         const newEventId = await createCalendarEvent({
           title,
           startISO: newScheduledAt,
           meetLink: stuInfo.meet_link || origSession.meet_link,
           description: `보강 (강사: ${origSession.instructor_name})`,
-          calendarId: await fetchInstructorCalendarId(origSession.instructor_name),
+          calendarId: instMapping.calendarId,
         });
 
         // 2) Create new makeup session at newScheduledAt
