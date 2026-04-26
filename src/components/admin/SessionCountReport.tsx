@@ -205,7 +205,7 @@ export default function SessionCountReport() {
     // This ensures sessions moved OUT of the period (e.g., 4/2 → 4/30) are still counted in the original month.
     const sessInRangePromise = supabase
       .from("class_sessions")
-      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover, carryover_direction")
+      .select("student_name, scheduled_at, ended_at, cancellation_type, cancellation_resolution, reschedule_origin_dates, instructor_name, is_carryover, carryover_direction")
       .gte("scheduled_at", startTs)
       .lte("scheduled_at", endTs)
       .then(r => r);
@@ -218,7 +218,7 @@ export default function SessionCountReport() {
     wideEnd.setDate(wideEnd.getDate() + 60);
     const sessOriginPromise = supabase
       .from("class_sessions")
-      .select("student_name, scheduled_at, ended_at, cancellation_type, reschedule_origin_dates, instructor_name, is_carryover, carryover_direction")
+      .select("student_name, scheduled_at, ended_at, cancellation_type, cancellation_resolution, reschedule_origin_dates, instructor_name, is_carryover, carryover_direction")
       .gte("scheduled_at", wideStart.toISOString())
       .lte("scheduled_at", wideEnd.toISOString())
       .not("reschedule_origin_dates", "eq", "{}")
@@ -228,11 +228,11 @@ export default function SessionCountReport() {
     const prevPromise = previousRange
       ? supabase
           .from("class_sessions")
-          .select("student_name, is_carryover, carryover_direction, cancellation_type, ended_at, scheduled_at, reschedule_origin_dates")
+          .select("student_name, is_carryover, carryover_direction, cancellation_type, cancellation_resolution, ended_at, scheduled_at, reschedule_origin_dates")
           .gte("scheduled_at", `${previousRange.start}T00:00:00+09:00`)
           .lte("scheduled_at", `${previousRange.end}T23:59:59+09:00`)
           .then(r => r)
-      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; carryover_direction: "prev" | "next" | null; cancellation_type: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[] });
+      : Promise.resolve({ data: [] as { student_name: string; is_carryover: boolean; carryover_direction: "prev" | "next" | null; cancellation_type: string | null; cancellation_resolution: string | null; ended_at: string | null; scheduled_at: string; reschedule_origin_dates: string[] | null }[] });
 
     const overridePromise = supabase
       .from("billable_overrides")
