@@ -368,6 +368,7 @@ export type Database = {
           carryover_reason: string | null
           created_at: string
           ended_at: string | null
+          gcal_event_id: string | null
           group_students: string[]
           id: string
           instructor_name: string
@@ -390,6 +391,7 @@ export type Database = {
           carryover_reason?: string | null
           created_at?: string
           ended_at?: string | null
+          gcal_event_id?: string | null
           group_students?: string[]
           id?: string
           instructor_name: string
@@ -412,6 +414,7 @@ export type Database = {
           carryover_reason?: string | null
           created_at?: string
           ended_at?: string | null
+          gcal_event_id?: string | null
           group_students?: string[]
           id?: string
           instructor_name?: string
