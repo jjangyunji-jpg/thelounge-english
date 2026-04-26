@@ -317,6 +317,8 @@ export default function SessionCountReport() {
         : (byName.get(student.student_name) || []).filter(s => !isWithinPause(getKstDate(s.scheduled_at), studentPauses));
       let completed = 0, no_show = 0, same_day_cancel = 0, sick = 0;
       let instructor_cancel = 0, advance_cancel = 0, makeup_completed = 0, scheduled = 0, unchecked = 0;
+      // 당월 발생 사전취소 중 '취소(cancel)' 후속조치 → 결제대상 -1
+      let advance_cancel_cancelled = 0;
       let carryover = 0;     // 당월 → 다음달 이월 (next)
       let carryover_in = 0;  // 전월 → 당월 이월 (prev)
       // 보강 카운트: 완료 + 예정된(미완료) 보강 모두 포함
@@ -368,7 +370,10 @@ export default function SessionCountReport() {
           if (!makeupOriginDates.has(kstDateStr)) sick_unmatched++;
         }
         else if (ct === "instructor_cancel") instructor_cancel++;
-        else if (ct === "advance_cancel") advance_cancel++;
+        else if (ct === "advance_cancel") {
+          advance_cancel++;
+          if (s.cancellation_resolution === "cancel") advance_cancel_cancelled++;
+        }
         else if (s.ended_at) {
           completed++;
           if (isMakeup) makeup_completed++;
@@ -391,10 +396,10 @@ export default function SessionCountReport() {
       const prev_carryover_in = prevCarryoverByStudent.get(student.student_name) || 0;
       // 실수업 = 완료 (보강·이월 완료가 모두 합쳐진 값)
       const actual_lessons = completed;
-      // Billable = base monthly count (4) - previous month's carryovers (next + instructor cancel)
+      // Billable = base monthly count (4) - previous month's carryovers - 당월 사전취소 중 '취소' 처리분
       // All students pay for 4 sessions per month by default
       const BASE_MONTHLY_COUNT = 4;
-      const computed_billable = Math.max(0, BASE_MONTHLY_COUNT - prev_carryover_in);
+      const computed_billable = Math.max(0, BASE_MONTHLY_COUNT - prev_carryover_in - advance_cancel_cancelled);
       const overrideVal = billableOverrides.get(student.student_name);
       const billable_overridden = overrideVal !== undefined;
       const billable = billable_overridden ? overrideVal! : computed_billable;
