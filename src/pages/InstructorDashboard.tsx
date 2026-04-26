@@ -3935,31 +3935,89 @@ export default function InstructorDashboard() {
           open={!!cancellationModal}
           onClose={() => setCancellationModal(null)}
           onConfirm={async (type, resolution, remark) => {
+            const sess = cancellationModal.session;
             const updates: any = { cancellation_type: type, cancellation_resolution: resolution };
             if (remark) updates.remarks = remark;
-            const sess = cancellationModal.session;
+
+            // Carry-over (이월): mark the original session in the current month
+            // as "next" (당월→다음달 이월) AND create a mirror session in the
+            // next month marked as "prev" so the count report shows:
+            //   • current month "이월(당월)" +1
+            //   • next month "이월(전월)" +1
+            if (resolution === "carry_over") {
+              updates.is_carryover = true;
+              updates.carryover_direction = "next";
+              updates.carryover_reason = type;
+            }
+
             const { error } = await supabase
               .from("class_sessions")
               .update(updates)
               .eq("id", sess.id);
             if (error) {
               toast({ title: "취소 처리 실패", description: error.message, variant: "destructive" });
-            } else {
-              toast({ title: "수업이 취소 처리되었습니다" });
-              // Best-effort: remove matching Google Calendar event (manual entries)
-              try {
-                await supabase.functions.invoke("delete-calendar-event-by-search", {
-                  body: {
-                    instructor_name: sess.instructor_name,
-                    student_name: sess.student_name,
-                    scheduled_at: sess.scheduled_at,
-                  },
-                });
-              } catch (e) {
-                console.warn("[gcal cleanup] skipped", e);
-              }
-              if (instructor) loadData(instructor);
+              setCancellationModal(null);
+              return;
             }
+
+            // Create mirror session in next month for carry-over
+            if (resolution === "carry_over") {
+              const orig = new Date(sess.scheduled_at);
+              const next = new Date(orig.getTime());
+              const origMonthKey = orig.getUTCFullYear() * 12 + orig.getUTCMonth();
+              const collidesWith = (iso: string) =>
+                sessions.some(
+                  (x) =>
+                    x.student_name === sess.student_name &&
+                    x.scheduled_at === iso,
+                );
+              while (true) {
+                next.setUTCDate(next.getUTCDate() + 7);
+                const isLaterMonth =
+                  next.getUTCFullYear() * 12 + next.getUTCMonth() > origMonthKey;
+                if (isLaterMonth && !collidesWith(next.toISOString())) break;
+                if (next.getTime() - orig.getTime() > 70 * 24 * 60 * 60 * 1000) break;
+              }
+              const { error: mirrorErr } = await supabase
+                .from("class_sessions")
+                .insert({
+                  student_name: sess.student_name,
+                  instructor_name: sess.instructor_name,
+                  scheduled_at: next.toISOString(),
+                  level: (sess as any).level || "B1",
+                  group_students: (sess as any).group_students || [],
+                  is_carryover: true,
+                  carryover_direction: "prev",
+                  carryover_reason: type,
+                });
+              if (mirrorErr) {
+                console.error("[carry-over mirror] failed", mirrorErr);
+                toast({
+                  title: "이월 미러 세션 생성 실패",
+                  description: mirrorErr.message,
+                  variant: "destructive",
+                });
+              }
+            }
+
+            toast({
+              title: resolution === "carry_over"
+                ? "다음달로 이월 처리되었습니다"
+                : "수업이 취소 처리되었습니다",
+            });
+            // Best-effort: remove matching Google Calendar event (manual entries)
+            try {
+              await supabase.functions.invoke("delete-calendar-event-by-search", {
+                body: {
+                  instructor_name: sess.instructor_name,
+                  student_name: sess.student_name,
+                  scheduled_at: sess.scheduled_at,
+                },
+              });
+            } catch (e) {
+              console.warn("[gcal cleanup] skipped", e);
+            }
+            if (instructor) loadData(instructor);
             setCancellationModal(null);
           }}
         />
