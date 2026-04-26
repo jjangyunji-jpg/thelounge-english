@@ -70,8 +70,11 @@ type: feature
 
 호출 위치 (모두 best-effort, 실패 시 콘솔 로그만):
 - 취소 복원 버튼 (대시보드 today 카드 + 학생관리 탭) → `create`
+- AddSessionModal 신규 세션 추가 (강사 대시보드 "수업 추가" 버튼) → `create`
 - RescheduleModal handleSave → `move`
 - 세션 휴지통 버튼 → `delete`
+- 어드민 학생관리 퇴원 처리(graduate) — 미시작·노트 없는 미래 세션 일괄 삭제 시 → `delete`
+- 어드민 학생관리 휴강(pause) 추가 — 휴강 기간 내 미시작·노트 없는 세션 일괄 삭제 시 → `delete`
 
 캘린더 라우팅은 `handle-makeup-request`와 동일 (instructor_calendar_mapping → 기본 Reina 캘린더 폴백).
 

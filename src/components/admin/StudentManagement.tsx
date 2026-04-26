@@ -667,16 +667,34 @@ export default function StudentManagement() {
 
     const { data: futureSessions } = await supabase
       .from("class_sessions")
-      .select("id, started_at, notes, scheduled_at")
+      .select("id, started_at, notes, scheduled_at, instructor_name, gcal_event_id")
       .eq("student_name", withdrawTarget.name)
       .is("started_at", null)
       .gte("scheduled_at", cutoffISO);
 
-    const deletableIds = (futureSessions || [])
-      .filter(s => !s.notes || s.notes === "")
-      .map(s => s.id);
+    const deletable = (futureSessions || []).filter(s => !s.notes || s.notes === "");
+    const deletableIds = deletable.map(s => s.id);
 
     if (deletableIds.length > 0) {
+      // Best-effort: clean up Google Calendar events before DB delete
+      await Promise.all(
+        deletable.map(async (s) => {
+          try {
+            await supabase.functions.invoke("sync-calendar-event", {
+              body: {
+                action: "delete",
+                session_id: s.id,
+                instructor_name: (s as any).instructor_name,
+                student_name: withdrawTarget.name,
+                scheduled_at: s.scheduled_at,
+                gcal_event_id: (s as any).gcal_event_id || null,
+              },
+            });
+          } catch (e) {
+            console.error("[withdraw] calendar sync failed", e);
+          }
+        }),
+      );
       await supabase.from("class_sessions").delete().in("id", deletableIds);
     }
 
@@ -1798,16 +1816,35 @@ export default function StudentManagement() {
                         const pauseEnd = new Date(end + "T23:59:59+09:00");
                         const { data: overlapping } = await supabase
                           .from("class_sessions")
-                          .select("id, scheduled_at, started_at, notes, reschedule_origin_dates")
+                          .select("id, scheduled_at, started_at, notes, reschedule_origin_dates, instructor_name, gcal_event_id")
                           .eq("student_name", student.name)
                           .gte("scheduled_at", pauseStart.toISOString())
                           .lte("scheduled_at", pauseEnd.toISOString());
 
-                        const deletableIds = (overlapping || [])
-                          .filter(s => !s.started_at && (!s.notes || s.notes === ""))
-                          .map(s => s.id);
+                        const deletable = (overlapping || [])
+                          .filter(s => !s.started_at && (!s.notes || s.notes === ""));
+                        const deletableIds = deletable.map(s => s.id);
 
                         if (deletableIds.length > 0) {
+                          // Best-effort: remove Google Calendar events first
+                          await Promise.all(
+                            deletable.map(async (s) => {
+                              try {
+                                await supabase.functions.invoke("sync-calendar-event", {
+                                  body: {
+                                    action: "delete",
+                                    session_id: s.id,
+                                    instructor_name: (s as any).instructor_name,
+                                    student_name: student.name,
+                                    scheduled_at: s.scheduled_at,
+                                    gcal_event_id: (s as any).gcal_event_id || null,
+                                  },
+                                });
+                              } catch (e) {
+                                console.error("[pause] calendar sync failed", e);
+                              }
+                            }),
+                          );
                           await supabase.from("class_sessions").delete().in("id", deletableIds);
                         }
 
