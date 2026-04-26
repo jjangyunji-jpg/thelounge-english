@@ -101,6 +101,9 @@ interface ClassSession {
   reschedule_origin_dates?: string[];
   cancellation_type?: CancellationType | null;
   cancellation_resolution?: CancellationResolution | null;
+  is_carryover?: boolean;
+  carryover_direction?: "next" | "prev" | null;
+  carryover_reason?: string | null;
   gcal_event_id?: string | null;
 }
 
