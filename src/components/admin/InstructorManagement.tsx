@@ -455,7 +455,7 @@ export default function InstructorManagement() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-foreground">{ins.name}</p>
+                  <p className="font-semibold text-foreground">{ins.name}{ins.english_name ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">({ins.english_name})</span> : null}</p>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     ins.position === '대표' ? 'bg-gold/20 text-gold-dark' :
                     ins.position === '매니저' ? 'bg-navy/10 text-navy' :
