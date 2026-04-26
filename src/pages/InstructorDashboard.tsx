@@ -2347,45 +2347,16 @@ export default function InstructorDashboard() {
                                   <X className="w-3 h-3" /> 취소
                                 </Button>
                               )}
-                              {isCancelled && (() => {
-                                const diffMs = Date.now() - new Date(s.scheduled_at).getTime();
-                                if (diffMs >= 0 && diffMs <= 12 * 60 * 60 * 1000) return (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-6 text-[10px] gap-0.5 border-muted-foreground/30 text-muted-foreground px-1.5"
-                                    onClick={async () => {
-                                      const { error } = await supabase.from("class_sessions").update({
-                                        cancellation_type: null,
-                                        cancellation_resolution: null,
-                                      } as any).eq("id", s.id);
-                                      if (error) {
-                                        toast({ title: "복원 실패", description: error.message, variant: "destructive" });
-                                      } else {
-                                        toast({ title: "취소 상태가 복원되었습니다" });
-                                        setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null } : sess));
-                                        // Best-effort: re-create the calendar event that was removed on cancel
-                                        try {
-                                          await supabase.functions.invoke("sync-calendar-event", {
-                                            body: {
-                                              action: "create",
-                                              session_id: s.id,
-                                              instructor_name: s.instructor_name,
-                                              student_name: s.student_name,
-                                              scheduled_at: s.scheduled_at,
-                                              meet_link: s.meet_link,
-                                              gcal_event_id: s.gcal_event_id,
-                                            },
-                                          });
-                                        } catch (e) { console.warn("[gcal restore] skipped", e); }
-                                      }
-                                    }}
-                                  >
-                                    <RotateCcw className="w-3 h-3" /> 복원
-                                  </Button>
-                                );
-                                return null;
-                              })()}
+                              {isCancelled && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-[10px] gap-0.5 border-muted-foreground/30 text-muted-foreground px-1.5"
+                                  onClick={() => handleRestoreCancellation(s)}
+                                >
+                                  <RotateCcw className="w-3 h-3" /> 복원
+                                </Button>
+                              )}
                               <button
                                 onClick={() => setRescheduleSession(s)}
                                 className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-1 rounded hover:bg-muted"
