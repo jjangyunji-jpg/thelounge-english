@@ -61,3 +61,17 @@ type: feature
   - `scheduled_at ±30분` 윈도우 `events.list`
   - 제목(`summary`)에 학생명 포함된 모든 이벤트 삭제
 - 매칭 0건이거나 API 실패는 토스트 없이 무시 (취소 처리 자체는 성공)
+
+## 통합 동기화 함수 (`sync-calendar-event`)
+강사 대시보드의 추가 캘린더 동기화 작업을 위한 단일 edge function. action 3종 지원:
+- `create`: 취소 복원 시 호출 — 윈도우 검색으로 이벤트가 이미 있으면 토큰만 저장, 없으면 `(영어이름)_(학생명)` 제목으로 생성
+- `move`: RescheduleModal에서 시간 변경 시 호출 — 토큰이 있으면 PATCH, 없으면 옛 시간 검색 후 PATCH (1건만 매칭되면 토큰을 세션에 저장)
+- `delete`: 세션 행 삭제 시 호출 — 토큰이 있으면 토큰 기반 삭제, 없으면 검색 기반 삭제
+
+호출 위치 (모두 best-effort, 실패 시 콘솔 로그만):
+- 취소 복원 버튼 (대시보드 today 카드 + 학생관리 탭) → `create`
+- RescheduleModal handleSave → `move`
+- 세션 휴지통 버튼 → `delete`
+
+캘린더 라우팅은 `handle-makeup-request`와 동일 (instructor_calendar_mapping → 기본 Reina 캘린더 폴백).
+
