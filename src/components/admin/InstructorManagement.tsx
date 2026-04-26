@@ -84,7 +84,7 @@ export default function InstructorManagement() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFields, setEditFields] = useState({ phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "", meet_link: "", position: "강사", lesson_rate: "30000" });
+  const [editFields, setEditFields] = useState({ english_name: "", phone: "", join_date: "", gender: "", age: "", education: "", bio_notes: "", meet_link: "", position: "강사", lesson_rate: "30000" });
   const [savingId, setSavingId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [creating, setCreating] = useState(false);
