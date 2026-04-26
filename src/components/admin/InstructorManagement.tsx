@@ -37,6 +37,7 @@ interface FeedbackRecord {
 interface Instructor {
   id: string;
   name: string;
+  english_name: string | null;
   email: string;
   phone: string | null;
   active: boolean;
