@@ -749,6 +749,7 @@ export default function InstructorManagement() {
                           ) : (
                             <div className="space-y-1.5 text-sm">
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">직책</span><span className="text-xs font-medium">{ins.position || '강사'}</span></div>
+                              <div className="flex justify-between"><span className="text-xs text-muted-foreground">영어이름</span><span className="text-xs font-medium">{ins.english_name || "—"}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">이메일</span><span className="text-xs font-medium">{ins.email}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">연락처</span><span className="text-xs font-medium">{ins.phone || "—"}</span></div>
                               <div className="flex justify-between"><span className="text-xs text-muted-foreground">입사일</span><span className="text-xs font-medium">{ins.join_date || "—"}</span></div>
