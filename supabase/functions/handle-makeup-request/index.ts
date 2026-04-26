@@ -300,6 +300,7 @@ serve(async (req) => {
           studentName: makeupReq.student_name,
           englishName: stuInfo.english_name,
           studentType: stuInfo.student_type,
+          instructorName: makeupReq.instructor_name,
         });
         const restoredEventId = await createCalendarEvent({
           title,
