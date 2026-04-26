@@ -2277,6 +2277,20 @@ export default function InstructorDashboard() {
                                       } else {
                                         toast({ title: "취소 상태가 복원되었습니다" });
                                         setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null } : sess));
+                                        // Best-effort: re-create the calendar event that was removed on cancel
+                                        try {
+                                          await supabase.functions.invoke("sync-calendar-event", {
+                                            body: {
+                                              action: "create",
+                                              session_id: s.id,
+                                              instructor_name: s.instructor_name,
+                                              student_name: s.student_name,
+                                              scheduled_at: s.scheduled_at,
+                                              meet_link: s.meet_link,
+                                              gcal_event_id: s.gcal_event_id,
+                                            },
+                                          });
+                                        } catch (e) { console.warn("[gcal restore] skipped", e); }
                                       }
                                     }}
                                   >
@@ -2615,6 +2629,19 @@ export default function InstructorDashboard() {
                                                   } else {
                                                     toast({ title: "취소 상태가 복원되었습니다" });
                                                     setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null } : sess));
+                                                    try {
+                                                      await supabase.functions.invoke("sync-calendar-event", {
+                                                        body: {
+                                                          action: "create",
+                                                          session_id: s.id,
+                                                          instructor_name: s.instructor_name,
+                                                          student_name: s.student_name,
+                                                          scheduled_at: s.scheduled_at,
+                                                          meet_link: s.meet_link,
+                                                          gcal_event_id: s.gcal_event_id,
+                                                        },
+                                                      });
+                                                    } catch (e) { console.warn("[gcal restore] skipped", e); }
                                                   }
                                                 }}
                                               >
