@@ -101,6 +101,7 @@ interface ClassSession {
   reschedule_origin_dates?: string[];
   cancellation_type?: CancellationType | null;
   cancellation_resolution?: CancellationResolution | null;
+  gcal_event_id?: string | null;
 }
 
 interface HomeworkAssignment {
