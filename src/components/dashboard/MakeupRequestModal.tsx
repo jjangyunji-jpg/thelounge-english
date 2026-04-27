@@ -644,6 +644,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <p className="text-[11px] text-muted-foreground mt-1">
                       선택하신 수업({fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)})까지 48시간이 남지 않았습니다.
                     </p>
+                    <p className="text-[11px] text-foreground/80 mt-2 leading-relaxed">
+                      48시간 이내 신청하는 경우 <span className="font-semibold">월 1회에 한해</span> 다음의 사유에 해당할 경우 긴급 보강이 가능합니다. 그 외에는 48시간 이내 보강이 불가합니다.
+                    </p>
                   </div>
 
                   {/* 빨강 경고 박스 */}
