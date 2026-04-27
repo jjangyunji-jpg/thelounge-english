@@ -99,11 +99,31 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     (async () => {
       if (!instructorName) { setLoading(false); return; }
       const now = new Date();
+
+      // Resolve all instructors associated with this student (including transfer history),
+      // so transfer-in-progress students can request makeup against the instructor that
+      // actually owns the original session's date.
+      const { data: studentInstructorsData } = await supabase
+        .from("instructor_students")
+        .select("instructor_name")
+        .eq("student_name", studentName);
+      const instructorNames = Array.from(
+        new Set(
+          [
+            instructorName,
+            ...((studentInstructorsData || []).map((r: any) => r.instructor_name).filter(Boolean) as string[]),
+          ]
+        )
+      );
+
       const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes, periodsRes] = await Promise.all([
         // Fetch both open AND booked slots so students can see the full picture
-        // (booked slots will be shown as "신청 완료" / 매진)
+        // (booked slots will be shown as "신청 완료" / 매진).
+        // Include slots from ALL of the student's (current + past) instructors so that
+        // transfer-in-progress students can see slots for whichever instructor owns the
+        // original session's month.
         supabase.from("instructor_available_slots").select("*")
-          .eq("instructor_name", instructorName).in("status", ["open", "booked"])
+          .in("instructor_name", instructorNames).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time"),
         supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students")
           .eq("student_name", studentName).gte("scheduled_at", now.toISOString())
@@ -170,11 +190,24 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     return periods.find(p => originDate >= p.start_date && originDate <= p.end_date) || null;
   }, [requestType, selectedSession, selectedCancelledSession, periods]);
 
-  // Filter slots by active period (if any)
+  // Determine which instructor's slots should be visible.
+  // - reschedule/makeup: use the instructor that taught the ORIGINAL session
+  //   (handles transfer-in-progress students whose 4월 vs 5월 instructor differs).
+  // - extra: use the student's current instructor (prop).
+  const targetInstructorName = useMemo(() => {
+    if (requestType === "reschedule" && selectedSession) return selectedSession.instructor_name;
+    if (requestType === "makeup" && selectedCancelledSession) return selectedCancelledSession.instructor_name;
+    return instructorName;
+  }, [requestType, selectedSession, selectedCancelledSession, instructorName]);
+
+  // Filter slots by target instructor + active period (if any)
   const visibleSlots = useMemo(() => {
-    if (!activePeriod) return slots;
-    return slots.filter(s => s.slot_date >= activePeriod.start_date && s.slot_date <= activePeriod.end_date);
-  }, [slots, activePeriod]);
+    let result = slots.filter(s => s.instructor_name === targetInstructorName);
+    if (activePeriod) {
+      result = result.filter(s => s.slot_date >= activePeriod.start_date && s.slot_date <= activePeriod.end_date);
+    }
+    return result;
+  }, [slots, targetInstructorName, activePeriod]);
 
   const slotDates = useMemo(() => {
     const map = new Map<string, AvailableSlot[]>();
@@ -249,9 +282,13 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       if (updateErr || !updated || updated.length === 0) {
         toast({ title: "이미 예약된 시간입니다", description: "다른 사람이 먼저 신청했습니다. 다른 시간을 선택해주세요.", variant: "destructive" });
         const { data: fresh } = await supabase.from("instructor_available_slots").select("*")
-          .eq("instructor_name", instructorName).in("status", ["open", "booked"])
+          .eq("instructor_name", targetInstructorName).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time");
-        setSlots((fresh || []) as AvailableSlot[]);
+        // Merge: replace only this instructor's slots, keep others
+        setSlots(prev => [
+          ...prev.filter(s => s.instructor_name !== targetInstructorName),
+          ...((fresh || []) as AvailableSlot[]),
+        ]);
         setSelectedSlot(null);
         setSelectedDate(null);
         setStep("calendar");
@@ -301,7 +338,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
       const insertData: any = {
         student_name: studentName,
-        instructor_name: instructorName,
+        // Use the slot owner (= original session's instructor for reschedule/makeup,
+        // or current instructor for extra). Ensures the request shows up on the
+        // correct instructor's dashboard during transfer-in-progress periods.
+        instructor_name: selectedSlot.instructor_name || targetInstructorName,
         original_session_id: requestType === "reschedule"
           ? selectedSession!.id
           : requestType === "makeup"
@@ -673,6 +713,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       <AlertCircle className="w-3.5 h-3.5 text-[hsl(var(--gold-dark))] shrink-0 mt-0.5" />
                       <p className="text-[11px] text-foreground/80 leading-relaxed">
                         <span className="font-semibold text-[hsl(var(--gold-dark))]">{activePeriod.label} 수업</span>은 같은 기간({fmtDateKo(activePeriod.start_date)} ~ {fmtDateKo(activePeriod.end_date)}) 안에서만 보강이 가능합니다.
+                      </p>
+                    </div>
+                  )}
+
+                  {visibleSlots.length === 0 && (
+                    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        <span className="font-semibold text-foreground">{targetInstructorName}</span> 강사님이 아직 이 기간에 가능한 시간을 등록하지 않았어요. 강사님께 문의해 주세요.
                       </p>
                     </div>
                   )}
