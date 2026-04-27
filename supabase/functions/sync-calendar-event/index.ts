@@ -159,6 +159,24 @@ async function deleteEvent(calendarId: string, eventId: string): Promise<boolean
   return false;
 }
 
+async function patchEventSummary(
+  calendarId: string,
+  eventId: string,
+  summary: string,
+): Promise<boolean> {
+  const res = await fetch(`${GATEWAY_URL}/calendars/${calendarId}/events/${eventId}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ summary }),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    console.error("[sync-cal] patch summary failed", res.status, txt);
+    return false;
+  }
+  return true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
