@@ -95,6 +95,56 @@ export async function deleteCalendarEvent(eventToken: string | null | undefined)
 }
 
 /**
+ * Search for events in a calendar matching a student name within ±30 minutes
+ * of `scheduledISO`, and delete every match. Used as a fallback when no
+ * gcal_event_id token is stored on the session (e.g. event was created
+ * manually in Google Calendar by Reina).
+ */
+export async function deleteCalendarEventsBySearch(opts: {
+  calendarId?: string | null;
+  studentName: string;
+  scheduledISO: string;
+  windowMinutes?: number;
+}): Promise<{ deleted: number; scanned: number }> {
+  const calId = pickCalendarId(opts.calendarId);
+  const win = opts.windowMinutes ?? 30;
+  try {
+    const start = new Date(opts.scheduledISO);
+    const timeMin = new Date(start.getTime() - win * 60_000).toISOString();
+    const timeMax = new Date(start.getTime() + win * 60_000).toISOString();
+    const url =
+      `${GATEWAY_URL}/calendars/${calId}/events?` +
+      `timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}` +
+      `&singleEvents=true&orderBy=startTime&maxResults=50`;
+    const res = await fetch(url, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("[gcal] search list failed", res.status, JSON.stringify(data));
+      return { deleted: 0, scanned: 0 };
+    }
+    const events = (data.items || []) as Array<{ id: string; summary?: string }>;
+    const matches = events.filter((e) => e.summary && e.summary.includes(opts.studentName));
+    let deleted = 0;
+    for (const ev of matches) {
+      const delRes = await fetch(
+        `${GATEWAY_URL}/calendars/${calId}/events/${ev.id}`,
+        { method: "DELETE", headers: authHeaders() }
+      );
+      if (delRes.ok || delRes.status === 404 || delRes.status === 410) {
+        deleted++;
+      } else {
+        const txt = await delRes.text().catch(() => "");
+        console.error("[gcal] search-delete failed", delRes.status, txt);
+      }
+    }
+    return { deleted, scanned: events.length };
+  } catch (e) {
+    console.error("[gcal] search-delete error", e);
+    return { deleted: 0, scanned: 0 };
+  }
+}
+
+/**
  * Format event title for makeup sessions:
  *  - "(보) 강사영어이름_학생한글이름"
  *  - 예: "(보) Reina_장현민"
