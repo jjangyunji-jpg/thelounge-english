@@ -208,6 +208,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     }
     return result;
   }, [slots, targetInstructorName, activePeriod]);
+
+  const slotDates = useMemo(() => {
     const map = new Map<string, AvailableSlot[]>();
     for (const s of visibleSlots) {
       if (!map.has(s.slot_date)) map.set(s.slot_date, []);
