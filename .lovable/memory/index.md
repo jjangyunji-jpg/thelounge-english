@@ -48,6 +48,7 @@ Use student_name as primary ID for sync; apply atomic updates on makeup slots.
 - [Scheduling Logic](mem://features/scheduling/logic) — 6 cancel types, makeup linkage, session transfer, hidden logic
 - [Cancellation Rules](mem://features/scheduling/cancellation-rules) — 5종 취소 카테고리별 정산/결제대상/후속조치, 이월은 세션 유지+결제만 차감
 - [Makeup Period Boundary](mem://features/scheduling/makeup-period-boundary) — Reschedule/makeup must stay within original session's monthly schedule_period
+- [Makeup Request Flow](mem://features/scheduling/makeup-request-flow) — 4-step modal flow with 48h auto-branch, urgent reason (월 1회), no-slots fallback, rejection codes
 - [Google Calendar Sync](mem://features/scheduling/google-calendar-sync) — 보강 승인/취소 시 관리자 Google Calendar에 자동 이벤트 생성·삭제, 제목 규칙 개인_/기업_
 - [Instructor Transitions](mem://features/user-management/instructor-transitions) — Scheduled transfer, read-only past notes, future gen sync
 - [Access Control Dashboards](mem://features/dashboards/access-control) — View modes for managers/instructors, browser history routing
