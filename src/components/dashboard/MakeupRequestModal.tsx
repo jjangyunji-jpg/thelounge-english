@@ -282,7 +282,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       if (updateErr || !updated || updated.length === 0) {
         toast({ title: "이미 예약된 시간입니다", description: "다른 사람이 먼저 신청했습니다. 다른 시간을 선택해주세요.", variant: "destructive" });
         const { data: fresh } = await supabase.from("instructor_available_slots").select("*")
-          .eq("instructor_name", instructorName).in("status", ["open", "booked"])
+          .eq("instructor_name", targetInstructorName).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time");
         setSlots((fresh || []) as AvailableSlot[]);
         setSelectedSlot(null);
