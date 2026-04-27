@@ -1099,11 +1099,13 @@ export type Database = {
           original_scheduled_at: string | null
           original_session_id: string | null
           reject_reason: string | null
+          rejection_code: string | null
           request_type: string
           resolved_at: string | null
           slot_id: string | null
           status: string
           student_name: string
+          urgent_reason: string | null
         }
         Insert: {
           created_at?: string
@@ -1113,11 +1115,13 @@ export type Database = {
           original_scheduled_at?: string | null
           original_session_id?: string | null
           reject_reason?: string | null
+          rejection_code?: string | null
           request_type?: string
           resolved_at?: string | null
           slot_id?: string | null
           status?: string
           student_name: string
+          urgent_reason?: string | null
         }
         Update: {
           created_at?: string
@@ -1127,11 +1131,13 @@ export type Database = {
           original_scheduled_at?: string | null
           original_session_id?: string | null
           reject_reason?: string | null
+          rejection_code?: string | null
           request_type?: string
           resolved_at?: string | null
           slot_id?: string | null
           status?: string
           student_name?: string
+          urgent_reason?: string | null
         }
         Relationships: [
           {
