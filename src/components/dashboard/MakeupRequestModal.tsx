@@ -338,7 +338,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
       const insertData: any = {
         student_name: studentName,
-        instructor_name: instructorName,
+        // Use the slot owner (= original session's instructor for reschedule/makeup,
+        // or current instructor for extra). Ensures the request shows up on the
+        // correct instructor's dashboard during transfer-in-progress periods.
+        instructor_name: selectedSlot.instructor_name || targetInstructorName,
         original_session_id: requestType === "reschedule"
           ? selectedSession!.id
           : requestType === "makeup"
