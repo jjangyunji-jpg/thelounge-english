@@ -190,13 +190,24 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     return periods.find(p => originDate >= p.start_date && originDate <= p.end_date) || null;
   }, [requestType, selectedSession, selectedCancelledSession, periods]);
 
-  // Filter slots by active period (if any)
-  const visibleSlots = useMemo(() => {
-    if (!activePeriod) return slots;
-    return slots.filter(s => s.slot_date >= activePeriod.start_date && s.slot_date <= activePeriod.end_date);
-  }, [slots, activePeriod]);
+  // Determine which instructor's slots should be visible.
+  // - reschedule/makeup: use the instructor that taught the ORIGINAL session
+  //   (handles transfer-in-progress students whose 4월 vs 5월 instructor differs).
+  // - extra: use the student's current instructor (prop).
+  const targetInstructorName = useMemo(() => {
+    if (requestType === "reschedule" && selectedSession) return selectedSession.instructor_name;
+    if (requestType === "makeup" && selectedCancelledSession) return selectedCancelledSession.instructor_name;
+    return instructorName;
+  }, [requestType, selectedSession, selectedCancelledSession, instructorName]);
 
-  const slotDates = useMemo(() => {
+  // Filter slots by target instructor + active period (if any)
+  const visibleSlots = useMemo(() => {
+    let result = slots.filter(s => s.instructor_name === targetInstructorName);
+    if (activePeriod) {
+      result = result.filter(s => s.slot_date >= activePeriod.start_date && s.slot_date <= activePeriod.end_date);
+    }
+    return result;
+  }, [slots, targetInstructorName, activePeriod]);
     const map = new Map<string, AvailableSlot[]>();
     for (const s of visibleSlots) {
       if (!map.has(s.slot_date)) map.set(s.slot_date, []);
