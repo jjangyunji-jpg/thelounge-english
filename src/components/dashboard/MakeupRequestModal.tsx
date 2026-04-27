@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, RotateCcw, ChevronLeft, ChevronRight, Clock, Check, Loader2, Plus, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, RotateCcw, ChevronLeft, ChevronRight, Check, Loader2, Plus, X, AlertCircle, AlertTriangle, CalendarX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -36,20 +36,41 @@ interface MakeupReq {
   created_at: string;
   resolved_at: string | null;
   reject_reason: string | null;
+  rejection_code?: string | null;
+  urgent_reason?: string | null;
+  original_scheduled_at?: string | null;
 }
+
+interface SchedulePeriod {
+  id: string;
+  label: string;
+  start_date: string;
+  end_date: string;
+}
+
+const URGENT_REASONS = [
+  { code: "meeting", label: "갑작스러운 회의/야근" },
+  { code: "health", label: "갑작스러운 병원/건강 이상" },
+  { code: "family", label: "직계가족 긴급 상황" },
+] as const;
+
+const REJECTION_LABELS: Record<string, string> = {
+  within_48h: "48시간 이내 요청입니다",
+  not_urgent: "긴급 사유로 인정되지 않습니다",
+  no_slots: "가능한 슬롯이 없습니다",
+  repeated_change: "반복 변경으로 제한되었습니다",
+};
 
 function fmtDateKo(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
   return `${d.getMonth() + 1}. ${d.getDate()}(${DAYS_KO[d.getDay()]})`;
 }
-
 function fmtTimeKo(timeStr: string) {
   const [h, m] = timeStr.split(":").map(Number);
   const period = h < 12 ? "오전" : "오후";
   const displayH = h <= 12 ? h : h - 12;
   return `${period} ${displayH}:${String(m).padStart(2, "0")}`;
 }
-
 function fmtSessionDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
 }
@@ -64,12 +85,13 @@ interface MakeupRequestModalProps {
   onClose: () => void;
 }
 
-interface SchedulePeriod {
-  id: string;
-  label: string;
-  start_date: string;
-  end_date: string;
-}
+type Step =
+  | "type"           // STEP 1: 보강 유형 선택
+  | "session"        // 일정 변경: 어떤 수업을 변경할지
+  | "urgent"         // 48시간 미달 시 긴급 사유 선택
+  | "calendar"       // STEP 3: 슬롯 선택
+  | "no_slots"       // 슬롯 없음 안내
+  | "confirm";       // STEP 4: 최종 확인
 
 export default function MakeupRequestModal({ studentName, instructorName, groupStudents, onClose }: MakeupRequestModalProps) {
   const { toast } = useToast();
@@ -80,14 +102,13 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
 
-  const [step, setStep] = useState<"type" | "checklist" | "session" | "calendar" | "confirm">("type");
-  const [checklistStep, setChecklistStep] = useState<number>(0); // 0~3: 4개 단계
-  const [showBlockedAlert, setShowBlockedAlert] = useState(false); // STEP 1에서 "아니오" 선택 시
+  const [step, setStep] = useState<Step>("type");
   const [requestType, setRequestType] = useState<"reschedule" | "extra" | "makeup">("reschedule");
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
   const [selectedCancelledSession, setSelectedCancelledSession] = useState<ClassSession | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
+  const [urgentReason, setUrgentReason] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [calYear, setCalYear] = useState(new Date().getFullYear());
@@ -100,28 +121,18 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       if (!instructorName) { setLoading(false); return; }
       const now = new Date();
 
-      // Resolve all instructors associated with this student (including transfer history),
-      // so transfer-in-progress students can request makeup against the instructor that
-      // actually owns the original session's date.
       const { data: studentInstructorsData } = await supabase
         .from("instructor_students")
         .select("instructor_name")
         .eq("student_name", studentName);
       const instructorNames = Array.from(
-        new Set(
-          [
-            instructorName,
-            ...((studentInstructorsData || []).map((r: any) => r.instructor_name).filter(Boolean) as string[]),
-          ]
-        )
+        new Set([
+          instructorName,
+          ...((studentInstructorsData || []).map((r: any) => r.instructor_name).filter(Boolean) as string[]),
+        ])
       );
 
       const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes, periodsRes] = await Promise.all([
-        // Fetch both open AND booked slots so students can see the full picture
-        // (booked slots will be shown as "신청 완료" / 매진).
-        // Include slots from ALL of the student's (current + past) instructors so that
-        // transfer-in-progress students can see slots for whichever instructor owns the
-        // original session's month.
         supabase.from("instructor_available_slots").select("*")
           .in("instructor_name", instructorNames).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time"),
@@ -129,17 +140,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
           .eq("student_name", studentName).gte("scheduled_at", now.toISOString())
           .is("started_at", null).order("scheduled_at"),
         supabase.from("makeup_requests").select("*")
-          .eq("student_name", studentName).order("created_at", { ascending: false }).limit(20),
+          .eq("student_name", studentName).order("created_at", { ascending: false }).limit(30),
         supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students")
           .contains("group_students", [studentName]).gte("scheduled_at", now.toISOString())
           .is("started_at", null).order("scheduled_at"),
-        // Cancelled sessions needing makeup
         supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students, cancellation_type, cancellation_resolution")
           .eq("student_name", studentName)
           .eq("cancellation_resolution", "makeup")
           .order("scheduled_at", { ascending: false })
           .limit(20),
-        // Schedule periods to enforce monthly boundary rule
         supabase.from("schedule_periods").select("id, label, start_date, end_date")
           .eq("is_active", true).order("start_date"),
       ]);
@@ -155,7 +164,6 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       setMyRequests((reqsRes.data || []) as MakeupReq[]);
       setPeriods((periodsRes.data || []) as SchedulePeriod[]);
 
-      // Filter cancelled sessions: exclude those that already have a pending/approved makeup request
       const allReqs = (reqsRes.data || []) as MakeupReq[];
       const linkedSessionIds = new Set(
         allReqs
@@ -171,36 +179,31 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     })();
   }, []);
 
-  const eligibleSessions = useMemo(() => {
-    const cutoff = Date.now() + 48 * 60 * 60 * 1000;
-    return sessions.filter(s => new Date(s.scheduled_at).getTime() > cutoff);
+  // Helper: which schedule_period a given KST date falls into
+  const periodOfDate = (kstDate: string): SchedulePeriod | null =>
+    periods.find(p => kstDate >= p.start_date && kstDate <= p.end_date) || null;
+
+  // 일정 변경 가능한 모든 미래 수업 (48h 컷오프 없이 — 컷오프는 선택 후 자동 분기)
+  const reschedulableSessions = useMemo(() => {
+    return sessions.filter(s => new Date(s.scheduled_at).getTime() > Date.now());
   }, [sessions]);
 
-  // Determine the active period for the originally-scheduled session.
-  // Reschedule/makeup MUST stay within the same monthly schedule_period.
-  // Extra requests are not bound (no original session).
   const activePeriod = useMemo<SchedulePeriod | null>(() => {
     const originIso =
       requestType === "reschedule" ? selectedSession?.scheduled_at :
       requestType === "makeup" ? selectedCancelledSession?.scheduled_at :
       null;
     if (!originIso) return null;
-    // Convert origin to KST date string (YYYY-MM-DD)
     const originDate = new Date(originIso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-    return periods.find(p => originDate >= p.start_date && originDate <= p.end_date) || null;
+    return periodOfDate(originDate);
   }, [requestType, selectedSession, selectedCancelledSession, periods]);
 
-  // Determine which instructor's slots should be visible.
-  // - reschedule/makeup: use the instructor that taught the ORIGINAL session
-  //   (handles transfer-in-progress students whose 4월 vs 5월 instructor differs).
-  // - extra: use the student's current instructor (prop).
   const targetInstructorName = useMemo(() => {
     if (requestType === "reschedule" && selectedSession) return selectedSession.instructor_name;
     if (requestType === "makeup" && selectedCancelledSession) return selectedCancelledSession.instructor_name;
     return instructorName;
   }, [requestType, selectedSession, selectedCancelledSession, instructorName]);
 
-  // Filter slots by target instructor + active period (if any)
   const visibleSlots = useMemo(() => {
     let result = slots.filter(s => s.instructor_name === targetInstructorName);
     if (activePeriod) {
@@ -222,6 +225,28 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (!selectedDate) return [];
     return slotDates.get(selectedDate) || [];
   }, [selectedDate, slotDates]);
+
+  // 가용 슬롯 (open + 내 pending 제외)이 하나라도 있는지
+  const hasAnyAvailableSlot = useMemo(() => {
+    const pendingSlotIds = new Set(myRequests.filter(r => r.status === "pending").map(r => r.slot_id));
+    return visibleSlots.some(s => s.status === "open" && !pendingSlotIds.has(s.id));
+  }, [visibleSlots, myRequests]);
+
+  // 긴급 보강 사용 횟수 (현재 active period 기준, pending+approved+rejected 제외 cancelled/changed 제외)
+  const urgentUsedInActivePeriod = useMemo(() => {
+    if (!activePeriod) return 0;
+    return myRequests.filter(r => {
+      if (!r.urgent_reason) return false;
+      if (r.status === "cancelled" || r.status === "changed" || r.status === "rejected") return false;
+      // 원본 수업이 같은 기간에 속하는지
+      const origIso = r.original_scheduled_at;
+      if (!origIso) return false;
+      const origDate = new Date(origIso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      return origDate >= activePeriod.start_date && origDate <= activePeriod.end_date;
+    }).length;
+  }, [myRequests, activePeriod]);
+
+  const urgentLimitReached = urgentUsedInActivePeriod >= 1;
 
   const calendarCells = useMemo(() => {
     const firstDay = new Date(calYear, calMonth, 1);
@@ -251,19 +276,51 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
   const pendingRequests = myRequests.filter(r => r.status === "pending");
   const pastRequests = myRequests.filter(r => r.status !== "pending").slice(0, 5);
-
   const slotCountForDate = (dateStr: string) => slotDates.get(dateStr)?.length || 0;
+
+  // 선택된 reschedule 수업이 48시간 이내인지
+  const isWithin48h = (iso: string) => new Date(iso).getTime() - Date.now() < 48 * 60 * 60 * 1000;
+
+  // 수업 선택 → 48시간 분기
+  const proceedFromSession = (s: ClassSession) => {
+    setSelectedSession(s);
+    const d = new Date(s.scheduled_at);
+    setCalYear(d.getFullYear());
+    setCalMonth(d.getMonth());
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    if (isWithin48h(s.scheduled_at)) {
+      setUrgentReason(null);
+      setStep("urgent");
+    } else {
+      setStep("calendar");
+    }
+  };
+
+  const enterCalendarFromUrgent = () => {
+    if (!urgentReason || urgentLimitReached) return;
+    setStep("calendar");
+  };
+
+  const handleKeepOriginal = () => {
+    if (!confirm("기존 수업 일정 그대로 진행됩니다. 보강 신청을 종료할까요?")) return;
+    onClose();
+  };
 
   const handleSubmit = async () => {
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
     if (requestType === "makeup" && !selectedCancelledSession) return;
+    if (requestType === "reschedule" && selectedSession && isWithin48h(selectedSession.scheduled_at) && !urgentReason) {
+      toast({ title: "긴급 사유를 선택해주세요", variant: "destructive" });
+      setStep("urgent");
+      return;
+    }
 
-    // Safety check: enforce monthly schedule_period boundary
     if (activePeriod && (selectedSlot.slot_date < activePeriod.start_date || selectedSlot.slot_date > activePeriod.end_date)) {
       toast({
         title: "수업 기간을 벗어났습니다",
-        description: `${activePeriod.label} 수업은 ${activePeriod.label} 일정 안(${fmtDateKo(activePeriod.start_date)} ~ ${fmtDateKo(activePeriod.end_date)})에서만 보강이 가능합니다.`,
+        description: `${activePeriod.label} 수업은 ${activePeriod.label} 일정 안에서만 보강이 가능합니다.`,
         variant: "destructive",
       });
       return;
@@ -271,7 +328,6 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
     setSubmitting(true);
     try {
-      // Atomically book the slot: only update if still "open"
       const { data: updated, error: updateErr } = await supabase
         .from("instructor_available_slots")
         .update({ status: "booked" })
@@ -280,11 +336,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         .select("id");
 
       if (updateErr || !updated || updated.length === 0) {
-        toast({ title: "이미 예약된 시간입니다", description: "다른 사람이 먼저 신청했습니다. 다른 시간을 선택해주세요.", variant: "destructive" });
+        toast({ title: "이미 예약된 시간입니다", description: "다른 사람이 먼저 신청했습니다.", variant: "destructive" });
         const { data: fresh } = await supabase.from("instructor_available_slots").select("*")
           .eq("instructor_name", targetInstructorName).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time");
-        // Merge: replace only this instructor's slots, keep others
         setSlots(prev => [
           ...prev.filter(s => s.instructor_name !== targetInstructorName),
           ...((fresh || []) as AvailableSlot[]),
@@ -296,51 +351,28 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         return;
       }
 
-      // Mark any existing pending requests for the same original session as "changed"
+      // 기존 pending 정리 (changed)
       const targetSessionId = requestType === "reschedule"
         ? selectedSession!.id
         : requestType === "makeup"
         ? selectedCancelledSession!.id
         : null;
-
-      if (targetSessionId) {
-        // Find existing pending requests for same student + same original session
-        const existingPending = myRequests.filter(r =>
-          r.status === "pending" && r.original_session_id === targetSessionId
-        );
-        for (const existing of existingPending) {
-          // Mark as "changed" and release the old slot
-          await supabase.from("makeup_requests")
-            .update({ status: "changed", resolved_at: new Date().toISOString() } as any)
-            .eq("id", existing.id);
-          if (existing.slot_id) {
-            await supabase.from("instructor_available_slots")
-              .update({ status: "open" })
-              .eq("id", existing.slot_id);
-          }
-        }
-      } else {
-        // For extra requests without original session, mark any pending extra requests as "changed"
-        const existingPendingExtra = myRequests.filter(r =>
-          r.status === "pending" && r.request_type === "extra" && !r.original_session_id
-        );
-        for (const existing of existingPendingExtra) {
-          await supabase.from("makeup_requests")
-            .update({ status: "changed", resolved_at: new Date().toISOString() } as any)
-            .eq("id", existing.id);
-          if (existing.slot_id) {
-            await supabase.from("instructor_available_slots")
-              .update({ status: "open" })
-              .eq("id", existing.slot_id);
-          }
+      const sameTargetPending = myRequests.filter(r =>
+        r.status === "pending" &&
+        (targetSessionId ? r.original_session_id === targetSessionId : r.request_type === "extra" && !r.original_session_id)
+      );
+      for (const existing of sameTargetPending) {
+        await supabase.from("makeup_requests")
+          .update({ status: "changed", resolved_at: new Date().toISOString() } as any)
+          .eq("id", existing.id);
+        if (existing.slot_id) {
+          await supabase.from("instructor_available_slots")
+            .update({ status: "open" }).eq("id", existing.slot_id);
         }
       }
 
       const insertData: any = {
         student_name: studentName,
-        // Use the slot owner (= original session's instructor for reschedule/makeup,
-        // or current instructor for extra). Ensures the request shows up on the
-        // correct instructor's dashboard during transfer-in-progress periods.
         instructor_name: selectedSlot.instructor_name || targetInstructorName,
         original_session_id: requestType === "reschedule"
           ? selectedSession!.id
@@ -351,7 +383,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         request_type: requestType === "makeup" ? "extra" : requestType,
         group_students: groupStudents,
       };
-      // Store original_scheduled_at for makeup requests (for history)
+      if (requestType === "reschedule" && selectedSession) {
+        insertData.original_scheduled_at = selectedSession.scheduled_at;
+        if (urgentReason) insertData.urgent_reason = urgentReason;
+      }
       if (requestType === "makeup" && selectedCancelledSession) {
         insertData.original_scheduled_at = selectedCancelledSession.scheduled_at;
       }
@@ -377,6 +412,24 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     }
   };
 
+  const goBack = () => {
+    if (step === "confirm") setStep("calendar");
+    else if (step === "calendar") {
+      if (requestType === "reschedule") {
+        if (selectedSession && isWithin48h(selectedSession.scheduled_at)) setStep("urgent");
+        else setStep("session");
+      } else if (requestType === "makeup") {
+        setSelectedCancelledSession(null);
+        setStep("type");
+      } else {
+        setStep("type");
+      }
+    }
+    else if (step === "no_slots") setStep("calendar");
+    else if (step === "urgent") setStep("session");
+    else if (step === "session") setStep("type");
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-card w-full max-w-md max-h-[85vh] rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
@@ -384,19 +437,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             {step !== "type" && (
-              <button onClick={() => {
-                if (step === "confirm") setStep("calendar");
-                else if (step === "calendar") {
-                  if (requestType === "reschedule") setStep("session");
-                  else { setSelectedCancelledSession(null); setStep("type"); }
-                }
-                else if (step === "session") { setChecklistStep(3); setStep("checklist"); }
-                else if (step === "checklist") {
-                  if (showBlockedAlert) { setShowBlockedAlert(false); return; }
-                  if (checklistStep > 0) setChecklistStep(s => s - 1);
-                  else { setChecklistStep(0); setStep("type"); }
-                }
-              }} className="text-muted-foreground hover:text-foreground">
+              <button onClick={goBack} className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="w-4 h-4" />
               </button>
             )}
@@ -414,7 +455,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
             <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
           ) : (
             <>
-              {/* Pending requests */}
+              {/* Pending */}
               {pendingRequests.length > 0 && step === "type" && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground">대기 중인 신청</p>
@@ -435,14 +476,13 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 </div>
               )}
 
-              {/* Past requests */}
+              {/* Past */}
               {pastRequests.length > 0 && step === "type" && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground">이전 신청 내역</p>
                   {pastRequests.map(r => {
-                    const slot = slots.find(s => s.id === r.slot_id) ||
-                      (r as any)._slot; // fallback
                     const isFutureApproved = r.status === "approved";
+                    const rejectionLabel = r.rejection_code ? REJECTION_LABELS[r.rejection_code] : null;
                     return (
                       <div key={r.id} className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
                         <div className="flex items-center justify-between">
@@ -458,7 +498,11 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                             {r.status === "approved" ? "보강 확정" : r.status === "rejected" ? "강사 거절" : r.status === "changed" ? "일정 변경" : "취소됨"}
                           </span>
                         </div>
-                        {r.reject_reason && <p className="text-[10px] text-muted-foreground mt-1">사유: {r.reject_reason}</p>}
+                        {(rejectionLabel || r.reject_reason) && (
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            사유: {rejectionLabel || r.reject_reason}
+                          </p>
+                        )}
                         {isFutureApproved && (
                           <button
                             onClick={async () => {
@@ -484,12 +528,11 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 </div>
               )}
 
-              {/* Step: Type selection */}
+              {/* STEP 1: Type selection */}
               {step === "type" && (
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">보강 유형을 선택해주세요</p>
 
-                  {/* Cancelled sessions needing makeup - shown prominently */}
                   {cancelledSessions.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-semibold text-[hsl(var(--gold-dark))] flex items-center gap-1.5">
@@ -504,7 +547,6 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                             onClick={() => {
                               setRequestType("makeup");
                               setSelectedCancelledSession(s);
-                              // Jump calendar to the period of the cancelled session
                               const d = new Date(s.scheduled_at);
                               setCalYear(d.getFullYear());
                               setCalMonth(d.getMonth());
@@ -535,7 +577,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   )}
 
                   <button
-                    onClick={() => { setRequestType("reschedule"); setChecklistStep(0); setShowBlockedAlert(false); setStep("checklist"); }}
+                    onClick={() => { setRequestType("reschedule"); setStep("session"); }}
                     className="w-full rounded-xl border border-border p-4 text-left hover:border-primary/50 transition-colors space-y-1"
                   >
                     <p className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -555,153 +597,122 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 </div>
               )}
 
-              {/* Step: Checklist (단계별 Q&A) */}
-              {step === "checklist" && (() => {
-                const STEPS = [
-                  {
-                    title: "STEP 1",
-                    question: "보강을 신청하시는 수업까지 48시간 이상 남았습니까?",
-                    notice: null as string | null,
-                    type: "yesno" as const,
-                  },
-                  {
-                    title: "STEP 2",
-                    question: "잦은 일정 변경은 학습 흐름과 진도 진행에 영향을 줄 수 있습니다. 이를 확인하셨습니까?",
-                    notice: "지속적인 일정 변경이 반복될 경우, 보다 안정적인 수업을 위해 시간대 조정 또는 운영 상담이 진행될 수 있습니다.",
-                    type: "confirm" as const,
-                  },
-                  {
-                    title: "STEP 3",
-                    question: "보강은 담당 강사님의 가능한 일정 내에서만 진행됩니다. 확인하셨습니까?",
-                    notice: "가능한 시간이 없을 경우 별도 시간 개설은 어려우며, 규정에 따라 해당 수업은 수업횟수에서 차감됩니다.",
-                    type: "confirm" as const,
-                  },
-                  {
-                    title: "STEP 4",
-                    question: "모든 보강 일정은 당월에 소진되어야 하며, 다음달로 이월되지 않습니다. 확인하셨습니까?",
-                    notice: null as string | null,
-                    type: "confirm" as const,
-                  },
-                ];
-                const current = STEPS[checklistStep];
-
-                if (showBlockedAlert) {
-                  return (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold tracking-wider text-muted-foreground">STEP 1</span>
-                      </div>
-                      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-                          <div className="space-y-2">
-                            <p className="text-sm font-bold text-destructive">48시간 이내에는 보강이 불가합니다</p>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              수업 48시간 이내 일정 변경은 원활한 운영과 강사 일정 보호를 위해 병가(증빙 가능 사유) 외에는 보강 신청이 어렵습니다.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <Button onClick={onClose} className="w-full" size="sm" variant="outline">
-                        확인
-                      </Button>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold tracking-wider text-primary">{current.title}</span>
-                      <span className="text-[10px] text-muted-foreground">{checklistStep + 1} / {STEPS.length}</span>
-                    </div>
-                    <div className="rounded-xl border border-border bg-muted/20 p-4">
-                      <p className="text-sm text-foreground leading-relaxed">{current.question}</p>
-                    </div>
-                    {current.notice && (
-                      <div className="rounded-lg border-l-4 border-[hsl(var(--warning))] bg-[hsl(var(--warning))]/10 px-3 py-2.5 flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-[hsl(var(--warning))] shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-foreground/80 leading-relaxed">
-                          {current.notice}
-                        </p>
-                      </div>
-                    )}
-
-                    {current.type === "yesno" ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowBlockedAlert(true)}
-                        >
-                          아니오
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => setChecklistStep(s => s + 1)}
-                        >
-                          예
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        size="sm"
-                        onClick={() => {
-                          if (checklistStep < STEPS.length - 1) setChecklistStep(s => s + 1);
-                          else setStep("session");
-                        }}
-                      >
-                        확인했습니다
-                      </Button>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Step: Session selection */}
+              {/* STEP 2 (a): Session selection (일정 변경) */}
               {step === "session" && (
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">변경할 수업을 선택해주세요</p>
-                  {eligibleSessions.length === 0 ? (
+                  {reschedulableSessions.length === 0 ? (
                     <div className="rounded-xl border border-border p-6 text-center space-y-2">
                       <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto" />
                       <p className="text-xs text-muted-foreground">변경 가능한 수업이 없습니다</p>
-                      <p className="text-[10px] text-muted-foreground">수업 48시간 전까지만 변경할 수 있습니다</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {eligibleSessions.map(s => (
-                        <button key={s.id}
-                          onClick={() => {
-                            setSelectedSession(s);
-                            // Jump calendar to the period of the original session
-                            const d = new Date(s.scheduled_at);
-                            setCalYear(d.getFullYear());
-                            setCalMonth(d.getMonth());
-                            setSelectedDate(null);
-                            setSelectedSlot(null);
-                            setStep("calendar");
-                          }}
-                          className="w-full rounded-lg border border-border p-3 text-left hover:border-primary/30 transition-colors"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs font-bold text-foreground">
-                                {fmtSessionDate(s.scheduled_at)} {fmtSessionTime(s.scheduled_at)}
-                              </p>
-                              {s.topic && <p className="text-[10px] text-muted-foreground mt-0.5">{s.topic}</p>}
+                      {reschedulableSessions.map(s => {
+                        const within48 = isWithin48h(s.scheduled_at);
+                        return (
+                          <button key={s.id}
+                            onClick={() => proceedFromSession(s)}
+                            className="w-full rounded-lg border border-border p-3 text-left hover:border-primary/30 transition-colors"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-foreground">
+                                  {fmtSessionDate(s.scheduled_at)} {fmtSessionTime(s.scheduled_at)}
+                                </p>
+                                {s.topic && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{s.topic}</p>}
+                              </div>
+                              {within48 && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold shrink-0">
+                                  48시간 이내
+                                </span>
+                              )}
                             </div>
-                            <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Step: Calendar */}
+              {/* STEP 2 (b): Urgent reason — only shown when within 48h */}
+              {step === "urgent" && selectedSession && (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">긴급 보강 사유를 선택해주세요</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      선택하신 수업({fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)})까지 48시간이 남지 않았습니다.
+                    </p>
+                  </div>
+
+                  {/* 빨강 경고 박스 */}
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                    <p className="text-xs font-bold text-destructive flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5" /> 승인되지 않는 사유
+                    </p>
+                    <ul className="text-[11px] text-foreground/80 space-y-0.5 pl-4 list-disc">
+                      <li>깜빡했어요 / 늦잠 / 피곤해요</li>
+                      <li>미리 알고 있던 약속</li>
+                      <li>단순 기분/컨디션</li>
+                    </ul>
+                  </div>
+
+                  {/* 노랑 경고 박스 */}
+                  <div className="rounded-lg border-l-4 border-[hsl(var(--warning))] bg-[hsl(var(--warning))]/10 px-3 py-2.5 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-[hsl(var(--warning))] shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-foreground/80 leading-relaxed">
+                      잦은 일정 변경은 강사 스케줄 운영과 다른 학생들의 수업에도 영향을 줍니다. 반복될 경우 보강 신청과 수업 재등록이 제한될 수 있습니다.
+                    </p>
+                  </div>
+
+                  {/* 사유 선택 */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-foreground">긴급 사유 선택 (1개)</p>
+                    {URGENT_REASONS.map(r => (
+                      <button key={r.code}
+                        disabled={urgentLimitReached}
+                        onClick={() => setUrgentReason(r.code)}
+                        className={cn(
+                          "w-full rounded-lg border p-3 text-left text-xs transition-colors",
+                          urgentLimitReached && "opacity-50 cursor-not-allowed",
+                          !urgentLimitReached && urgentReason === r.code
+                            ? "border-primary bg-primary/5 text-foreground font-semibold"
+                            : "border-border text-foreground hover:border-primary/40"
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={cn(
+                            "w-3.5 h-3.5 rounded-full border-2 shrink-0",
+                            urgentReason === r.code ? "border-primary bg-primary" : "border-muted-foreground/40"
+                          )} />
+                          {r.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {urgentLimitReached && (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-foreground/80 leading-relaxed">
+                        이번 수업 기간({activePeriod?.label})에 이미 긴급 보강을 1회 사용하셨습니다. 추가 신청은 다음 기간부터 가능합니다.
+                      </p>
+                    </div>
+                  )}
+
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    disabled={!urgentReason || urgentLimitReached}
+                    onClick={enterCalendarFromUrgent}
+                  >
+                    다음 — 가능한 일정 보기
+                  </Button>
+                </div>
+              )}
+
+              {/* STEP 3: Calendar */}
               {step === "calendar" && (
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">
@@ -717,14 +728,24 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     </div>
                   )}
 
-                  {visibleSlots.length === 0 && (
-                    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-start gap-2">
-                      <AlertCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        <span className="font-semibold text-foreground">{targetInstructorName}</span> 강사님이 아직 이 기간에 가능한 시간을 등록하지 않았어요. 강사님께 문의해 주세요.
-                      </p>
-                    </div>
-                  )}
+                  {visibleSlots.length === 0 ? (
+                    <>
+                      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-start gap-2">
+                        <AlertCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          <span className="font-semibold text-foreground">{targetInstructorName}</span> 강사님이 아직 이 기간에 가능한 시간을 등록하지 않았어요.
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => setStep("no_slots")}>
+                        가능한 일정이 없어요
+                      </Button>
+                    </>
+                  ) : !hasAnyAvailableSlot ? (
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => setStep("no_slots")}>
+                      가능한 일정이 없어요
+                    </Button>
+                  ) : null}
+
                   <div className="rounded-xl border border-border p-3 space-y-2">
                     <div className="flex items-center justify-center gap-4">
                       <button onClick={() => { if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); } else setCalMonth(m => m - 1); }}
@@ -755,7 +776,6 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                         const isToday = cell.date === todayStr;
                         const isSelected = cell.date === selectedDate;
                         const slotsForDay = slotDates.get(cell.date) || [];
-                        // A slot is unavailable if it's booked OR pending by current user
                         const pendingSlotIds = new Set(pendingRequests.map(r => r.slot_id));
                         const availableCount = slotsForDay.filter(
                           s => s.status === "open" && !pendingSlotIds.has(s.id)
@@ -831,7 +851,31 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 </div>
               )}
 
-              {/* Step: Confirm */}
+              {/* No-slots fallback */}
+              {step === "no_slots" && (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-[hsl(var(--gold)/0.3)] bg-[hsl(var(--gold)/0.05)] p-4 space-y-2">
+                    <p className="text-sm font-bold text-[hsl(var(--gold-dark))] flex items-center gap-2">
+                      <CalendarX className="w-4 h-4" /> 가능한 일정이 없습니다
+                    </p>
+                    <p className="text-[11px] text-foreground/80 leading-relaxed">
+                      해당 기간에 <span className="font-semibold">{targetInstructorName}</span> 강사님이 등록한 가능 시간이 없거나 모두 마감되었습니다.
+                      규정에 따라 가능 슬롯이 없는 경우 별도 시간 개설은 어려우며, 해당 수업은 수업 횟수에서 차감될 수 있습니다.
+                    </p>
+                  </div>
+
+                  {requestType === "reschedule" && (
+                    <Button className="w-full" size="sm" onClick={handleKeepOriginal}>
+                      기존 수업 유지하기
+                    </Button>
+                  )}
+                  <Button variant="outline" className="w-full" size="sm" onClick={onClose}>
+                    나중에 다시 확인할게요
+                  </Button>
+                </div>
+              )}
+
+              {/* STEP 4: Confirm */}
               {step === "confirm" && selectedSlot && (
                 <div className="space-y-4">
                   <p className="text-sm font-bold text-foreground">신청 확인</p>
@@ -870,6 +914,13 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                         {fmtDateKo(selectedSlot.slot_date)} {fmtTimeKo(selectedSlot.slot_time)}
                       </p>
                     </div>
+
+                    {urgentReason && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground font-semibold">긴급 사유</p>
+                        <p className="text-xs text-foreground">{URGENT_REASONS.find(r => r.code === urgentReason)?.label}</p>
+                      </div>
+                    )}
 
                     {groupStudents.length > 0 && (
                       <div className="space-y-1">
