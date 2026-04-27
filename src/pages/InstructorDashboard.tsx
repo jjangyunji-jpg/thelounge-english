@@ -4073,17 +4073,38 @@ export default function InstructorDashboard() {
                 ? "다음달로 이월 처리되었습니다"
                 : "수업이 취소 처리되었습니다",
             });
-            // Best-effort: remove matching Google Calendar event (manual entries)
+            // Calendar sync per cancellation type:
+            //  • no_show: keep the event as-is (badge only on note)
+            //  • student_cancel (당일 취소): rename event to "(취) 강사_학생"
+            //  • sick / instructor_cancel / advance_cancel: delete event
+            //    (보강 승인 시 별도로 새 슬롯이 캘린더에 생성됨)
             try {
-              await supabase.functions.invoke("delete-calendar-event-by-search", {
-                body: {
-                  instructor_name: sess.instructor_name,
-                  student_name: sess.student_name,
-                  scheduled_at: sess.scheduled_at,
-                },
-              });
+              if (type === "student_cancel") {
+                await supabase.functions.invoke("sync-calendar-event", {
+                  body: {
+                    action: "rename",
+                    session_id: sess.id,
+                    gcal_event_id: (sess as any).gcal_event_id ?? null,
+                    instructor_name: sess.instructor_name,
+                    student_name: sess.student_name,
+                    scheduled_at: sess.scheduled_at,
+                  },
+                });
+              } else if (type === "sick" || type === "instructor_cancel" || type === "advance_cancel") {
+                await supabase.functions.invoke("sync-calendar-event", {
+                  body: {
+                    action: "delete",
+                    session_id: sess.id,
+                    gcal_event_id: (sess as any).gcal_event_id ?? null,
+                    instructor_name: sess.instructor_name,
+                    student_name: sess.student_name,
+                    scheduled_at: sess.scheduled_at,
+                  },
+                });
+              }
+              // no_show: do nothing — event stays on calendar
             } catch (e) {
-              console.warn("[gcal cleanup] skipped", e);
+              console.warn("[gcal cancel sync] skipped", e);
             }
             if (instructor) loadData(instructor);
             setCancellationModal(null);
