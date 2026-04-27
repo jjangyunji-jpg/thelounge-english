@@ -1,0 +1,1 @@
+UPDATE public.makeup_requests SET status = 'cancelled', resolved_at = now() WHERE id = '8ba9f5d9-ce82-4e28-807a-41cc16427529' AND status = 'pending';
