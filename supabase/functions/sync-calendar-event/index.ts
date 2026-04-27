@@ -229,7 +229,45 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── MOVE ────────────────────────────────────────────────
+    // ── RENAME (used by 당일 취소: prefix "(취) ") ──────────
+    if (action === "rename") {
+      const scheduled_at: string | undefined = body?.scheduled_at;
+      const new_title: string | undefined = body?.new_title;
+      let title = new_title;
+      if (!title) {
+        const display = await resolveInstructorDisplayName(sb, instructor_name);
+        title = `(취) ${display}_${student_name}`;
+      }
+      const tok = parseToken(gcalToken);
+      if (tok) {
+        const ok = await patchEventSummary(tok.calendarId, tok.eventId, title);
+        return new Response(
+          JSON.stringify({ ok, mode: "token", title }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (!scheduled_at) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "scheduled_at required when no gcal_event_id" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const matches = await searchEvents(calendarId, student_name, scheduled_at);
+      let renamed = 0;
+      for (const ev of matches) {
+        if (await patchEventSummary(calendarId, ev.id, title)) renamed++;
+      }
+      if (sessionId && matches.length === 1) {
+        await sb
+          .from("class_sessions")
+          .update({ gcal_event_id: `${calendarId}::${matches[0].id}` })
+          .eq("id", sessionId);
+      }
+      return new Response(
+        JSON.stringify({ ok: true, mode: "search", renamed, title }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     if (action === "move") {
       const old_scheduled_at: string | undefined = body?.old_scheduled_at;
       const new_scheduled_at: string | undefined = body?.new_scheduled_at;
