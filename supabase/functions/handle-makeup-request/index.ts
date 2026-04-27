@@ -109,9 +109,19 @@ serve(async (req) => {
         const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
         const origHour = origDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
 
-        // GCAL: delete the original event (if any) — original time slot disappears from calendar
+        // GCAL: delete the original event — original time slot disappears from calendar.
+        // Prefer token-based delete; fall back to a ±30min search of the
+        // instructor's mapped calendar for events containing the student name
+        // (covers manually-created regular-class events that have no token).
+        const origInstMapping = await fetchInstructorMapping(origSession.instructor_name);
         if (origSession.gcal_event_id) {
           await deleteCalendarEvent(origSession.gcal_event_id);
+        } else {
+          await deleteCalendarEventsBySearch({
+            calendarId: origInstMapping.calendarId,
+            studentName: origSession.student_name,
+            scheduledISO: origSession.scheduled_at,
+          });
         }
 
         // 1) Mark original session as sick + makeup_completed, clear notes/topic/remarks/gcal_event_id
