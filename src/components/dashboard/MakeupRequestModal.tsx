@@ -284,7 +284,11 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         const { data: fresh } = await supabase.from("instructor_available_slots").select("*")
           .eq("instructor_name", targetInstructorName).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time");
-        setSlots((fresh || []) as AvailableSlot[]);
+        // Merge: replace only this instructor's slots, keep others
+        setSlots(prev => [
+          ...prev.filter(s => s.instructor_name !== targetInstructorName),
+          ...((fresh || []) as AvailableSlot[]),
+        ]);
         setSelectedSlot(null);
         setSelectedDate(null);
         setStep("calendar");
