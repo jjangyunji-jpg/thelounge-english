@@ -238,8 +238,35 @@ Deno.serve(async (req) => {
       }
       const matches = await searchEvents(calendarId, student_name, old_scheduled_at);
       if (matches.length === 0) {
+        // Fallback: old event couldn't be located (e.g. previous reschedule
+        // already shifted DB but not calendar, or event was edited manually).
+        // Create a fresh event at the new time so the calendar at least
+        // reflects the latest schedule, and persist its token.
+        // Avoid duplicates: re-check the new-time window first.
+        const existingAtNew = await searchEvents(calendarId, student_name, new_scheduled_at);
+        if (existingAtNew.length > 0) {
+          const tok = `${calendarId}::${existingAtNew[0].id}`;
+          if (sessionId) {
+            await sb.from("class_sessions").update({ gcal_event_id: tok }).eq("id", sessionId);
+          }
+          return new Response(
+            JSON.stringify({ ok: true, mode: "search", patched: 0, note: "event already at new time", token: tok }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        const display = await resolveInstructorDisplayName(sb, instructor_name);
+        const title = `${display}_${student_name}`;
+        const token = await createEvent({
+          calendarId,
+          title,
+          startISO: new_scheduled_at,
+          description: `정규 수업 (강사: ${instructor_name})`,
+        });
+        if (token && sessionId) {
+          await sb.from("class_sessions").update({ gcal_event_id: token }).eq("id", sessionId);
+        }
         return new Response(
-          JSON.stringify({ ok: true, mode: "search", patched: 0, note: "no matching event" }),
+          JSON.stringify({ ok: !!token, mode: "search-create", patched: 0, created: !!token, token }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
