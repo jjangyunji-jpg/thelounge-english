@@ -716,6 +716,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       </p>
                     </div>
                   )}
+
+                  {visibleSlots.length === 0 && (
+                    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        <span className="font-semibold text-foreground">{targetInstructorName}</span> 강사님이 아직 이 기간에 가능한 시간을 등록하지 않았어요. 강사님께 문의해 주세요.
+                      </p>
+                    </div>
+                  )}
                   <div className="rounded-xl border border-border p-3 space-y-2">
                     <div className="flex items-center justify-center gap-4">
                       <button onClick={() => { if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); } else setCalMonth(m => m - 1); }}
