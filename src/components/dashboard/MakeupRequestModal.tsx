@@ -99,11 +99,31 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     (async () => {
       if (!instructorName) { setLoading(false); return; }
       const now = new Date();
+
+      // Resolve all instructors associated with this student (including transfer history),
+      // so transfer-in-progress students can request makeup against the instructor that
+      // actually owns the original session's date.
+      const { data: studentInstructorsData } = await supabase
+        .from("instructor_students")
+        .select("instructor_name")
+        .eq("student_name", studentName);
+      const instructorNames = Array.from(
+        new Set(
+          [
+            instructorName,
+            ...((studentInstructorsData || []).map((r: any) => r.instructor_name).filter(Boolean) as string[]),
+          ]
+        )
+      );
+
       const [slotsRes, sessionsRes, reqsRes, groupSessRes, cancelledRes, periodsRes] = await Promise.all([
         // Fetch both open AND booked slots so students can see the full picture
-        // (booked slots will be shown as "신청 완료" / 매진)
+        // (booked slots will be shown as "신청 완료" / 매진).
+        // Include slots from ALL of the student's (current + past) instructors so that
+        // transfer-in-progress students can see slots for whichever instructor owns the
+        // original session's month.
         supabase.from("instructor_available_slots").select("*")
-          .eq("instructor_name", instructorName).in("status", ["open", "booked"])
+          .in("instructor_name", instructorNames).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time"),
         supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students")
           .eq("student_name", studentName).gte("scheduled_at", now.toISOString())
