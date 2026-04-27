@@ -381,27 +381,42 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
     }
   };
 
-  // Filter processed requests by selected month
+  // Compute the "보강 일정" month (KST) for a request — based on the slot date
+  // (= new makeup schedule), not the request creation date. Falls back to
+  // created_at only if the slot can't be located.
+  const slotById = useMemo(() => {
+    const map = new Map<string, AvailableSlot>();
+    for (const s of slots) map.set(s.id, s);
+    return map;
+  }, [slots]);
+
+  const requestMonthKey = useCallback((r: MakeupReq): string => {
+    const slot = r.slot_id ? slotById.get(r.slot_id) : null;
+    if (slot?.slot_date) {
+      // slot_date is already a KST calendar date (YYYY-MM-DD)
+      return slot.slot_date.slice(0, 7);
+    }
+    const d = new Date(r.created_at);
+    const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+    return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, "0")}`;
+  }, [slotById]);
+
+  // Filter processed requests by selected month (based on makeup schedule date)
   const processedByMonth = useMemo(() => {
     return requests
       .filter(r => r.status !== "pending")
-      .filter(r => {
-        const d = new Date(r.created_at);
-        const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        return m === requestMonth;
-      });
-  }, [requests, requestMonth]);
+      .filter(r => requestMonthKey(r) === requestMonth);
+  }, [requests, requestMonth, requestMonthKey]);
 
-  // Available months from all processed requests
+  // Available months from all processed requests (based on makeup schedule date)
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
     for (const r of requests) {
       if (r.status === "pending") continue;
-      const d = new Date(r.created_at);
-      months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      months.add(requestMonthKey(r));
     }
     return Array.from(months).sort().reverse();
-  }, [requests]);
+  }, [requests, requestMonthKey]);
 
   const navigateMonth = (dir: -1 | 1) => {
     const [y, m] = requestMonth.split("-").map(Number);
