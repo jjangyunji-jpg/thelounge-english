@@ -386,17 +386,24 @@ serve(async (req) => {
           }).eq("id", makeupReq.original_session_id);
         }
 
-        // Delete the re-opened original slot (if it exists) — only if we have slot context
-        if (slot) {
+        // Clean up any "open" slots at the restored original time —
+        // 강사가 그 시간대를 보강 슬롯으로 미리 등록해뒀다면 정규 수업과 충돌하므로 자동 삭제.
+        // slot_id가 없는 수동 reschedule 케이스도 instructor_name으로 fallback 매칭.
+        {
           const origDate = new Date(makeupReq.original_scheduled_at);
           const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
           const origHour = origDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
-          await sb.from("instructor_available_slots")
+          let cleanup = sb.from("instructor_available_slots")
             .delete()
-            .eq("instructor_id", slot.instructor_id)
             .eq("slot_date", origDateStr)
             .eq("slot_time", origHour + ":00")
             .eq("status", "open");
+          if (slot?.instructor_id) {
+            cleanup = cleanup.eq("instructor_id", slot.instructor_id);
+          } else {
+            cleanup = cleanup.eq("instructor_name", makeupReq.instructor_name);
+          }
+          await cleanup;
         }
 
       } else if (makeupReq.request_type === "extra") {
