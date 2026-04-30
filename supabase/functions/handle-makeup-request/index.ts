@@ -295,8 +295,11 @@ serve(async (req) => {
       });
 
     } else if (action === "cancel") {
-      // Cancel an approved makeup request — undo session changes and re-open slot
-      if (makeupReq.status !== "approved") throw new Error("승인된 요청만 취소할 수 있습니다.");
+      // Cancel an approved (or student-requested-cancel) makeup request —
+      // undo session changes and re-open slot.
+      if (makeupReq.status !== "approved" && makeupReq.status !== "cancel_requested") {
+        throw new Error("승인된 요청만 취소할 수 있습니다.");
+      }
 
       // Get the slot to find the scheduled time
       const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
@@ -395,6 +398,18 @@ serve(async (req) => {
       }).eq("id", request_id);
 
       return new Response(JSON.stringify({ success: true, action: "cancelled" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } else if (action === "reject_cancel") {
+      // Instructor rejects the student's cancellation request — restore status to approved
+      if (makeupReq.status !== "cancel_requested") {
+        throw new Error("취소 요청 상태인 보강만 거절할 수 있습니다.");
+      }
+      await sb.from("makeup_requests").update({
+        status: "approved",
+        resolved_at: null,
+      }).eq("id", request_id);
+      return new Response(JSON.stringify({ success: true, action: "cancel_rejected" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

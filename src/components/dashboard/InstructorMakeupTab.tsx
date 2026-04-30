@@ -336,7 +336,42 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
     setProcessingId(null);
   };
 
+  // Approve student's cancellation request → actually undo the makeup
+  const handleApproveCancel = async (reqId: string) => {
+    if (!confirm("학생의 보강 취소 요청을 승인하시겠습니까?\n원래 일정으로 복원되고 캘린더도 정리됩니다.")) return;
+    setProcessingId(reqId);
+    const { data, error } = await supabase.functions.invoke("handle-makeup-request", {
+      body: { action: "cancel", request_id: reqId },
+    });
+    if (error || data?.error) {
+      toast({ title: "취소 승인 실패", description: data?.error || error?.message, variant: "destructive" });
+    } else {
+      toast({ title: "보강이 취소되었습니다 ✓", description: "원래 일정으로 복원되었습니다." });
+      onSessionChanged?.();
+    }
+    await loadData();
+    setProcessingId(null);
+  };
+
+  // Reject student's cancellation request → keep the makeup as approved
+  const handleRejectCancel = async (reqId: string) => {
+    if (!confirm("학생의 취소 요청을 거절하시겠습니까?\n보강 일정이 유지됩니다.")) return;
+    setProcessingId(reqId);
+    const { data, error } = await supabase.functions.invoke("handle-makeup-request", {
+      body: { action: "reject_cancel", request_id: reqId },
+    });
+    if (error || data?.error) {
+      toast({ title: "거절 실패", description: data?.error || error?.message, variant: "destructive" });
+    } else {
+      toast({ title: "취소 요청이 거절되었습니다", description: "보강 일정이 그대로 유지됩니다." });
+    }
+    await loadData();
+    setProcessingId(null);
+  };
+
   const pendingRequests = requests.filter(r => r.status === "pending");
+  const cancelRequests = requests.filter(r => r.status === "cancel_requested");
+  const totalAwaiting = pendingRequests.length + cancelRequests.length;
 
   // Determine display status: distinguish "cancelled" vs "changed"
   // "changed" = cancelled request where the same student has a newer request for the same original session
@@ -479,14 +514,14 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
   return (
     <div className="space-y-4">
       {/* Pending requests badge */}
-      {pendingRequests.length > 0 && activeView !== "requests" && (
+      {totalAwaiting > 0 && activeView !== "requests" && (
         <button
           onClick={() => setActiveView("requests")}
           className="w-full rounded-lg border border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/5 p-3 flex items-center justify-between hover:bg-[hsl(var(--warning))]/10 transition-colors"
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-[hsl(var(--warning))]" />
-            <span className="text-sm font-semibold text-foreground">승인 대기 {pendingRequests.length}건</span>
+            <span className="text-sm font-semibold text-foreground">승인 대기 {totalAwaiting}건</span>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </button>
@@ -509,9 +544,9 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
           >
             <t.icon className="w-3.5 h-3.5" />
             {t.label}
-            {t.key === "requests" && pendingRequests.length > 0 && (
+            {t.key === "requests" && totalAwaiting > 0 && (
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] font-bold">
-                {pendingRequests.length}
+                {totalAwaiting}
               </span>
             )}
           </button>
@@ -947,7 +982,82 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
             </div>
           )}
 
-          {pendingRequests.length === 0 && (
+          {/* Cancellation requests from students */}
+          {cancelRequests.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <X className="w-4 h-4 text-destructive" />
+                취소 요청
+                <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">
+                  {cancelRequests.length}
+                </span>
+              </h3>
+              {cancelRequests.map(req => {
+                const slot = slots.find(s => s.id === req.slot_id);
+                const origAt = req.original_scheduled_at;
+                return (
+                  <div key={req.id} className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-foreground">{req.student_name}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-destructive/10 text-destructive">
+                            취소 요청
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    {(slot || origAt) && (
+                      <div className="rounded-md bg-card/50 px-3 py-2 text-xs space-y-1">
+                        {slot && (
+                          <p>
+                            <span className="text-muted-foreground">취소할 보강: </span>
+                            <span className="font-semibold text-destructive line-through">
+                              {new Date(slot.slot_date + "T00:00:00").toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}{" "}
+                              {fmtTimeKo(slot.slot_time)}
+                            </span>
+                          </p>
+                        )}
+                        {origAt && req.request_type === "reschedule" && (
+                          <p>
+                            <span className="text-muted-foreground">복원할 일정: </span>
+                            <span className="font-semibold text-[hsl(var(--success))]">
+                              {new Date(origAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}{" "}
+                              {new Date(origAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" })}
+                            </span>
+                          </p>
+                        )}
+                        {req.request_type === "extra" && (
+                          <p className="text-muted-foreground">추가 보강 — 승인 시 보강 세션이 삭제됩니다.</p>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRejectCancel(req.id)}
+                        disabled={!!processingId}
+                        className="h-8 text-xs flex-1"
+                      >
+                        {processingId === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><X className="w-3 h-3 mr-1" /> 취소 거절</>}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveCancel(req.id)}
+                        disabled={!!processingId}
+                        className="h-8 text-xs flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                      >
+                        {processingId === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Check className="w-3 h-3 mr-1" /> 취소 승인</>}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {totalAwaiting === 0 && (
             <div className="rounded-lg border border-dashed border-border p-6 text-center">
               <Check className="w-6 h-6 text-[hsl(var(--success))]/40 mx-auto mb-2" />
               <p className="text-xs text-muted-foreground">대기 중인 신청이 없습니다</p>

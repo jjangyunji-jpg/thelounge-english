@@ -482,7 +482,14 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   <p className="text-xs font-semibold text-muted-foreground">이전 신청 내역</p>
                   {pastRequests.map(r => {
                     const isFutureApproved = r.status === "approved";
+                    const isCancelRequested = r.status === "cancel_requested";
                     const rejectionLabel = r.rejection_code ? REJECTION_LABELS[r.rejection_code] : null;
+                    // Find the booked slot to determine 48h cutoff
+                    const bookedSlot = slots.find(s => s.id === r.slot_id);
+                    const slotISO = bookedSlot
+                      ? new Date(`${bookedSlot.slot_date}T${bookedSlot.slot_time}+09:00`).toISOString()
+                      : null;
+                    const within48 = slotISO ? new Date(slotISO).getTime() - Date.now() < 48 * 60 * 60 * 1000 : true;
                     return (
                       <div key={r.id} className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
                         <div className="flex items-center justify-between">
@@ -491,13 +498,22 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                           </p>
                           <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
                             r.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
+                            r.status === "cancel_requested" ? "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]" :
                             r.status === "rejected" ? "bg-destructive/10 text-destructive" :
                             r.status === "changed" ? "bg-primary/10 text-primary" :
                             "bg-muted text-muted-foreground"
                           )}>
-                            {r.status === "approved" ? "보강 확정" : r.status === "rejected" ? "강사 거절" : r.status === "changed" ? "일정 변경" : "취소됨"}
+                            {r.status === "approved" ? "보강 확정" :
+                             r.status === "cancel_requested" ? "취소 승인 대기" :
+                             r.status === "rejected" ? "강사 거절" :
+                             r.status === "changed" ? "일정 변경" : "취소됨"}
                           </span>
                         </div>
+                        {bookedSlot && (
+                          <p className="text-[10px] text-muted-foreground">
+                            보강: {fmtDateKo(bookedSlot.slot_date)} {fmtTimeKo(bookedSlot.slot_time)}
+                          </p>
+                        )}
                         {(rejectionLabel || r.reject_reason) && (
                           <p className="text-[10px] text-muted-foreground mt-1">
                             사유: {rejectionLabel || r.reject_reason}
@@ -505,22 +521,35 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                         )}
                         {isFutureApproved && (
                           <button
+                            disabled={within48}
                             onClick={async () => {
-                              if (!confirm("승인된 보강을 취소하시겠습니까?")) return;
-                              const { data, error } = await supabase.functions.invoke("handle-makeup-request", {
-                                body: { action: "cancel", request_id: r.id },
-                              });
-                              if (error || data?.error) {
-                                toast({ title: "취소 실패", description: (data?.error || error?.message), variant: "destructive" });
+                              if (within48) return;
+                              if (!confirm("보강 일정 취소를 요청하시겠습니까?\n강사의 승인 후 취소가 확정됩니다.")) return;
+                              const { error } = await supabase.from("makeup_requests")
+                                .update({ status: "cancel_requested" } as any)
+                                .eq("id", r.id);
+                              if (error) {
+                                toast({ title: "취소 요청 실패", description: error.message, variant: "destructive" });
                               } else {
-                                toast({ title: "보강이 취소되었습니다" });
-                                setMyRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "cancelled" } : x));
+                                toast({ title: "취소 요청이 전송되었습니다", description: "강사의 승인을 기다려주세요." });
+                                setMyRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "cancel_requested" } : x));
                               }
                             }}
-                            className="text-[11px] text-destructive hover:underline font-medium"
+                            className={cn(
+                              "text-[11px] font-medium",
+                              within48
+                                ? "text-muted-foreground/60 cursor-not-allowed"
+                                : "text-destructive hover:underline"
+                            )}
+                            title={within48 ? "보강 48시간 전부터는 취소할 수 없습니다" : ""}
                           >
-                            취소하기
+                            {within48 ? "취소 불가 (48시간 이내)" : "취소 요청하기"}
                           </button>
+                        )}
+                        {isCancelRequested && (
+                          <p className="text-[10px] text-[hsl(var(--warning))] font-medium">
+                            강사 승인 대기 중 — 승인되면 원래 일정으로 복원됩니다
+                          </p>
                         )}
                       </div>
                     );
