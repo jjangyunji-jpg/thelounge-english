@@ -295,8 +295,11 @@ serve(async (req) => {
       });
 
     } else if (action === "cancel") {
-      // Cancel an approved makeup request — undo session changes and re-open slot
-      if (makeupReq.status !== "approved") throw new Error("승인된 요청만 취소할 수 있습니다.");
+      // Cancel an approved (or student-requested-cancel) makeup request —
+      // undo session changes and re-open slot.
+      if (makeupReq.status !== "approved" && makeupReq.status !== "cancel_requested") {
+        throw new Error("승인된 요청만 취소할 수 있습니다.");
+      }
 
       // Get the slot to find the scheduled time
       const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
