@@ -675,8 +675,10 @@ export default function StudentDashboard() {
       for (const s of group) map.set(s.id, s);
       return Array.from(map.values());
     };
-    // 강사 사유 취소 세션은 학생 대시보드에서 숨김
-    const hideInstructorCancelled = (s: any) => s.cancellation_type !== 'instructor_cancel';
+    // 강사 사유 취소 + 보강 완료된 원본(sick→makeup_completed) 세션은 학생 대시보드에서 숨김
+    const hideInstructorCancelled = (s: any) =>
+      s.cancellation_type !== 'instructor_cancel' &&
+      !(s.cancellation_type === 'sick' && s.cancellation_resolution === 'makeup_completed');
     const allMerged = mergeAndDedup(allSessRes.data || [], groupAllSessRes.data || []);
     // 강사 취소 세션 날짜를 먼저 기록 (반복 일정에서 제외하기 위해)
     const cancelledDates = new Set<string>();
