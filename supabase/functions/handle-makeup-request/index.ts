@@ -50,10 +50,17 @@ serve(async (req) => {
     if (reqErr || !makeupReq) throw new Error("요청을 찾을 수 없습니다.");
     if (action !== "cancel" && makeupReq.status !== "pending") throw new Error("이미 처리된 요청입니다.");
 
-    // Get the slot
-    const { data: slot } = await sb
-      .from("instructor_available_slots").select("*").eq("id", makeupReq.slot_id).single();
-    if (!slot) throw new Error("슬롯 정보를 찾을 수 없습니다.");
+    // Get the slot (may be null for legacy approved requests where slot was not booked through the flow)
+    let slot: any = null;
+    if (makeupReq.slot_id) {
+      const { data: slotData } = await sb
+        .from("instructor_available_slots").select("*").eq("id", makeupReq.slot_id).maybeSingle();
+      slot = slotData;
+    }
+    // For approve/reject we still require a slot
+    if ((action === "approve" || action === "reject") && !slot) {
+      throw new Error("슬롯 정보를 찾을 수 없습니다.");
+    }
 
     // Helper: lookup student details for calendar title/meet link
     const fetchStudentInfo = async (studentName: string) => {
