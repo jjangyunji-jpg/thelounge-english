@@ -487,10 +487,23 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     const rejectionLabel = r.rejection_code ? REJECTION_LABELS[r.rejection_code] : null;
                     // Find the booked slot to determine 48h cutoff
                     const bookedSlot = slots.find(s => s.id === r.slot_id);
-                    const slotISO = bookedSlot
+                    let slotISO: string | null = bookedSlot
                       ? new Date(`${bookedSlot.slot_date}T${bookedSlot.slot_time}+09:00`).toISOString()
                       : null;
+                    // Fallback: if no slot (e.g. legacy approval), find the makeup session by reschedule_origin_dates
+                    if (!slotISO && r.original_scheduled_at) {
+                      const origDateStr = new Date(r.original_scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                      const makeupSess = sessions.find(s =>
+                        s.instructor_name === r.instructor_name &&
+                        Array.isArray(s.reschedule_origin_dates) &&
+                        s.reschedule_origin_dates.includes(origDateStr)
+                      );
+                      if (makeupSess) slotISO = makeupSess.scheduled_at;
+                    }
                     const within48 = slotISO ? new Date(slotISO).getTime() - Date.now() < 48 * 60 * 60 * 1000 : true;
+                    const displayDate = bookedSlot
+                      ? `${fmtDateKo(bookedSlot.slot_date)} ${fmtTimeKo(bookedSlot.slot_time)}`
+                      : (slotISO ? `${fmtSessionDate(slotISO)} ${fmtSessionTime(slotISO)}` : null);
                     return (
                       <div key={r.id} className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
                         <div className="flex items-center justify-between">
@@ -510,9 +523,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                              r.status === "changed" ? "일정 변경" : "취소됨"}
                           </span>
                         </div>
-                        {bookedSlot && (
+                        {displayDate && (
                           <p className="text-[10px] text-muted-foreground">
-                            보강: {fmtDateKo(bookedSlot.slot_date)} {fmtTimeKo(bookedSlot.slot_time)}
+                            보강: {displayDate}
                           </p>
                         )}
                         {(rejectionLabel || r.reject_reason) && (
