@@ -308,19 +308,39 @@ serve(async (req) => {
         throw new Error("승인된 요청만 취소할 수 있습니다.");
       }
 
-      // Get the slot to find the scheduled time
-      const newScheduledAt = new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString();
+      // Determine the makeup session's scheduled time.
+      // Prefer the booked slot; fall back to looking up the makeup session
+      // via reschedule_origin_dates (covers legacy approvals that have no slot_id).
+      let newScheduledAt: string | null = slot
+        ? new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString()
+        : null;
 
       if (makeupReq.request_type === "reschedule" && makeupReq.original_session_id) {
         if (!makeupReq.original_scheduled_at) throw new Error("원래 일정 정보가 없습니다.");
 
-        // Find the makeup session
-        const { data: makeupSessions } = await sb
-          .from("class_sessions")
-          .select("id, notes, topic, remarks, gcal_event_id, instructor_name, student_name, meet_link")
-          .eq("student_name", makeupReq.student_name)
-          .eq("scheduled_at", newScheduledAt);
-        const makeupRow = makeupSessions && makeupSessions.length > 0 ? makeupSessions[0] : null;
+        const origDateStrForMatch = new Date(makeupReq.original_scheduled_at)
+          .toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+
+        // Find the makeup session — try by exact scheduled_at first, then by reschedule_origin_dates
+        let makeupRow: any = null;
+        if (newScheduledAt) {
+          const { data: byTime } = await sb
+            .from("class_sessions")
+            .select("id, notes, topic, remarks, gcal_event_id, instructor_name, student_name, meet_link, scheduled_at")
+            .eq("student_name", makeupReq.student_name)
+            .eq("scheduled_at", newScheduledAt);
+          if (byTime && byTime.length > 0) makeupRow = byTime[0];
+        }
+        if (!makeupRow) {
+          const { data: byOrigin } = await sb
+            .from("class_sessions")
+            .select("id, notes, topic, remarks, gcal_event_id, instructor_name, student_name, meet_link, scheduled_at")
+            .eq("student_name", makeupReq.student_name)
+            .contains("reschedule_origin_dates", [origDateStrForMatch])
+            .order("scheduled_at", { ascending: false });
+          if (byOrigin && byOrigin.length > 0) makeupRow = byOrigin[0];
+        }
+        if (makeupRow && !newScheduledAt) newScheduledAt = makeupRow.scheduled_at;
 
         // GCAL: delete the makeup event
         if (makeupRow?.gcal_event_id) {
