@@ -386,37 +386,42 @@ serve(async (req) => {
           }).eq("id", makeupReq.original_session_id);
         }
 
-        // Delete the re-opened original slot (if it exists)
-        const origDate = new Date(makeupReq.original_scheduled_at);
-        const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-        const origHour = origDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
-        await sb.from("instructor_available_slots")
-          .delete()
-          .eq("instructor_id", slot.instructor_id)
-          .eq("slot_date", origDateStr)
-          .eq("slot_time", origHour + ":00")
-          .eq("status", "open");
+        // Delete the re-opened original slot (if it exists) — only if we have slot context
+        if (slot) {
+          const origDate = new Date(makeupReq.original_scheduled_at);
+          const origDateStr = origDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+          const origHour = origDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
+          await sb.from("instructor_available_slots")
+            .delete()
+            .eq("instructor_id", slot.instructor_id)
+            .eq("slot_date", origDateStr)
+            .eq("slot_time", origHour + ":00")
+            .eq("status", "open");
+        }
 
       } else if (makeupReq.request_type === "extra") {
         // Delete the extra session that was created
-        const { data: extraSessions } = await sb
-          .from("class_sessions")
-          .select("id, gcal_event_id")
-          .eq("student_name", makeupReq.student_name)
-          .eq("scheduled_at", newScheduledAt);
-        if (extraSessions && extraSessions.length > 0) {
-          // GCAL: delete the extra event
-          if (extraSessions[0].gcal_event_id) {
-            await deleteCalendarEvent(extraSessions[0].gcal_event_id);
+        if (newScheduledAt) {
+          const { data: extraSessions } = await sb
+            .from("class_sessions")
+            .select("id, gcal_event_id")
+            .eq("student_name", makeupReq.student_name)
+            .eq("scheduled_at", newScheduledAt);
+          if (extraSessions && extraSessions.length > 0) {
+            if (extraSessions[0].gcal_event_id) {
+              await deleteCalendarEvent(extraSessions[0].gcal_event_id);
+            }
+            await sb.from("class_sessions").delete().eq("id", extraSessions[0].id);
           }
-          await sb.from("class_sessions").delete().eq("id", extraSessions[0].id);
         }
       }
 
-      // Re-open the booked slot
-      await sb.from("instructor_available_slots")
-        .update({ status: "open" })
-        .eq("id", makeupReq.slot_id);
+      // Re-open the booked slot (if any)
+      if (makeupReq.slot_id) {
+        await sb.from("instructor_available_slots")
+          .update({ status: "open" })
+          .eq("id", makeupReq.slot_id);
+      }
 
       // Update request status
       await sb.from("makeup_requests").update({
