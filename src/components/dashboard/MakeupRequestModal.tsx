@@ -136,12 +136,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         supabase.from("instructor_available_slots").select("*")
           .in("instructor_name", instructorNames).in("status", ["open", "booked"])
           .gte("slot_date", todayStr).order("slot_date").order("slot_time"),
-        supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students")
+        supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students, reschedule_origin_dates")
           .eq("student_name", studentName).gte("scheduled_at", now.toISOString())
           .is("started_at", null).order("scheduled_at"),
         supabase.from("makeup_requests").select("*")
           .eq("student_name", studentName).order("created_at", { ascending: false }).limit(30),
-        supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students")
+        supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students, reschedule_origin_dates")
           .contains("group_students", [studentName]).gte("scheduled_at", now.toISOString())
           .is("started_at", null).order("scheduled_at"),
         supabase.from("class_sessions").select("id, scheduled_at, topic, instructor_name, group_students, cancellation_type, cancellation_resolution")
