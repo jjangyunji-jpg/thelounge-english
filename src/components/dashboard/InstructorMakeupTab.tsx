@@ -511,9 +511,9 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
           >
             <t.icon className="w-3.5 h-3.5" />
             {t.label}
-            {t.key === "requests" && pendingRequests.length > 0 && (
+            {t.key === "requests" && totalAwaiting > 0 && (
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] font-bold">
-                {pendingRequests.length}
+                {totalAwaiting}
               </span>
             )}
           </button>
