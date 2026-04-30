@@ -336,6 +336,39 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
     setProcessingId(null);
   };
 
+  // Approve student's cancellation request → actually undo the makeup
+  const handleApproveCancel = async (reqId: string) => {
+    if (!confirm("학생의 보강 취소 요청을 승인하시겠습니까?\n원래 일정으로 복원되고 캘린더도 정리됩니다.")) return;
+    setProcessingId(reqId);
+    const { data, error } = await supabase.functions.invoke("handle-makeup-request", {
+      body: { action: "cancel", request_id: reqId },
+    });
+    if (error || data?.error) {
+      toast({ title: "취소 승인 실패", description: data?.error || error?.message, variant: "destructive" });
+    } else {
+      toast({ title: "보강이 취소되었습니다 ✓", description: "원래 일정으로 복원되었습니다." });
+      onSessionChanged?.();
+    }
+    await loadData();
+    setProcessingId(null);
+  };
+
+  // Reject student's cancellation request → keep the makeup as approved
+  const handleRejectCancel = async (reqId: string) => {
+    if (!confirm("학생의 취소 요청을 거절하시겠습니까?\n보강 일정이 유지됩니다.")) return;
+    setProcessingId(reqId);
+    const { data, error } = await supabase.functions.invoke("handle-makeup-request", {
+      body: { action: "reject_cancel", request_id: reqId },
+    });
+    if (error || data?.error) {
+      toast({ title: "거절 실패", description: data?.error || error?.message, variant: "destructive" });
+    } else {
+      toast({ title: "취소 요청이 거절되었습니다", description: "보강 일정이 그대로 유지됩니다." });
+    }
+    await loadData();
+    setProcessingId(null);
+  };
+
   const pendingRequests = requests.filter(r => r.status === "pending");
   const cancelRequests = requests.filter(r => r.status === "cancel_requested");
   const totalAwaiting = pendingRequests.length + cancelRequests.length;
