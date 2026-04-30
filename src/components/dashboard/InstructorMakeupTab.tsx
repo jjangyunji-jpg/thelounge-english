@@ -337,6 +337,8 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
   };
 
   const pendingRequests = requests.filter(r => r.status === "pending");
+  const cancelRequests = requests.filter(r => r.status === "cancel_requested");
+  const totalAwaiting = pendingRequests.length + cancelRequests.length;
 
   // Determine display status: distinguish "cancelled" vs "changed"
   // "changed" = cancelled request where the same student has a newer request for the same original session
