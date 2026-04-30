@@ -481,14 +481,14 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
   return (
     <div className="space-y-4">
       {/* Pending requests badge */}
-      {pendingRequests.length > 0 && activeView !== "requests" && (
+      {totalAwaiting > 0 && activeView !== "requests" && (
         <button
           onClick={() => setActiveView("requests")}
           className="w-full rounded-lg border border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/5 p-3 flex items-center justify-between hover:bg-[hsl(var(--warning))]/10 transition-colors"
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-[hsl(var(--warning))]" />
-            <span className="text-sm font-semibold text-foreground">승인 대기 {pendingRequests.length}건</span>
+            <span className="text-sm font-semibold text-foreground">승인 대기 {totalAwaiting}건</span>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </button>
