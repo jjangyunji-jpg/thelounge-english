@@ -400,6 +400,18 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, action: "cancelled" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    } else if (action === "reject_cancel") {
+      // Instructor rejects the student's cancellation request — restore status to approved
+      if (makeupReq.status !== "cancel_requested") {
+        throw new Error("취소 요청 상태인 보강만 거절할 수 있습니다.");
+      }
+      await sb.from("makeup_requests").update({
+        status: "approved",
+        resolved_at: null,
+      }).eq("id", request_id);
+      return new Response(JSON.stringify({ success: true, action: "cancel_rejected" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     throw new Error("잘못된 요청입니다.");
