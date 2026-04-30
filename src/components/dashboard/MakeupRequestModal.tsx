@@ -23,6 +23,7 @@ interface ClassSession {
   group_students: string[];
   cancellation_type?: string | null;
   cancellation_resolution?: string | null;
+  reschedule_origin_dates?: string[] | null;
 }
 
 interface MakeupReq {
