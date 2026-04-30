@@ -982,7 +982,82 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
             </div>
           )}
 
-          {pendingRequests.length === 0 && (
+          {/* Cancellation requests from students */}
+          {cancelRequests.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <X className="w-4 h-4 text-destructive" />
+                취소 요청
+                <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">
+                  {cancelRequests.length}
+                </span>
+              </h3>
+              {cancelRequests.map(req => {
+                const slot = slots.find(s => s.id === req.slot_id);
+                const origAt = req.original_scheduled_at;
+                return (
+                  <div key={req.id} className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-foreground">{req.student_name}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-destructive/10 text-destructive">
+                            취소 요청
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    {(slot || origAt) && (
+                      <div className="rounded-md bg-card/50 px-3 py-2 text-xs space-y-1">
+                        {slot && (
+                          <p>
+                            <span className="text-muted-foreground">취소할 보강: </span>
+                            <span className="font-semibold text-destructive line-through">
+                              {new Date(slot.slot_date + "T00:00:00").toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}{" "}
+                              {fmtTimeKo(slot.slot_time)}
+                            </span>
+                          </p>
+                        )}
+                        {origAt && req.request_type === "reschedule" && (
+                          <p>
+                            <span className="text-muted-foreground">복원할 일정: </span>
+                            <span className="font-semibold text-[hsl(var(--success))]">
+                              {new Date(origAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" })}{" "}
+                              {new Date(origAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" })}
+                            </span>
+                          </p>
+                        )}
+                        {req.request_type === "extra" && (
+                          <p className="text-muted-foreground">추가 보강 — 승인 시 보강 세션이 삭제됩니다.</p>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRejectCancel(req.id)}
+                        disabled={!!processingId}
+                        className="h-8 text-xs flex-1"
+                      >
+                        {processingId === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><X className="w-3 h-3 mr-1" /> 취소 거절</>}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveCancel(req.id)}
+                        disabled={!!processingId}
+                        className="h-8 text-xs flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                      >
+                        {processingId === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Check className="w-3 h-3 mr-1" /> 취소 승인</>}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {totalAwaiting === 0 && (
             <div className="rounded-lg border border-dashed border-border p-6 text-center">
               <Check className="w-6 h-6 text-[hsl(var(--success))]/40 mx-auto mb-2" />
               <p className="text-xs text-muted-foreground">대기 중인 신청이 없습니다</p>
