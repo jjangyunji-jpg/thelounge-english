@@ -486,6 +486,7 @@ export default function StudentDashboard() {
   const [holidays, setHolidays] = useState<HolidayNotice[]>([]);
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriod[]>([]);
+  const [instructorEnMap, setInstructorEnMap] = useState<Map<string, string>>(new Map());
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("dismissed_holiday_ids") || "[]"); } catch { return []; }
