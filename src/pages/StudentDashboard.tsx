@@ -244,13 +244,14 @@ interface CalendarDayItem {
   isVirtual: boolean;
 }
 
-function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPeriod, allPeriods, onPeriodChange }: {
+function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPeriod, allPeriods, onPeriodChange, instructorEnMap }: {
   allCalendarDates: Set<string>;
   dayDetailsMap: Map<string, CalendarDayItem[]>;
   holidays: HolidayNotice[];
   selectedPeriod: SchedulePeriod | null;
   allPeriods: SchedulePeriod[];
   onPeriodChange: (id: string) => void;
+  instructorEnMap: Map<string, string>;
 }) {
   const today = new Date();
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
@@ -423,7 +424,7 @@ function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPerio
                       <p className="text-[10px] text-muted-foreground truncate">{s.topic}</p>
                     )}
                     {s.instructor_name && (
-                      <p className="text-[10px] text-muted-foreground">담당: {s.instructor_name}</p>
+                      <p className="text-[10px] text-muted-foreground">담당: {instructorEnMap.get(s.instructor_name) || s.instructor_name}</p>
                     )}
                   </div>
                 </div>
@@ -486,6 +487,7 @@ export default function StudentDashboard() {
   const [holidays, setHolidays] = useState<HolidayNotice[]>([]);
   const [studentRecord, setStudentRecord] = useState<StudentRecord | null>(null);
   const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriod[]>([]);
+  const [instructorEnMap, setInstructorEnMap] = useState<Map<string, string>>(new Map());
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("dismissed_holiday_ids") || "[]"); } catch { return []; }
@@ -799,7 +801,18 @@ export default function StudentDashboard() {
         }
       }
 
-      // Load pauses from student_pauses table (for all records)
+      // Fetch all instructors' english_name for display
+      {
+        const { data: allInstr } = await supabase
+          .from("instructors")
+          .select("name, english_name");
+        const enMap = new Map<string, string>();
+        for (const i of (allInstr || []) as Array<{ name: string; english_name: string | null }>) {
+          if (i?.name) enMap.set(i.name, (i.english_name?.trim() || i.name));
+        }
+        setInstructorEnMap(enMap);
+      }
+
       let pauses: PauseRecord[] = [];
       const allRecordIds = allStudentRecords.map((r: any) => r.id).filter(Boolean);
       if (allRecordIds.length > 0) {
@@ -1128,8 +1141,7 @@ export default function StudentDashboard() {
   // 시간 순 정렬
   for (const arr of dayDetailsMap.values()) {
     arr.sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime());
-  }
-
+      }
 
   // ── Generate monthly periods for corporate students ──
   const corporateMonthlyPeriods: SchedulePeriod[] = (() => {
@@ -1973,7 +1985,7 @@ export default function StudentDashboard() {
               <span className="text-xs font-semibold text-foreground">수업 캘린더</span>
             </div>
             <div className="p-3">
-              <MiniCalendar allCalendarDates={allCalendarDates} dayDetailsMap={dayDetailsMap} holidays={holidays} selectedPeriod={selectedPeriod} allPeriods={sortedPeriods} onPeriodChange={setSelectedPeriodId} />
+              <MiniCalendar allCalendarDates={allCalendarDates} dayDetailsMap={dayDetailsMap} holidays={holidays} selectedPeriod={selectedPeriod} allPeriods={sortedPeriods} onPeriodChange={setSelectedPeriodId} instructorEnMap={instructorEnMap} />
             </div>
             {/* Upcoming next session inside calendar */}
             {nextClassDate && (
@@ -2156,7 +2168,7 @@ export default function StudentDashboard() {
                     </p>
                     <p className="text-xs text-muted-foreground">{fmtDateTime(nextClassDate.toISOString())}</p>
                     <p className="text-xs text-muted-foreground">
-                      담당: {nextSessionFromDB?.instructor_name || studentRecord?.instructor_name || "-"}
+                      담당: {(() => { const n = nextSessionFromDB?.instructor_name || studentRecord?.instructor_name; return n ? (instructorEnMap.get(n) || n) : "-"; })()}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">

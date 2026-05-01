@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { formatInstructorName } from "@/lib/formatInstructorName";
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -100,6 +101,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [cancelledSessions, setCancelledSessions] = useState<ClassSession[]>([]);
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
+  const [instructorEnMap, setInstructorEnMap] = useState<Map<string, string>>(new Map());
 
   const [step, setStep] = useState<Step>("type");
   const [requestType, setRequestType] = useState<"reschedule" | "extra" | "makeup">("reschedule");
@@ -152,6 +154,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
           .eq("is_active", true).order("start_date"),
       ]);
 
+      const { data: instrData } = await supabase
+        .from("instructors")
+        .select("name, english_name");
+      const enMap = new Map<string, string>();
+      for (const i of (instrData || []) as Array<{ name: string; english_name: string | null }>) {
+        if (i?.name) enMap.set(i.name, formatInstructorName(i.name, i.english_name));
+      }
+      setInstructorEnMap(enMap);
+
       const sessionMap = new Map<string, ClassSession>();
       for (const s of (sessionsRes.data || [])) sessionMap.set(s.id, s as ClassSession);
       for (const s of (groupSessRes.data || [])) sessionMap.set(s.id, s as ClassSession);
@@ -202,6 +213,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (requestType === "makeup" && selectedCancelledSession) return selectedCancelledSession.instructor_name;
     return instructorName;
   }, [requestType, selectedSession, selectedCancelledSession, instructorName]);
+
+  const displayInstructor = (n: string | null | undefined) =>
+    (n && instructorEnMap.get(n)) || n || "";
+  const targetInstructorDisplay = displayInstructor(targetInstructorName);
 
   const visibleSlots = useMemo(() => {
     let result = slots.filter(s => s.instructor_name === targetInstructorName);
@@ -778,7 +793,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-start gap-2">
                       <AlertCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        <span className="font-semibold text-foreground">{targetInstructorName}</span> 강사님이 아직 이 기간에 가능한 시간을 등록하지 않았어요.
+                        <span className="font-semibold text-foreground">{targetInstructorDisplay}</span> 강사님이 아직 이 기간에 가능한 시간을 등록하지 않았어요.
                       </p>
                     </div>
                   )}
@@ -906,7 +921,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       <CalendarX className="w-4 h-4" /> 가능한 일정이 없습니다
                     </p>
                     <p className="text-[11px] text-foreground/80 leading-relaxed">
-                      해당 기간에 <span className="font-semibold">{targetInstructorName}</span> 강사님이 등록한 가능 시간이 없거나 모두 마감되었습니다.
+                      해당 기간에 <span className="font-semibold">{targetInstructorDisplay}</span> 강사님이 등록한 가능 시간이 없거나 모두 마감되었습니다.
                       규정에 따라 가능 슬롯이 없는 경우 별도 시간 개설은 어려우며, 해당 수업은 수업 횟수에서 차감될 수 있습니다.
                     </p>
                   </div>
