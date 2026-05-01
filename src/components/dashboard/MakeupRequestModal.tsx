@@ -288,7 +288,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     setCalMonth(d.getMonth());
     setSelectedDate(null);
     setSelectedSlot(null);
-    if (isWithin48h(s.scheduled_at)) {
+    if (isWithin24h(s.scheduled_at)) {
       setUrgentReason(null);
       setStep("urgent");
     } else {
@@ -310,7 +310,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
     if (requestType === "makeup" && !selectedCancelledSession) return;
-    if (requestType === "reschedule" && selectedSession && isWithin48h(selectedSession.scheduled_at) && !urgentReason) {
+    if (requestType === "reschedule" && selectedSession && isWithin24h(selectedSession.scheduled_at) && !urgentReason) {
       toast({ title: "긴급 사유를 선택해주세요", variant: "destructive" });
       setStep("urgent");
       return;
@@ -415,7 +415,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (step === "confirm") setStep("calendar");
     else if (step === "calendar") {
       if (requestType === "reschedule") {
-        if (selectedSession && isWithin48h(selectedSession.scheduled_at)) setStep("urgent");
+        if (selectedSession && isWithin24h(selectedSession.scheduled_at)) setStep("urgent");
         else setStep("session");
       } else if (requestType === "makeup") {
         setSelectedCancelledSession(null);
@@ -650,7 +650,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   ) : (
                     <div className="space-y-2">
                       {reschedulableSessions.map(s => {
-                        const within48 = isWithin48h(s.scheduled_at);
+                        const within48 = isWithin24h(s.scheduled_at);
                         return (
                           <button key={s.id}
                             onClick={() => proceedFromSession(s)}
