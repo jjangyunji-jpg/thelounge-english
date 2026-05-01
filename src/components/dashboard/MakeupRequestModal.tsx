@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { formatInstructorName } from "@/lib/formatInstructorName";
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
