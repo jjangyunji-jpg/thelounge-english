@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { Bell, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -141,7 +142,7 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
         )}
       </Button>
 
-      {showPopup && popupNotification && (
+      {showPopup && popupNotification && createPortal(
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) handleClosePopup(); }}
@@ -154,7 +155,8 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
               onConfirm={handleClosePopup}
             />
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       <Dialog open={showInbox} onOpenChange={setShowInbox}>
