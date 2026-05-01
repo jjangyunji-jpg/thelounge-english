@@ -364,13 +364,20 @@ export default function CashReceiptManagement() {
   const dedMap = new Map(deductions.map(d => [d.student_name, d]));
   const receiptMap = new Map(receipts.map(r => [r.student_name, r]));
 
-  // Deduplicate by student_name (transfers create multiple records for the same student).
-  // Prefer the record with the EARLIEST start_date so that "신규" badge and period filtering
-  // reflect when the student actually started, not when a future transfer record was created.
+  // Deduplicate by student_name (transfers / re-registrations create multiple records for the same student).
+  // Priority:
+  //   1) Prefer ACTIVE records over inactive (so re-registered students don't get hidden by an old inactive row)
+  //   2) Within the same status, prefer the EARLIEST start_date so "신규" badge and period filtering
+  //      reflect when the student actually started.
   const deduped = Array.from(
     students.reduce((map, s) => {
       const existing = map.get(s.student_name);
       if (!existing) { map.set(s.student_name, s); return map; }
+      const existingActive = existing.status === "active";
+      const currentActive = s.status === "active";
+      if (currentActive && !existingActive) { map.set(s.student_name, s); return map; }
+      if (!currentActive && existingActive) return map;
+      // Same activeness — pick earliest start_date
       const a = existing.start_date || "9999-12-31";
       const b = s.start_date || "9999-12-31";
       if (b < a) map.set(s.student_name, s);
