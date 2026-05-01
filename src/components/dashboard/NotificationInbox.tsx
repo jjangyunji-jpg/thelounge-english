@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import NotificationPopupContent from "@/components/dashboard/NotificationPopupContent";
+import NotificationPopupContent, { renderNotificationBody } from "@/components/dashboard/NotificationPopupContent";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Notification {
@@ -214,10 +214,8 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
                 <Clock className="w-3 h-3" />
                 {format(new Date(detailNotification.sent_at), "yyyy.MM.dd HH:mm")}
               </p>
-              <div className="max-w-full rounded-lg bg-muted/40 p-3">
-                <p className="max-w-full whitespace-pre-wrap text-sm leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">
-                  {detailNotification.body}
-                </p>
+              <div className="max-w-full rounded-lg bg-muted/40 p-3 max-h-[60vh] overflow-y-auto space-y-1">
+                {renderNotificationBody(detailNotification.body)}
               </div>
               <Button onClick={() => setDetailNotification(null)} className="w-full bg-navy hover:bg-navy-light text-primary-foreground">
                 닫기
