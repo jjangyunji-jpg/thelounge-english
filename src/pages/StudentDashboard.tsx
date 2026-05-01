@@ -1129,8 +1129,19 @@ export default function StudentDashboard() {
   // 시간 순 정렬
   for (const arr of dayDetailsMap.values()) {
     arr.sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime());
-  }
+      }
 
+      // Fetch all instructor english_name for display purposes
+      {
+        const { data: allInstr } = await supabase
+          .from("instructors")
+          .select("name, english_name");
+        const enMap = new Map<string, string>();
+        for (const i of (allInstr || []) as Array<{ name: string; english_name: string | null }>) {
+          if (i?.name) enMap.set(i.name, (i.english_name?.trim() || i.name));
+        }
+        setInstructorEnMap(enMap);
+      }
 
   // ── Generate monthly periods for corporate students ──
   const corporateMonthlyPeriods: SchedulePeriod[] = (() => {
