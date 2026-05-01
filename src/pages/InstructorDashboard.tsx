@@ -1911,15 +1911,11 @@ export default function InstructorDashboard() {
     const d = new Date(s.scheduled_at);
     return d >= sStart && d <= sEnd && !isSessionHidden(s);
   });
-  // Settlement: completed sessions + no_show (instructor gets paid for no-show)
-  // Exclude: student_cancel, sick, instructor_cancel (no pay for instructor)
+  const isOwner = instructor?.position === '대표';
+  // Settlement: 신규 규정 적용 (이번 달부터). calcSessionPay가 included 판정.
   const completedSettlementSessions = settlementSessions.filter((s) => {
-    // Cancelled types that don't count for settlement
-    if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return false;
-    // no_show counts for settlement even without ended_at
-    if (s.cancellation_type === 'no_show') return true;
-    // Normal: must be completed
-    return !!s.ended_at;
+    const r = calcSessionPay(s as any, { isOwner, ownerFlatRate: instructor?.lesson_rate ?? 50000 });
+    return r.included;
   });
   const settlementMeetings = meetings.filter((m) => {
     const d = new Date(m.scheduled_at);
@@ -1930,18 +1926,17 @@ export default function InstructorDashboard() {
   // Settlement items for the table
   type SettlementRow = { key: string; date: Date; type: 'lesson' | 'meeting'; description: string; durationHours: number; payPerHour: number; };
   const settlementRows: SettlementRow[] = [];
-  const isOwner = instructor?.position === '대표';
   completedSettlementSessions.forEach((s) => {
-    const levelRate = LEVEL_RATES[s.level] || 19000;
+    const r = calcSessionPay(s as any, { isOwner, ownerFlatRate: instructor?.lesson_rate ?? 50000 });
     const key = `lesson-${s.id}`;
     const durationHours = durationOverrides[key] ?? 1;
     settlementRows.push({
       key,
       date: new Date(s.scheduled_at),
       type: 'lesson',
-      description: `${fmtName(s.student_name)} 수업 (${getLevelCategory(s.level)})${s.cancellation_type === 'no_show' ? ' [노쇼]' : ''}`,
+      description: `${fmtName(s.student_name)} 수업 (${getLevelCategory(s.level)})${r.noteSuffix}`,
       durationHours,
-      payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate),
+      payPerHour: r.payPerHour,
     });
   });
   // 대표는 미팅 정산 제외
