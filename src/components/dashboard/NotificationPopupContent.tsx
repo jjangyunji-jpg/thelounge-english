@@ -21,6 +21,52 @@ function renderWithBold(text: string) {
   });
 }
 
+/**
+ * Render notification body. Lines matching `![alt](url)` are rendered as <img>.
+ * Other lines pass through renderWithBold (whitespace preserved).
+ */
+export function renderNotificationBody(body: string) {
+  if (!body) return <span className="text-muted-foreground">(내용 없음)</span>;
+  const imgRe = /^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)\s*$/;
+  const blocks: Array<{ type: "text"; value: string } | { type: "img"; alt: string; src: string }> = [];
+  const lines = body.split("\n");
+  let buf: string[] = [];
+  const flush = () => {
+    if (buf.length) {
+      blocks.push({ type: "text", value: buf.join("\n") });
+      buf = [];
+    }
+  };
+  for (const line of lines) {
+    const m = line.match(imgRe);
+    if (m) {
+      flush();
+      blocks.push({ type: "img", alt: m[1], src: m[2] });
+    } else {
+      buf.push(line);
+    }
+  }
+  flush();
+  return blocks.map((b, i) =>
+    b.type === "img" ? (
+      <img
+        key={i}
+        src={b.src}
+        alt={b.alt}
+        className="my-2 max-w-full h-auto rounded-md border border-border"
+        loading="lazy"
+      />
+    ) : (
+      <p
+        key={i}
+        className="max-w-full whitespace-pre-wrap text-sm leading-relaxed text-foreground break-words [overflow-wrap:anywhere]"
+      >
+        {renderWithBold(b.value)}
+      </p>
+    ),
+  );
+}
+
 export default function NotificationPopupContent({
   subject,
   body,
@@ -47,10 +93,8 @@ export default function NotificationPopupContent({
           </p>
         </div>
 
-        <div className="max-w-full rounded-lg bg-muted/40 p-3">
-          <p className="max-w-full whitespace-pre-wrap text-sm leading-relaxed text-foreground break-words [overflow-wrap:anywhere]">
-            {body ? renderWithBold(body) : "(내용 없음)"}
-          </p>
+        <div className="max-w-full rounded-lg bg-muted/40 p-3 max-h-[60vh] overflow-y-auto space-y-1">
+          {renderNotificationBody(body)}
         </div>
 
         <Button onClick={onConfirm} className="w-full bg-navy hover:bg-navy-light text-primary-foreground gap-2">
