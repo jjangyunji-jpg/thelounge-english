@@ -526,6 +526,7 @@ export default function StudentDashboard() {
   // ── 인증: auth 세션 → student_name 로드, 없으면 URL 파라미터 폴백 ──
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [authNickname, setAuthNickname] = useState<string | null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [notLinked, setNotLinked] = useState(false);
   const [searchParams] = useSearchParams();
