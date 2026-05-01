@@ -101,6 +101,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [cancelledSessions, setCancelledSessions] = useState<ClassSession[]>([]);
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
+  const [instructorEnMap, setInstructorEnMap] = useState<Map<string, string>>(new Map());
 
   const [step, setStep] = useState<Step>("type");
   const [requestType, setRequestType] = useState<"reschedule" | "extra" | "makeup">("reschedule");
