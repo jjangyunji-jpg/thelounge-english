@@ -1864,8 +1864,7 @@ export default function InstructorDashboard() {
   const checkedHw = checkedHwEntries;
 
   // Period stats — 신규 정산 규정 (이번 달부터 적용)
-  const BASE_PAY = 11000;
-  const LEVEL_RATES = (await import('@/lib/instructorPay')); // not used at runtime — re-imported below
+  // BASE_PAY/LEVEL_RATES/getLevelCategory/calcSessionPay imported from '@/lib/instructorPay'
   const start = period ? new Date(period.start_date) : null;
   const end = period ? new Date(period.end_date) : null;
   const now = new Date();
