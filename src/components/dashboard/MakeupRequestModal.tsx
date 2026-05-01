@@ -311,7 +311,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (requestType === "reschedule" && !selectedSession) return;
     if (requestType === "makeup" && !selectedCancelledSession) return;
     if (requestType === "reschedule" && selectedSession && isWithin24h(selectedSession.scheduled_at) && !urgentReason) {
-      toast({ title: "긴급 사유를 선택해주세요", variant: "destructive" });
+      toast({ title: "예외 사유 확인이 필요합니다", variant: "destructive" });
       setStep("urgent");
       return;
     }
