@@ -204,10 +204,10 @@ export default function AdminDashboard() {
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Calendar className="w-4 h-4 text-destructive" />
-                <h3 className="text-sm font-semibold text-foreground">휴강 일정</h3>
+                <h3 className="text-sm font-semibold text-foreground">공식 휴원일</h3>
               </div>
               {holidays.length === 0 ? (
-                <p className="text-sm text-muted-foreground">예정된 휴강 일정이 없습니다</p>
+                <p className="text-sm text-muted-foreground">예정된 공식 휴원일이 없습니다</p>
               ) : (
                 <div className="space-y-1.5 max-h-32 overflow-y-auto">
                   {holidays.map((h, i) => (
