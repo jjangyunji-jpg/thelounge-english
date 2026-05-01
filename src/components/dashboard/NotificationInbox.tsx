@@ -36,6 +36,16 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
   const [popupNotification, setPopupNotification] = useState<Notification | null>(null);
   const [detailNotification, setDetailNotification] = useState<Notification | null>(null);
   const wasSuppressedRef = useRef(suppressPopup);
+  const suppressPopupRef = useRef(suppressPopup);
+  const showInboxRef = useRef(showInbox);
+
+  useEffect(() => {
+    suppressPopupRef.current = suppressPopup;
+  }, [suppressPopup]);
+
+  useEffect(() => {
+    showInboxRef.current = showInbox;
+  }, [showInbox]);
 
   const fetchNotifications = useCallback(async () => {
     const { data } = await supabase
@@ -58,6 +68,10 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
     );
     setUnreadCount(unread.length);
 
+    if (unread.length > 0 && !suppressPopupRef.current && !showInboxRef.current) {
+      setPopupNotification(unread[0]);
+      setShowPopup(true);
+    }
   }, [userId, role, studentName]);
 
   useEffect(() => {
