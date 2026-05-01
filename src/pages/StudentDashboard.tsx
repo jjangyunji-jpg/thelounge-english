@@ -641,10 +641,12 @@ export default function StudentDashboard() {
     setDismissedIds(next);
     const holiday = holidays.find((h) => h.id === id);
     if (authUserId && holiday && !holiday.dismissed_by?.includes(authUserId)) {
+      const updatedDismissedBy = [...(holiday.dismissed_by || []), authUserId];
       await supabase
         .from("holiday_notices")
-        .update({ dismissed_by: [...(holiday.dismissed_by || []), authUserId] } as any)
+        .update({ dismissed_by: updatedDismissedBy } as any)
         .eq("id", id);
+      setHolidays((prev) => prev.map((h) => h.id === id ? { ...h, dismissed_by: updatedDismissedBy } : h));
     }
   };
 
