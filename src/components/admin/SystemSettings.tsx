@@ -423,8 +423,8 @@ export default function SystemSettings() {
                 <div className="flex items-center gap-2">
                   <Bell className="w-3.5 h-3.5 text-navy" />
                   <div>
-                    <p className="text-xs font-medium text-foreground">수강생 팝업 공지 발송</p>
-                    <p className="text-[10px] text-muted-foreground">수강생 대시보드 접속 시 팝업으로 공지됩니다</p>
+                    <p className="text-xs font-medium text-foreground">수강생 사전 알림 발송</p>
+                    <p className="text-[10px] text-muted-foreground">휴원 시작 <b>15일 전</b>·<b>7일 전</b> 오전 9시에 자동 인박스 알림 + 대시보드 접속 시 팝업 공지</p>
                   </div>
                 </div>
                 <Switch
