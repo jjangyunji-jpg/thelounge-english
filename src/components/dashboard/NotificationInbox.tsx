@@ -72,8 +72,17 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
     if (suppressPopup) {
       setShowPopup(false);
       setPopupNotification(null);
+      return;
     }
-  }, [suppressPopup]);
+    // Suppress released — show first unread popup if any
+    if (!showInbox && !showPopup) {
+      const next = notifications.find((n) => !n.read_by?.includes(userId));
+      if (next) {
+        setPopupNotification(next);
+        setShowPopup(true);
+      }
+    }
+  }, [suppressPopup, notifications, userId, showInbox, showPopup]);
 
   const markAsRead = async (notificationId: string) => {
     const notif = notifications.find((n) => n.id === notificationId);
