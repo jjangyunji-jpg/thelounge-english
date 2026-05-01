@@ -4073,6 +4073,23 @@ export default function InstructorDashboard() {
               }
             }
 
+            // No-show: send a notification to the student's dashboard inbox
+            if (type === "no_show") {
+              try {
+                const dateLabel = new Date(sess.scheduled_at).toLocaleDateString("ko-KR", {
+                  month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul",
+                });
+                await supabase.from("admin_notifications").insert({
+                  target: `student:${sess.student_name}`,
+                  subject: "수업이 노쇼로 처리되었습니다",
+                  body: `${dateLabel} 수업은 30분 대기 후 노쇼로 처리되었습니다. 이에 수업료가 차감되며 보강은 진행되지 않습니다. 관련 문의는 개별적으로 연락 주시기 바랍니다.`,
+                  sent_at: new Date().toISOString(),
+                } as any);
+              } catch (e) {
+                console.warn("[no-show notify] failed", e);
+              }
+            }
+
             toast({
               title: resolution === "carry_over"
                 ? "다음달로 이월 처리되었습니다"

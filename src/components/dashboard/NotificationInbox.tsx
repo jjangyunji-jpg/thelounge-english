@@ -23,9 +23,10 @@ interface Notification {
 interface NotificationInboxProps {
   userId: string;
   role: "instructor" | "student";
+  studentName?: string; // when role==='student', enables targeted notifications
 }
 
-export default function NotificationInbox({ userId, role }: NotificationInboxProps) {
+export default function NotificationInbox({ userId, role, studentName }: NotificationInboxProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showInbox, setShowInbox] = useState(false);
@@ -34,6 +35,7 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
   const [detailNotification, setDetailNotification] = useState<Notification | null>(null);
 
   const targetFilter = role === "instructor" ? ["all", "instructors"] : ["all", "students"];
+  const personalTarget = role === "student" && studentName ? `student:${studentName}` : null;
 
   const fetchNotifications = useCallback(async () => {
     const { data } = await supabase
@@ -45,7 +47,7 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
     if (!data) return;
 
     const filtered = (data as Notification[]).filter(
-      (n) => targetFilter.includes(n.target)
+      (n) => targetFilter.includes(n.target) || (personalTarget && n.target === personalTarget)
     );
     setNotifications(filtered);
 
@@ -58,7 +60,7 @@ export default function NotificationInbox({ userId, role }: NotificationInboxPro
       setPopupNotification(unread[0]);
       setShowPopup(true);
     }
-  }, [userId, role]);
+  }, [userId, role, studentName]);
 
   useEffect(() => {
     fetchNotifications();

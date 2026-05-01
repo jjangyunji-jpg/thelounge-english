@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import BugReportModal from "@/components/dashboard/BugReportModal";
 import MakeupRequestModal from "@/components/dashboard/MakeupRequestModal";
+import NotificationInbox from "@/components/dashboard/NotificationInbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -526,6 +527,7 @@ export default function StudentDashboard() {
   // ── 인증: auth 세션 → student_name 로드, 없으면 URL 파라미터 폴백 ──
   const [authStudent, setAuthStudent] = useState<string | null>(null);
   const [authNickname, setAuthNickname] = useState<string | null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [notLinked, setNotLinked] = useState(false);
   const [searchParams] = useSearchParams();
@@ -539,6 +541,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+        setAuthUserId(session.user.id);
         // Check if this is an instructor viewing a student's dashboard
         if (urlStudentName) {
           // Verify the user is an instructor
@@ -1888,6 +1891,9 @@ export default function StudentDashboard() {
           </div>
           {authStudent && (
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+              {authUserId && (
+                <NotificationInbox userId={authUserId} role="student" studentName={authStudent} />
+              )}
               <a
                 href="https://daily-diary-lounge.lovable.app/"
                 target="_blank"
