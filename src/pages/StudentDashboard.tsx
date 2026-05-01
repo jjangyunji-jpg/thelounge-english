@@ -244,13 +244,14 @@ interface CalendarDayItem {
   isVirtual: boolean;
 }
 
-function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPeriod, allPeriods, onPeriodChange }: {
+function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPeriod, allPeriods, onPeriodChange, instructorEnMap }: {
   allCalendarDates: Set<string>;
   dayDetailsMap: Map<string, CalendarDayItem[]>;
   holidays: HolidayNotice[];
   selectedPeriod: SchedulePeriod | null;
   allPeriods: SchedulePeriod[];
   onPeriodChange: (id: string) => void;
+  instructorEnMap: Map<string, string>;
 }) {
   const today = new Date();
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
