@@ -35,6 +35,7 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
   const [detailNotification, setDetailNotification] = useState<Notification | null>(null);
 
   const targetFilter = role === "instructor" ? ["all", "instructors"] : ["all", "students"];
+  const personalTarget = role === "student" && studentName ? `student:${studentName}` : null;
 
   const fetchNotifications = useCallback(async () => {
     const { data } = await supabase
@@ -46,7 +47,7 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
     if (!data) return;
 
     const filtered = (data as Notification[]).filter(
-      (n) => targetFilter.includes(n.target)
+      (n) => targetFilter.includes(n.target) || (personalTarget && n.target === personalTarget)
     );
     setNotifications(filtered);
 
