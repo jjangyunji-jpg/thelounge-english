@@ -1965,22 +1965,31 @@ export default function InstructorDashboard() {
 
   const totalAmount = cumulative;
 
-  // Current month total for dashboard card (완료 기준)
+  // Current month total for dashboard card (완료 기준 + 신규 정산 규정)
   const currentMonthTotal = (() => {
     let total = 0;
     sessions.filter(s => {
       const d = new Date(s.scheduled_at);
-      if (!(d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s))) return false;
-      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return false;
-      if (s.cancellation_type === 'no_show') return true;
-      return !!s.ended_at;
+      return d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s);
     }).forEach(s => {
-      const levelRate = LEVEL_RATES[s.level] || 19000;
-      const pay = isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate);
+      const r = calcSessionPay(s as any, { isOwner, ownerFlatRate: instructor?.lesson_rate ?? 50000 });
+      if (!r.included) return;
       const key = `lesson-${s.id}`;
       const dur = durationOverrides[key] ?? 1;
-      total += Math.round(dur * pay);
+      total += Math.round(dur * r.payPerHour);
     });
+    if (!isOwner) {
+      meetings.filter(m => {
+        const d = new Date(m.scheduled_at);
+        return d >= currentMonthStart && d <= currentMonthEnd && d <= now;
+      }).forEach(m => {
+        const key = `meeting-${m.id}`;
+        const dur = durationOverrides[key] ?? (m.duration_minutes / 60);
+        total += Math.round(dur * BASE_PAY);
+      });
+    }
+    return total;
+  })();
     if (!isOwner) {
       meetings.filter(m => {
         const d = new Date(m.scheduled_at);
