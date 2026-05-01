@@ -49,15 +49,13 @@ interface SchedulePeriod {
   end_date: string;
 }
 
-const URGENT_REASONS = [
-  { code: "meeting", label: "갑작스러운 회의/야근" },
-  { code: "health", label: "갑작스러운 병원/건강 이상" },
-  { code: "family", label: "직계가족 긴급 상황" },
-] as const;
+// 24시간 미만 신청 시 인정되는 예외 사유 (sick 카테고리로 통합)
+const SICK_EXCEPTION_LABEL = "본인 병가 · 갑작스러운 회의·야근 · 직계가족 긴급 상황";
 
 const REJECTION_LABELS: Record<string, string> = {
-  within_48h: "48시간 이내 요청입니다",
-  not_urgent: "긴급 사유로 인정되지 않습니다",
+  within_48h: "24시간 이내 요청입니다",
+  within_24h: "24시간 이내 요청입니다",
+  not_urgent: "예외 사유로 인정되지 않습니다",
   no_slots: "가능한 슬롯이 없습니다",
   repeated_change: "반복 변경으로 제한되었습니다",
 };
@@ -279,8 +277,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const pastRequests = myRequests.filter(r => r.status !== "pending").slice(0, 5);
   const slotCountForDate = (dateStr: string) => slotDates.get(dateStr)?.length || 0;
 
-  // 선택된 reschedule 수업이 48시간 이내인지
-  const isWithin48h = (iso: string) => new Date(iso).getTime() - Date.now() < 48 * 60 * 60 * 1000;
+  // 선택된 reschedule 수업이 24시간 이내인지
+  const isWithin24h = (iso: string) => new Date(iso).getTime() - Date.now() < 24 * 60 * 60 * 1000;
 
   // 수업 선택 → 48시간 분기
   const proceedFromSession = (s: ClassSession) => {
@@ -290,7 +288,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     setCalMonth(d.getMonth());
     setSelectedDate(null);
     setSelectedSlot(null);
-    if (isWithin48h(s.scheduled_at)) {
+    if (isWithin24h(s.scheduled_at)) {
       setUrgentReason(null);
       setStep("urgent");
     } else {
@@ -312,8 +310,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
     if (requestType === "makeup" && !selectedCancelledSession) return;
-    if (requestType === "reschedule" && selectedSession && isWithin48h(selectedSession.scheduled_at) && !urgentReason) {
-      toast({ title: "긴급 사유를 선택해주세요", variant: "destructive" });
+    if (requestType === "reschedule" && selectedSession && isWithin24h(selectedSession.scheduled_at) && !urgentReason) {
+      toast({ title: "예외 사유 확인이 필요합니다", variant: "destructive" });
       setStep("urgent");
       return;
     }
@@ -417,7 +415,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (step === "confirm") setStep("calendar");
     else if (step === "calendar") {
       if (requestType === "reschedule") {
-        if (selectedSession && isWithin48h(selectedSession.scheduled_at)) setStep("urgent");
+        if (selectedSession && isWithin24h(selectedSession.scheduled_at)) setStep("urgent");
         else setStep("session");
       } else if (requestType === "makeup") {
         setSelectedCancelledSession(null);
@@ -500,7 +498,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       );
                       if (makeupSess) slotISO = makeupSess.scheduled_at;
                     }
-                    const within48 = slotISO ? new Date(slotISO).getTime() - Date.now() < 48 * 60 * 60 * 1000 : true;
+                    const within48 = slotISO ? new Date(slotISO).getTime() - Date.now() < 24 * 60 * 60 * 1000 : true;
                     const displayDate = bookedSlot
                       ? `${fmtDateKo(bookedSlot.slot_date)} ${fmtTimeKo(bookedSlot.slot_time)}`
                       : (slotISO ? `${fmtSessionDate(slotISO)} ${fmtSessionTime(slotISO)}` : null);
@@ -555,9 +553,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                                 ? "text-muted-foreground/60 cursor-not-allowed"
                                 : "text-destructive hover:underline"
                             )}
-                            title={within48 ? "보강 48시간 전부터는 취소할 수 없습니다" : ""}
+                            title={within48 ? "보강 24시간 전부터는 취소할 수 없습니다" : ""}
                           >
-                            {within48 ? "취소 불가 (48시간 이내)" : "취소 요청하기"}
+                            {within48 ? "취소 불가 (24시간 이내)" : "취소 요청하기"}
                           </button>
                         )}
                         {isCancelRequested && (
@@ -652,7 +650,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   ) : (
                     <div className="space-y-2">
                       {reschedulableSessions.map(s => {
-                        const within48 = isWithin48h(s.scheduled_at);
+                        const within48 = isWithin24h(s.scheduled_at);
                         return (
                           <button key={s.id}
                             onClick={() => proceedFromSession(s)}
@@ -667,7 +665,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                               </div>
                               {within48 && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold shrink-0">
-                                  48시간 이내
+                                  24시간 이내
                                 </span>
                               )}
                             </div>
@@ -683,12 +681,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "urgent" && selectedSession && (
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm font-bold text-foreground">긴급 보강 사유를 선택해주세요</p>
+                    <p className="text-sm font-bold text-foreground">예외 사유 확인</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      선택하신 수업({fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)})까지 48시간이 남지 않았습니다.
+                      선택하신 수업({fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)})까지 24시간이 남지 않았습니다.
                     </p>
                     <p className="text-[11px] text-foreground/80 mt-2 leading-relaxed">
-                      48시간 이내 신청하는 경우 <span className="font-semibold">월 1회에 한해</span> 다음의 사유에 해당할 경우 긴급 보강이 가능합니다. 그 외에는 48시간 이내 보강이 불가합니다.
+                      24시간 이내 신청은 <span className="font-semibold">월 1회에 한해</span> 다음의 예외 사유에 해당하는 경우에만 가능합니다. 그 외 사유로는 24시간 이내 보강 신청이 불가합니다.
                     </p>
                   </div>
 
@@ -712,37 +710,39 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     </p>
                   </div>
 
-                  {/* 사유 선택 */}
+                  {/* 예외 사유 확인 (단일 카테고리: sick) */}
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-foreground">긴급 사유 선택 (1개)</p>
-                    {URGENT_REASONS.map(r => (
-                      <button key={r.code}
-                        disabled={urgentLimitReached}
-                        onClick={() => setUrgentReason(r.code)}
-                        className={cn(
-                          "w-full rounded-lg border p-3 text-left text-xs transition-colors",
-                          urgentLimitReached && "opacity-50 cursor-not-allowed",
-                          !urgentLimitReached && urgentReason === r.code
-                            ? "border-primary bg-primary/5 text-foreground font-semibold"
-                            : "border-border text-foreground hover:border-primary/40"
-                        )}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span className={cn(
-                            "w-3.5 h-3.5 rounded-full border-2 shrink-0",
-                            urgentReason === r.code ? "border-primary bg-primary" : "border-muted-foreground/40"
-                          )} />
-                          {r.label}
+                    <p className="text-xs font-semibold text-foreground">예외 사유 확인</p>
+                    <button
+                      disabled={urgentLimitReached}
+                      onClick={() => setUrgentReason(urgentReason === "sick" ? null : "sick")}
+                      className={cn(
+                        "w-full rounded-lg border p-3 text-left text-xs transition-colors",
+                        urgentLimitReached && "opacity-50 cursor-not-allowed",
+                        !urgentLimitReached && urgentReason === "sick"
+                          ? "border-primary bg-primary/5 text-foreground font-semibold"
+                          : "border-border text-foreground hover:border-primary/40"
+                      )}
+                    >
+                      <span className="flex items-start gap-2">
+                        <span className={cn(
+                          "w-3.5 h-3.5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center",
+                          urgentReason === "sick" ? "border-primary bg-primary" : "border-muted-foreground/40"
+                        )}>
+                          {urgentReason === "sick" && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                         </span>
-                      </button>
-                    ))}
+                        <span className="leading-relaxed">
+                          위 예외 사유({SICK_EXCEPTION_LABEL})에 해당함을 확인합니다.
+                        </span>
+                      </span>
+                    </button>
                   </div>
 
                   {urgentLimitReached && (
                     <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                       <p className="text-[11px] text-foreground/80 leading-relaxed">
-                        이번 수업 기간({activePeriod?.label})에 이미 긴급 보강을 1회 사용하셨습니다. 추가 신청은 다음 기간부터 가능합니다.
+                        이번 수업 기간({activePeriod?.label})에 이미 24시간 이내 예외 보강을 1회 사용하셨습니다. 추가 신청은 다음 기간부터 가능합니다.
                       </p>
                     </div>
                   )}
@@ -963,8 +963,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
                     {urgentReason && (
                       <div className="space-y-1">
-                        <p className="text-[10px] text-muted-foreground font-semibold">긴급 사유</p>
-                        <p className="text-xs text-foreground">{URGENT_REASONS.find(r => r.code === urgentReason)?.label}</p>
+                        <p className="text-[10px] text-muted-foreground font-semibold">예외 사유</p>
+                        <p className="text-xs text-foreground">{SICK_EXCEPTION_LABEL}</p>
                       </div>
                     )}
 
