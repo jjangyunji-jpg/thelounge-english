@@ -102,12 +102,22 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
     setUnreadCount(0);
   };
 
-  const handleClosePopup = () => {
-    if (popupNotification) {
-      markAsRead(popupNotification.id);
+  const handleClosePopup = async () => {
+    const current = popupNotification;
+    if (current) {
+      await markAsRead(current.id);
     }
-    setShowPopup(false);
-    setPopupNotification(null);
+    // Find next unread (excluding the one just read)
+    const next = notifications.find(
+      (n) => n.id !== current?.id && !n.read_by?.includes(userId),
+    );
+    if (next && !showInbox) {
+      setPopupNotification(next);
+      setShowPopup(true);
+    } else {
+      setShowPopup(false);
+      setPopupNotification(null);
+    }
   };
 
   return (
