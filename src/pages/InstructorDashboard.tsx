@@ -1863,19 +1863,9 @@ export default function InstructorDashboard() {
   })();
   const checkedHw = checkedHwEntries;
 
-  // Period stats
+  // Period stats — 신규 정산 규정 (이번 달부터 적용)
   const BASE_PAY = 11000;
-  const LEVEL_RATES: Record<string, number> = {
-    'A1': 14000, 'A2': 14000,
-    'B1': 19000, 'B2': 19000,
-    'C1': 24000, 'C2': 24000,
-  };
-  const getLevelCategory = (level: string) => {
-    if (['A1', 'A2'].includes(level)) return '초급';
-    if (['B1', 'B2'].includes(level)) return '중급';
-    if (['C1', 'C2'].includes(level)) return '고급';
-    return '중급';
-  };
+  const LEVEL_RATES = (await import('@/lib/instructorPay')); // not used at runtime — re-imported below
   const start = period ? new Date(period.start_date) : null;
   const end = period ? new Date(period.end_date) : null;
   const now = new Date();
