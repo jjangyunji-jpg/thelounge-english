@@ -1656,7 +1656,10 @@ export default function InstructorDashboard() {
     const periods = periodRes.data || [];
     setAllPeriods(periods);
     const currentIdx = periods.findIndex(p => p.start_date <= todayStr && p.end_date >= todayStr);
-    const currentPeriod = currentIdx >= 0 ? periods[currentIdx] : periods[0] || null;
+    // If today is not in any period (휴강 기간 등), pick the next upcoming period; fallback to most recent past
+    const upcomingPeriod = periods.find(p => p.start_date > todayStr);
+    const lastPastPeriod = [...periods].reverse().find(p => p.end_date < todayStr);
+    const currentPeriod = currentIdx >= 0 ? periods[currentIdx] : (upcomingPeriod || lastPastPeriod || periods[0] || null);
     setPeriod(currentPeriod);
     if (studentTabPeriodIdx < 0) setStudentTabPeriodIdx(periods.length > 0 ? periods.length - 1 : 0);
     // settlementPeriodIdx removed — settlement uses month-based navigation
