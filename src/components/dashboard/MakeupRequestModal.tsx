@@ -154,6 +154,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
           .eq("is_active", true).order("start_date"),
       ]);
 
+      const { data: instrData } = await supabase
+        .from("instructors")
+        .select("name, english_name");
+      const enMap = new Map<string, string>();
+      for (const i of (instrData || []) as Array<{ name: string; english_name: string | null }>) {
+        if (i?.name) enMap.set(i.name, formatInstructorName(i.name, i.english_name));
+      }
+      setInstructorEnMap(enMap);
+
       const sessionMap = new Map<string, ClassSession>();
       for (const s of (sessionsRes.data || [])) sessionMap.set(s.id, s as ClassSession);
       for (const s of (groupSessRes.data || [])) sessionMap.set(s.id, s as ClassSession);
