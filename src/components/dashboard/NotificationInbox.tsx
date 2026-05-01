@@ -37,9 +37,6 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
   const [detailNotification, setDetailNotification] = useState<Notification | null>(null);
   const wasSuppressedRef = useRef(suppressPopup);
 
-  const targetFilter = role === "instructor" ? ["all", "instructors"] : ["all", "students"];
-  const personalTarget = role === "student" && studentName ? `student:${studentName}` : null;
-
   const fetchNotifications = useCallback(async () => {
     const { data } = await supabase
       .from("admin_notifications")
@@ -49,6 +46,8 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
 
     if (!data) return;
 
+    const targetFilter = role === "instructor" ? ["all", "instructors"] : ["all", "students"];
+    const personalTarget = role === "student" && studentName ? `student:${studentName}` : null;
     const filtered = (data as Notification[]).filter(
       (n) => targetFilter.includes(n.target) || (personalTarget && n.target === personalTarget)
     );
@@ -95,7 +94,7 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
     const updatedReadBy = [...(notif.read_by || []), userId];
     await supabase
       .from("admin_notifications")
-      .update({ read_by: updatedReadBy } as any)
+      .update({ read_by: updatedReadBy })
       .eq("id", notificationId);
 
     setNotifications((prev) =>
@@ -112,7 +111,7 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
       const updatedReadBy = [...(n.read_by || []), userId];
       await supabase
         .from("admin_notifications")
-        .update({ read_by: updatedReadBy } as any)
+        .update({ read_by: updatedReadBy })
         .eq("id", n.id);
     }
     setNotifications((prev) =>
