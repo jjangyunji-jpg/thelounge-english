@@ -368,7 +368,7 @@ function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPerio
                   isSelected ? "ring-2 ring-gold ring-offset-1 ring-offset-card" : "",
                   todayMark && holiday ? "bg-destructive text-destructive-foreground font-bold shadow-sm"
                     : todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
-                    : holiday ? "bg-destructive/15 text-destructive hover:bg-destructive/25"
+                    : holiday ? "bg-destructive/25 text-destructive border border-destructive/40 hover:bg-destructive/35"
                     : session ? "bg-gold/15 text-gold-dark font-semibold hover:bg-gold/25"
                     : inPeriod ? "text-foreground hover:bg-muted/50"
                     : "text-muted-foreground/40 hover:bg-muted/30",
