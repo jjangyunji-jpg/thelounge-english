@@ -141,18 +141,21 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
         )}
       </Button>
 
-      <Dialog open={showPopup} onOpenChange={(open) => { if (!open) handleClosePopup(); }}>
-        <DialogContent className="max-w-md z-[100]">
-          {popupNotification && (
+      {showPopup && popupNotification && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) handleClosePopup(); }}
+        >
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-background border rounded-lg shadow-lg p-6 grid gap-4">
             <NotificationPopupContent
               subject={popupNotification.subject}
               body={popupNotification.body}
               timestampLabel={format(new Date(popupNotification.sent_at), "yyyy.MM.dd HH:mm")}
               onConfirm={handleClosePopup}
             />
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
 
       <Dialog open={showInbox} onOpenChange={setShowInbox}>
         <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
