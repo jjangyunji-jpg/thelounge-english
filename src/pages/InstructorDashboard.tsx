@@ -1990,18 +1990,8 @@ export default function InstructorDashboard() {
     }
     return total;
   })();
-    if (!isOwner) {
-      meetings.filter(m => {
-        const d = new Date(m.scheduled_at);
-        return d >= currentMonthStart && d <= currentMonthEnd && d <= now;
-      }).forEach(m => {
-        const key = `meeting-${m.id}`;
-        const dur = durationOverrides[key] ?? (m.duration_minutes / 60);
-        total += Math.round(dur * BASE_PAY);
-      });
-    }
-    return total;
-  })();
+
+
 
    // Selected date sessions + meetings + virtual schedules
     const selectedDateStr = selectedDate?.toDateString();
