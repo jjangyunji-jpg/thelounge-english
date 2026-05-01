@@ -4,13 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { cn, todayKSTString } from "@/lib/utils";
-
-const BASE_SALARY = 11000;
-const LEVEL_RATES: Record<string, number> = {
-  A1: 14000, A2: 14000,
-  B1: 19000, B2: 19000,
-  C1: 24000, C2: 24000,
-};
+import { calcSessionPay, BASE_PAY as BASE_SALARY } from "@/lib/instructorPay";
 
 interface InstructorCard {
   id: string;
