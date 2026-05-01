@@ -681,12 +681,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "urgent" && selectedSession && (
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm font-bold text-foreground">긴급 보강 사유를 선택해주세요</p>
+                    <p className="text-sm font-bold text-foreground">예외 사유 확인</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      선택하신 수업({fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)})까지 48시간이 남지 않았습니다.
+                      선택하신 수업({fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)})까지 24시간이 남지 않았습니다.
                     </p>
                     <p className="text-[11px] text-foreground/80 mt-2 leading-relaxed">
-                      48시간 이내 신청하는 경우 <span className="font-semibold">월 1회에 한해</span> 다음의 사유에 해당할 경우 긴급 보강이 가능합니다. 그 외에는 48시간 이내 보강이 불가합니다.
+                      24시간 이내 신청은 <span className="font-semibold">월 1회에 한해</span> 다음의 예외 사유에 해당하는 경우에만 가능합니다. 그 외 사유로는 24시간 이내 보강 신청이 불가합니다.
                     </p>
                   </div>
 
