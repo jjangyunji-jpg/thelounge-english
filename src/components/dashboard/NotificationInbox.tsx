@@ -23,9 +23,10 @@ interface Notification {
 interface NotificationInboxProps {
   userId: string;
   role: "instructor" | "student";
+  studentName?: string; // when role==='student', enables targeted notifications
 }
 
-export default function NotificationInbox({ userId, role }: NotificationInboxProps) {
+export default function NotificationInbox({ userId, role, studentName }: NotificationInboxProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showInbox, setShowInbox] = useState(false);
