@@ -1891,6 +1891,9 @@ export default function StudentDashboard() {
           </div>
           {authStudent && (
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+              {authUserId && (
+                <NotificationInbox userId={authUserId} role="student" studentName={authStudent} />
+              )}
               <a
                 href="https://daily-diary-lounge.lovable.app/"
                 target="_blank"
