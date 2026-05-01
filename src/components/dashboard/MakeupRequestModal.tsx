@@ -553,9 +553,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                                 ? "text-muted-foreground/60 cursor-not-allowed"
                                 : "text-destructive hover:underline"
                             )}
-                            title={within48 ? "보강 48시간 전부터는 취소할 수 없습니다" : ""}
+                            title={within48 ? "보강 24시간 전부터는 취소할 수 없습니다" : ""}
                           >
-                            {within48 ? "취소 불가 (48시간 이내)" : "취소 요청하기"}
+                            {within48 ? "취소 불가 (24시간 이내)" : "취소 요청하기"}
                           </button>
                         )}
                         {isCancelRequested && (
