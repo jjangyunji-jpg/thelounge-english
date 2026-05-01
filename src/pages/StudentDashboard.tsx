@@ -66,6 +66,7 @@ interface HolidayNotice {
   date_end: string;
   reason: string | null;
   notify_students: boolean;
+  dismissed_by: string[] | null;
 }
 
 interface PauseRecord {
@@ -628,30 +629,24 @@ export default function StudentDashboard() {
     ? holidays.filter(h =>
         h.notify_students &&
         !dismissedIds.includes(h.id) &&
+        (!authUserId || !h.dismissed_by?.includes(authUserId)) &&
         h.date_end >= todayStr &&
         todayStr >= popupWindowStart(h.date_start)
       )
     : [];
   const currentPopup = visibleHolidays[0] ?? null;
 
-  const dismissPopup = (id: string) => {
+  const dismissPopup = async (id: string) => {
     const next = [...dismissedIds, id];
     setDismissedIds(next);
-    if (authUserId) {
-      localStorage.setItem(`dismissed_holiday_ids:${authUserId}`, JSON.stringify(next));
+    const holiday = holidays.find((h) => h.id === id);
+    if (authUserId && holiday && !holiday.dismissed_by?.includes(authUserId)) {
+      await supabase
+        .from("holiday_notices")
+        .update({ dismissed_by: [...(holiday.dismissed_by || []), authUserId] } as any)
+        .eq("id", id);
     }
   };
-
-  // Load dismissed IDs scoped per logged-in user (prevents cross-account leakage)
-  useEffect(() => {
-    if (!authUserId) return;
-    try {
-      const raw = localStorage.getItem(`dismissed_holiday_ids:${authUserId}`) || "[]";
-      setDismissedIds(JSON.parse(raw));
-    } catch {
-      setDismissedIds([]);
-    }
-  }, [authUserId]);
 
   useEffect(() => {
     if (!authLoading) loadAll();
