@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { Bell, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,9 +25,10 @@ interface NotificationInboxProps {
   userId: string;
   role: "instructor" | "student";
   studentName?: string; // when role==='student', enables targeted notifications
+  suppressPopup?: boolean;
 }
 
-export default function NotificationInbox({ userId, role, studentName }: NotificationInboxProps) {
+export default function NotificationInbox({ userId, role, studentName, suppressPopup = false }: NotificationInboxProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showInbox, setShowInbox] = useState(false);
@@ -56,15 +58,22 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
     );
     setUnreadCount(unread.length);
 
-    if (unread.length > 0 && !showInbox) {
+    if (unread.length > 0 && !showInbox && !suppressPopup) {
       setPopupNotification(unread[0]);
       setShowPopup(true);
     }
-  }, [userId, role, studentName]);
+  }, [userId, role, studentName, showInbox, suppressPopup]);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (suppressPopup) {
+      setShowPopup(false);
+      setPopupNotification(null);
+    }
+  }, [suppressPopup]);
 
   const markAsRead = async (notificationId: string) => {
     const notif = notifications.find((n) => n.id === notificationId);
@@ -141,7 +150,7 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
         )}
       </Button>
 
-      {showPopup && popupNotification && (
+      {showPopup && popupNotification && createPortal(
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) handleClosePopup(); }}
@@ -154,7 +163,8 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
               onConfirm={handleClosePopup}
             />
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       <Dialog open={showInbox} onOpenChange={setShowInbox}>

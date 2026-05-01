@@ -66,6 +66,7 @@ interface HolidayNotice {
   date_end: string;
   reason: string | null;
   notify_students: boolean;
+  dismissed_by: string[] | null;
 }
 
 interface PauseRecord {
@@ -623,32 +624,29 @@ export default function StudentDashboard() {
     d.setDate(d.getDate() - 15);
     return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(d);
   };
-  const visibleHolidays = holidays.filter(h =>
-    h.notify_students &&
-    !dismissedIds.includes(h.id) &&
-    h.date_end >= todayStr &&
-    todayStr >= popupWindowStart(h.date_start)
-  );
+  const canShowHolidayPopups = !feedbackNeeded;
+  const visibleHolidays = canShowHolidayPopups
+    ? holidays.filter(h =>
+        h.notify_students &&
+        !dismissedIds.includes(h.id) &&
+        (!authUserId || !h.dismissed_by?.includes(authUserId)) &&
+        h.date_end >= todayStr &&
+        todayStr >= popupWindowStart(h.date_start)
+      )
+    : [];
   const currentPopup = visibleHolidays[0] ?? null;
 
-  const dismissPopup = (id: string) => {
+  const dismissPopup = async (id: string) => {
     const next = [...dismissedIds, id];
     setDismissedIds(next);
-    if (authUserId) {
-      localStorage.setItem(`dismissed_holiday_ids:${authUserId}`, JSON.stringify(next));
+    const holiday = holidays.find((h) => h.id === id);
+    if (authUserId && holiday && !holiday.dismissed_by?.includes(authUserId)) {
+      await supabase
+        .from("holiday_notices")
+        .update({ dismissed_by: [...(holiday.dismissed_by || []), authUserId] } as any)
+        .eq("id", id);
     }
   };
-
-  // Load dismissed IDs scoped per logged-in user (prevents cross-account leakage)
-  useEffect(() => {
-    if (!authUserId) return;
-    try {
-      const raw = localStorage.getItem(`dismissed_holiday_ids:${authUserId}`) || "[]";
-      setDismissedIds(JSON.parse(raw));
-    } catch {
-      setDismissedIds([]);
-    }
-  }, [authUserId]);
 
   useEffect(() => {
     if (!authLoading) loadAll();
@@ -679,7 +677,7 @@ export default function StudentDashboard() {
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
       // 휴강 공지 (팝업용은 미래만, 캘린더용은 전체)
-      supabase.from("holiday_notices").select("id,title,date_start,date_end,reason,notify_students").order("date_start", { ascending: true }),
+      supabase.from("holiday_notices").select("id,title,date_start,date_end,reason,notify_students,dismissed_by").order("date_start", { ascending: true }),
       // 의도적으로 삭제된 수업 날짜 (가상 세션에서 제외)
       supabase.from("deleted_session_dates").select("deleted_date").eq("student_name", student),
     ]);
@@ -1514,7 +1512,7 @@ export default function StudentDashboard() {
       )}
       {/* ── Holiday Popup ── */}
       {currentPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-card rounded-xl shadow-2xl border border-border overflow-hidden">
             <div className="h-1 bg-gold w-full" />
             <div className="p-5 space-y-4">
@@ -1926,7 +1924,7 @@ export default function StudentDashboard() {
           {authStudent && (
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {authUserId && (
-                <NotificationInbox userId={authUserId} role="student" studentName={authStudent} />
+                <NotificationInbox userId={authUserId} role="student" studentName={authStudent} suppressPopup={!!feedbackNeeded || !!currentPopup} />
               )}
               <a
                 href="https://daily-diary-lounge.lovable.app/"
