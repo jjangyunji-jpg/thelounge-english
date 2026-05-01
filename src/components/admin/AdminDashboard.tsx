@@ -48,7 +48,7 @@ export default function AdminDashboard() {
       supabase.from("instructor_students").select("id,instructor_id,student_name,schedules,created_at,status,instructor_name,student_type"),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("holiday_notices").select("title,date_start,date_end").gte("date_end", todayStr).order("date_start", { ascending: true }),
-      supabase.from("class_sessions").select("id,instructor_name,level,scheduled_at,student_name,ended_at"),
+      supabase.from("class_sessions").select("id,instructor_name,level,scheduled_at,student_name,ended_at,cancellation_type"),
       supabase.from("class_feedback").select("instructor_name,satisfaction,teaching_quality,communication,lesson_preparation,ratings"),
       supabase.from("business_meetings").select("id,instructor_id,scheduled_at,duration_minutes,notes"),
     ]);
