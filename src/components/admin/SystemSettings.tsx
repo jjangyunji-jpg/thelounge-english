@@ -96,7 +96,7 @@ export default function SystemSettings() {
       notify_students: newNotice.notify_students,
     });
     if (!error) {
-      toast({ title: "휴강 공지가 등록되었습니다 ✓" });
+      toast({ title: "공식 휴원일이 등록되었습니다 ✓" });
       setNewNotice({ title: "", date_start: "", date_end: "", reason: "", notify_students: true });
       setAddingNotice(false);
       await loadNotices();
