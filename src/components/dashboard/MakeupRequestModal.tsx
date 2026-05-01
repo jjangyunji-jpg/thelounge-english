@@ -214,6 +214,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     return instructorName;
   }, [requestType, selectedSession, selectedCancelledSession, instructorName]);
 
+  const displayInstructor = (n: string | null | undefined) =>
+    (n && instructorEnMap.get(n)) || n || "";
+  const targetInstructorDisplay = displayInstructor(targetInstructorName);
+
   const visibleSlots = useMemo(() => {
     let result = slots.filter(s => s.instructor_name === targetInstructorName);
     if (activePeriod) {
