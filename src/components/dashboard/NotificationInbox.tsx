@@ -60,7 +60,7 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
       setPopupNotification(unread[0]);
       setShowPopup(true);
     }
-  }, [userId, role]);
+  }, [userId, role, studentName]);
 
   useEffect(() => {
     fetchNotifications();
