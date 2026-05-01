@@ -800,7 +800,18 @@ export default function StudentDashboard() {
         }
       }
 
-      // Load pauses from student_pauses table (for all records)
+      // Fetch all instructors' english_name for display
+      {
+        const { data: allInstr } = await supabase
+          .from("instructors")
+          .select("name, english_name");
+        const enMap = new Map<string, string>();
+        for (const i of (allInstr || []) as Array<{ name: string; english_name: string | null }>) {
+          if (i?.name) enMap.set(i.name, (i.english_name?.trim() || i.name));
+        }
+        setInstructorEnMap(enMap);
+      }
+
       let pauses: PauseRecord[] = [];
       const allRecordIds = allStudentRecords.map((r: any) => r.id).filter(Boolean);
       if (allRecordIds.length > 0) {
