@@ -87,19 +87,18 @@ export default function AdminDashboard() {
       const nameSet = new Set<string>([ins.name]);
       insStudents.forEach(s => { if (s.instructor_name) nameSet.add(s.instructor_name); });
 
-      // Estimated pay: month-based, completed sessions only (ended_at 기준, KST Date 비교)
+      // Estimated pay: month-based, 신규 정산 규정 적용 (calcSessionPay)
       let estimatedPay = 0;
+      const isOwner = ins.position === "대표";
       const monthSessions = allSessions.filter(s => {
         const d = new Date(s.scheduled_at);
-        return nameSet.has(s.instructor_name) && d >= currentMonthStart && d <= currentMonthEnd && !!s.ended_at;
+        return nameSet.has(s.instructor_name) && d >= currentMonthStart && d <= currentMonthEnd;
       });
-      if (ins.position === "대표") {
-        estimatedPay = monthSessions.length * ins.lesson_rate;
-      } else {
-        monthSessions.forEach(s => {
-          const levelRate = LEVEL_RATES[s.level] || 19000;
-          estimatedPay += BASE_SALARY + levelRate;
-        });
+      monthSessions.forEach(s => {
+        const r = calcSessionPay(s as any, { isOwner, ownerFlatRate: ins.lesson_rate });
+        if (r.included) estimatedPay += r.payPerHour;
+      });
+      if (!isOwner) {
         // Include meetings for non-owner instructors
         const insMeetings = allMeetings.filter(m => {
           const d = new Date(m.scheduled_at);
