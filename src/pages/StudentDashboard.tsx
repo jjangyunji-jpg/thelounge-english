@@ -2168,7 +2168,7 @@ export default function StudentDashboard() {
                     </p>
                     <p className="text-xs text-muted-foreground">{fmtDateTime(nextClassDate.toISOString())}</p>
                     <p className="text-xs text-muted-foreground">
-                      담당: {nextSessionFromDB?.instructor_name || studentRecord?.instructor_name || "-"}
+                      담당: {(() => { const n = nextSessionFromDB?.instructor_name || studentRecord?.instructor_name; return n ? (instructorEnMap.get(n) || n) : "-"; })()}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
