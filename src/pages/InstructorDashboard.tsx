@@ -453,6 +453,7 @@ function BigCalendar({
           const todayFlag = dateStr === new Date().toDateString();
           const isSelected = selectedDate && dateStr === selectedDate.toDateString();
           const dayOfWeek = date.getDay();
+          const isHolidayDay = holidaySet.has(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`);
 
           // Merge: show actual sessions, then virtual ones not covered by actual sessions
           // Hide virtual schedules when:
