@@ -761,7 +761,9 @@ export default function StudentDashboard() {
       } else if (periodsRes.data?.length) {
         const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
         const current = periodsRes.data.find((p: SchedulePeriod) => p.start_date <= today && p.end_date >= today);
-        setSelectedPeriodId(current?.id || periodsRes.data[periodsRes.data.length - 1].id);
+        // If today is not in any period (휴강 기간 등), pick the next upcoming period
+        const upcoming = periodsRes.data.find((p: SchedulePeriod) => p.start_date > today);
+        setSelectedPeriodId(current?.id || upcoming?.id || periodsRes.data[periodsRes.data.length - 1].id);
       }
     }
 
