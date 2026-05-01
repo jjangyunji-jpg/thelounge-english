@@ -852,6 +852,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     </div>
                   </div>
 
+                  <Button
+                    size="default"
+                    className="w-full bg-[hsl(var(--gold))] hover:bg-[hsl(var(--gold-dark))] text-[hsl(var(--background))] font-bold shadow-md border-2 border-[hsl(var(--gold-dark))]"
+                    onClick={() => setStep("no_slots")}
+                  >
+                    <CalendarX className="w-4 h-4 mr-1.5" />
+                    가능한 일정이 없어요
+                  </Button>
+
                   {selectedDate && (
                     <div className="space-y-2">
                       <p className="text-xs font-semibold text-muted-foreground">회차를 선택하세요.</p>
