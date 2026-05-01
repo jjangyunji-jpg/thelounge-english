@@ -963,8 +963,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
                     {urgentReason && (
                       <div className="space-y-1">
-                        <p className="text-[10px] text-muted-foreground font-semibold">긴급 사유</p>
-                        <p className="text-xs text-foreground">{URGENT_REASONS.find(r => r.code === urgentReason)?.label}</p>
+                        <p className="text-[10px] text-muted-foreground font-semibold">예외 사유</p>
+                        <p className="text-xs text-foreground">{SICK_EXCEPTION_LABEL}</p>
                       </div>
                     )}
 
