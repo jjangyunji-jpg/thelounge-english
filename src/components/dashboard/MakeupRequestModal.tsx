@@ -921,7 +921,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       <CalendarX className="w-4 h-4" /> 가능한 일정이 없습니다
                     </p>
                     <p className="text-[11px] text-foreground/80 leading-relaxed">
-                      해당 기간에 <span className="font-semibold">{targetInstructorName}</span> 강사님이 등록한 가능 시간이 없거나 모두 마감되었습니다.
+                      해당 기간에 <span className="font-semibold">{targetInstructorDisplay}</span> 강사님이 등록한 가능 시간이 없거나 모두 마감되었습니다.
                       규정에 따라 가능 슬롯이 없는 경우 별도 시간 개설은 어려우며, 해당 수업은 수업 횟수에서 차감될 수 있습니다.
                     </p>
                   </div>
