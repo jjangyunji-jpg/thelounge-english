@@ -793,7 +793,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-start gap-2">
                       <AlertCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        <span className="font-semibold text-foreground">{targetInstructorName}</span> 강사님이 아직 이 기간에 가능한 시간을 등록하지 않았어요.
+                        <span className="font-semibold text-foreground">{targetInstructorDisplay}</span> 강사님이 아직 이 기간에 가능한 시간을 등록하지 않았어요.
                       </p>
                     </div>
                   )}
