@@ -82,7 +82,7 @@ import type { CancellationType, CancellationResolution } from "@/components/dash
 const CANCELLATION_META: Record<CancellationType, { label: string; color: string; bgColor: string }> = {
   student_cancel: { label: "당일취소", color: "text-destructive", bgColor: "bg-destructive/10" },
   no_show: { label: "노쇼", color: "text-[hsl(var(--gold-dark))]", bgColor: "bg-[hsl(var(--gold)/0.12)]" },
-  sick: { label: "병결", color: "text-blue-600", bgColor: "bg-blue-50" },
+  sick: { label: "당일취소(예외)", color: "text-blue-600", bgColor: "bg-blue-50" },
   instructor_cancel: { label: "강사취소", color: "text-purple-600", bgColor: "bg-purple-50" },
   advance_cancel: { label: "사전취소", color: "text-emerald-600", bgColor: "bg-emerald-50" },
 };
