@@ -366,19 +366,17 @@ function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPerio
                 className={cn(
                   "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all cursor-pointer",
                   isSelected ? "ring-2 ring-gold ring-offset-1 ring-offset-card" : "",
-                  todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
-                    : session && !isOff ? "bg-gold/15 text-gold-dark font-semibold hover:bg-gold/25"
-                    : holiday ? "text-muted-foreground/30 hover:bg-muted/30"
+                  todayMark && holiday ? "bg-destructive text-destructive-foreground font-bold shadow-sm"
+                    : todayMark ? "bg-navy text-primary-foreground font-bold shadow-sm"
+                    : holiday ? "bg-destructive/15 text-destructive hover:bg-destructive/25"
+                    : session ? "bg-gold/15 text-gold-dark font-semibold hover:bg-gold/25"
                     : inPeriod ? "text-foreground hover:bg-muted/50"
                     : "text-muted-foreground/40 hover:bg-muted/30",
                 )}
               >
                 {isOutsidePeriodMonth ? `${cell.month + 1}/${cell.day}` : cell.day}
-                {session && !todayMark && !isOff && (
+                {session && !todayMark && !holiday && (
                   <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
-                )}
-                {holiday && !todayMark && (
-                  <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-muted-foreground/30" />
                 )}
               </button>
             );
