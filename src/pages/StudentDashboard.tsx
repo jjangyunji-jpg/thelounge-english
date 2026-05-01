@@ -677,7 +677,7 @@ export default function StudentDashboard() {
       // 어드민 수업 기간 설정
       supabase.from("schedule_periods").select("id,label,start_date,end_date,is_active").order("start_date", { ascending: true }),
       // 휴강 공지 (팝업용은 미래만, 캘린더용은 전체)
-      supabase.from("holiday_notices").select("id,title,date_start,date_end,reason,notify_students").order("date_start", { ascending: true }),
+      supabase.from("holiday_notices").select("id,title,date_start,date_end,reason,notify_students,dismissed_by").order("date_start", { ascending: true }),
       // 의도적으로 삭제된 수업 날짜 (가상 세션에서 제외)
       supabase.from("deleted_session_dates").select("deleted_date").eq("student_name", student),
     ]);
