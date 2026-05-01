@@ -49,15 +49,13 @@ interface SchedulePeriod {
   end_date: string;
 }
 
-const URGENT_REASONS = [
-  { code: "meeting", label: "갑작스러운 회의/야근" },
-  { code: "health", label: "갑작스러운 병원/건강 이상" },
-  { code: "family", label: "직계가족 긴급 상황" },
-] as const;
+// 24시간 미만 신청 시 인정되는 예외 사유 (sick 카테고리로 통합)
+const SICK_EXCEPTION_LABEL = "본인 병가 · 갑작스러운 회의·야근 · 직계가족 긴급 상황";
 
 const REJECTION_LABELS: Record<string, string> = {
-  within_48h: "48시간 이내 요청입니다",
-  not_urgent: "긴급 사유로 인정되지 않습니다",
+  within_48h: "24시간 이내 요청입니다",
+  within_24h: "24시간 이내 요청입니다",
+  not_urgent: "예외 사유로 인정되지 않습니다",
   no_slots: "가능한 슬롯이 없습니다",
   repeated_change: "반복 변경으로 제한되었습니다",
 };
