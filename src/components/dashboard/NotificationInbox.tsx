@@ -142,7 +142,7 @@ export default function NotificationInbox({ userId, role, studentName }: Notific
       </Button>
 
       <Dialog open={showPopup} onOpenChange={(open) => { if (!open) handleClosePopup(); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md z-[100]">
           {popupNotification && (
             <NotificationPopupContent
               subject={popupNotification.subject}
