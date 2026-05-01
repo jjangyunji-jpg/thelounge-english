@@ -644,7 +644,7 @@ export default function StudentDashboard() {
       const updatedDismissedBy = [...(holiday.dismissed_by || []), authUserId];
       await supabase
         .from("holiday_notices")
-        .update({ dismissed_by: updatedDismissedBy } as any)
+        .update({ dismissed_by: updatedDismissedBy })
         .eq("id", id);
       setHolidays((prev) => prev.map((h) => h.id === id ? { ...h, dismissed_by: updatedDismissedBy } : h));
     }
