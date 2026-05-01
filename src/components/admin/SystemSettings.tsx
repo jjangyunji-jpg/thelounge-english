@@ -371,17 +371,20 @@ export default function SystemSettings() {
             </div>
           </div>
 
-          {/* 새 휴강 추가 폼 */}
+          {/* 새 휴원일 추가 폼 */}
           {addingNotice && (
             <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5 space-y-3">
               <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
-                새 휴강 / 연휴 등록
+                새 공식 휴원일 / 연휴 등록
+              </p>
+              <p className="text-[10px] text-muted-foreground -mt-1">
+                전체 운영 일정상 수업이 진행되지 않는 날을 등록합니다. (개별 수업의 보강·취소·노쇼는 강사 대시보드의 "수업 취소 처리"에서 입력하세요.)
               </p>
               <div className="space-y-1.5">
                 <Label className="text-xs">제목</Label>
                 <Input
-                  placeholder="예: 설 연휴 휴강, 강사 개인 사정 휴강"
+                  placeholder="예: 설 연휴 휴원, 원장 출장 휴원"
                   className="h-8 text-sm"
                   value={newNotice.title}
                   onChange={(e) => setNewNotice((p) => ({ ...p, title: e.target.value }))}
