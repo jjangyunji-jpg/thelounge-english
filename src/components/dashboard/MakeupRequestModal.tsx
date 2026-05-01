@@ -498,7 +498,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       );
                       if (makeupSess) slotISO = makeupSess.scheduled_at;
                     }
-                    const within48 = slotISO ? new Date(slotISO).getTime() - Date.now() < 48 * 60 * 60 * 1000 : true;
+                    const within48 = slotISO ? new Date(slotISO).getTime() - Date.now() < 24 * 60 * 60 * 1000 : true;
                     const displayDate = bookedSlot
                       ? `${fmtDateKo(bookedSlot.slot_date)} ${fmtTimeKo(bookedSlot.slot_time)}`
                       : (slotISO ? `${fmtSessionDate(slotISO)} ${fmtSessionTime(slotISO)}` : null);
