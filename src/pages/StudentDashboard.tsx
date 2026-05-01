@@ -619,7 +619,18 @@ export default function StudentDashboard() {
   };
 
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-  const visibleHolidays = holidays.filter(h => h.notify_students && !dismissedIds.includes(h.id) && h.date_end >= todayStr);
+  // 팝업 표시 윈도우: 휴원 시작 15일 전 ~ 종료일까지
+  const popupWindowStart = (dateStartStr: string) => {
+    const d = new Date(dateStartStr + "T00:00:00");
+    d.setDate(d.getDate() - 15);
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(d);
+  };
+  const visibleHolidays = holidays.filter(h =>
+    h.notify_students &&
+    !dismissedIds.includes(h.id) &&
+    h.date_end >= todayStr &&
+    todayStr >= popupWindowStart(h.date_start)
+  );
   const currentPopup = visibleHolidays[0] ?? null;
 
   const dismissPopup = (id: string) => {
