@@ -340,7 +340,7 @@ export default function SystemSettings() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <BanIcon className="w-4 h-4 text-destructive" />
-              휴일 및 휴강 관리
+              공식 휴원일 관리 (정기·연휴·운영 휴원)
             </CardTitle>
             {!addingNotice && (
               <Button
@@ -350,7 +350,7 @@ export default function SystemSettings() {
                 onClick={() => setAddingNotice(true)}
               >
                 <Plus className="w-3 h-3" />
-                휴강 추가
+                휴원일 추가
               </Button>
             )}
           </div>
