@@ -453,6 +453,7 @@ function BigCalendar({
           const todayFlag = dateStr === new Date().toDateString();
           const isSelected = selectedDate && dateStr === selectedDate.toDateString();
           const dayOfWeek = date.getDay();
+          const isHolidayDay = holidaySet.has(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`);
 
           // Merge: show actual sessions, then virtual ones not covered by actual sessions
           // Hide virtual schedules when:
@@ -507,6 +508,7 @@ function BigCalendar({
               onClick={() => onSelectDate(date)}
               className={cn(
                 "min-h-[72px] flex flex-col items-start rounded-lg p-1 transition-all text-xs relative hover:bg-muted/50",
+                isHolidayDay && "bg-destructive/10 hover:bg-destructive/20",
                 todayFlag && "ring-2 ring-navy/50",
                 isSelected && "bg-navy/10 ring-2 ring-navy",
               )}
@@ -1654,7 +1656,10 @@ export default function InstructorDashboard() {
     const periods = periodRes.data || [];
     setAllPeriods(periods);
     const currentIdx = periods.findIndex(p => p.start_date <= todayStr && p.end_date >= todayStr);
-    const currentPeriod = currentIdx >= 0 ? periods[currentIdx] : periods[0] || null;
+    // If today is not in any period (휴강 기간 등), pick the next upcoming period; fallback to most recent past
+    const upcomingPeriod = periods.find(p => p.start_date > todayStr);
+    const lastPastPeriod = [...periods].reverse().find(p => p.end_date < todayStr);
+    const currentPeriod = currentIdx >= 0 ? periods[currentIdx] : (upcomingPeriod || lastPastPeriod || periods[0] || null);
     setPeriod(currentPeriod);
     if (studentTabPeriodIdx < 0) setStudentTabPeriodIdx(periods.length > 0 ? periods.length - 1 : 0);
     // settlementPeriodIdx removed — settlement uses month-based navigation
