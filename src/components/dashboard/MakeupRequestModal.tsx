@@ -665,7 +665,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                               </div>
                               {within48 && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold shrink-0">
-                                  48시간 이내
+                                  24시간 이내
                                 </span>
                               )}
                             </div>
