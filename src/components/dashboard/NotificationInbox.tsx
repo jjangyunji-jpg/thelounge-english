@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { Bell, Clock } from "lucide-react";
@@ -35,6 +35,7 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
   const [showPopup, setShowPopup] = useState(false);
   const [popupNotification, setPopupNotification] = useState<Notification | null>(null);
   const [detailNotification, setDetailNotification] = useState<Notification | null>(null);
+  const wasSuppressedRef = useRef(suppressPopup);
 
   const targetFilter = role === "instructor" ? ["all", "instructors"] : ["all", "students"];
   const personalTarget = role === "student" && studentName ? `student:${studentName}` : null;
@@ -58,15 +59,19 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
     );
     setUnreadCount(unread.length);
 
-    if (unread.length > 0 && !showInbox && !suppressPopup) {
-      setPopupNotification(unread[0]);
-      setShowPopup(true);
-    }
-  }, [userId, role, studentName, showInbox, suppressPopup]);
+  }, [userId, role, studentName]);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    const wasSuppressed = wasSuppressedRef.current;
+    wasSuppressedRef.current = suppressPopup;
+    if (wasSuppressed && !suppressPopup) {
+      fetchNotifications();
+    }
+  }, [suppressPopup, fetchNotifications]);
 
   useEffect(() => {
     if (suppressPopup) {
@@ -74,7 +79,6 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
       setPopupNotification(null);
       return;
     }
-    // Suppress released — show first unread popup if any
     if (!showInbox && !showPopup) {
       const next = notifications.find((n) => !n.read_by?.includes(userId));
       if (next) {
