@@ -742,7 +742,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                       <p className="text-[11px] text-foreground/80 leading-relaxed">
-                        이번 수업 기간({activePeriod?.label})에 이미 긴급 보강을 1회 사용하셨습니다. 추가 신청은 다음 기간부터 가능합니다.
+                        이번 수업 기간({activePeriod?.label})에 이미 24시간 이내 예외 보강을 1회 사용하셨습니다. 추가 신청은 다음 기간부터 가능합니다.
                       </p>
                     </div>
                   )}
