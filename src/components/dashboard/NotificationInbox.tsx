@@ -38,7 +38,6 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
   const wasSuppressedRef = useRef(suppressPopup);
   const suppressPopupRef = useRef(suppressPopup);
   const showInboxRef = useRef(showInbox);
-  const shouldOpenAfterFetchRef = useRef(false);
 
   useEffect(() => {
     suppressPopupRef.current = suppressPopup;
@@ -72,7 +71,6 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
     if (unread.length > 0 && !suppressPopupRef.current && !showInboxRef.current) {
       setPopupNotification(unread[0]);
       setShowPopup(true);
-      shouldOpenAfterFetchRef.current = false;
     }
   }, [userId, role, studentName]);
 
@@ -84,7 +82,6 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
     const wasSuppressed = wasSuppressedRef.current;
     wasSuppressedRef.current = suppressPopup;
     if (wasSuppressed && !suppressPopup) {
-      shouldOpenAfterFetchRef.current = true;
       fetchNotifications();
     }
   }, [suppressPopup, fetchNotifications]);
