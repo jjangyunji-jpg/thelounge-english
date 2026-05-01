@@ -96,7 +96,7 @@ export default function SystemSettings() {
       notify_students: newNotice.notify_students,
     });
     if (!error) {
-      toast({ title: "휴강 공지가 등록되었습니다 ✓" });
+      toast({ title: "공식 휴원일이 등록되었습니다 ✓" });
       setNewNotice({ title: "", date_start: "", date_end: "", reason: "", notify_students: true });
       setAddingNotice(false);
       await loadNotices();
@@ -340,7 +340,7 @@ export default function SystemSettings() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <BanIcon className="w-4 h-4 text-destructive" />
-              휴일 및 휴강 관리
+              공식 휴원일 관리 (정기·연휴·운영 휴원)
             </CardTitle>
             {!addingNotice && (
               <Button
@@ -350,7 +350,7 @@ export default function SystemSettings() {
                 onClick={() => setAddingNotice(true)}
               >
                 <Plus className="w-3 h-3" />
-                휴강 추가
+                휴원일 추가
               </Button>
             )}
           </div>
@@ -371,17 +371,20 @@ export default function SystemSettings() {
             </div>
           </div>
 
-          {/* 새 휴강 추가 폼 */}
+          {/* 새 휴원일 추가 폼 */}
           {addingNotice && (
             <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5 space-y-3">
               <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
-                새 휴강 / 연휴 등록
+                새 공식 휴원일 / 연휴 등록
+              </p>
+              <p className="text-[10px] text-muted-foreground -mt-1">
+                전체 운영 일정상 수업이 진행되지 않는 날을 등록합니다. (개별 수업의 보강·취소·노쇼는 강사 대시보드의 "수업 취소 처리"에서 입력하세요.)
               </p>
               <div className="space-y-1.5">
                 <Label className="text-xs">제목</Label>
                 <Input
-                  placeholder="예: 설 연휴 휴강, 강사 개인 사정 휴강"
+                  placeholder="예: 설 연휴 휴원, 원장 출장 휴원"
                   className="h-8 text-sm"
                   value={newNotice.title}
                   onChange={(e) => setNewNotice((p) => ({ ...p, title: e.target.value }))}
@@ -451,7 +454,7 @@ export default function SystemSettings() {
             </div>
           )}
 
-          {/* 예정된 / 활성 휴강 목록 */}
+          {/* 예정된 / 활성 휴원일 목록 */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">예정 및 진행중</p>
             {loadingNotices ? (
@@ -459,7 +462,7 @@ export default function SystemSettings() {
             ) : upcomingNotices.length === 0 ? (
               <div className="text-center py-6 text-muted-foreground">
                 <BanIcon className="w-6 h-6 mx-auto mb-2 opacity-30" />
-                <p className="text-xs">예정된 휴강이 없습니다</p>
+                <p className="text-xs">예정된 공식 휴원일이 없습니다</p>
               </div>
             ) : (
               upcomingNotices.map((notice) => (
@@ -468,11 +471,11 @@ export default function SystemSettings() {
             )}
           </div>
 
-          {/* 지난 휴강 */}
+          {/* 지난 휴원일 */}
           {pastNotices.length > 0 && (
             <details className="group">
               <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none">
-                지난 휴강 {pastNotices.length}건 보기
+                지난 휴원일 {pastNotices.length}건 보기
               </summary>
               <div className="mt-2 space-y-2">
                 {pastNotices.map((notice) => (
