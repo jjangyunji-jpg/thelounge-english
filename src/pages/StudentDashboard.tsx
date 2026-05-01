@@ -423,7 +423,7 @@ function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPerio
                       <p className="text-[10px] text-muted-foreground truncate">{s.topic}</p>
                     )}
                     {s.instructor_name && (
-                      <p className="text-[10px] text-muted-foreground">담당: {s.instructor_name}</p>
+                      <p className="text-[10px] text-muted-foreground">담당: {instructorEnMap.get(s.instructor_name) || s.instructor_name}</p>
                     )}
                   </div>
                 </div>
