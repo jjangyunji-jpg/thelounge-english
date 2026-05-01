@@ -577,6 +577,8 @@ export type Database = {
           date_start: string
           dismissed_by: string[] | null
           id: string
+          notified_15d: boolean
+          notified_7d: boolean
           notify_students: boolean
           reason: string | null
           title: string
@@ -587,6 +589,8 @@ export type Database = {
           date_start: string
           dismissed_by?: string[] | null
           id?: string
+          notified_15d?: boolean
+          notified_7d?: boolean
           notify_students?: boolean
           reason?: string | null
           title: string
@@ -597,6 +601,8 @@ export type Database = {
           date_start?: string
           dismissed_by?: string[] | null
           id?: string
+          notified_15d?: boolean
+          notified_7d?: boolean
           notify_students?: boolean
           reason?: string | null
           title?: string
