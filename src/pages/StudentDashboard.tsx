@@ -623,12 +623,15 @@ export default function StudentDashboard() {
     d.setDate(d.getDate() - 15);
     return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(d);
   };
-  const visibleHolidays = holidays.filter(h =>
-    h.notify_students &&
-    !dismissedIds.includes(h.id) &&
-    h.date_end >= todayStr &&
-    todayStr >= popupWindowStart(h.date_start)
-  );
+  const canShowHolidayPopups = !feedbackNeeded;
+  const visibleHolidays = canShowHolidayPopups
+    ? holidays.filter(h =>
+        h.notify_students &&
+        !dismissedIds.includes(h.id) &&
+        h.date_end >= todayStr &&
+        todayStr >= popupWindowStart(h.date_start)
+      )
+    : [];
   const currentPopup = visibleHolidays[0] ?? null;
 
   const dismissPopup = (id: string) => {
