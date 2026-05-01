@@ -1,25 +1,15 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { calcSessionPay, getLevelCategory } from "./instructorPay";
 
 const BASE_PAY = 11000;
-const LEVEL_RATES: Record<string, number> = {
-  A1: 14000, A2: 14000,
-  B1: 19000, B2: 19000,
-  C1: 24000, C2: 24000,
-};
-
-const getLevelCategory = (level: string) => {
-  if (["A1", "A2"].includes(level)) return "초급";
-  if (["B1", "B2"].includes(level)) return "중급";
-  if (["C1", "C2"].includes(level)) return "고급";
-  return "중급";
-};
 
 interface Session {
   scheduled_at: string;
   student_name: string;
   level: string;
   cancellation_type?: string | null;
+  ended_at?: string | null;
 }
 
 interface Meeting {
@@ -61,29 +51,15 @@ export function buildSettlementRows(sessions: Session[], meetings: Meeting[], pe
   sessions.forEach((s) => {
     const d = new Date(s.scheduled_at);
     if (d >= start && d <= end && d <= now) {
-      // Skip cancellation types that don't count for settlement at all
-      if (s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return;
-
-      // 당일 취소: 기본급여(11,000원)만 정산에 반영, 보강은 진행되지 않음
-      if (s.cancellation_type === 'student_cancel') {
-        rows.push({
-          date: d,
-          type: "수업",
-          description: `${s.student_name} (${getLevelCategory(s.level)}) [당일 취소]`,
-          durationHours: 1,
-          pay: BASE_PAY,
-        });
-        return;
-      }
-
-      const levelRate = LEVEL_RATES[s.level] || 19000;
-      const pay = flatRate ? flatRate : (BASE_PAY + levelRate);
+      const isOwner = !!flatRate;
+      const r = calcSessionPay(s, { isOwner, ownerFlatRate: flatRate });
+      if (!r.included) return;
       rows.push({
         date: d,
         type: "수업",
-        description: `${s.student_name} (${getLevelCategory(s.level)})${s.cancellation_type === 'no_show' ? ' [노쇼]' : ''}`,
+        description: `${s.student_name} (${getLevelCategory(s.level)})${r.noteSuffix}`,
         durationHours: 1,
-        pay,
+        pay: r.payPerHour,
       });
     }
   });

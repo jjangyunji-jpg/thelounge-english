@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { BASE_PAY, LEVEL_RATES, getLevelCategory, calcSessionPay } from "@/lib/instructorPay";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -1863,19 +1864,8 @@ export default function InstructorDashboard() {
   })();
   const checkedHw = checkedHwEntries;
 
-  // Period stats
-  const BASE_PAY = 11000;
-  const LEVEL_RATES: Record<string, number> = {
-    'A1': 14000, 'A2': 14000,
-    'B1': 19000, 'B2': 19000,
-    'C1': 24000, 'C2': 24000,
-  };
-  const getLevelCategory = (level: string) => {
-    if (['A1', 'A2'].includes(level)) return '초급';
-    if (['B1', 'B2'].includes(level)) return '중급';
-    if (['C1', 'C2'].includes(level)) return '고급';
-    return '중급';
-  };
+  // Period stats — 신규 정산 규정 (이번 달부터 적용)
+  // BASE_PAY/LEVEL_RATES/getLevelCategory/calcSessionPay imported from '@/lib/instructorPay'
   const start = period ? new Date(period.start_date) : null;
   const end = period ? new Date(period.end_date) : null;
   const now = new Date();
@@ -1921,15 +1911,11 @@ export default function InstructorDashboard() {
     const d = new Date(s.scheduled_at);
     return d >= sStart && d <= sEnd && !isSessionHidden(s);
   });
-  // Settlement: completed sessions + no_show (instructor gets paid for no-show)
-  // Exclude: student_cancel, sick, instructor_cancel (no pay for instructor)
+  const isOwner = instructor?.position === '대표';
+  // Settlement: 신규 규정 적용 (이번 달부터). calcSessionPay가 included 판정.
   const completedSettlementSessions = settlementSessions.filter((s) => {
-    // Cancelled types that don't count for settlement
-    if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return false;
-    // no_show counts for settlement even without ended_at
-    if (s.cancellation_type === 'no_show') return true;
-    // Normal: must be completed
-    return !!s.ended_at;
+    const r = calcSessionPay(s as any, { isOwner, ownerFlatRate: instructor?.lesson_rate ?? 50000 });
+    return r.included;
   });
   const settlementMeetings = meetings.filter((m) => {
     const d = new Date(m.scheduled_at);
@@ -1940,18 +1926,17 @@ export default function InstructorDashboard() {
   // Settlement items for the table
   type SettlementRow = { key: string; date: Date; type: 'lesson' | 'meeting'; description: string; durationHours: number; payPerHour: number; };
   const settlementRows: SettlementRow[] = [];
-  const isOwner = instructor?.position === '대표';
   completedSettlementSessions.forEach((s) => {
-    const levelRate = LEVEL_RATES[s.level] || 19000;
+    const r = calcSessionPay(s as any, { isOwner, ownerFlatRate: instructor?.lesson_rate ?? 50000 });
     const key = `lesson-${s.id}`;
     const durationHours = durationOverrides[key] ?? 1;
     settlementRows.push({
       key,
       date: new Date(s.scheduled_at),
       type: 'lesson',
-      description: `${fmtName(s.student_name)} 수업 (${getLevelCategory(s.level)})${s.cancellation_type === 'no_show' ? ' [노쇼]' : ''}`,
+      description: `${fmtName(s.student_name)} 수업 (${getLevelCategory(s.level)})${r.noteSuffix}`,
       durationHours,
-      payPerHour: isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate),
+      payPerHour: r.payPerHour,
     });
   });
   // 대표는 미팅 정산 제외
@@ -1980,21 +1965,18 @@ export default function InstructorDashboard() {
 
   const totalAmount = cumulative;
 
-  // Current month total for dashboard card (완료 기준)
+  // Current month total for dashboard card (완료 기준 + 신규 정산 규정)
   const currentMonthTotal = (() => {
     let total = 0;
     sessions.filter(s => {
       const d = new Date(s.scheduled_at);
-      if (!(d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s))) return false;
-      if (s.cancellation_type === 'student_cancel' || s.cancellation_type === 'sick' || s.cancellation_type === 'instructor_cancel' || s.cancellation_type === 'advance_cancel') return false;
-      if (s.cancellation_type === 'no_show') return true;
-      return !!s.ended_at;
+      return d >= currentMonthStart && d <= currentMonthEnd && !isSessionHidden(s);
     }).forEach(s => {
-      const levelRate = LEVEL_RATES[s.level] || 19000;
-      const pay = isOwner ? (instructor?.lesson_rate ?? 50000) : (BASE_PAY + levelRate);
+      const r = calcSessionPay(s as any, { isOwner, ownerFlatRate: instructor?.lesson_rate ?? 50000 });
+      if (!r.included) return;
       const key = `lesson-${s.id}`;
       const dur = durationOverrides[key] ?? 1;
-      total += Math.round(dur * pay);
+      total += Math.round(dur * r.payPerHour);
     });
     if (!isOwner) {
       meetings.filter(m => {
@@ -2008,6 +1990,8 @@ export default function InstructorDashboard() {
     }
     return total;
   })();
+
+
 
    // Selected date sessions + meetings + virtual schedules
     const selectedDateStr = selectedDate?.toDateString();

@@ -4,13 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { cn, todayKSTString } from "@/lib/utils";
-
-const BASE_SALARY = 11000;
-const LEVEL_RATES: Record<string, number> = {
-  A1: 14000, A2: 14000,
-  B1: 19000, B2: 19000,
-  C1: 24000, C2: 24000,
-};
+import { calcSessionPay, BASE_PAY as BASE_SALARY } from "@/lib/instructorPay";
 
 interface InstructorCard {
   id: string;
@@ -54,7 +48,7 @@ export default function AdminDashboard() {
       supabase.from("instructor_students").select("id,instructor_id,student_name,schedules,created_at,status,instructor_name,student_type"),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("holiday_notices").select("title,date_start,date_end").gte("date_end", todayStr).order("date_start", { ascending: true }),
-      supabase.from("class_sessions").select("id,instructor_name,level,scheduled_at,student_name,ended_at"),
+      supabase.from("class_sessions").select("id,instructor_name,level,scheduled_at,student_name,ended_at,cancellation_type"),
       supabase.from("class_feedback").select("instructor_name,satisfaction,teaching_quality,communication,lesson_preparation,ratings"),
       supabase.from("business_meetings").select("id,instructor_id,scheduled_at,duration_minutes,notes"),
     ]);
@@ -93,19 +87,18 @@ export default function AdminDashboard() {
       const nameSet = new Set<string>([ins.name]);
       insStudents.forEach(s => { if (s.instructor_name) nameSet.add(s.instructor_name); });
 
-      // Estimated pay: month-based, completed sessions only (ended_at 기준, KST Date 비교)
+      // Estimated pay: month-based, 신규 정산 규정 적용 (calcSessionPay)
       let estimatedPay = 0;
+      const isOwner = ins.position === "대표";
       const monthSessions = allSessions.filter(s => {
         const d = new Date(s.scheduled_at);
-        return nameSet.has(s.instructor_name) && d >= currentMonthStart && d <= currentMonthEnd && !!s.ended_at;
+        return nameSet.has(s.instructor_name) && d >= currentMonthStart && d <= currentMonthEnd;
       });
-      if (ins.position === "대표") {
-        estimatedPay = monthSessions.length * ins.lesson_rate;
-      } else {
-        monthSessions.forEach(s => {
-          const levelRate = LEVEL_RATES[s.level] || 19000;
-          estimatedPay += BASE_SALARY + levelRate;
-        });
+      monthSessions.forEach(s => {
+        const r = calcSessionPay(s as any, { isOwner, ownerFlatRate: ins.lesson_rate });
+        if (r.included) estimatedPay += r.payPerHour;
+      });
+      if (!isOwner) {
         // Include meetings for non-owner instructors
         const insMeetings = allMeetings.filter(m => {
           const d = new Date(m.scheduled_at);
