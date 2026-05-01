@@ -1517,7 +1517,7 @@ export default function StudentDashboard() {
       )}
       {/* ── Holiday Popup ── */}
       {currentPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-card rounded-xl shadow-2xl border border-border overflow-hidden">
             <div className="h-1 bg-gold w-full" />
             <div className="p-5 space-y-4">
@@ -1929,7 +1929,7 @@ export default function StudentDashboard() {
           {authStudent && (
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {authUserId && (
-                <NotificationInbox userId={authUserId} role="student" studentName={authStudent} suppressPopup={!!feedbackNeeded} />
+                <NotificationInbox userId={authUserId} role="student" studentName={authStudent} suppressPopup={!!feedbackNeeded || !!currentPopup} />
               )}
               <a
                 href="https://daily-diary-lounge.lovable.app/"
