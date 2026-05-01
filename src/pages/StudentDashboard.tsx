@@ -489,9 +489,7 @@ export default function StudentDashboard() {
   const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriod[]>([]);
   const [instructorEnMap, setInstructorEnMap] = useState<Map<string, string>>(new Map());
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
-  const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem("dismissed_holiday_ids") || "[]"); } catch { return []; }
-  });
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [testHistoryOpen, setTestHistoryOpen] = useState(false);
   const [classHistoryOpen, setClassHistoryOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(false);
@@ -636,8 +634,21 @@ export default function StudentDashboard() {
   const dismissPopup = (id: string) => {
     const next = [...dismissedIds, id];
     setDismissedIds(next);
-    localStorage.setItem("dismissed_holiday_ids", JSON.stringify(next));
+    if (authUserId) {
+      localStorage.setItem(`dismissed_holiday_ids:${authUserId}`, JSON.stringify(next));
+    }
   };
+
+  // Load dismissed IDs scoped per logged-in user (prevents cross-account leakage)
+  useEffect(() => {
+    if (!authUserId) return;
+    try {
+      const raw = localStorage.getItem(`dismissed_holiday_ids:${authUserId}`) || "[]";
+      setDismissedIds(JSON.parse(raw));
+    } catch {
+      setDismissedIds([]);
+    }
+  }, [authUserId]);
 
   useEffect(() => {
     if (!authLoading) loadAll();
