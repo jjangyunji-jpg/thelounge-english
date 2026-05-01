@@ -454,7 +454,7 @@ export default function SystemSettings() {
             </div>
           )}
 
-          {/* 예정된 / 활성 휴강 목록 */}
+          {/* 예정된 / 활성 휴원일 목록 */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">예정 및 진행중</p>
             {loadingNotices ? (
@@ -462,7 +462,7 @@ export default function SystemSettings() {
             ) : upcomingNotices.length === 0 ? (
               <div className="text-center py-6 text-muted-foreground">
                 <BanIcon className="w-6 h-6 mx-auto mb-2 opacity-30" />
-                <p className="text-xs">예정된 휴강이 없습니다</p>
+                <p className="text-xs">예정된 공식 휴원일이 없습니다</p>
               </div>
             ) : (
               upcomingNotices.map((notice) => (
@@ -471,11 +471,11 @@ export default function SystemSettings() {
             )}
           </div>
 
-          {/* 지난 휴강 */}
+          {/* 지난 휴원일 */}
           {pastNotices.length > 0 && (
             <details className="group">
               <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none">
-                지난 휴강 {pastNotices.length}건 보기
+                지난 휴원일 {pastNotices.length}건 보기
               </summary>
               <div className="mt-2 space-y-2">
                 {pastNotices.map((notice) => (
