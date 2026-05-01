@@ -61,3 +61,4 @@ Use student_name as primary ID for sync; apply atomic updates on makeup slots.
 - [Dialogue Generator](mem://features/classroom/dialogue-generator) — AI context-aware dialogue with Key Expressions HTML
 - [Notification System](mem://features/dashboards/notification-system) — Inbox badge, login popup, read_by tracking sync
 - [Makeup Cancel Flow](mem://features/scheduling/makeup-cancel-flow) — 학생 취소 요청 → 강사 승인 2단계, 48h 컷오프, cancel_requested status
+- [No-show Student Alert](mem://features/dashboards/no-show-student-alert) — 강사 노쇼 처리 시 학생 대시보드 알림 자동 발송 (target=student:이름)
