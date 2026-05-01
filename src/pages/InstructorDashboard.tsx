@@ -508,6 +508,7 @@ function BigCalendar({
               onClick={() => onSelectDate(date)}
               className={cn(
                 "min-h-[72px] flex flex-col items-start rounded-lg p-1 transition-all text-xs relative hover:bg-muted/50",
+                isHolidayDay && "bg-destructive/10 hover:bg-destructive/20",
                 todayFlag && "ring-2 ring-navy/50",
                 isSelected && "bg-navy/10 ring-2 ring-navy",
               )}
