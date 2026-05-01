@@ -540,6 +540,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+        setAuthUserId(session.user.id);
         // Check if this is an instructor viewing a student's dashboard
         if (urlStudentName) {
           // Verify the user is an instructor
