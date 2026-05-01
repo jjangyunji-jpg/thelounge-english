@@ -710,30 +710,32 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     </p>
                   </div>
 
-                  {/* 사유 선택 */}
+                  {/* 예외 사유 확인 (단일 카테고리: sick) */}
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-foreground">긴급 사유 선택 (1개)</p>
-                    {URGENT_REASONS.map(r => (
-                      <button key={r.code}
-                        disabled={urgentLimitReached}
-                        onClick={() => setUrgentReason(r.code)}
-                        className={cn(
-                          "w-full rounded-lg border p-3 text-left text-xs transition-colors",
-                          urgentLimitReached && "opacity-50 cursor-not-allowed",
-                          !urgentLimitReached && urgentReason === r.code
-                            ? "border-primary bg-primary/5 text-foreground font-semibold"
-                            : "border-border text-foreground hover:border-primary/40"
-                        )}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span className={cn(
-                            "w-3.5 h-3.5 rounded-full border-2 shrink-0",
-                            urgentReason === r.code ? "border-primary bg-primary" : "border-muted-foreground/40"
-                          )} />
-                          {r.label}
+                    <p className="text-xs font-semibold text-foreground">예외 사유 확인</p>
+                    <button
+                      disabled={urgentLimitReached}
+                      onClick={() => setUrgentReason(urgentReason === "sick" ? null : "sick")}
+                      className={cn(
+                        "w-full rounded-lg border p-3 text-left text-xs transition-colors",
+                        urgentLimitReached && "opacity-50 cursor-not-allowed",
+                        !urgentLimitReached && urgentReason === "sick"
+                          ? "border-primary bg-primary/5 text-foreground font-semibold"
+                          : "border-border text-foreground hover:border-primary/40"
+                      )}
+                    >
+                      <span className="flex items-start gap-2">
+                        <span className={cn(
+                          "w-3.5 h-3.5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center",
+                          urgentReason === "sick" ? "border-primary bg-primary" : "border-muted-foreground/40"
+                        )}>
+                          {urgentReason === "sick" && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                         </span>
-                      </button>
-                    ))}
+                        <span className="leading-relaxed">
+                          위 예외 사유({SICK_EXCEPTION_LABEL})에 해당함을 확인합니다.
+                        </span>
+                      </span>
+                    </button>
                   </div>
 
                   {urgentLimitReached && (
