@@ -68,6 +68,13 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
     fetchNotifications();
   }, [fetchNotifications]);
 
+  useEffect(() => {
+    if (suppressPopup) {
+      setShowPopup(false);
+      setPopupNotification(null);
+    }
+  }, [suppressPopup]);
+
   const markAsRead = async (notificationId: string) => {
     const notif = notifications.find((n) => n.id === notificationId);
     if (!notif || notif.read_by?.includes(userId)) return;
