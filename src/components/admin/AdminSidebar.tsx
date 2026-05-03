@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import type { AdminLevel } from "@/pages/Admin";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "cash-receipts" | "support" | "guide" | "messages" | "settings";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "class-feedback" | "student-feedback" | "cash-receipts" | "support" | "guide" | "messages" | "settings" | "api-keys";
 
 // Tabs staff can access (read-only / limited)
 const staffAllowedTabs: AdminTab[] = ["materials"];
