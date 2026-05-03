@@ -89,6 +89,8 @@ export default function Admin() {
         return <GuideManagement />;
       case "messages":
         return <MessageCenter />;
+      case "api-keys":
+        return <ApiKeysManagement />;
       case "settings":
         return <SystemSettings />;
       default:
