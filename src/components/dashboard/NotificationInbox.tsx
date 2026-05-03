@@ -2,6 +2,17 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { Bell, Clock } from "lucide-react";
+
+const safeFormat = (value: string | null | undefined, pattern: string) => {
+  if (!value) return "";
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return "";
+    return format(d, pattern);
+  } catch {
+    return "";
+  }
+};
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -185,7 +196,7 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
             <NotificationPopupContent
               subject={popupNotification.subject}
               body={popupNotification.body}
-              timestampLabel={format(new Date(popupNotification.sent_at), "yyyy.MM.dd HH:mm")}
+              timestampLabel={safeFormat(popupNotification.sent_at, "yyyy.MM.dd HH:mm")}
               onConfirm={handleClosePopup}
             />
           </div>
@@ -239,7 +250,7 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
                       </p>
                       <p className="text-[10px] text-muted-foreground/60 flex items-center gap-1 flex-shrink-0">
                         <Clock className="w-2.5 h-2.5" />
-                        {format(new Date(n.sent_at), "MM.dd")}
+                        {safeFormat(n.sent_at, "MM.dd")}
                       </p>
                     </div>
                   </div>
@@ -261,7 +272,7 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
             <div className="min-w-0 space-y-3">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {format(new Date(detailNotification.sent_at), "yyyy.MM.dd HH:mm")}
+                {safeFormat(detailNotification.sent_at, "yyyy.MM.dd HH:mm")}
               </p>
               <div className="max-w-full rounded-lg bg-muted/40 p-3 max-h-[60vh] overflow-y-auto space-y-1">
                 {renderNotificationBody(detailNotification.body)}
