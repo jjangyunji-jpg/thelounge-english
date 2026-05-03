@@ -189,19 +189,29 @@ export default function NotificationInbox({ userId, role, studentName, suppressP
       </Button>
 
       {showPopup && popupNotification && createPortal(
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) handleClosePopup(); }}
+        <NotificationErrorBoundary
+          onError={() => {
+            // If the popup ever crashes (e.g. a Radix primitive used outside
+            // its required context), auto-dismiss instead of taking the
+            // dashboard down with it.
+            setShowPopup(false);
+            setPopupNotification(null);
+          }}
         >
-          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-background border rounded-lg shadow-lg p-6 grid gap-4">
-            <NotificationPopupContent
-              subject={popupNotification.subject}
-              body={popupNotification.body}
-              timestampLabel={safeFormat(popupNotification.sent_at, "yyyy.MM.dd HH:mm")}
-              onConfirm={handleClosePopup}
-            />
+          <div
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) handleClosePopup(); }}
+          >
+            <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-background border rounded-lg shadow-lg p-6 grid gap-4">
+              <NotificationPopupContent
+                subject={popupNotification.subject}
+                body={popupNotification.body}
+                timestampLabel={safeFormat(popupNotification.sent_at, "yyyy.MM.dd HH:mm")}
+                onConfirm={handleClosePopup}
+              />
+            </div>
           </div>
-        </div>,
+        </NotificationErrorBoundary>,
         document.body,
       )}
 
