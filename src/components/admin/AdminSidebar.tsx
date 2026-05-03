@@ -62,6 +62,7 @@ const navGroups: NavGroup[] = [
       { id: "operations", label: "운영 대시보드", icon: BarChart2 },
       { id: "support", label: "버그/개선 관리", icon: LifeBuoy },
       { id: "messages", label: "메시지 관리", icon: MessageSquare },
+      { id: "api-keys", label: "외부 API 키", icon: KeyRound },
       { id: "settings", label: "기본 설정", icon: Settings },
     ],
   },
