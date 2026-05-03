@@ -1,6 +1,5 @@
 import { Bell, Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface NotificationPopupContentProps {
   subject: string;
@@ -75,12 +74,12 @@ export default function NotificationPopupContent({
 }: NotificationPopupContentProps) {
   return (
     <>
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2 text-base">
+      <div className="flex flex-col space-y-1.5 text-center sm:text-left">
+        <h2 className="flex items-center gap-2 text-base font-semibold leading-none tracking-tight">
           <Bell className="w-4 h-4 text-gold" />
           새 공지사항
-        </DialogTitle>
-      </DialogHeader>
+        </h2>
+      </div>
 
       <div className="min-w-0 space-y-3">
         <div className="min-w-0">
