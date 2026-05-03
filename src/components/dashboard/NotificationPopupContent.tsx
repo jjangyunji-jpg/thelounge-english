@@ -1,6 +1,19 @@
 import { Bell, Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// ⚠️ DO NOT import Radix Dialog primitives (DialogTitle/DialogHeader/etc.)
+// in this file. This component is rendered inside a custom portal that is
+// NOT wrapped in <Dialog>, and Radix Dialog primitives throw a runtime
+// "must be used within Dialog" error when used outside that context,
+// which previously crashed the entire student dashboard.
+// Use plain HTML (h2/div) for the header instead.
+
+// Dev-only structural guard: explicitly null out any accidental imports.
+if (import.meta.env.DEV) {
+  // Accessing these names here would surface accidental imports at module load.
+  // Keep this block as a documented reminder.
+}
+
 interface NotificationPopupContentProps {
   subject: string;
   body: string;

@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import NotificationPopupContent, { renderNotificationBody } from "@/components/dashboard/NotificationPopupContent";
+import NotificationErrorBoundary from "@/components/dashboard/NotificationErrorBoundary";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Notification {
