@@ -1,6 +1,5 @@
 import { Bell, Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface NotificationPopupContentProps {
   subject: string;
