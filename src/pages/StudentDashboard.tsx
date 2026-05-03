@@ -656,6 +656,7 @@ export default function StudentDashboard() {
 
   const loadAll = async () => {
     setLoading(true);
+    try {
     const [sessRes, allSessRes, groupSessRes, groupAllSessRes, hwRes, subRes, vocRes, testRes, studentRes, periodsRes, holidaysRes, deletedDatesRes] = await Promise.all([
       supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution")
         .eq("student_name", student).order("scheduled_at", { ascending: false }).limit(20),
@@ -965,7 +966,16 @@ export default function StudentDashboard() {
         }
       }
     }
-
+    } catch (err) {
+      console.error("[StudentDashboard.loadAll] failed:", err);
+      toast({
+        title: "데이터를 불러오지 못했습니다",
+        description: "잠시 후 다시 시도해주세요. 문제가 계속되면 새로고침해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getSubmission = (aId: string) => {
