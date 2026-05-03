@@ -16,6 +16,7 @@ import ClassFeedbackManagement from "@/components/admin/ClassFeedbackManagement"
 import CurriculumGuideEditor from "@/components/admin/CurriculumGuideEditor";
 import CashReceiptManagement from "@/components/admin/CashReceiptManagement";
 import SupportRequestManagement from "@/components/admin/SupportRequestManagement";
+import ApiKeysManagement from "@/components/admin/ApiKeysManagement";
 
 import { Menu, X, Loader2, ArrowLeft } from "lucide-react";
 
@@ -88,6 +89,8 @@ export default function Admin() {
         return <GuideManagement />;
       case "messages":
         return <MessageCenter />;
+      case "api-keys":
+        return <ApiKeysManagement />;
       case "settings":
         return <SystemSettings />;
       default:

@@ -50,3 +50,9 @@ verify_jwt = false
 
 [functions.cleanup-homework-tts]
 verify_jwt = false
+
+[functions.public-api]
+verify_jwt = false
+
+[functions.issue-api-key]
+verify_jwt = false
