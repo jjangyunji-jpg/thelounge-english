@@ -871,6 +871,27 @@ export default function StudentManagement() {
     setSchedChangeTarget(null);
   };
 
+  const propagateMeetLinkToSessions = async (
+    studentName: string,
+    instructorName: string,
+    newLink: string | null,
+    startDate?: string | null,
+  ) => {
+    // Update future, not-yet-started sessions for this student under this instructor
+    const fromIso = startDate
+      ? new Date(`${startDate}T00:00:00+09:00`).toISOString()
+      : new Date().toISOString();
+    const { error, count } = await supabase
+      .from("class_sessions")
+      .update({ meet_link: newLink }, { count: "exact" })
+      .eq("student_name", studentName)
+      .eq("instructor_name", instructorName)
+      .is("started_at", null)
+      .gte("scheduled_at", fromIso);
+    if (error) console.error("[meet_link propagate] failed", error);
+    return count ?? 0;
+  };
+
   const saveMeetLink = async (studentId: number) => {
     const url = meetLinkInput.trim();
     if (url && !url.startsWith("http")) return;
@@ -878,7 +899,10 @@ export default function StudentManagement() {
     if (student?.dbId) {
       const { error } = await supabase.from("instructor_students").update({ meet_link: url || null }).eq("id", student.dbId);
       if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
-      toast({ title: "Meet 링크가 저장됐습니다 ✓" });
+      // Propagate to future sessions so 강사 대시보드/수업노트에도 반영
+      const startDate = (student as any).startDate || null;
+      const updated = await propagateMeetLinkToSessions(student.name, student.instructor, url || null, startDate);
+      toast({ title: "Meet 링크가 저장됐습니다 ✓", description: updated > 0 ? `향후 세션 ${updated}건에도 적용` : undefined });
     }
     setStudents((prev) =>
       prev.map((s) => s.id === studentId ? { ...s, meetLink: url } : s)
@@ -891,6 +915,8 @@ export default function StudentManagement() {
     const student = students.find(s => s.id === studentId);
     if (student?.dbId) {
       await supabase.from("instructor_students").update({ meet_link: null }).eq("id", student.dbId);
+      const startDate = (student as any).startDate || null;
+      await propagateMeetLinkToSessions(student.name, student.instructor, null, startDate);
     }
     setStudents((prev) =>
       prev.map((s) => s.id === studentId ? { ...s, meetLink: "" } : s)
