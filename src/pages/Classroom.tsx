@@ -22,6 +22,7 @@ import NewsLessonGeneratorModal from "@/components/classroom/NewsLessonGenerator
 import InsightGeneratorModal from "@/components/classroom/InsightGeneratorModal";
 import KeyExpressionExtractModal from "@/components/classroom/KeyExpressionExtractModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
+import { loadEffectiveStudentMeetInfo } from "@/lib/meetLink";
 
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentExpressionPanel from "@/components/classroom/StudentExpressionPanel";
@@ -227,26 +228,22 @@ export default function Classroom() {
         if (data) setGroupStudents(Array.isArray((data as any).group_students) ? (data as any).group_students : []);
       }
       if (sessionData) {
-        // Always fetch latest meet_link from instructor_students (source of truth)
-        let meetLink = "";
-        let englishName = "";
-        const { data: isData } = await supabase
-          .from("instructor_students")
-          .select("meet_link, english_name")
-          .eq("student_name", sessionData.student_name)
-          .eq("status", "active")
-          .maybeSingle();
-        meetLink = isData?.meet_link || sessionData.meet_link || "";
-        englishName = isData?.english_name ?? "";
+        // Meet 링크는 이관일 기준 instructor_students의 유효 레코드를 source of truth로 사용
+        const meetInfo = await loadEffectiveStudentMeetInfo(
+          supabase,
+          sessionData.student_name,
+          sessionData.scheduled_at,
+          sessionData.meet_link || "",
+        );
         setSession({
           sessionId: sessionData.id,
           studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
           dbStudentName: sessionData.student_name,
-          englishName,
+          englishName: meetInfo.englishName,
           instructorName: sessionData.instructor_name,
           level: sessionData.level,
           scheduledAt: new Date(sessionData.scheduled_at),
-          meetLink,
+          meetLink: meetInfo.meetLink,
           topic: sessionData.topic || "",
         });
         // Calculate session number within the period that contains this session's date

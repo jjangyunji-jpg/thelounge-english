@@ -5,6 +5,7 @@ import { FileText, Wifi, Loader2, Video, VideoOff, ExternalLink } from "lucide-r
 import NotesEditor from "@/components/classroom/NotesEditor";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { loadEffectiveStudentMeetInfo } from "@/lib/meetLink";
 
 type ClassState = "ready" | "active" | "ended";
 
@@ -33,7 +34,7 @@ export default function ClassroomEditorFullscreen() {
     const load = async () => {
       const { data } = await supabase
         .from("class_sessions")
-        .select("notes, student_name, topic, level, meet_link, started_at, ended_at")
+        .select("notes, student_name, topic, level, meet_link, scheduled_at, started_at, ended_at")
         .eq("id", sessionId)
         .single();
       if (data) {
@@ -41,17 +42,13 @@ export default function ClassroomEditorFullscreen() {
         setStudentName(data.student_name);
         setTopic(data.topic ?? "");
         setLevel(data.level ?? "");
-        // Try session meet_link, fallback to instructor_students
-        let link = data.meet_link ?? "";
-        if (!link) {
-          const { data: isData } = await supabase
-            .from("instructor_students")
-            .select("meet_link")
-            .eq("student_name", data.student_name)
-            .maybeSingle();
-          link = isData?.meet_link ?? "";
-        }
-        setMeetLink(link);
+        const meetInfo = await loadEffectiveStudentMeetInfo(
+          supabase,
+          data.student_name,
+          data.scheduled_at,
+          data.meet_link ?? "",
+        );
+        setMeetLink(meetInfo.meetLink);
         // Determine class state
         if (data.ended_at) setClassState("ended");
         else if (data.started_at) setClassState("active");
