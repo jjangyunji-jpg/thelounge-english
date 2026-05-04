@@ -41,6 +41,34 @@ serve(async (req) => {
       });
     }
 
+    // Deterministic normalization — ignore casing/punctuation/quotes/contractions/whitespace/hyphens
+    const normalize = (s: string) =>
+      s
+        .toLowerCase()
+        .trim()
+        .replace(/[\u2018\u2019\u201C\u201D’‘”“]/g, "'")
+        .replace(/\bi['']?m\b/g, "i am")
+        .replace(/\b(\w+)['']?s\b/g, "$1 is")
+        .replace(/\b(\w+)n['']?t\b/g, "$1 not")
+        .replace(/\b(\w+)['']?re\b/g, "$1 are")
+        .replace(/\b(\w+)['']?ve\b/g, "$1 have")
+        .replace(/\b(\w+)['']?ll\b/g, "$1 will")
+        .replace(/\b(\w+)['']?d\b/g, "$1 would")
+        .replace(/[.,!?'"`;:()\[\]{}]/g, "")
+        .replace(/[-–—_/\\]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const nU = normalize(student_answer);
+    const nT = normalize(target_english);
+    if (nU && nT && (nU === nT || nU.replace(/\s/g, "") === nT.replace(/\s/g, ""))) {
+      return new Response(JSON.stringify({
+        is_correct: true,
+        score: 100,
+        feedback: "정답입니다! 정확하게 작성하셨어요.",
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const systemPrompt = `You are a GENEROUS and encouraging English writing tutor for Korean adult learners.
 You will receive a Korean prompt, a target English expression (the "model answer"), and the student's English answer.
 
