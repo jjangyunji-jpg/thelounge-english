@@ -1599,6 +1599,9 @@ export default function InstructorDashboard() {
       studentsByName.get(key)!.push(s);
     });
 
+    const getKSTDateString = (dateValue: string) =>
+      new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date(dateValue));
+
     const isWithinStudentWindow = (student: StudentFull, dateStr: string) => {
       if (student.start_date && dateStr < student.start_date) return false;
       // end_date는 이관일(새 강사 시작일)이므로 당일부터는 제외
@@ -1609,13 +1612,13 @@ export default function InstructorDashboard() {
     const sessionBelongsToThisInstructor = (session: { student_name: string; scheduled_at: string }) => {
       const candidates = studentsByName.get(session.student_name) || [];
       if (candidates.length === 0) return false;
-      const dateStr = session.scheduled_at.slice(0, 10);
+      const dateStr = getKSTDateString(session.scheduled_at);
       return candidates.some((st) => isWithinStudentWindow(st, dateStr));
     };
 
     const shouldHideSession = (session: { student_name: string; scheduled_at: string }) => {
       const candidates = studentsByName.get(session.student_name) || [];
-      const dateStr = session.scheduled_at.slice(0, 10);
+      const dateStr = getKSTDateString(session.scheduled_at);
       const matchingStudents = candidates.filter((st) => isWithinStudentWindow(st, dateStr));
       if (matchingStudents.length === 0) return true;
       return matchingStudents.some(
@@ -1623,13 +1626,21 @@ export default function InstructorDashboard() {
       );
     };
 
+    const getEffectiveMeetLink = (session: ClassSession) => {
+      const dateStr = getKSTDateString(session.scheduled_at);
+      const matched = (studentsByName.get(session.student_name) || [])
+        .filter((st) => isWithinStudentWindow(st, dateStr))
+        .sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""))[0];
+      return matched?.meet_link || session.meet_link;
+    };
+
     // Merge and deduplicate sessions from both queries
     const sessMap = new Map<string, any>();
     for (const s of (sessRes.data || [])) sessMap.set(s.id, s);
     for (const s of (sessRes2.data || [])) sessMap.set(s.id, s);
-    const filteredSessions = Array.from(sessMap.values()).filter(
-      (s) => sessionBelongsToThisInstructor(s) && !shouldHideSession(s),
-    );
+    const filteredSessions = Array.from(sessMap.values())
+      .filter((s) => sessionBelongsToThisInstructor(s) && !shouldHideSession(s))
+      .map((s) => ({ ...s, meet_link: getEffectiveMeetLink(s as ClassSession) }));
 
     setStudents(studentsWithPauses);
     setSessions(filteredSessions);
