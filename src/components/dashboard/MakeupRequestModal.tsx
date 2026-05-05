@@ -292,8 +292,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const pastRequests = myRequests.filter(r => r.status !== "pending").slice(0, 5);
   const slotCountForDate = (dateStr: string) => slotDates.get(dateStr)?.length || 0;
 
-  // 선택된 reschedule 수업이 24시간 이내인지
-  const isWithin24h = (iso: string) => new Date(iso).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+  // 선택된 reschedule 수업이 48시간 이내인지
+  const isWithin48h = (iso: string) => new Date(iso).getTime() - Date.now() < 48 * 60 * 60 * 1000;
 
   // 수업 선택 → 48시간 분기
   const proceedFromSession = (s: ClassSession) => {
