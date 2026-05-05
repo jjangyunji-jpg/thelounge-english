@@ -303,7 +303,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     setCalMonth(d.getMonth());
     setSelectedDate(null);
     setSelectedSlot(null);
-    if (isWithin24h(s.scheduled_at)) {
+    if (isWithin48h(s.scheduled_at)) {
       setUrgentReason(null);
       setStep("urgent");
     } else {
@@ -325,7 +325,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
     if (requestType === "makeup" && !selectedCancelledSession) return;
-    if (requestType === "reschedule" && selectedSession && isWithin24h(selectedSession.scheduled_at) && !urgentReason) {
+    if (requestType === "reschedule" && selectedSession && isWithin48h(selectedSession.scheduled_at) && !urgentReason) {
       toast({ title: "예외 사유 확인이 필요합니다", variant: "destructive" });
       setStep("urgent");
       return;
@@ -430,7 +430,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (step === "confirm") setStep("calendar");
     else if (step === "calendar") {
       if (requestType === "reschedule") {
-        if (selectedSession && isWithin24h(selectedSession.scheduled_at)) setStep("urgent");
+        if (selectedSession && isWithin48h(selectedSession.scheduled_at)) setStep("urgent");
         else setStep("session");
       } else if (requestType === "makeup") {
         setSelectedCancelledSession(null);
@@ -513,7 +513,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       );
                       if (makeupSess) slotISO = makeupSess.scheduled_at;
                     }
-                    const within48 = slotISO ? new Date(slotISO).getTime() - Date.now() < 24 * 60 * 60 * 1000 : true;
+                    const within48 = slotISO ? new Date(slotISO).getTime() - Date.now() < 48 * 60 * 60 * 1000 : true;
                     const displayDate = bookedSlot
                       ? `${fmtDateKo(bookedSlot.slot_date)} ${fmtTimeKo(bookedSlot.slot_time)}`
                       : (slotISO ? `${fmtSessionDate(slotISO)} ${fmtSessionTime(slotISO)}` : null);
@@ -665,7 +665,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   ) : (
                     <div className="space-y-2">
                       {reschedulableSessions.map(s => {
-                        const within48 = isWithin24h(s.scheduled_at);
+                        const within48 = isWithin48h(s.scheduled_at);
                         return (
                           <button key={s.id}
                             onClick={() => proceedFromSession(s)}
