@@ -50,12 +50,12 @@ interface SchedulePeriod {
   end_date: string;
 }
 
-// 24시간 미만 신청 시 인정되는 예외 사유 (sick 카테고리로 통합)
+// 48시간 미만 신청 시 인정되는 예외 사유 (sick 카테고리로 통합)
 const SICK_EXCEPTION_LABEL = "본인 병가 · 갑작스러운 회의·야근 · 직계가족 긴급 상황";
 
 const REJECTION_LABELS: Record<string, string> = {
-  within_48h: "24시간 이내 요청입니다",
-  within_24h: "24시간 이내 요청입니다",
+  within_48h: "48시간 이내 요청입니다",
+  within_24h: "48시간 이내 요청입니다",
   not_urgent: "예외 사유로 인정되지 않습니다",
   no_slots: "가능한 슬롯이 없습니다",
   repeated_change: "반복 변경으로 제한되었습니다",
@@ -568,9 +568,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                                 ? "text-muted-foreground/60 cursor-not-allowed"
                                 : "text-destructive hover:underline"
                             )}
-                            title={within48 ? "보강 24시간 전부터는 취소할 수 없습니다" : ""}
+                            title={within48 ? "보강 48시간 전부터는 취소할 수 없습니다" : ""}
                           >
-                            {within48 ? "취소 불가 (24시간 이내)" : "취소 요청하기"}
+                            {within48 ? "취소 불가 (48시간 이내)" : "취소 요청하기"}
                           </button>
                         )}
                         {isCancelRequested && (
@@ -680,7 +680,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                               </div>
                               {within48 && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold shrink-0">
-                                  24시간 이내
+                                  48시간 이내
                                 </span>
                               )}
                             </div>
@@ -698,10 +698,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   <div>
                     <p className="text-sm font-bold text-foreground">예외 사유 확인</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      선택하신 수업({fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)})까지 24시간이 남지 않았습니다.
+                      선택하신 수업({fmtSessionDate(selectedSession.scheduled_at)} {fmtSessionTime(selectedSession.scheduled_at)})까지 48시간이 남지 않았습니다.
                     </p>
                     <p className="text-[11px] text-foreground/80 mt-2 leading-relaxed">
-                      24시간 이내 신청은 <span className="font-semibold">월 1회에 한해</span> 다음의 예외 사유에 해당하는 경우에만 가능합니다. 그 외 사유로는 24시간 이내 보강 신청이 불가합니다.
+                      48시간 이내 신청은 <span className="font-semibold">월 1회에 한해</span> 다음의 예외 사유에 해당하는 경우에만 가능합니다. 그 외 사유로는 48시간 이내 보강 신청이 불가합니다.
                     </p>
                   </div>
 
@@ -757,7 +757,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                       <p className="text-[11px] text-foreground/80 leading-relaxed">
-                        이번 수업 기간({activePeriod?.label})에 이미 24시간 이내 예외 보강을 1회 사용하셨습니다. 추가 신청은 다음 기간부터 가능합니다.
+                        이번 수업 기간({activePeriod?.label})에 이미 48시간 이내 예외 보강을 1회 사용하셨습니다. 추가 신청은 다음 기간부터 가능합니다.
                       </p>
                     </div>
                   )}
