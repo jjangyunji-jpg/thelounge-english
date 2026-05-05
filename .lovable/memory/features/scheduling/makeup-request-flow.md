@@ -1,18 +1,19 @@
 ---
 name: Makeup Request Flow
-description: 보강 신청 24h 컷오프, 24h 미만은 sick(예외 사유) 단일 카테고리 체크, 월 1회 통합
+description: 보강 신청 48h 컷오프, 48h 미만은 sick(예외 사유) 단일 카테고리 체크 + 월 1회 제한, 일반 신청은 월 횟수 무제한
 type: feature
 ---
-# 보강 신청 플로우 (신규 규정)
+# 보강 신청 플로우
 
-**컷오프**: 수업 시작 24시간 전 (이전: 48h).
-**24h 미만 신청**: 단일 예외 카테고리(sick) 체크박스로만 진행 가능.
-- 사유 = "본인 병가 · 갑작스러운 회의·야근 · 직계가족 긴급 상황" 통합 1개 옵션
-- DB: `makeup_requests.urgent_reason = 'sick'` 저장 (이전 meeting/health/family 라디오 폐지)
+**컷오프**: 수업 시작 48시간 전.
+- 48h 이상: 일반 신청 (월 횟수 제한 없음)
+- 48h 미만: 단일 예외 카테고리(sick) 체크박스 필수
+  - 사유 = "본인 병가 · 갑작스러운 회의·야근 · 직계가족 긴급 상황" 통합 1개 옵션
+  - DB: `makeup_requests.urgent_reason = 'sick'`
+  - **active period 기준 월 1회 제한** (`urgentLimitReached`)
 
-**월 1회 통합 제한**: active period 기준 urgent_reason 사용 횟수 ≥ 1이면 차단 (`urgentLimitReached`).
+**보강 일정 취소 요청**: 보강 시작 48h 전까지 가능.
 
 **관련 파일**: `src/components/dashboard/MakeupRequestModal.tsx`
-- `isWithin24h(iso)` 헬퍼
-- "예외 사유 확인" step (이전 "긴급 보강 사유 선택")
-- 보강 일정 취소 요청도 24h 컷오프로 통일
+- `isWithin48h(iso)` 헬퍼
+- "예외 사유 확인" step
