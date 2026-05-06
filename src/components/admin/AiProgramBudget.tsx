@@ -30,6 +30,7 @@ interface PaymentRow {
   paid: boolean;
   amount_override: number | null;
   note: string | null;
+  payment_method: "store" | "cash";
 }
 
 interface Props {
@@ -183,6 +184,28 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
   const isPaid = (sub: Subscriber): boolean => {
     const rec = payMap.get(sub.id);
     return rec ? rec.paid : true; // default paid
+  };
+
+  const getMethod = (sub: Subscriber): "store" | "cash" => {
+    return payMap.get(sub.id)?.payment_method || "store";
+  };
+
+  const setMethod = async (sub: Subscriber, method: "store" | "cash") => {
+    const existing = payMap.get(sub.id);
+    if (existing) {
+      if (existing.payment_method === method) return;
+      const { error } = await supabase
+        .from("ai_program_payments" as any)
+        .update({ payment_method: method })
+        .eq("id", existing.id);
+      if (error) { toast({ title: "변경 실패", description: error.message, variant: "destructive" }); return; }
+    } else {
+      const { error } = await supabase
+        .from("ai_program_payments" as any)
+        .insert({ subscriber_id: sub.id, month: monthKey, paid: true, payment_method: method });
+      if (error) { toast({ title: "변경 실패", description: error.message, variant: "destructive" }); return; }
+    }
+    loadData();
   };
 
   const getAmount = (sub: Subscriber): number => {
@@ -358,12 +381,13 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
                 <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">프로그램</th>
                 <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">금액</th>
                 <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">실수령</th>
+                <th className="text-center px-3 py-2 font-semibold text-foreground text-xs w-28">현금/스토어</th>
                 <th className="text-center px-3 py-2 font-semibold text-foreground text-xs w-24">결제</th>
               </tr>
             </thead>
             <tbody>
               {activeForMonth.length === 0 ? (
-                <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-muted-foreground">이번 달 결제 대상이 없습니다. "구독자 관리"에서 추가하세요.</td></tr>
+                <tr><td colSpan={7} className="px-3 py-6 text-center text-xs text-muted-foreground">이번 달 결제 대상이 없습니다. "구독자 관리"에서 추가하세요.</td></tr>
               ) : activeForMonth.map(s => {
                 const paid = isPaid(s);
                 const amount = getAmount(s);
@@ -387,6 +411,23 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
                     </td>
                     <td className="px-3 py-2 text-right text-muted-foreground text-xs">{paid ? `₩${amount.toLocaleString()}` : "—"}</td>
                     <td className="px-3 py-2 text-right font-medium text-foreground">{paid ? `₩${net.toLocaleString()}` : "—"}</td>
+                    <td className="px-3 py-2 text-center">
+                      {(() => {
+                        const method = getMethod(s);
+                        return (
+                          <div className="inline-flex rounded-md border border-border overflow-hidden text-[10px]">
+                            <button
+                              onClick={() => setMethod(s, "store")}
+                              className={cn("px-2 py-1 transition-colors", method === "store" ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 font-semibold" : "text-muted-foreground hover:bg-muted")}
+                            >스토어</button>
+                            <button
+                              onClick={() => setMethod(s, "cash")}
+                              className={cn("px-2 py-1 transition-colors border-l border-border", method === "cash" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold" : "text-muted-foreground hover:bg-muted")}
+                            >현금</button>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => togglePaid(s)}

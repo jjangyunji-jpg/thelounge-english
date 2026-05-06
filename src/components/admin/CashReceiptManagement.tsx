@@ -105,7 +105,7 @@ export default function CashReceiptManagement() {
   const [editingFeeValue, setEditingFeeValue] = useState("");
   const [deductModal, setDeductModal] = useState<string | null>(null);
   const [deductCount, setDeductCount] = useState("");
-  const [activeTab, setActiveTab] = useState<"count" | "payment" | "budget" | "summary">("count");
+  const [activeTab, setActiveTab] = useState<"count" | "payment" | "ai" | "budget" | "summary">("count");
   const [pauseRanges, setPauseRanges] = useState<Map<string, { start: string; end: string | null }[]>>(new Map());
   const [refundFlags, setRefundFlags] = useState<Set<string>>(new Set());
   // Per-month cash payment override map (true = cash this month, false = store this month, undefined = use student default)
@@ -1214,15 +1214,19 @@ export default function CashReceiptManagement() {
         <h2 className="text-lg font-bold text-foreground">결제확인</h2>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "count" | "payment" | "budget" | "summary")} className="w-full">
-        <TabsList className="grid w-full max-w-3xl grid-cols-4">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "count" | "payment" | "ai" | "budget" | "summary")} className="w-full">
+        <TabsList className="grid w-full max-w-3xl grid-cols-5">
           <TabsTrigger value="count" className="flex items-center gap-1.5">
             <BarChart3 className="w-3.5 h-3.5" />
             월별 수업 카운트
           </TabsTrigger>
           <TabsTrigger value="payment" className="flex items-center gap-1.5">
             <CheckSquare className="w-3.5 h-3.5" />
-            결제 확인
+            일대일 수업
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" />
+            AI 프로그램
           </TabsTrigger>
           <TabsTrigger value="budget" className="flex items-center gap-1.5">
             <Wallet className="w-3.5 h-3.5" />
@@ -1233,6 +1237,11 @@ export default function CashReceiptManagement() {
             예산 요약
           </TabsTrigger>
         </TabsList>
+
+        {/* AI Programs Tab */}
+        <TabsContent value="ai" className="mt-4 space-y-4">
+          <AiProgramBudget monthKey={aiMonthKey} monthLabel={aiMonthLabel} onChange={loadSummaryExtras} />
+        </TabsContent>
 
         {/* Tab 1: Session Count Report */}
         <TabsContent value="count" className="mt-4">

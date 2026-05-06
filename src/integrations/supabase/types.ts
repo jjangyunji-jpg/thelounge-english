@@ -55,6 +55,7 @@ export type Database = {
           month: string
           note: string | null
           paid: boolean
+          payment_method: string
           subscriber_id: string
           updated_at: string
         }
@@ -65,6 +66,7 @@ export type Database = {
           month: string
           note?: string | null
           paid?: boolean
+          payment_method?: string
           subscriber_id: string
           updated_at?: string
         }
@@ -75,6 +77,7 @@ export type Database = {
           month?: string
           note?: string | null
           paid?: boolean
+          payment_method?: string
           subscriber_id?: string
           updated_at?: string
         }
