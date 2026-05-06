@@ -107,7 +107,7 @@ export function calcSessionPay(
   }
 
   // 기존 규정 (이번 달 이전 세션) — 하위 호환
-  if (ct === "student_cancel" || ct === "sick" || ct === "instructor_cancel" || ct === "advance_cancel") {
+  if (ct === "student_cancel" || ct === "sick" || ct === "instructor_cancel" || ct === "advance_cancel" || ct === "late_cancel") {
     return { included: false, payPerHour: 0, noteSuffix: "" };
   }
   if (ct === "no_show") {
