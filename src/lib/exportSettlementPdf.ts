@@ -5,6 +5,7 @@ import { calcSessionPay, getLevelCategory } from "./instructorPay";
 const BASE_PAY = 11000;
 
 interface Session {
+  id?: string;
   scheduled_at: string;
   student_name: string;
   level: string;
