@@ -348,6 +348,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
     if (requestType === "makeup" && !selectedCancelledSession) return;
+    if (requestType === "reschedule" && monthlyLimitReached) {
+      toast({ title: "이번 달 보강 가능 횟수가 없습니다", description: `보강은 월 최대 ${MONTHLY_MAKEUP_LIMIT}회까지 신청 가능합니다.`, variant: "destructive" });
+      return;
+    }
     if (requestType === "reschedule" && selectedSession && isWithin48h(selectedSession.scheduled_at) && !urgentReason) {
       toast({ title: "예외 사유 확인이 필요합니다", variant: "destructive" });
       setStep("urgent");
