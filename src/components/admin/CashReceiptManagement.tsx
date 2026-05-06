@@ -112,6 +112,9 @@ export default function CashReceiptManagement() {
   const [cashOverrides, setCashOverrides] = useState<Map<string, boolean>>(new Map());
   // Per-month tax-invoice override for corporate students (true = 계산서 발급, false = 사업소득 3.3%, undefined = use student default)
   const [taxOverrides, setTaxOverrides] = useState<Map<string, boolean>>(new Map());
+  // Per-month remark text per student (free-form 비고)
+  const [remarks, setRemarks] = useState<Map<string, string>>(new Map());
+  const [remarkDrafts, setRemarkDrafts] = useState<Map<string, string>>(new Map());
   // AI program totals + manual store reward for the current month — used in 예산 요약 tab
   const [aiTotals, setAiTotals] = useState<AiTotals>({ count: 0, gross: 0, net: 0, fee: 0 });
   const [storeReward, setStoreReward] = useState<{ amount: number; note: string | null } | null>(null);
@@ -233,6 +236,7 @@ export default function CashReceiptManagement() {
     const refunds = new Set<string>();
     const cashOv = new Map<string, boolean>();
     const taxOv = new Map<string, boolean>();
+    const remarkMap = new Map<string, string>();
     confs.forEach(c => {
       if (c.note) {
         try {
@@ -249,6 +253,9 @@ export default function CashReceiptManagement() {
           if (typeof parsed.tax_invoice_override === "boolean") {
             taxOv.set(c.student_name, parsed.tax_invoice_override);
           }
+          if (typeof parsed.remark === "string" && parsed.remark.trim()) {
+            remarkMap.set(c.student_name, parsed.remark);
+          }
         } catch { /* not JSON, ignore */ }
       }
     });
@@ -256,6 +263,8 @@ export default function CashReceiptManagement() {
     setRefundFlags(refunds);
     setCashOverrides(cashOv);
     setTaxOverrides(taxOv);
+    setRemarks(remarkMap);
+    setRemarkDrafts(new Map(remarkMap));
 
     // Count sessions per student, attributing rescheduled sessions to their original period
     const pStart = currentPeriod.start_date;
@@ -610,7 +619,28 @@ export default function CashReceiptManagement() {
     loadData();
   };
 
-  // Resolve effective cash payment status: per-month override → student default
+  // Save free-form remark (비고) per student per month into payment_confirmations.note JSON
+  const saveRemark = async (studentName: string, value: string) => {
+    const trimmed = value.trim();
+    const existing = confMap.get(studentName);
+    const base = existing ? parseNote(existing.note) : {};
+    if (trimmed) base.remark = trimmed;
+    else delete base.remark;
+    const noteData = Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+    if (existing) {
+      await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
+    } else if (trimmed) {
+      await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: false, note: noteData } as any);
+    }
+    setRemarks(prev => {
+      const next = new Map(prev);
+      if (trimmed) next.set(studentName, trimmed);
+      else next.delete(studentName);
+      return next;
+    });
+    loadData();
+  };
+
   const isCashPayment = (s: StudentRecord): boolean => {
     const override = cashOverrides.get(s.student_name);
     if (override !== undefined) return override;
@@ -1089,6 +1119,29 @@ export default function CashReceiptManagement() {
             )}
           </div>
         </td>
+        <td className="px-4 py-3">
+          <input
+            type="text"
+            value={remarkDrafts.get(s.student_name) ?? remarks.get(s.student_name) ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setRemarkDrafts(prev => { const n = new Map(prev); n.set(s.student_name, v); return n; });
+            }}
+            onBlur={(e) => {
+              const v = e.target.value;
+              if ((remarks.get(s.student_name) ?? "") !== v.trim()) saveRemark(s.student_name, v);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") {
+                setRemarkDrafts(prev => { const n = new Map(prev); n.set(s.student_name, remarks.get(s.student_name) ?? ""); return n; });
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder="비고"
+            className="w-full min-w-[140px] rounded border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </td>
       </tr>
     );
   };
@@ -1285,6 +1338,7 @@ export default function CashReceiptManagement() {
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-right px-4 py-3 font-semibold text-foreground">수강료</th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">선결제</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">비고</th>
                 </tr>
               </thead>
               <tbody>
@@ -1307,6 +1361,7 @@ export default function CashReceiptManagement() {
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-right px-4 py-3 font-semibold text-foreground">수강료</th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">선결제</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">비고</th>
                 </tr>
               </thead>
               <tbody>
