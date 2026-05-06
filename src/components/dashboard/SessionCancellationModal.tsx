@@ -97,9 +97,11 @@ export default function SessionCancellationModal({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [resolution, setResolution] = useState<CancellationResolution | null>(null);
   const [remark, setRemark] = useState("");
+  const [reasonTag, setReasonTag] = useState<string | null>(null);
   const [step, setStep] = useState<"type" | "resolution">("type");
 
   const selectedOption = selectedIndex !== null ? CANCELLATION_OPTIONS[selectedIndex] : null;
+  const needsReasonTag = selectedOption?.type === "sick";
 
   const handleTypeSelect = (idx: number) => {
     const option = CANCELLATION_OPTIONS[idx];
@@ -107,6 +109,7 @@ export default function SessionCancellationModal({
     if (option.needsResolution && !option.fixedResolution) {
       setStep("resolution");
       setResolution(null);
+      setReasonTag(null);
     } else if (option.fixedResolution) {
       onConfirm(option.type, option.fixedResolution, null);
       resetState();
@@ -118,7 +121,11 @@ export default function SessionCancellationModal({
 
   const handleConfirmResolution = () => {
     if (!selectedOption || !resolution) return;
-    onConfirm(selectedOption.type, resolution, remark.trim() || null);
+    if (needsReasonTag && !reasonTag) return;
+    const finalRemark = needsReasonTag
+      ? `[${reasonTag}]${remark.trim() ? ` ${remark.trim()}` : ""}`
+      : (remark.trim() || null);
+    onConfirm(selectedOption.type, resolution, finalRemark);
     resetState();
   };
 
@@ -126,6 +133,7 @@ export default function SessionCancellationModal({
     setSelectedIndex(null);
     setResolution(null);
     setRemark("");
+    setReasonTag(null);
     setStep("type");
   };
 
