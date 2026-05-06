@@ -762,7 +762,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <p className="text-sm font-bold text-foreground flex items-center gap-2">
                       <Ban className="w-4 h-4 text-destructive" /> 수업 취소
                     </p>
-                    <p className="text-xs text-muted-foreground">수업을 취소합니다 (시간에 따라 자동 분류)</p>
+                    <p className="text-xs text-muted-foreground">수업을 취소합니다</p>
                   </button>
                 </div>
               )}
