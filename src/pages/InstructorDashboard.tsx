@@ -2229,7 +2229,7 @@ export default function InstructorDashboard() {
             {/* Stats row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
               {[
-                { label: "담당 학생", value: `${students.filter(s => s.status === "active" && (!s.start_date || !period || s.start_date <= period.end_date)).length}명`, icon: Users, color: "text-navy", bg: "bg-navy/10" },
+                { label: "담당 학생", value: `${students.filter(s => s.status === "active" && (!s.start_date || !period || s.start_date <= period.end_date) && (!s.end_date || s.end_date > new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()))).length}명`, icon: Users, color: "text-navy", bg: "bg-navy/10" },
                 { label: `${currentMonthNum}월 수업`, value: `${monthlyLessonCount}회`, icon: BookOpen, color: "text-gold-dark", bg: "bg-gold/10" },
                 { label: "미확인 숙제", value: `${uncheckedHw.length}건`, icon: ClipboardCheck, color: uncheckedHw.length > 0 ? "text-destructive" : "text-success", bg: uncheckedHw.length > 0 ? "bg-destructive/10" : "bg-success/10" },
                 { label: `${currentMonthNum}월 정산 예정`, value: `₩${currentMonthTotal.toLocaleString()}`, icon: Banknote, color: "text-success", bg: "bg-success/10" },
