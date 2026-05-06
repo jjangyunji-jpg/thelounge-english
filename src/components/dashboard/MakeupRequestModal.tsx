@@ -262,6 +262,29 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
   const urgentLimitReached = urgentUsedInActivePeriod >= 1;
 
+  // 월 보강 한도 (현재 active period 기준, reschedule 만 카운트, 긴급 포함)
+  // cancelled/changed/rejected 는 제외
+  const currentPeriod = useMemo<SchedulePeriod | null>(() => {
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+    return periods.find(p => today >= p.start_date && today <= p.end_date) || periods[0] || null;
+  }, [periods]);
+
+  const monthlyMakeupCount = useMemo(() => {
+    const period = activePeriod || currentPeriod;
+    if (!period) return 0;
+    return myRequests.filter(r => {
+      if (r.request_type !== "reschedule") return false;
+      if (r.status === "cancelled" || r.status === "changed" || r.status === "rejected") return false;
+      const origIso = r.original_scheduled_at;
+      if (!origIso) return false;
+      const origDate = new Date(origIso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      return origDate >= period.start_date && origDate <= period.end_date;
+    }).length;
+  }, [myRequests, activePeriod, currentPeriod]);
+
+  const MONTHLY_MAKEUP_LIMIT = 2;
+  const monthlyLimitReached = monthlyMakeupCount >= MONTHLY_MAKEUP_LIMIT;
+
   const calendarCells = useMemo(() => {
     const firstDay = new Date(calYear, calMonth, 1);
     const lastDay = new Date(calYear, calMonth + 1, 0);
@@ -325,6 +348,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (!selectedSlot) return;
     if (requestType === "reschedule" && !selectedSession) return;
     if (requestType === "makeup" && !selectedCancelledSession) return;
+    if (requestType === "reschedule" && monthlyLimitReached) {
+      toast({ title: "이번 달 보강 가능 횟수가 없습니다", description: `보강은 월 최대 ${MONTHLY_MAKEUP_LIMIT}회까지 신청 가능합니다.`, variant: "destructive" });
+      return;
+    }
     if (requestType === "reschedule" && selectedSession && isWithin48h(selectedSession.scheduled_at) && !urgentReason) {
       toast({ title: "예외 사유 확인이 필요합니다", variant: "destructive" });
       setStep("urgent");
@@ -632,9 +659,24 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     </div>
                   )}
 
+                  <div className="rounded-lg border border-[hsl(var(--gold)/0.3)] bg-[hsl(var(--gold)/0.05)] px-3 py-2 text-[11px] text-foreground/80 leading-relaxed">
+                    모든 보강은 <span className="font-semibold">월 최대 2회</span>까지 신청 가능합니다 (긴급 예외 보강 포함).
+                    <span className="ml-1 text-muted-foreground">이번 달 사용: {monthlyMakeupCount}/{MONTHLY_MAKEUP_LIMIT}</span>
+                  </div>
+
                   <button
-                    onClick={() => { setRequestType("reschedule"); setStep("session"); }}
-                    className="w-full rounded-xl border border-border p-4 text-left hover:border-primary/50 transition-colors space-y-1"
+                    onClick={() => {
+                      if (monthlyLimitReached) {
+                        toast({ title: "이번 달 보강 가능 횟수가 없습니다", description: `보강은 월 최대 ${MONTHLY_MAKEUP_LIMIT}회까지 신청 가능합니다.`, variant: "destructive" });
+                        return;
+                      }
+                      setRequestType("reschedule"); setStep("session");
+                    }}
+                    disabled={monthlyLimitReached}
+                    className={cn(
+                      "w-full rounded-xl border border-border p-4 text-left transition-colors space-y-1",
+                      monthlyLimitReached ? "opacity-50 cursor-not-allowed" : "hover:border-primary/50"
+                    )}
                   >
                     <p className="text-sm font-bold text-foreground flex items-center gap-2">
                       <RotateCcw className="w-4 h-4 text-primary" /> 일정 변경
