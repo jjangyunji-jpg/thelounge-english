@@ -141,6 +141,44 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
     loadData();
   };
 
+  // Bulk set paid status for selected subscribers
+  const setSelectedPaid = async (paid: boolean) => {
+    const targets = activeForMonth.filter(s => selected.has(s.id));
+    if (targets.length === 0) {
+      toast({ title: "선택된 항목이 없습니다.", variant: "destructive" });
+      return;
+    }
+    const ops = targets.map(async (s) => {
+      const existing = payMap.get(s.id);
+      if (existing) {
+        if (existing.paid === paid) return { error: null };
+        return supabase.from("ai_program_payments" as any).update({ paid }).eq("id", existing.id);
+      }
+      // No record: default is paid=true. Only insert when target differs from default.
+      if (paid === true) return { error: null };
+      return supabase.from("ai_program_payments" as any).insert({ subscriber_id: s.id, month: monthKey, paid: false });
+    });
+    const results = await Promise.all(ops);
+    const err = results.find((r: any) => r?.error)?.error;
+    if (err) {
+      toast({ title: "변경 실패", description: err.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `${targets.length}명 ${paid ? "결제완료" : "미결제"} 처리됨` });
+    setSelected(new Set());
+    loadData();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    setSelected(prev => prev.size === activeForMonth.length ? new Set() : new Set(activeForMonth.map(s => s.id)));
+  };
 
   const isPaid = (sub: Subscriber): boolean => {
     const rec = payMap.get(sub.id);
