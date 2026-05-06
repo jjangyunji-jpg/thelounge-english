@@ -218,13 +218,43 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     (n && instructorEnMap.get(n)) || n || "";
   const targetInstructorDisplay = displayInstructor(targetInstructorName);
 
+  // 보강 가능 기간: 원본이 속한 schedule_period 전체.
+  // 단, 원본이 해당 기간의 마지막 주(종료일 기준 7일 이내)에 속하면, 다음 기간의 첫 주(시작일 기준 7일 이내)까지 허용.
+  const periodWindow = useMemo<{ start: string; end: string } | null>(() => {
+    if (!activePeriod) return null;
+    const originIso =
+      requestType === "reschedule" ? selectedSession?.scheduled_at :
+      requestType === "makeup" ? selectedCancelledSession?.scheduled_at :
+      null;
+    if (!originIso) return { start: activePeriod.start_date, end: activePeriod.end_date };
+    const originDate = new Date(originIso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+    const endDate = new Date(activePeriod.end_date + "T00:00:00Z");
+    const origDate = new Date(originDate + "T00:00:00Z");
+    const daysToEnd = Math.round((endDate.getTime() - origDate.getTime()) / 86400000);
+    let end = activePeriod.end_date;
+    if (daysToEnd <= 6) {
+      // 다음 기간 찾기
+      const sortedFuture = periods
+        .filter(p => p.start_date > activePeriod.end_date)
+        .sort((a, b) => a.start_date.localeCompare(b.start_date));
+      const next = sortedFuture[0];
+      if (next) {
+        const nextStart = new Date(next.start_date + "T00:00:00Z");
+        const nextStartPlus6 = new Date(nextStart.getTime() + 6 * 86400000)
+          .toISOString().slice(0, 10);
+        end = nextStartPlus6 < next.end_date ? nextStartPlus6 : next.end_date;
+      }
+    }
+    return { start: activePeriod.start_date, end };
+  }, [activePeriod, requestType, selectedSession, selectedCancelledSession, periods]);
+
   const visibleSlots = useMemo(() => {
     let result = slots.filter(s => s.instructor_name === targetInstructorName);
-    if (activePeriod) {
-      result = result.filter(s => s.slot_date >= activePeriod.start_date && s.slot_date <= activePeriod.end_date);
+    if (periodWindow) {
+      result = result.filter(s => s.slot_date >= periodWindow.start && s.slot_date <= periodWindow.end);
     }
     return result;
-  }, [slots, targetInstructorName, activePeriod]);
+  }, [slots, targetInstructorName, periodWindow]);
 
   const slotDates = useMemo(() => {
     const map = new Map<string, AvailableSlot[]>();
