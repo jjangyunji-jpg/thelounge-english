@@ -271,8 +271,19 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
 
       {/* Active subscribers list (this month) */}
       <div>
-        <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
-          <Calendar className="w-3 h-3" /> {monthLabel} 결제 대상 — {activeForMonth.length}명
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+            <Calendar className="w-3 h-3" /> {monthLabel} 결제 대상 — {activeForMonth.length}명
+          </p>
+          {activeForMonth.some(s => !isPaid(s)) && (
+            <button
+              onClick={markAllPaid}
+              className="text-[11px] px-2 py-1 rounded-md bg-success/15 text-success border border-success/30 hover:bg-success/25 transition-colors flex items-center gap-1"
+            >
+              <Check className="w-3 h-3" /> 전체 결제완료
+            </button>
+          )}
+        </div>
         </p>
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
