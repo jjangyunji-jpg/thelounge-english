@@ -1933,10 +1933,15 @@ export default function StudentDashboard() {
               <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{authNickname || student} 님</p>
             </div>
           </div>
-          {authStudent && (
+          {(authStudent || viewingStudentName) && (
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {authUserId && (
-                <NotificationInbox userId={authUserId} role="student" studentName={authStudent} suppressPopup={!!feedbackNeeded || !!currentPopup} />
+                <NotificationInbox
+                  userId={authUserId}
+                  role="student"
+                  studentName={authStudent || viewingStudentName || undefined}
+                  suppressPopup={!!feedbackNeeded || !!currentPopup || isInstructorView}
+                />
               )}
               <a
                 href="https://daily-diary-lounge.lovable.app/"
