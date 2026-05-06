@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
-  BanIcon, Clock, Thermometer, UserX, CalendarOff, CalendarClock, AlertCircle,
+  BanIcon, Clock, UserX, CalendarOff, CalendarClock, AlertCircle,
 } from "lucide-react";
 
 // DB 값: no_show / student_cancel / sick / instructor_cancel / advance_cancel / late_cancel
