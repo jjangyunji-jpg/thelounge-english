@@ -47,6 +47,7 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [editing, setEditing] = useState<Partial<Subscriber> | null>(null);
   const [showManager, setShowManager] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const programInfo = useMemo(() => {
     const map = new Map<ProgramType, typeof PROGRAM_TYPES[number]>();
