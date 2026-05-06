@@ -97,9 +97,11 @@ export default function SessionCancellationModal({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [resolution, setResolution] = useState<CancellationResolution | null>(null);
   const [remark, setRemark] = useState("");
+  const [reasonTag, setReasonTag] = useState<string | null>(null);
   const [step, setStep] = useState<"type" | "resolution">("type");
 
   const selectedOption = selectedIndex !== null ? CANCELLATION_OPTIONS[selectedIndex] : null;
+  const needsReasonTag = selectedOption?.type === "sick";
 
   const handleTypeSelect = (idx: number) => {
     const option = CANCELLATION_OPTIONS[idx];
@@ -107,6 +109,7 @@ export default function SessionCancellationModal({
     if (option.needsResolution && !option.fixedResolution) {
       setStep("resolution");
       setResolution(null);
+      setReasonTag(null);
     } else if (option.fixedResolution) {
       onConfirm(option.type, option.fixedResolution, null);
       resetState();
@@ -118,7 +121,11 @@ export default function SessionCancellationModal({
 
   const handleConfirmResolution = () => {
     if (!selectedOption || !resolution) return;
-    onConfirm(selectedOption.type, resolution, remark.trim() || null);
+    if (needsReasonTag && !reasonTag) return;
+    const finalRemark = needsReasonTag
+      ? `[${reasonTag}]${remark.trim() ? ` ${remark.trim()}` : ""}`
+      : (remark.trim() || null);
+    onConfirm(selectedOption.type, resolution, finalRemark);
     resetState();
   };
 
@@ -126,6 +133,7 @@ export default function SessionCancellationModal({
     setSelectedIndex(null);
     setResolution(null);
     setRemark("");
+    setReasonTag(null);
     setStep("type");
   };
 
@@ -208,6 +216,29 @@ export default function SessionCancellationModal({
               <span className="text-sm font-medium">{selectedOption.label}</span>
             </div>
 
+            {needsReasonTag && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">취소 사유를 선택하세요</p>
+                <div className="flex flex-wrap gap-2">
+                  {["병결", "직계가족 사고·질병", "기타"].map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setReasonTag(tag)}
+                      className={cn(
+                        "text-xs px-3 py-1.5 rounded-full border transition-all",
+                        reasonTag === tag
+                          ? "border-primary bg-primary/10 text-primary font-medium"
+                          : "border-border hover:border-primary/40 text-muted-foreground"
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">후속 조치를 선택하세요</p>
               {RESOLUTION_OPTIONS_DEFAULT.map(opt => (
@@ -250,7 +281,7 @@ export default function SessionCancellationModal({
               </Button>
               <Button
                 className="flex-1"
-                disabled={!resolution}
+                disabled={!resolution || (needsReasonTag && !reasonTag)}
                 onClick={handleConfirmResolution}
               >
                 확인
