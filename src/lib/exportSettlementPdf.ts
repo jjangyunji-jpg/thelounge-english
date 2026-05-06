@@ -67,7 +67,12 @@ export function buildSettlementRows(
       const r = calcSessionPay(s, { isOwner, ownerFlatRate: flatRate });
 
       // sick 세션이 보강 미매칭이면 BASE_PAY 지급 (대표 제외)
-      if (!isOwner && s.cancellation_type === "sick" && s.id && sickWithoutMakeupIds?.has(s.id)) {
+      const isSickWithoutMakeup =
+        s.cancellation_type === "sick" &&
+        (sickWithoutMakeupIds
+          ? (s.id ? sickWithoutMakeupIds.has(s.id) : false)
+          : s.cancellation_resolution !== "makeup_completed");
+      if (!isOwner && isSickWithoutMakeup) {
         rows.push({
           date: d,
           type: "수업",
