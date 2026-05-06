@@ -119,9 +119,12 @@ export default function SessionCancellationModal({
     }
   };
 
+  const needsOtherReason = needsReasonTag && reasonTag === "기타";
+
   const handleConfirmResolution = () => {
     if (!selectedOption || !resolution) return;
     if (needsReasonTag && !reasonTag) return;
+    if (needsOtherReason && !remark.trim()) return;
     const finalRemark = needsReasonTag
       ? `[${reasonTag}]${remark.trim() ? ` ${remark.trim()}` : ""}`
       : (remark.trim() || null);
@@ -266,22 +269,23 @@ export default function SessionCancellationModal({
               ))}
             </div>
 
-            {(resolution === "carry_over" || resolution === "refund" || resolution === "cancel") && (
+            {(needsOtherReason || resolution === "carry_over" || resolution === "refund" || resolution === "cancel") && (
               <Textarea
-                placeholder="메모 (선택사항)"
+                placeholder={needsOtherReason ? "사유를 입력해주세요 (필수)" : "메모 (선택사항)"}
                 value={remark}
                 onChange={e => setRemark(e.target.value)}
+                maxLength={500}
                 className="text-sm resize-none h-20"
               />
             )}
 
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => { setStep("type"); setResolution(null); setRemark(""); }}>
+              <Button variant="outline" className="flex-1" onClick={() => { setStep("type"); setResolution(null); setRemark(""); setReasonTag(null); }}>
                 뒤로
               </Button>
               <Button
                 className="flex-1"
-                disabled={!resolution || (needsReasonTag && !reasonTag)}
+                disabled={!resolution || (needsReasonTag && !reasonTag) || (needsOtherReason && !remark.trim())}
                 onClick={handleConfirmResolution}
               >
                 확인
