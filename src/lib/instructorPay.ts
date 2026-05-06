@@ -64,7 +64,7 @@ export function calcSessionPay(
   // 대표(flat rate) — 완료 또는 노쇼만 정산 (기존 로직 유지)
   if (isOwner) {
     if (ct === null && !s.ended_at) return { included: false, payPerHour: 0, noteSuffix: "" };
-    if (ct === "student_cancel" || ct === "sick" || ct === "instructor_cancel" || ct === "advance_cancel") {
+    if (ct === "student_cancel" || ct === "sick" || ct === "instructor_cancel" || ct === "advance_cancel" || ct === "late_cancel") {
       return { included: false, payPerHour: 0, noteSuffix: "" };
     }
     if (ct === "no_show") {
@@ -75,20 +75,28 @@ export function calcSessionPay(
 
   // 일반 강사 — 신규 규정
   if (isNewRules) {
-    // 무급 케이스
-    if (ct === "student_cancel" || ct === "sick" || ct === "instructor_cancel") {
+    // 무급: 48h~24h 전 취소, 강사 취소
+    if (ct === "late_cancel" || ct === "instructor_cancel") {
       return { included: false, payPerHour: 0, noteSuffix: "" };
     }
-    // 24h 전 취소 / 사전예정 → Base만
-    if (ct === "advance_cancel") {
-      return { included: true, payPerHour: BASE_PAY, noteSuffix: " [24h 전 취소 — 기본급만]" };
+    // 24h~4h 전 취소 (student_cancel) / 사전예정(advance_cancel without makeup) → BASE만
+    if (ct === "student_cancel") {
+      return { included: true, payPerHour: BASE_PAY, noteSuffix: " [당일 취소 — 기본급만]" };
     }
-    // 노쇼 → Base + 수업수당 50%
+    if (ct === "advance_cancel") {
+      // 48h 이전 취소: 보강 진행 시 정상 지급(완료된 보강 세션에서 별도 지급), 미진행 시 무급
+      return { included: false, payPerHour: 0, noteSuffix: "" };
+    }
+    // sick: 보강 미매칭 시 BASE 지급은 buildSettlementRows에서 후처리 (여기선 기본 무급)
+    if (ct === "sick") {
+      return { included: false, payPerHour: 0, noteSuffix: "" };
+    }
+    // 노쇼 / 4h 이내 취소 → (BASE + 레벨) × 50%
     if (ct === "no_show") {
       return {
         included: true,
-        payPerHour: BASE_PAY + Math.round(levelRate * 0.5),
-        noteSuffix: " [노쇼 — 수업수당 50%]",
+        payPerHour: Math.round((BASE_PAY + levelRate) * 0.5),
+        noteSuffix: " [노쇼/4h 이내 — 50%]",
       };
     }
     // 정상 완료
@@ -99,7 +107,7 @@ export function calcSessionPay(
   }
 
   // 기존 규정 (이번 달 이전 세션) — 하위 호환
-  if (ct === "student_cancel" || ct === "sick" || ct === "instructor_cancel" || ct === "advance_cancel") {
+  if (ct === "student_cancel" || ct === "sick" || ct === "instructor_cancel" || ct === "advance_cancel" || ct === "late_cancel") {
     return { included: false, payPerHour: 0, noteSuffix: "" };
   }
   if (ct === "no_show") {

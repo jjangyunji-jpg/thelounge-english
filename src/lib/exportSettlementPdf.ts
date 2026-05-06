@@ -5,10 +5,12 @@ import { calcSessionPay, getLevelCategory } from "./instructorPay";
 const BASE_PAY = 11000;
 
 interface Session {
+  id?: string;
   scheduled_at: string;
   student_name: string;
   level: string;
   cancellation_type?: string | null;
+  cancellation_resolution?: string | null;
   ended_at?: string | null;
 }
 
@@ -41,7 +43,17 @@ async function registerKoreanFont(doc: jsPDF) {
   doc.setFont("SpoqaHanSansNeo");
 }
 
-export function buildSettlementRows(sessions: Session[], meetings: Meeting[], periodStart: string, periodEnd: string, meetingRate: number = 20000, flatRate?: number) {
+export function buildSettlementRows(
+  sessions: Session[],
+  meetings: Meeting[],
+  periodStart: string,
+  periodEnd: string,
+  meetingRate: number = 20000,
+  flatRate?: number,
+  /** session.id 집합. 여기에 포함된 sick 세션은 보강 미매칭으로 간주되어 BASE_PAY 지급.
+   *  미지정 시 cancellation_resolution !== 'makeup_completed' 기준으로 자동 판단. */
+  sickWithoutMakeupIds?: Set<string>,
+) {
   const start = new Date(periodStart);
   const end = new Date(periodEnd);
   const now = new Date();
@@ -53,6 +65,24 @@ export function buildSettlementRows(sessions: Session[], meetings: Meeting[], pe
     if (d >= start && d <= end && d <= now) {
       const isOwner = !!flatRate;
       const r = calcSessionPay(s, { isOwner, ownerFlatRate: flatRate });
+
+      // sick 세션이 보강 미매칭이면 BASE_PAY 지급 (대표 제외)
+      const isSickWithoutMakeup =
+        s.cancellation_type === "sick" &&
+        (sickWithoutMakeupIds
+          ? (s.id ? sickWithoutMakeupIds.has(s.id) : false)
+          : s.cancellation_resolution !== "makeup_completed");
+      if (!isOwner && isSickWithoutMakeup) {
+        rows.push({
+          date: d,
+          type: "수업",
+          description: `${s.student_name} (${getLevelCategory(s.level)}) [예외 보강 미진행 — 기본급]`,
+          durationHours: 1,
+          pay: BASE_PAY,
+        });
+        return;
+      }
+
       if (!r.included) return;
       rows.push({
         date: d,

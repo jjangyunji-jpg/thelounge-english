@@ -313,7 +313,7 @@ export default function InstructorManagement() {
       const allData = await Promise.all(
         activeInstructors.map(async (ins) => {
           const [sessRes, meetRes] = await Promise.all([
-            supabase.from("class_sessions").select("scheduled_at,student_name,level").eq("instructor_name", ins.name),
+            supabase.from("class_sessions").select("id,scheduled_at,student_name,level,cancellation_type,cancellation_resolution,ended_at").eq("instructor_name", ins.name),
             supabase.from("business_meetings").select("scheduled_at,duration_minutes,notes").eq("instructor_id", ins.id),
           ]);
           return {
