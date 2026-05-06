@@ -112,6 +112,9 @@ export default function CashReceiptManagement() {
   const [cashOverrides, setCashOverrides] = useState<Map<string, boolean>>(new Map());
   // Per-month tax-invoice override for corporate students (true = 계산서 발급, false = 사업소득 3.3%, undefined = use student default)
   const [taxOverrides, setTaxOverrides] = useState<Map<string, boolean>>(new Map());
+  // Per-month remark text per student (free-form 비고)
+  const [remarks, setRemarks] = useState<Map<string, string>>(new Map());
+  const [remarkDrafts, setRemarkDrafts] = useState<Map<string, string>>(new Map());
   // AI program totals + manual store reward for the current month — used in 예산 요약 tab
   const [aiTotals, setAiTotals] = useState<AiTotals>({ count: 0, gross: 0, net: 0, fee: 0 });
   const [storeReward, setStoreReward] = useState<{ amount: number; note: string | null } | null>(null);
