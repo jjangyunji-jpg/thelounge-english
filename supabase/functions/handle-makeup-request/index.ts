@@ -131,16 +131,12 @@ serve(async (req) => {
           });
         }
 
-        // 1) Mark original session as sick + makeup_completed, clear notes/topic/remarks/gcal_event_id
-        await sb.from("class_sessions").update({
-          cancellation_type: "sick",
-          cancellation_resolution: "makeup_completed",
-          ended_at: null,
-          notes: null,
-          topic: null,
-          remarks: null,
-          gcal_event_id: null,
-        }).eq("id", makeupReq.original_session_id);
+        // 1) Detach makeup_requests references and delete the original session
+        //    (we no longer mark it as sick — that was incorrectly labeling student-initiated reschedules)
+        await sb.from("makeup_requests").update({ original_session_id: null })
+          .eq("original_session_id", makeupReq.original_session_id)
+          .neq("id", request_id);
+        await sb.from("class_sessions").delete().eq("id", makeupReq.original_session_id);
 
         // GCAL: create a new event at the new time
         const stuInfo = await fetchStudentInfo(origSession.student_name);
@@ -159,7 +155,7 @@ serve(async (req) => {
           calendarId: instMapping.calendarId,
         });
 
-        // 2) Create new makeup session at newScheduledAt
+        // 2) Create new makeup session at newScheduledAt — preserves notes/topic/remarks
         await sb.from("class_sessions").insert({
           student_name: origSession.student_name,
           instructor_name: origSession.instructor_name,
@@ -364,26 +360,29 @@ serve(async (req) => {
           calendarId: instMapping.calendarId,
         });
 
-        // Restore notes/topic/remarks back to the original session before deletion
+        // Re-create the original session at original_scheduled_at (we deleted it on approve)
         if (makeupRow) {
-          await sb.from("class_sessions").update({
-            cancellation_type: null,
-            cancellation_resolution: null,
-            ended_at: null,
+          await sb.from("class_sessions").insert({
+            student_name: makeupReq.student_name,
+            instructor_name: makeupReq.instructor_name,
+            scheduled_at: makeupReq.original_scheduled_at,
+            level: "B1",
+            meet_link: makeupRow.meet_link || null,
             notes: makeupRow.notes || null,
             topic: makeupRow.topic || null,
             remarks: makeupRow.remarks || null,
             gcal_event_id: restoredEventId,
-          }).eq("id", makeupReq.original_session_id);
+          });
           await sb.from("class_sessions").delete().eq("id", makeupRow.id);
         } else {
-          // Fallback: just clear sick marker on original
-          await sb.from("class_sessions").update({
-            cancellation_type: null,
-            cancellation_resolution: null,
-            ended_at: null,
+          // Fallback: just create an empty original session
+          await sb.from("class_sessions").insert({
+            student_name: makeupReq.student_name,
+            instructor_name: makeupReq.instructor_name,
+            scheduled_at: makeupReq.original_scheduled_at,
+            level: "B1",
             gcal_event_id: restoredEventId,
-          }).eq("id", makeupReq.original_session_id);
+          });
         }
 
         // Clean up any "open" slots at the restored original time —

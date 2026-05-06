@@ -1385,6 +1385,7 @@ export default function InstructorDashboard() {
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingMakeupCount, setPendingMakeupCount] = useState(0);
+  const [approvedMakeups, setApprovedMakeups] = useState<{ student_name: string; original_scheduled_at: string | null; urgent_reason: string | null; created_at: string }[]>([]);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "students" | "settlement" | "feedback" | "makeup" | "profile" | "guide">("dashboard");
@@ -1678,13 +1679,21 @@ export default function InstructorDashboard() {
     // settlementPeriodIdx removed — settlement uses month-based navigation
     setHolidays(holRes.data || []);
 
-    // Fetch pending makeup request count
+    // Fetch pending makeup request count + approved makeups (for badges)
     const { count: makeupCount } = await supabase
       .from("makeup_requests")
       .select("*", { count: "exact", head: true })
       .eq("instructor_name", ins.name)
       .eq("status", "pending");
     setPendingMakeupCount(makeupCount || 0);
+
+    const { data: approvedMk } = await supabase
+      .from("makeup_requests")
+      .select("student_name,original_scheduled_at,urgent_reason,created_at,status,request_type")
+      .eq("instructor_name", ins.name)
+      .in("status", ["approved", "cancel_requested"])
+      .eq("request_type", "reschedule");
+    setApprovedMakeups((approvedMk || []) as any);
 
     setLoading(false);
 
@@ -1888,6 +1897,30 @@ export default function InstructorDashboard() {
     const d = session.scheduled_at.slice(0, 10);
     if (st.student_type !== "corporate" && st.start_date && d < st.start_date) return true;
     return st.pauses?.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end)) ?? false;
+  };
+
+  // Classify a session's makeup badge
+  const getMakeupBadge = (s: ClassSession): "carryover_prev" | "urgent_makeup" | "makeup_48h" | null => {
+    if (s.is_carryover && s.carryover_direction === "prev") return "carryover_prev";
+    if (!s.reschedule_origin_dates || s.reschedule_origin_dates.length === 0) return null;
+    const originDates = new Set(s.reschedule_origin_dates);
+    const match = approvedMakeups.find((r) => {
+      if (r.student_name !== s.student_name || !r.original_scheduled_at) return false;
+      const od = new Date(r.original_scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      return originDates.has(od);
+    });
+    if (!match) return "makeup_48h";
+    if (match.urgent_reason) return "urgent_makeup";
+    if (match.original_scheduled_at) {
+      const hoursBefore = (new Date(match.original_scheduled_at).getTime() - new Date(match.created_at).getTime()) / 3600_000;
+      if (hoursBefore < 48) return "urgent_makeup";
+    }
+    return "makeup_48h";
+  };
+  const MAKEUP_BADGE_META: Record<string, { label: string; className: string }> = {
+    carryover_prev: { label: "전월 이월", className: "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]" },
+    urgent_makeup: { label: "예외 보강", className: "bg-destructive/10 text-destructive" },
+    makeup_48h: { label: "48h 보강", className: "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]" },
   };
 
   const periodSessions = sessions.filter((s) => {
@@ -2638,11 +2671,16 @@ export default function InstructorDashboard() {
                                                 {s.cancellation_resolution === 'refund' && ' · 환불'}
                                               </span>
                                             )}
-                                            {!isCancelled && s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
-                                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]">
-                                                48h 보강
-                                              </span>
-                                            )}
+                                            {!isCancelled && (() => {
+                                              const mb = getMakeupBadge(s);
+                                              if (!mb) return null;
+                                              const meta = MAKEUP_BADGE_META[mb];
+                                              return (
+                                                <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0", meta.className)}>
+                                                  {meta.label}
+                                                </span>
+                                              );
+                                            })()}
                                             {isCompleted && !isCancelled && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
                                             {totalHw > 0 && (
                                               <button
