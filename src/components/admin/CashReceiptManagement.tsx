@@ -619,7 +619,28 @@ export default function CashReceiptManagement() {
     loadData();
   };
 
-  // Resolve effective cash payment status: per-month override → student default
+  // Save free-form remark (비고) per student per month into payment_confirmations.note JSON
+  const saveRemark = async (studentName: string, value: string) => {
+    const trimmed = value.trim();
+    const existing = confMap.get(studentName);
+    const base = existing ? parseNote(existing.note) : {};
+    if (trimmed) base.remark = trimmed;
+    else delete base.remark;
+    const noteData = Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+    if (existing) {
+      await supabase.from("payment_confirmations" as any).update({ note: noteData } as any).eq("id", existing.id);
+    } else if (trimmed) {
+      await supabase.from("payment_confirmations" as any).insert({ student_name: studentName, month: periodKey, confirmed: false, note: noteData } as any);
+    }
+    setRemarks(prev => {
+      const next = new Map(prev);
+      if (trimmed) next.set(studentName, trimmed);
+      else next.delete(studentName);
+      return next;
+    });
+    loadData();
+  };
+
   const isCashPayment = (s: StudentRecord): boolean => {
     const override = cashOverrides.get(s.student_name);
     if (override !== undefined) return override;
