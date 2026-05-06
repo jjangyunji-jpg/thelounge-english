@@ -488,11 +488,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   };
 
   // 수업 취소 자동 분류 (KST 기준 시간차)
-  const classifyCancellation = (iso: string): { type: "no_show" | "student_cancel" | "late_cancel"; label: string; payNote: string; earlyWarning?: boolean } => {
+  const classifyCancellation = (iso: string): { type: "no_show" | "student_cancel"; label: string; payNote: string; earlyWarning?: boolean } => {
     const hours = (new Date(iso).getTime() - Date.now()) / (1000 * 60 * 60);
     if (hours >= 48) return { type: "student_cancel", label: "사전 취소", payNote: "수업 횟수 차감", earlyWarning: true };
-    if (hours >= 24) return { type: "late_cancel", label: "48~24시간 전 취소", payNote: "수업 횟수 차감" };
-    if (hours >= 4) return { type: "student_cancel", label: "당일 취소 (24~4시간 전)", payNote: "수업 횟수 차감" };
+    if (hours >= 4) return { type: "student_cancel", label: "학생 취소 (48~4시간 전)", payNote: "수업 횟수 차감" };
     return { type: "no_show", label: "당일 취소 (4시간 이내) / 노쇼", payNote: "수업 횟수 차감" };
   };
 

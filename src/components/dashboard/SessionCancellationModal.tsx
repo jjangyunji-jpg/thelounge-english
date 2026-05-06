@@ -28,14 +28,16 @@ interface CancellationOption {
   payNote: string; // 강사 정산 안내
 }
 
-// 신규 규정 (공지 기반)
-// 학생 측 보강 신청(48h 이전 보강 / 월 1회 예외 보강)은 학생 대시보드에서 자동 처리되므로
-// 강사 취소 모달에서는 제외. 미신청 시 월말 자동 차감.
+// 신규 규정 (공지 기반) — 4가지 카테고리
+// - 당일 노쇼/4h 이내: 수업료 50%
+// - 학생 취소(48h~4h): BASE 11,000
+// - 강사 취소(병결/직계가족 사고·질병): 보강/이월/환불 선택
+// - 사전 취소: 보강/이월/환불 선택
 const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
     type: "no_show",
     label: "당일 노쇼 / 4시간 이내 취소",
-    description: "수업 시작 4시간 전 이후 취소되었거나, 학생이 30분까지도 입장하지 않은 경우. 30분 이후라도 수업이 10분 이상 진행된 경우 정상 수업으로 처리해주세요.",
+    description: "수업 시작 4시간 전 이후 취소되었거나, 학생이 30분까지도 입장하지 않은 경우. 입장 전 3회 이상 연락 부탁드립니다. 30분 이후라도 수업이 10분 이상 진행된 경우 정상 수업으로 처리해주세요.",
     icon: UserX,
     billable: true,
     makeupAvailable: false,
@@ -44,8 +46,8 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
   },
   {
     type: "student_cancel",
-    label: "당일 취소 (24시간 ~ 4시간 전)",
-    description: "수업 시작 24시간 ~ 4시간 전 취소된 경우. 학생 결제대상에서 차감되며, 강사에게는 기본 급여만 지급됩니다.",
+    label: "학생 취소 (48시간 ~ 4시간 전)",
+    description: "수업 시작 48시간 ~ 4시간 전 학생 사정으로 취소된 경우. 학생 결제대상에서 차감되며, 강사에게는 기본 급여만 지급됩니다.",
     icon: BanIcon,
     billable: true,
     makeupAvailable: false,
@@ -53,19 +55,9 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
     payNote: "기본 급여 11,000원 지급",
   },
   {
-    type: "late_cancel",
-    label: "48시간 ~ 24시간 전 취소",
-    description: "수업 48시간 ~ 24시간 전 취소된 경우. 학생 결제대상에서 차감되며, 강사 수당은 별도 지급되지 않습니다.",
-    icon: CalendarClock,
-    billable: true,
-    makeupAvailable: false,
-    needsResolution: false,
-    payNote: "별도 지급 없음",
-  },
-  {
-    type: "instructor_cancel",
-    label: "강사 취소",
-    description: "강사 사정으로 취소된 경우. 보강 / 이월 / 환불 중 선택하며, 학생 결제대상에서 자동 -1 차감됩니다.",
+    type: "sick",
+    label: "강사 취소 (병결 / 직계가족 사고·질병)",
+    description: "병결, 직계가족 사고 및 질병 등 부득이한 사유로 강사가 취소한 경우. 보강 / 이월 / 환불 중 선택해주세요.",
     icon: Clock,
     billable: false,
     makeupAvailable: true,
@@ -75,7 +67,7 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
     type: "advance_cancel",
     label: "사전 취소 (협의된 예외)",
-    description: "사전에 협의되어 환불 / 이월 / 보강 등으로 처리된 예외적인 취소. 학생 결제대상은 후속 조치에 따라 자동 반영됩니다.",
+    description: "사전에 협의되어 처리되는 예외적인 취소. 보강 / 이월 / 환불 중 선택해주세요.",
     icon: CalendarOff,
     billable: false,
     makeupAvailable: true,
