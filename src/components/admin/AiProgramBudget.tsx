@@ -117,6 +117,30 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
     loadData();
   };
 
+  // Mark all active subscribers as paid this month
+  const markAllPaid = async () => {
+    const unpaid = activeForMonth.filter(s => !isPaid(s));
+    if (unpaid.length === 0) {
+      toast({ title: "이미 모두 결제완료 상태입니다." });
+      return;
+    }
+    const updates = unpaid
+      .map(s => payMap.get(s.id))
+      .filter((r): r is PaymentRow => !!r && !r.paid)
+      .map(r => supabase.from("ai_program_payments" as any).update({ paid: true }).eq("id", r.id));
+    const { error } = await Promise.all(updates).then(results => {
+      const err = results.find(r => r.error)?.error;
+      return { error: err };
+    });
+    if (error) {
+      toast({ title: "변경 실패", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `${unpaid.length}명 결제완료 처리됨` });
+    loadData();
+  };
+
+
   const isPaid = (sub: Subscriber): boolean => {
     const rec = payMap.get(sub.id);
     return rec ? rec.paid : true; // default paid
