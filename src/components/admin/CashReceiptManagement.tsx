@@ -1315,6 +1315,7 @@ export default function CashReceiptManagement() {
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-right px-4 py-3 font-semibold text-foreground">수강료</th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">선결제</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">비고</th>
                 </tr>
               </thead>
               <tbody>
@@ -1337,6 +1338,7 @@ export default function CashReceiptManagement() {
                   <th className="text-left px-4 py-3 font-semibold text-foreground">학생명</th>
                   <th className="text-right px-4 py-3 font-semibold text-foreground">수강료</th>
                   <th className="text-left px-4 py-3 font-semibold text-foreground">선결제</th>
+                  <th className="text-left px-4 py-3 font-semibold text-foreground">비고</th>
                 </tr>
               </thead>
               <tbody>
