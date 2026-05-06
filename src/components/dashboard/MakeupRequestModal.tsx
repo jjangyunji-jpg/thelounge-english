@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, RotateCcw, ChevronLeft, ChevronRight, Check, Loader2, Plus, X, AlertCircle, AlertTriangle, CalendarX } from "lucide-react";
+import { ArrowLeft, RotateCcw, ChevronLeft, ChevronRight, Check, Loader2, Plus, X, AlertCircle, AlertTriangle, CalendarX, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
