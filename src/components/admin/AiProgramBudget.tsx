@@ -412,6 +412,23 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
                     <td className="px-3 py-2 text-right text-muted-foreground text-xs">{paid ? `₩${amount.toLocaleString()}` : "—"}</td>
                     <td className="px-3 py-2 text-right font-medium text-foreground">{paid ? `₩${net.toLocaleString()}` : "—"}</td>
                     <td className="px-3 py-2 text-center">
+                      {(() => {
+                        const method = getMethod(s);
+                        return (
+                          <div className="inline-flex rounded-md border border-border overflow-hidden text-[10px]">
+                            <button
+                              onClick={() => setMethod(s, "store")}
+                              className={cn("px-2 py-1 transition-colors", method === "store" ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 font-semibold" : "text-muted-foreground hover:bg-muted")}
+                            >스토어</button>
+                            <button
+                              onClick={() => setMethod(s, "cash")}
+                              className={cn("px-2 py-1 transition-colors border-l border-border", method === "cash" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold" : "text-muted-foreground hover:bg-muted")}
+                            >현금</button>
+                          </div>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => togglePaid(s)}
                         className={cn(
