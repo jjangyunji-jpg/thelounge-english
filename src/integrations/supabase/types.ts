@@ -1886,6 +1886,10 @@ export type Database = {
       }
       is_manager_or_above: { Args: { _user_id: string }; Returns: boolean }
       is_staff_or_above: { Args: { _user_id: string }; Returns: boolean }
+      student_cancel_class_session: {
+        Args: { _session_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "instructor" | "student" | "manager" | "staff"

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, RotateCcw, ChevronLeft, ChevronRight, Check, Loader2, Plus, X, AlertCircle, AlertTriangle, CalendarX } from "lucide-react";
+import { ArrowLeft, RotateCcw, ChevronLeft, ChevronRight, Check, Loader2, Plus, X, AlertCircle, AlertTriangle, CalendarX, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -88,6 +88,8 @@ interface MakeupRequestModalProps {
 type Step =
   | "type"           // STEP 1: 보강 유형 선택
   | "session"        // 일정 변경: 어떤 수업을 변경할지
+  | "cancel_session" // 수업 취소: 어떤 수업을 취소할지
+  | "cancel_confirm" // 수업 취소 확정 (자동 분류 안내)
   | "urgent"         // 48시간 미달 시 긴급 사유 선택
   | "calendar"       // STEP 3: 슬롯 선택
   | "no_slots"       // 슬롯 없음 안내
@@ -104,7 +106,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [instructorEnMap, setInstructorEnMap] = useState<Map<string, string>>(new Map());
 
   const [step, setStep] = useState<Step>("type");
-  const [requestType, setRequestType] = useState<"reschedule" | "extra" | "makeup">("reschedule");
+  const [requestType, setRequestType] = useState<"reschedule" | "extra" | "makeup" | "cancel">("reschedule");
+  const [sessionToCancel, setSessionToCancel] = useState<ClassSession | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null);
   const [selectedCancelledSession, setSelectedCancelledSession] = useState<ClassSession | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -483,6 +487,30 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     }
   };
 
+  // 수업 취소 자동 분류 (KST 기준 시간차)
+  const classifyCancellation = (iso: string): { type: "no_show" | "student_cancel" | "late_cancel" | null; label: string; payNote: string; blocked?: boolean } => {
+    const hours = (new Date(iso).getTime() - Date.now()) / (1000 * 60 * 60);
+    if (hours >= 48) return { type: null, label: "48시간 이전", payNote: "", blocked: true };
+    if (hours >= 24) return { type: "late_cancel", label: "48~24시간 전 취소", payNote: "수업료 차감 · 강사 무급" };
+    if (hours >= 4) return { type: "student_cancel", label: "당일 취소 (24~4시간 전)", payNote: "수업료 차감 · 강사 기본 급여 지급" };
+    return { type: "no_show", label: "당일 취소 (4시간 이내) / 노쇼", payNote: "수업료 차감 · 강사 50% 지급" };
+  };
+
+  const handleConfirmCancellation = async () => {
+    if (!sessionToCancel) return;
+    const cls = classifyCancellation(sessionToCancel.scheduled_at);
+    if (cls.blocked || !cls.type) return;
+    setCancelling(true);
+    const { data, error } = await supabase.rpc("student_cancel_class_session" as any, { _session_id: sessionToCancel.id });
+    setCancelling(false);
+    if (error) {
+      toast({ title: "취소 실패", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "수업이 취소되었습니다", description: cls.label });
+    onClose();
+  };
+
   const goBack = () => {
     if (step === "confirm") setStep("calendar");
     else if (step === "calendar") {
@@ -499,6 +527,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     else if (step === "no_slots") setStep("calendar");
     else if (step === "urgent") setStep("session");
     else if (step === "session") setStep("type");
+    else if (step === "cancel_session") setStep("type");
+    else if (step === "cancel_confirm") { setSessionToCancel(null); setStep("cancel_session"); }
   };
 
   return (
@@ -722,8 +752,109 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     </p>
                     <p className="text-xs text-muted-foreground">수업 횟수를 추가로 신청합니다</p>
                   </button>
+                  <button
+                    onClick={() => { setRequestType("cancel"); setSessionToCancel(null); setStep("cancel_session"); }}
+                    className="w-full rounded-xl border border-border p-4 text-left hover:border-destructive/40 transition-colors space-y-1"
+                  >
+                    <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Ban className="w-4 h-4 text-destructive" /> 수업 취소
+                    </p>
+                    <p className="text-xs text-muted-foreground">수업을 취소합니다 (시간에 따라 자동 분류)</p>
+                  </button>
                 </div>
               )}
+
+              {/* STEP: 수업 취소 - 세션 선택 */}
+              {step === "cancel_session" && (
+                <div className="space-y-3">
+                  <p className="text-sm font-bold text-foreground">취소할 수업을 선택해주세요</p>
+                  <div className="rounded-lg border border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/5 px-3 py-2 text-[11px] text-foreground/80 leading-relaxed">
+                    수업 시작까지 남은 시간에 따라 자동으로 분류됩니다.
+                    <br />· 48시간 이전: 취소 불가 (일정 변경을 이용해주세요)
+                    <br />· 48~24시간 전: 사전 취소 (수업료 차감)
+                    <br />· 24~4시간 전: 당일 취소 (수업료 차감)
+                    <br />· 4시간 이내 / 노쇼: 수업료 차감
+                  </div>
+                  {reschedulableSessions.length === 0 ? (
+                    <div className="rounded-xl border border-border p-6 text-center space-y-2">
+                      <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto" />
+                      <p className="text-xs text-muted-foreground">취소 가능한 수업이 없습니다</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {reschedulableSessions.map(s => {
+                        const cls = classifyCancellation(s.scheduled_at);
+                        return (
+                          <button key={s.id}
+                            disabled={cls.blocked}
+                            onClick={() => { setSessionToCancel(s); setStep("cancel_confirm"); }}
+                            className={cn(
+                              "w-full rounded-lg border border-border p-3 text-left transition-colors",
+                              cls.blocked ? "opacity-60 cursor-not-allowed" : "hover:border-destructive/40"
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-foreground">
+                                  {fmtSessionDate(s.scheduled_at)} {fmtSessionTime(s.scheduled_at)}
+                                </p>
+                                {s.topic && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{s.topic}</p>}
+                              </div>
+                              <span className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0",
+                                cls.blocked
+                                  ? "bg-muted text-muted-foreground"
+                                  : cls.type === "no_show"
+                                    ? "bg-destructive/15 text-destructive"
+                                    : cls.type === "student_cancel"
+                                      ? "bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]"
+                                      : "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]"
+                              )}>
+                                {cls.blocked ? "48h+ · 일정 변경" : cls.label}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STEP: 수업 취소 - 확정 */}
+              {step === "cancel_confirm" && sessionToCancel && (() => {
+                const cls = classifyCancellation(sessionToCancel.scheduled_at);
+                return (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
+                      <p className="text-xs font-bold text-destructive flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5" /> 수업 취소 확인
+                      </p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {fmtSessionDate(sessionToCancel.scheduled_at)} {fmtSessionTime(sessionToCancel.scheduled_at)}
+                      </p>
+                      <div className="text-[11px] text-foreground/80 leading-relaxed pt-1 border-t border-destructive/20 space-y-1">
+                        <p><span className="font-semibold">분류:</span> {cls.label}</p>
+                        <p><span className="font-semibold">정산:</span> {cls.payNote}</p>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/5 px-3 py-2 text-[11px] text-foreground/80 leading-relaxed">
+                      취소된 수업은 되돌릴 수 없습니다. 일정 변경을 원하시면 뒤로가기 후 '일정 변경'을 이용해주세요.
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={goBack} disabled={cancelling}>뒤로</Button>
+                      <Button
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={handleConfirmCancellation}
+                        disabled={cancelling || cls.blocked}
+                      >
+                        {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : "수업 취소"}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* STEP 2 (a): Session selection (일정 변경) */}
               {step === "session" && (
