@@ -236,6 +236,7 @@ export default function CashReceiptManagement() {
     const refunds = new Set<string>();
     const cashOv = new Map<string, boolean>();
     const taxOv = new Map<string, boolean>();
+    const remarkMap = new Map<string, string>();
     confs.forEach(c => {
       if (c.note) {
         try {
@@ -252,6 +253,9 @@ export default function CashReceiptManagement() {
           if (typeof parsed.tax_invoice_override === "boolean") {
             taxOv.set(c.student_name, parsed.tax_invoice_override);
           }
+          if (typeof parsed.remark === "string" && parsed.remark.trim()) {
+            remarkMap.set(c.student_name, parsed.remark);
+          }
         } catch { /* not JSON, ignore */ }
       }
     });
@@ -259,6 +263,8 @@ export default function CashReceiptManagement() {
     setRefundFlags(refunds);
     setCashOverrides(cashOv);
     setTaxOverrides(taxOv);
+    setRemarks(remarkMap);
+    setRemarkDrafts(new Map(remarkMap));
 
     // Count sessions per student, attributing rescheduled sessions to their original period
     const pStart = currentPeriod.start_date;
