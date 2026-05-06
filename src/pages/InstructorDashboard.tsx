@@ -1899,6 +1899,30 @@ export default function InstructorDashboard() {
     return st.pauses?.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end)) ?? false;
   };
 
+  // Classify a session's makeup badge
+  const getMakeupBadge = (s: ClassSession): "carryover_prev" | "urgent_makeup" | "makeup_48h" | null => {
+    if (s.is_carryover && s.carryover_direction === "prev") return "carryover_prev";
+    if (!s.reschedule_origin_dates || s.reschedule_origin_dates.length === 0) return null;
+    const originDates = new Set(s.reschedule_origin_dates);
+    const match = approvedMakeups.find((r) => {
+      if (r.student_name !== s.student_name || !r.original_scheduled_at) return false;
+      const od = new Date(r.original_scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      return originDates.has(od);
+    });
+    if (!match) return "makeup_48h";
+    if (match.urgent_reason) return "urgent_makeup";
+    if (match.original_scheduled_at) {
+      const hoursBefore = (new Date(match.original_scheduled_at).getTime() - new Date(match.created_at).getTime()) / 3600_000;
+      if (hoursBefore < 48) return "urgent_makeup";
+    }
+    return "makeup_48h";
+  };
+  const MAKEUP_BADGE_META: Record<string, { label: string; className: string }> = {
+    carryover_prev: { label: "전월 이월", className: "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]" },
+    urgent_makeup: { label: "예외 보강", className: "bg-destructive/10 text-destructive" },
+    makeup_48h: { label: "48h 보강", className: "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]" },
+  };
+
   const periodSessions = sessions.filter((s) => {
     if (!start || !end) return false;
     const d = new Date(s.scheduled_at);
