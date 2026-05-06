@@ -34,6 +34,7 @@ interface MakeupReq {
   reject_reason: string | null;
   created_at: string;
   resolved_at: string | null;
+  urgent_reason: string | null;
 }
 
 interface ClassSession {
