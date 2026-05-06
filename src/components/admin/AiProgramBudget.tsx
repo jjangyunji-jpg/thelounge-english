@@ -381,12 +381,13 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
                 <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">프로그램</th>
                 <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">금액</th>
                 <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">실수령</th>
+                <th className="text-center px-3 py-2 font-semibold text-foreground text-xs w-28">현금/스토어</th>
                 <th className="text-center px-3 py-2 font-semibold text-foreground text-xs w-24">결제</th>
               </tr>
             </thead>
             <tbody>
               {activeForMonth.length === 0 ? (
-                <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-muted-foreground">이번 달 결제 대상이 없습니다. "구독자 관리"에서 추가하세요.</td></tr>
+                <tr><td colSpan={7} className="px-3 py-6 text-center text-xs text-muted-foreground">이번 달 결제 대상이 없습니다. "구독자 관리"에서 추가하세요.</td></tr>
               ) : activeForMonth.map(s => {
                 const paid = isPaid(s);
                 const amount = getAmount(s);
