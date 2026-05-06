@@ -797,7 +797,9 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               )}
 
               {/* STEP: 수업 취소 - 확정 */}
-              {step === "cancel_confirm" && sessionToCancel && (
+              {step === "cancel_confirm" && sessionToCancel && (() => {
+                const canReschedule = !isWithin48h(sessionToCancel.scheduled_at) && !monthlyLimitReached;
+                return (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
                     <p className="text-xs font-bold text-destructive flex items-center gap-1.5">
@@ -807,11 +809,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       {fmtSessionDate(sessionToCancel.scheduled_at)} {fmtSessionTime(sessionToCancel.scheduled_at)}
                     </p>
                     <p className="text-[11px] text-foreground/80 leading-relaxed pt-1 border-t border-destructive/20">
-                      취소 시 수업 횟수에서 차감됩니다.
+                      {canReschedule
+                        ? `해당 수업은 일정 변경이 가능하며, 취소 시 수업 횟수에서 차감됩니다. 취소된 수업은 되돌릴 수 없습니다. 일정 변경을 원하시면 뒤로가기 후 "일정 변경"을 이용해주세요.`
+                        : "취소 시 수업 횟수에서 차감됩니다. 취소된 수업은 되돌릴 수 없습니다."}
                     </p>
-                  </div>
-                  <div className="rounded-lg border border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/5 px-3 py-2 text-[11px] text-foreground/80 leading-relaxed">
-                    취소된 수업은 되돌릴 수 없습니다. 일정 변경을 원하시면 뒤로가기 후 '일정 변경'을 이용해주세요.
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" className="flex-1" onClick={goBack} disabled={cancelling}>뒤로</Button>
@@ -825,7 +826,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     </Button>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* STEP 2 (a): Session selection (일정 변경) */}
               {step === "session" && (
