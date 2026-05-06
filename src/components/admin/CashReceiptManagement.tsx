@@ -1119,6 +1119,29 @@ export default function CashReceiptManagement() {
             )}
           </div>
         </td>
+        <td className="px-4 py-3">
+          <input
+            type="text"
+            value={remarkDrafts.get(s.student_name) ?? remarks.get(s.student_name) ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setRemarkDrafts(prev => { const n = new Map(prev); n.set(s.student_name, v); return n; });
+            }}
+            onBlur={(e) => {
+              const v = e.target.value;
+              if ((remarks.get(s.student_name) ?? "") !== v.trim()) saveRemark(s.student_name, v);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") {
+                setRemarkDrafts(prev => { const n = new Map(prev); n.set(s.student_name, remarks.get(s.student_name) ?? ""); return n; });
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder="비고"
+            className="w-full min-w-[140px] rounded border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </td>
       </tr>
     );
   };
