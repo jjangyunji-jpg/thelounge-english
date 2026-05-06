@@ -3448,6 +3448,9 @@ export default function InstructorDashboard() {
                 if (st.status === "inactive") return false;
                 const selectedPeriod = allPeriods[studentTabPeriodIdx] || period;
                 if (st.start_date && selectedPeriod && st.start_date > selectedPeriod.end_date) return false;
+                // Hide students who have been transferred away (end_date reached)
+                const todayStrTransfer = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                if (st.end_date && st.end_date <= todayStrTransfer) return false;
                 const isCorp = st.student_type === "corporate";
                 const todayStrFilter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
                 const onPause = st.pauses?.some(p => p.pause_start <= todayStrFilter && (!p.pause_end || p.pause_end >= todayStrFilter)) ?? false;
