@@ -239,6 +239,15 @@ export default function SessionCancellationModal({
                     </button>
                   ))}
                 </div>
+                {needsOtherReason && (
+                  <Textarea
+                    placeholder="사유를 입력해주세요 (필수)"
+                    value={remark}
+                    onChange={e => setRemark(e.target.value)}
+                    maxLength={500}
+                    className="text-sm resize-none h-20"
+                  />
+                )}
               </div>
             )}
 
@@ -269,9 +278,9 @@ export default function SessionCancellationModal({
               ))}
             </div>
 
-            {(needsOtherReason || resolution === "carry_over" || resolution === "refund" || resolution === "cancel") && (
+            {!needsOtherReason && (resolution === "carry_over" || resolution === "refund" || resolution === "cancel") && (
               <Textarea
-                placeholder={needsOtherReason ? "사유를 입력해주세요 (필수)" : "메모 (선택사항)"}
+                placeholder="메모 (선택사항)"
                 value={remark}
                 onChange={e => setRemark(e.target.value)}
                 maxLength={500}
