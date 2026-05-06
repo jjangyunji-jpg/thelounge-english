@@ -9,73 +9,77 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
-  BanIcon, Clock, Thermometer, UserX, CalendarOff, CalendarClock,
+  BanIcon, Clock, Thermometer, UserX, CalendarOff, CalendarClock, AlertCircle,
 } from "lucide-react";
 
-// DB 값은 호환성 위해 그대로 유지 (no_show / student_cancel / sick / instructor_cancel / advance_cancel)
-export type CancellationType = "student_cancel" | "no_show" | "sick" | "instructor_cancel" | "advance_cancel";
+// DB 값: no_show / student_cancel / sick / instructor_cancel / advance_cancel / late_cancel
+export type CancellationType = "student_cancel" | "no_show" | "sick" | "instructor_cancel" | "advance_cancel" | "late_cancel";
 export type CancellationResolution = "makeup" | "carry_over" | "refund" | "cancel" | "scheduled_advance";
 
 interface CancellationOption {
-  // 새 라벨/설명. 내부 type은 기존 DB 값 재사용
   type: CancellationType;
   label: string;
   description: string;
   icon: React.ElementType;
-  billable: boolean;        // 학생 결제 차감 여부 (true=차감)
-  makeupAvailable: boolean; // 보강 가능 여부
+  billable: boolean;        // 학생 결제 차감 여부
+  makeupAvailable: boolean;
   needsResolution: boolean;
   fixedResolution?: CancellationResolution;
+  payNote: string; // 강사 정산 안내
 }
 
-// 새 규정 (2026.5월~)
+// 신규 규정 (공지 기반)
 const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
-    type: "advance_cancel",
-    label: "24시간 전 취소",
-    description: "수업 24시간 이전에 취소된 경우. 월 1회까지는 보강 가능 / 차감 없음. 월 1회 초과 시 수업료가 차감되며 보강은 진행되지 않습니다.",
+    type: "no_show",
+    label: "당일 노쇼 / 4시간 이내 취소",
+    description: "수업 시작 4시간 전 이후 취소되었거나, 학생이 30분까지도 입장하지 않은 경우. 30분 이후라도 수업이 10분 이상 진행된 경우 정상 수업으로 처리해주세요.",
+    icon: UserX,
+    billable: true,
+    makeupAvailable: false,
+    needsResolution: false,
+    payNote: "수업료의 50% 지급",
+  },
+  {
+    type: "student_cancel",
+    label: "당일 취소 (24시간 ~ 4시간 전)",
+    description: "수업 시작 24시간 ~ 4시간 전 취소된 경우. 학생 결제대상에서 차감되며, 강사에게는 기본 급여만 지급됩니다.",
+    icon: BanIcon,
+    billable: true,
+    makeupAvailable: false,
+    needsResolution: false,
+    payNote: "기본 급여 11,000원 지급",
+  },
+  {
+    type: "late_cancel",
+    label: "48시간 ~ 24시간 전 취소",
+    description: "수업 48시간 ~ 24시간 전 취소된 경우. 학생 결제대상에서 차감되며, 강사 수당은 별도 지급되지 않습니다.",
     icon: CalendarClock,
-    billable: false, // 시스템이 월 카운트 보고 자동 분기 (후속 조치에서 처리)
+    billable: true,
+    makeupAvailable: false,
+    needsResolution: false,
+    payNote: "별도 지급 없음",
+  },
+  {
+    type: "advance_cancel",
+    label: "48시간 이전 보강 요청",
+    description: "수업 48시간 이전에 일정 변경/보강이 요청된 경우. 학생 차감은 없으며, 보강 진행 시 정상 수업료가 지급됩니다.",
+    icon: CalendarOff,
+    billable: false,
     makeupAvailable: true,
     needsResolution: true,
+    payNote: "보강 진행 시 정상 지급 / 미진행 시 무급",
   },
   {
     type: "sick",
-    label: "당일 취소 — 예외 사유",
-    description: "병가 / 갑작스러운 야근 / 직계가족 질병 등 예외 사유로 당일 취소된 경우. 차감 없이 보강이 가능합니다.",
+    label: "월 1회 예외 보강 (긴급 사유)",
+    description: "병가 / 직계가족 질병 / 갑작스러운 야근 등 긴급 사유로 인한 당일 취소·보강 요청. 보강 진행 시 정상 수업료, 일정이 맞지 않아 보강 미진행 시 기본 급여 11,000원이 지급됩니다.",
     icon: Thermometer,
     billable: false,
     makeupAvailable: true,
     needsResolution: true,
     fixedResolution: "makeup",
-  },
-  {
-    type: "student_cancel",
-    label: "당일 취소 — 예외 사유 없음",
-    description: "예외 사유에 해당하지 않는 당일 취소. 수업료가 차감되며 보강은 진행되지 않습니다.",
-    icon: BanIcon,
-    billable: true,
-    makeupAvailable: false,
-    needsResolution: false,
-  },
-  {
-    type: "no_show",
-    label: "노쇼",
-    description: "수업 시작 후 30분이 지나도록 학생이 참여하지 않은 경우. 수업료가 차감되며 보강은 진행되지 않습니다. 처리 즉시 학생 대시보드에 알림이 발송됩니다.",
-    icon: UserX,
-    billable: true,
-    makeupAvailable: false,
-    needsResolution: false,
-  },
-  {
-    type: "advance_cancel",
-    label: "사전 예정 (전달 고지)",
-    description: "여행/출장 등으로 전달에 미리 고지된 사전 예정 일정. 수업료가 청구되지 않으며 보강도 별도로 진행되지 않습니다.",
-    icon: CalendarOff,
-    billable: false,
-    makeupAvailable: false,
-    needsResolution: false,
-    fixedResolution: "scheduled_advance",
+    payNote: "보강 진행 시 정상 / 미진행 시 기본 급여",
   },
   {
     type: "instructor_cancel",
@@ -85,6 +89,7 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
     billable: false,
     makeupAvailable: true,
     needsResolution: true,
+    payNote: "보강 진행 시에만 정상 지급",
   },
 ];
 
@@ -92,12 +97,6 @@ const RESOLUTION_OPTIONS_DEFAULT: { value: CancellationResolution; label: string
   { value: "makeup", label: "보강", description: "보강 수업을 진행합니다" },
   { value: "carry_over", label: "다음달 이월", description: "다음달로 수업을 이월합니다" },
   { value: "refund", label: "환불", description: "해당 수업료를 환불합니다" },
-];
-
-const RESOLUTION_OPTIONS_ADVANCE: { value: CancellationResolution; label: string; description: string }[] = [
-  { value: "makeup", label: "보강 (월 1회 한정)", description: "월 1회까지 보강이 가능합니다. 월 1회 초과 시 자동으로 수업료가 차감됩니다." },
-  { value: "carry_over", label: "다음달 이월", description: "다음달로 수업을 이월합니다" },
-  { value: "cancel", label: "취소 (수업료 차감)", description: "결제대상에서 1회 차감됩니다" },
 ];
 
 interface Props {
@@ -161,12 +160,6 @@ export default function SessionCancellationModal({
     timeZone: "Asia/Seoul",
   });
 
-  // advance_cancel 카테고리에 대해서는 "사전 예정" 옵션 제외한 기본 후속조치 표시
-  const resolutionOptions =
-    selectedOption?.label.startsWith("24시간 전") ? RESOLUTION_OPTIONS_ADVANCE :
-    selectedOption?.type === "instructor_cancel" || selectedOption?.type === "sick" ? RESOLUTION_OPTIONS_DEFAULT :
-    RESOLUTION_OPTIONS_DEFAULT;
-
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -211,13 +204,17 @@ export default function SessionCancellationModal({
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{opt.description}</p>
+                    <p className="text-[11px] text-[hsl(var(--gold-dark))] mt-1 font-medium">💰 {opt.payNote}</p>
                   </div>
                 </button>
               );
             })}
-            <p className="text-[10px] text-muted-foreground text-center pt-1">
-              규정 외 개별 예외는 인정되지 않습니다.
-            </p>
+            <div className="rounded-lg border border-[hsl(var(--warning))]/30 bg-[hsl(var(--warning))]/5 px-3 py-2 mt-2 flex items-start gap-2">
+              <AlertCircle className="w-3.5 h-3.5 text-[hsl(var(--warning))] shrink-0 mt-0.5" />
+              <p className="text-[11px] text-foreground/80 leading-relaxed">
+                정상적인 정산을 위해 클래스룸 노트에 취소 사유를 정확히 작성해주세요. 사유 누락 시 정산 반영이 어려울 수 있습니다.
+              </p>
+            </div>
           </div>
         )}
 
@@ -230,7 +227,7 @@ export default function SessionCancellationModal({
 
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">후속 조치를 선택하세요</p>
-              {resolutionOptions.map(opt => (
+              {RESOLUTION_OPTIONS_DEFAULT.map(opt => (
                 <button
                   key={opt.value}
                   onClick={() => setResolution(opt.value)}
