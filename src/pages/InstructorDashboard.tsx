@@ -86,6 +86,7 @@ const CANCELLATION_META: Record<CancellationType, { label: string; color: string
   sick: { label: "당일취소(예외)", color: "text-blue-600", bgColor: "bg-blue-50" },
   instructor_cancel: { label: "강사취소", color: "text-purple-600", bgColor: "bg-purple-50" },
   advance_cancel: { label: "사전취소", color: "text-emerald-600", bgColor: "bg-emerald-50" },
+  late_cancel: { label: "48~24h전 취소", color: "text-orange-600", bgColor: "bg-orange-50" },
 };
 
 interface ClassSession {
