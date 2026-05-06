@@ -117,6 +117,30 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
     loadData();
   };
 
+  // Mark all active subscribers as paid this month
+  const markAllPaid = async () => {
+    const unpaid = activeForMonth.filter(s => !isPaid(s));
+    if (unpaid.length === 0) {
+      toast({ title: "이미 모두 결제완료 상태입니다." });
+      return;
+    }
+    const updates = unpaid
+      .map(s => payMap.get(s.id))
+      .filter((r): r is PaymentRow => !!r && !r.paid)
+      .map(r => supabase.from("ai_program_payments" as any).update({ paid: true }).eq("id", r.id));
+    const { error } = await Promise.all(updates).then(results => {
+      const err = results.find(r => r.error)?.error;
+      return { error: err };
+    });
+    if (error) {
+      toast({ title: "변경 실패", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `${unpaid.length}명 결제완료 처리됨` });
+    loadData();
+  };
+
+
   const isPaid = (sub: Subscriber): boolean => {
     const rec = payMap.get(sub.id);
     return rec ? rec.paid : true; // default paid
@@ -247,9 +271,19 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
 
       {/* Active subscribers list (this month) */}
       <div>
-        <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
-          <Calendar className="w-3 h-3" /> {monthLabel} 결제 대상 — {activeForMonth.length}명
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+            <Calendar className="w-3 h-3" /> {monthLabel} 결제 대상 — {activeForMonth.length}명
+          </p>
+          {activeForMonth.some(s => !isPaid(s)) && (
+            <button
+              onClick={markAllPaid}
+              className="text-[11px] px-2 py-1 rounded-md bg-success/15 text-success border border-success/30 hover:bg-success/25 transition-colors flex items-center gap-1"
+            >
+              <Check className="w-3 h-3" /> 전체 결제완료
+            </button>
+          )}
+        </div>
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b border-border">
