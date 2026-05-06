@@ -908,13 +908,18 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
                   <div key={req.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-foreground">{req.student_name}</span>
                           <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold",
                             req.request_type === "reschedule" ? "bg-primary/10 text-primary" : "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
                           )}>
                             {req.request_type === "reschedule" ? "일정 변경" : "추가 보강"}
                           </span>
+                          {req.urgent_reason && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-destructive/10 text-destructive">
+                              예외 보강 (48h 이내)
+                            </span>
+                          )}
                         </div>
                         {req.group_students.length > 0 && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">그룹: {req.group_students.join(", ")}</p>
