@@ -504,7 +504,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <div key={r.id} className="rounded-lg border border-border bg-muted/30 p-3 flex items-center justify-between">
                       <div>
                         <p className="text-xs font-semibold text-foreground">
-                          {r.request_type === "extra" ? "추가 보강" : "일정 변경"} · 승인 대기
+                          {r.request_type === "extra" ? "수업 추가" : "일정 변경"} · 승인 대기
                         </p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
                           {new Date(r.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })} 신청
@@ -548,7 +548,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       <div key={r.id} className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <p className="text-xs font-semibold text-foreground">
-                            {r.request_type === "extra" ? "추가 보강" : "일정 변경"}
+                            {r.request_type === "extra" ? "수업 추가" : "일정 변경"}
                           </p>
                           <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
                             r.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
@@ -688,7 +688,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     className="w-full rounded-xl border border-border p-4 text-left hover:border-primary/50 transition-colors space-y-1"
                   >
                     <p className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Plus className="w-4 h-4 text-[hsl(var(--success))]" /> 추가 보강
+                      <Plus className="w-4 h-4 text-[hsl(var(--success))]" /> 수업 추가
                     </p>
                     <p className="text-xs text-muted-foreground">수업 횟수를 추가로 신청합니다</p>
                   </button>
@@ -989,7 +989,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       requestType === "makeup" ? "bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]" :
                       "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
                     )}>
-                      {requestType === "reschedule" ? "일정 변경" : requestType === "makeup" ? "취소 수업 보강" : "추가 보강"}
+                      {requestType === "reschedule" ? "일정 변경" : requestType === "makeup" ? "취소 수업 보강" : "수업 추가"}
                     </span>
 
                     {requestType === "reschedule" && selectedSession && (
