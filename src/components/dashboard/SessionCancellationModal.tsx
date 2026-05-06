@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
-  BanIcon, Clock, Thermometer, UserX, CalendarOff, CalendarClock, AlertCircle,
+  BanIcon, Clock, UserX, CalendarOff, CalendarClock, AlertCircle,
 } from "lucide-react";
 
 // DB 값: no_show / student_cancel / sick / instructor_cancel / advance_cancel / late_cancel
@@ -29,6 +29,8 @@ interface CancellationOption {
 }
 
 // 신규 규정 (공지 기반)
+// 학생 측 보강 신청(48h 이전 보강 / 월 1회 예외 보강)은 학생 대시보드에서 자동 처리되므로
+// 강사 취소 모달에서는 제외. 미신청 시 월말 자동 차감.
 const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
     type: "no_show",
@@ -61,27 +63,6 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
     payNote: "별도 지급 없음",
   },
   {
-    type: "advance_cancel",
-    label: "48시간 이전 보강 요청",
-    description: "수업 48시간 이전에 일정 변경/보강이 요청된 경우. 학생 차감은 없으며, 보강 진행 시 정상 수업료가 지급됩니다.",
-    icon: CalendarOff,
-    billable: false,
-    makeupAvailable: true,
-    needsResolution: true,
-    payNote: "보강 진행 시 정상 지급 / 미진행 시 무급",
-  },
-  {
-    type: "sick",
-    label: "월 1회 예외 보강 (긴급 사유)",
-    description: "병가 / 직계가족 질병 / 갑작스러운 야근 등 긴급 사유로 인한 당일 취소·보강 요청. 보강 진행 시 정상 수업료, 일정이 맞지 않아 보강 미진행 시 기본 급여 11,000원이 지급됩니다.",
-    icon: Thermometer,
-    billable: false,
-    makeupAvailable: true,
-    needsResolution: true,
-    fixedResolution: "makeup",
-    payNote: "보강 진행 시 정상 / 미진행 시 기본 급여",
-  },
-  {
     type: "instructor_cancel",
     label: "강사 취소",
     description: "강사 사정으로 취소된 경우. 보강 / 이월 / 환불 중 선택하며, 학생 결제대상에서 자동 -1 차감됩니다.",
@@ -90,6 +71,16 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
     makeupAvailable: true,
     needsResolution: true,
     payNote: "보강 진행 시에만 정상 지급",
+  },
+  {
+    type: "advance_cancel",
+    label: "사전 취소 (협의된 예외)",
+    description: "사전에 협의되어 환불 / 이월 / 보강 등으로 처리된 예외적인 취소. 학생 결제대상은 후속 조치에 따라 자동 반영됩니다.",
+    icon: CalendarOff,
+    billable: false,
+    makeupAvailable: true,
+    needsResolution: true,
+    payNote: "보강 진행 시 정상 지급 / 그 외 무급",
   },
 ];
 
