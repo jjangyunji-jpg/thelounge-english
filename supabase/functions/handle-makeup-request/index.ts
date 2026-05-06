@@ -360,26 +360,29 @@ serve(async (req) => {
           calendarId: instMapping.calendarId,
         });
 
-        // Restore notes/topic/remarks back to the original session before deletion
+        // Re-create the original session at original_scheduled_at (we deleted it on approve)
         if (makeupRow) {
-          await sb.from("class_sessions").update({
-            cancellation_type: null,
-            cancellation_resolution: null,
-            ended_at: null,
+          await sb.from("class_sessions").insert({
+            student_name: makeupReq.student_name,
+            instructor_name: makeupReq.instructor_name,
+            scheduled_at: makeupReq.original_scheduled_at,
+            level: "B1",
+            meet_link: makeupRow.meet_link || null,
             notes: makeupRow.notes || null,
             topic: makeupRow.topic || null,
             remarks: makeupRow.remarks || null,
             gcal_event_id: restoredEventId,
-          }).eq("id", makeupReq.original_session_id);
+          });
           await sb.from("class_sessions").delete().eq("id", makeupRow.id);
         } else {
-          // Fallback: just clear sick marker on original
-          await sb.from("class_sessions").update({
-            cancellation_type: null,
-            cancellation_resolution: null,
-            ended_at: null,
+          // Fallback: just create an empty original session
+          await sb.from("class_sessions").insert({
+            student_name: makeupReq.student_name,
+            instructor_name: makeupReq.instructor_name,
+            scheduled_at: makeupReq.original_scheduled_at,
+            level: "B1",
             gcal_event_id: restoredEventId,
-          }).eq("id", makeupReq.original_session_id);
+          });
         }
 
         // Clean up any "open" slots at the restored original time —
