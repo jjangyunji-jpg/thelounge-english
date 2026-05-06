@@ -119,9 +119,12 @@ export default function SessionCancellationModal({
     }
   };
 
+  const needsOtherReason = needsReasonTag && reasonTag === "기타";
+
   const handleConfirmResolution = () => {
     if (!selectedOption || !resolution) return;
     if (needsReasonTag && !reasonTag) return;
+    if (needsOtherReason && !remark.trim()) return;
     const finalRemark = needsReasonTag
       ? `[${reasonTag}]${remark.trim() ? ` ${remark.trim()}` : ""}`
       : (remark.trim() || null);
