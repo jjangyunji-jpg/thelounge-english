@@ -284,7 +284,6 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
             </button>
           )}
         </div>
-        </p>
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b border-border">
