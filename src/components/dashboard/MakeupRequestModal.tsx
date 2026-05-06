@@ -262,6 +262,29 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
   const urgentLimitReached = urgentUsedInActivePeriod >= 1;
 
+  // 월 보강 한도 (현재 active period 기준, reschedule 만 카운트, 긴급 포함)
+  // cancelled/changed/rejected 는 제외
+  const currentPeriod = useMemo<SchedulePeriod | null>(() => {
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+    return periods.find(p => today >= p.start_date && today <= p.end_date) || periods[0] || null;
+  }, [periods]);
+
+  const monthlyMakeupCount = useMemo(() => {
+    const period = activePeriod || currentPeriod;
+    if (!period) return 0;
+    return myRequests.filter(r => {
+      if (r.request_type !== "reschedule") return false;
+      if (r.status === "cancelled" || r.status === "changed" || r.status === "rejected") return false;
+      const origIso = r.original_scheduled_at;
+      if (!origIso) return false;
+      const origDate = new Date(origIso).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      return origDate >= period.start_date && origDate <= period.end_date;
+    }).length;
+  }, [myRequests, activePeriod, currentPeriod]);
+
+  const MONTHLY_MAKEUP_LIMIT = 2;
+  const monthlyLimitReached = monthlyMakeupCount >= MONTHLY_MAKEUP_LIMIT;
+
   const calendarCells = useMemo(() => {
     const firstDay = new Date(calYear, calMonth, 1);
     const lastDay = new Date(calYear, calMonth + 1, 0);
