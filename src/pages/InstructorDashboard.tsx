@@ -1679,13 +1679,21 @@ export default function InstructorDashboard() {
     // settlementPeriodIdx removed — settlement uses month-based navigation
     setHolidays(holRes.data || []);
 
-    // Fetch pending makeup request count
+    // Fetch pending makeup request count + approved makeups (for badges)
     const { count: makeupCount } = await supabase
       .from("makeup_requests")
       .select("*", { count: "exact", head: true })
       .eq("instructor_name", ins.name)
       .eq("status", "pending");
     setPendingMakeupCount(makeupCount || 0);
+
+    const { data: approvedMk } = await supabase
+      .from("makeup_requests")
+      .select("student_name,original_scheduled_at,urgent_reason,created_at,status,request_type")
+      .eq("instructor_name", ins.name)
+      .in("status", ["approved", "cancel_requested"])
+      .eq("request_type", "reschedule");
+    setApprovedMakeups((approvedMk || []) as any);
 
     setLoading(false);
 
