@@ -2638,6 +2638,11 @@ export default function InstructorDashboard() {
                                                 {s.cancellation_resolution === 'refund' && ' · 환불'}
                                               </span>
                                             )}
+                                            {!isCancelled && s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
+                                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]">
+                                                48h 보강
+                                              </span>
+                                            )}
                                             {isCompleted && !isCancelled && <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0" />}
                                             {totalHw > 0 && (
                                               <button
