@@ -310,23 +310,50 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
 
       {/* Active subscribers list (this month) */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
           <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
             <Calendar className="w-3 h-3" /> {monthLabel} 결제 대상 — {activeForMonth.length}명
+            {selected.size > 0 && <span className="text-primary">· {selected.size}명 선택</span>}
           </p>
-          {activeForMonth.some(s => !isPaid(s)) && (
-            <button
-              onClick={markAllPaid}
-              className="text-[11px] px-2 py-1 rounded-md bg-success/15 text-success border border-success/30 hover:bg-success/25 transition-colors flex items-center gap-1"
-            >
-              <Check className="w-3 h-3" /> 전체 결제완료
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {selected.size > 0 && (
+              <>
+                <button
+                  onClick={() => setSelectedPaid(true)}
+                  className="text-[11px] px-2 py-1 rounded-md bg-success/15 text-success border border-success/30 hover:bg-success/25 transition-colors flex items-center gap-1"
+                >
+                  <Check className="w-3 h-3" /> 선택 결제완료
+                </button>
+                <button
+                  onClick={() => setSelectedPaid(false)}
+                  className="text-[11px] px-2 py-1 rounded-md bg-muted text-muted-foreground border border-border hover:bg-muted/70 transition-colors flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> 선택 미결제
+                </button>
+              </>
+            )}
+            {activeForMonth.some(s => !isPaid(s)) && (
+              <button
+                onClick={markAllPaid}
+                className="text-[11px] px-2 py-1 rounded-md bg-success/15 text-success border border-success/30 hover:bg-success/25 transition-colors flex items-center gap-1"
+              >
+                <Check className="w-3 h-3" /> 전체 결제완료
+              </button>
+            )}
+          </div>
         </div>
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
+                <th className="text-center px-2 py-2 w-8">
+                  <input
+                    type="checkbox"
+                    checked={activeForMonth.length > 0 && selected.size === activeForMonth.length}
+                    onChange={toggleSelectAll}
+                    className="cursor-pointer"
+                  />
+                </th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">구매자</th>
                 <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">프로그램</th>
                 <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">금액</th>
@@ -336,14 +363,23 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
             </thead>
             <tbody>
               {activeForMonth.length === 0 ? (
-                <tr><td colSpan={5} className="px-3 py-6 text-center text-xs text-muted-foreground">이번 달 결제 대상이 없습니다. "구독자 관리"에서 추가하세요.</td></tr>
+                <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-muted-foreground">이번 달 결제 대상이 없습니다. "구독자 관리"에서 추가하세요.</td></tr>
               ) : activeForMonth.map(s => {
                 const paid = isPaid(s);
                 const amount = getAmount(s);
                 const net = Math.round(amount * (1 - STORE_FEE_RATE));
                 const info = programInfo.get(s.program_type);
+                const checked = selected.has(s.id);
                 return (
-                  <tr key={s.id} className={cn("border-b border-border last:border-0 hover:bg-muted/30", !paid && "opacity-60")}>
+                  <tr key={s.id} className={cn("border-b border-border last:border-0 hover:bg-muted/30", !paid && "opacity-60", checked && "bg-primary/5")}>
+                    <td className="px-2 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleSelect(s.id)}
+                        className="cursor-pointer"
+                      />
+                    </td>
                     <td className="px-3 py-2 text-foreground">{s.customer_name}</td>
                     <td className="px-3 py-2 text-muted-foreground text-xs">
                       {info?.label}
