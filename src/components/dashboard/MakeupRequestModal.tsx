@@ -88,6 +88,8 @@ interface MakeupRequestModalProps {
 type Step =
   | "type"           // STEP 1: 보강 유형 선택
   | "session"        // 일정 변경: 어떤 수업을 변경할지
+  | "cancel_session" // 수업 취소: 어떤 수업을 취소할지
+  | "cancel_confirm" // 수업 취소 확정 (자동 분류 안내)
   | "urgent"         // 48시간 미달 시 긴급 사유 선택
   | "calendar"       // STEP 3: 슬롯 선택
   | "no_slots"       // 슬롯 없음 안내
