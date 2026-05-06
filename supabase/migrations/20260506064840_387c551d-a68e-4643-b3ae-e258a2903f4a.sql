@@ -1,0 +1,1 @@
+ALTER TABLE public.ai_program_payments ADD COLUMN IF NOT EXISTS payment_method text NOT NULL DEFAULT 'store';
