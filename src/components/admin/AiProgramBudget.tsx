@@ -30,6 +30,7 @@ interface PaymentRow {
   paid: boolean;
   amount_override: number | null;
   note: string | null;
+  payment_method: "store" | "cash";
 }
 
 interface Props {
