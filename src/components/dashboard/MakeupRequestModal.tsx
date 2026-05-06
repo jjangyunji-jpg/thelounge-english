@@ -487,6 +487,30 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     }
   };
 
+  // 수업 취소 자동 분류 (KST 기준 시간차)
+  const classifyCancellation = (iso: string): { type: "no_show" | "student_cancel" | "late_cancel" | null; label: string; payNote: string; blocked?: boolean } => {
+    const hours = (new Date(iso).getTime() - Date.now()) / (1000 * 60 * 60);
+    if (hours >= 48) return { type: null, label: "48시간 이전", payNote: "", blocked: true };
+    if (hours >= 24) return { type: "late_cancel", label: "48~24시간 전 취소", payNote: "수업료 차감 · 강사 무급" };
+    if (hours >= 4) return { type: "student_cancel", label: "당일 취소 (24~4시간 전)", payNote: "수업료 차감 · 강사 기본 급여 지급" };
+    return { type: "no_show", label: "당일 취소 (4시간 이내) / 노쇼", payNote: "수업료 차감 · 강사 50% 지급" };
+  };
+
+  const handleConfirmCancellation = async () => {
+    if (!sessionToCancel) return;
+    const cls = classifyCancellation(sessionToCancel.scheduled_at);
+    if (cls.blocked || !cls.type) return;
+    setCancelling(true);
+    const { data, error } = await supabase.rpc("student_cancel_class_session" as any, { _session_id: sessionToCancel.id });
+    setCancelling(false);
+    if (error) {
+      toast({ title: "취소 실패", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "수업이 취소되었습니다", description: cls.label });
+    onClose();
+  };
+
   const goBack = () => {
     if (step === "confirm") setStep("calendar");
     else if (step === "calendar") {
@@ -503,6 +527,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     else if (step === "no_slots") setStep("calendar");
     else if (step === "urgent") setStep("session");
     else if (step === "session") setStep("type");
+    else if (step === "cancel_session") setStep("type");
+    else if (step === "cancel_confirm") { setSessionToCancel(null); setStep("cancel_session"); }
   };
 
   return (
