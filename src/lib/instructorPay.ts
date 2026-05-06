@@ -64,7 +64,7 @@ export function calcSessionPay(
   // 대표(flat rate) — 완료 또는 노쇼만 정산 (기존 로직 유지)
   if (isOwner) {
     if (ct === null && !s.ended_at) return { included: false, payPerHour: 0, noteSuffix: "" };
-    if (ct === "student_cancel" || ct === "sick" || ct === "instructor_cancel" || ct === "advance_cancel") {
+    if (ct === "student_cancel" || ct === "sick" || ct === "instructor_cancel" || ct === "advance_cancel" || ct === "late_cancel") {
       return { included: false, payPerHour: 0, noteSuffix: "" };
     }
     if (ct === "no_show") {
