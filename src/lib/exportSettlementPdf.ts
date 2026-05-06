@@ -10,6 +10,7 @@ interface Session {
   student_name: string;
   level: string;
   cancellation_type?: string | null;
+  cancellation_resolution?: string | null;
   ended_at?: string | null;
 }
 
