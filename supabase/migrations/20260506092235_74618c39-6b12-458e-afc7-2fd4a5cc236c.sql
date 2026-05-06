@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.student_cancel_class_session(uuid) FROM PUBLIC, anon;
