@@ -1940,7 +1940,7 @@ export default function StudentDashboard() {
                   userId={authUserId}
                   role="student"
                   studentName={authStudent || viewingStudentName || undefined}
-                  suppressPopup={!!feedbackNeeded || !!currentPopup || isInstructorView}
+                  suppressPopup={!!feedbackNeeded || !!currentPopup}
                 />
               )}
               <a
