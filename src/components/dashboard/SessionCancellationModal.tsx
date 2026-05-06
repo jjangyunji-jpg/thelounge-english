@@ -281,7 +281,7 @@ export default function SessionCancellationModal({
               </Button>
               <Button
                 className="flex-1"
-                disabled={!resolution}
+                disabled={!resolution || (needsReasonTag && !reasonTag)}
                 onClick={handleConfirmResolution}
               >
                 확인
