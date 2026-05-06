@@ -186,6 +186,28 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
     return rec ? rec.paid : true; // default paid
   };
 
+  const getMethod = (sub: Subscriber): "store" | "cash" => {
+    return payMap.get(sub.id)?.payment_method || "store";
+  };
+
+  const setMethod = async (sub: Subscriber, method: "store" | "cash") => {
+    const existing = payMap.get(sub.id);
+    if (existing) {
+      if (existing.payment_method === method) return;
+      const { error } = await supabase
+        .from("ai_program_payments" as any)
+        .update({ payment_method: method })
+        .eq("id", existing.id);
+      if (error) { toast({ title: "변경 실패", description: error.message, variant: "destructive" }); return; }
+    } else {
+      const { error } = await supabase
+        .from("ai_program_payments" as any)
+        .insert({ subscriber_id: sub.id, month: monthKey, paid: true, payment_method: method });
+      if (error) { toast({ title: "변경 실패", description: error.message, variant: "destructive" }); return; }
+    }
+    loadData();
+  };
+
   const getAmount = (sub: Subscriber): number => {
     const rec = payMap.get(sub.id);
     if (rec?.amount_override) return rec.amount_override;
