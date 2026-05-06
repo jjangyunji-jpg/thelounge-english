@@ -50,7 +50,8 @@ export function buildSettlementRows(
   periodEnd: string,
   meetingRate: number = 20000,
   flatRate?: number,
-  /** session.id 집합. 여기에 포함된 sick 세션은 보강 미매칭으로 간주되어 BASE_PAY 지급. */
+  /** session.id 집합. 여기에 포함된 sick 세션은 보강 미매칭으로 간주되어 BASE_PAY 지급.
+   *  미지정 시 cancellation_resolution !== 'makeup_completed' 기준으로 자동 판단. */
   sickWithoutMakeupIds?: Set<string>,
 ) {
   const start = new Date(periodStart);
