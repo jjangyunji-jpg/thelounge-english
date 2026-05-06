@@ -655,9 +655,24 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     </div>
                   )}
 
+                  <div className="rounded-lg border border-[hsl(var(--gold)/0.3)] bg-[hsl(var(--gold)/0.05)] px-3 py-2 text-[11px] text-foreground/80 leading-relaxed">
+                    모든 보강은 <span className="font-semibold">월 최대 2회</span>까지 신청 가능합니다 (긴급 예외 보강 포함).
+                    <span className="ml-1 text-muted-foreground">이번 달 사용: {monthlyMakeupCount}/{MONTHLY_MAKEUP_LIMIT}</span>
+                  </div>
+
                   <button
-                    onClick={() => { setRequestType("reschedule"); setStep("session"); }}
-                    className="w-full rounded-xl border border-border p-4 text-left hover:border-primary/50 transition-colors space-y-1"
+                    onClick={() => {
+                      if (monthlyLimitReached) {
+                        toast({ title: "이번 달 보강 가능 횟수가 없습니다", description: `보강은 월 최대 ${MONTHLY_MAKEUP_LIMIT}회까지 신청 가능합니다.`, variant: "destructive" });
+                        return;
+                      }
+                      setRequestType("reschedule"); setStep("session");
+                    }}
+                    disabled={monthlyLimitReached}
+                    className={cn(
+                      "w-full rounded-xl border border-border p-4 text-left transition-colors space-y-1",
+                      monthlyLimitReached ? "opacity-50 cursor-not-allowed" : "hover:border-primary/50"
+                    )}
                   >
                     <p className="text-sm font-bold text-foreground flex items-center gap-2">
                       <RotateCcw className="w-4 h-4 text-primary" /> 일정 변경
