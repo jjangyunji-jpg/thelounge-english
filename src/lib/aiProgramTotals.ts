@@ -5,6 +5,7 @@ export const STORE_FEE_RATE = 0.0495;
 export const AI_PROGRAM_TYPES = [
   { key: "challenge_21", label: "21일 일기 챌린지", price: 100000, recurring: false },
   { key: "diary_lounge", label: "다이어리 라운지", price: 50000, recurring: true },
+  { key: "diary_lounge_pt", label: "다이어리 라운지 + 영어 PT", price: 80000, recurring: true },
   { key: "english_pt", label: "영어 PT", price: 30000, recurring: true },
 ] as const;
 
