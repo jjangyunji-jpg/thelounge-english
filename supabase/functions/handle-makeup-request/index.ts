@@ -357,7 +357,7 @@ serve(async (req) => {
           startISO: makeupReq.original_scheduled_at,
           meetLink: stuInfo.meet_link || makeupRow?.meet_link || null,
           description: `정규 수업 (강사: ${makeupReq.instructor_name})`,
-          calendarId: instMapping.calendarId,
+          calendarId: stuInfo.student_type === "corporate" ? CORPORATE_CALENDAR_ID : instMapping.calendarId,
         });
 
         // Re-create the original session at original_scheduled_at (we deleted it on approve)
