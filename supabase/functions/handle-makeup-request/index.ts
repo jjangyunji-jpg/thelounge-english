@@ -121,11 +121,15 @@ serve(async (req) => {
         // instructor's mapped calendar for events containing the student name
         // (covers manually-created regular-class events that have no token).
         const origInstMapping = await fetchInstructorMapping(origSession.instructor_name);
+        const origStuInfo = await fetchStudentInfo(origSession.student_name);
+        const origCalendarId = origStuInfo.student_type === "corporate"
+          ? CORPORATE_CALENDAR_ID
+          : origInstMapping.calendarId;
         if (origSession.gcal_event_id) {
           await deleteCalendarEvent(origSession.gcal_event_id);
         } else {
           await deleteCalendarEventsBySearch({
-            calendarId: origInstMapping.calendarId,
+            calendarId: origCalendarId,
             studentName: origSession.student_name,
             scheduledISO: origSession.scheduled_at,
           });
