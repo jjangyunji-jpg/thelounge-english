@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { createCalendarEvent, deleteCalendarEvent, deleteCalendarEventsBySearch, formatEventTitle } from "./gcal.ts";
+import { createCalendarEvent, deleteCalendarEvent, deleteCalendarEventsBySearch, formatEventTitle, CORPORATE_CALENDAR_ID } from "./gcal.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,11 +121,15 @@ serve(async (req) => {
         // instructor's mapped calendar for events containing the student name
         // (covers manually-created regular-class events that have no token).
         const origInstMapping = await fetchInstructorMapping(origSession.instructor_name);
+        const origStuInfo = await fetchStudentInfo(origSession.student_name);
+        const origCalendarId = origStuInfo.student_type === "corporate"
+          ? CORPORATE_CALENDAR_ID
+          : origInstMapping.calendarId;
         if (origSession.gcal_event_id) {
           await deleteCalendarEvent(origSession.gcal_event_id);
         } else {
           await deleteCalendarEventsBySearch({
-            calendarId: origInstMapping.calendarId,
+            calendarId: origCalendarId,
             studentName: origSession.student_name,
             scheduledISO: origSession.scheduled_at,
           });
@@ -152,7 +156,7 @@ serve(async (req) => {
           startISO: newScheduledAt,
           meetLink: stuInfo.meet_link || origSession.meet_link,
           description: `보강 (강사: ${origSession.instructor_name})`,
-          calendarId: instMapping.calendarId,
+          calendarId: stuInfo.student_type === "corporate" ? CORPORATE_CALENDAR_ID : instMapping.calendarId,
         });
 
         // 2) Create new makeup session at newScheduledAt — preserves notes/topic/remarks
@@ -230,7 +234,7 @@ serve(async (req) => {
           startISO: newScheduledAt,
           meetLink: studentRec?.meet_link || null,
           description: `보강 (강사: ${makeupReq.instructor_name})`,
-          calendarId: instMapping.calendarId,
+          calendarId: studentRec?.student_type === "corporate" ? CORPORATE_CALENDAR_ID : instMapping.calendarId,
         });
 
         await sb.from("class_sessions").insert({
@@ -357,7 +361,7 @@ serve(async (req) => {
           startISO: makeupReq.original_scheduled_at,
           meetLink: stuInfo.meet_link || makeupRow?.meet_link || null,
           description: `정규 수업 (강사: ${makeupReq.instructor_name})`,
-          calendarId: instMapping.calendarId,
+          calendarId: stuInfo.student_type === "corporate" ? CORPORATE_CALENDAR_ID : instMapping.calendarId,
         });
 
         // Re-create the original session at original_scheduled_at (we deleted it on approve)

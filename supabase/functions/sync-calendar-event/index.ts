@@ -20,7 +20,20 @@ const corsHeaders = {
 const GATEWAY_URL =
   "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 const DEFAULT_CALENDAR_ID = "reina@thelounge-english.co.kr";
+const CORPORATE_CALENDAR_ID = "c_6c6baefcf2b4191697b3b4927d20eb436833106c408687c2dd7d0c91ff568860@group.calendar.google.com";
 const WINDOW_MINUTES = 30;
+
+async function resolveStudentType(
+  sb: ReturnType<typeof createClient>,
+  studentName: string,
+): Promise<string> {
+  const { data } = await sb
+    .from("instructor_students")
+    .select("student_type")
+    .eq("student_name", studentName)
+    .maybeSingle();
+  return (data as { student_type?: string } | null)?.student_type || "regular";
+}
 
 function authHeaders() {
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
@@ -46,7 +59,9 @@ function parseToken(token: string | null | undefined): { calendarId: string; eve
 async function resolveCalendarId(
   sb: ReturnType<typeof createClient>,
   instructor_name: string,
+  student_type?: string,
 ): Promise<string> {
+  if (student_type === "corporate") return CORPORATE_CALENDAR_ID;
   const { data } = await sb
     .from("instructor_calendar_mapping")
     .select("gcal_calendar_id")
@@ -67,6 +82,11 @@ async function resolveInstructorDisplayName(
   const disp = (mapRes.data as { display_name?: string } | null)?.display_name;
   return eng || disp || instructor_name;
 }
+
+function formatStudentLabel(student_name: string, student_type?: string): string {
+  return student_type === "corporate" ? `기업_${student_name}` : student_name;
+}
+
 
 async function searchEvents(
   calendarId: string,
@@ -199,7 +219,9 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const calendarId = await resolveCalendarId(sb, instructor_name);
+    const student_type = await resolveStudentType(sb, student_name);
+    const calendarId = await resolveCalendarId(sb, instructor_name, student_type);
+    const studentLabel = formatStudentLabel(student_name, student_type);
 
     // ── DELETE ──────────────────────────────────────────────
     if (action === "delete") {
@@ -236,7 +258,7 @@ Deno.serve(async (req) => {
       let title = new_title;
       if (!title) {
         const display = await resolveInstructorDisplayName(sb, instructor_name);
-        title = `(취) ${display}_${student_name}`;
+        title = `(취) ${display}_${studentLabel}`;
       }
       const tok = parseToken(gcalToken);
       if (tok) {
@@ -311,7 +333,7 @@ Deno.serve(async (req) => {
           );
         }
         const display = await resolveInstructorDisplayName(sb, instructor_name);
-        const title = `${display}_${student_name}`;
+        const title = `${display}_${studentLabel}`;
         const token = await createEvent({
           calendarId,
           title,
@@ -367,7 +389,7 @@ Deno.serve(async (req) => {
         );
       }
       const display = await resolveInstructorDisplayName(sb, instructor_name);
-      const title = `${display}_${student_name}`;
+      const title = `${display}_${studentLabel}`;
       const token = await createEvent({
         calendarId,
         title,

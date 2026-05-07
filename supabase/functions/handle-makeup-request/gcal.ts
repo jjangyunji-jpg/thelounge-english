@@ -152,9 +152,13 @@ export async function deleteCalendarEventsBySearch(opts: {
 export function formatEventTitle(opts: {
   studentName: string;
   englishName?: string | null; // unused — kept for backward compat
-  studentType?: string | null; // unused
+  studentType?: string | null;
   instructorName: string;
 }): string {
-  return `(보) ${opts.instructorName}_${opts.studentName}`;
+  const label = opts.studentType === "corporate" ? `기업_${opts.studentName}` : opts.studentName;
+  return `(보) ${opts.instructorName}_${label}`;
 }
+
+export const CORPORATE_CALENDAR_ID =
+  "c_6c6baefcf2b4191697b3b4927d20eb436833106c408687c2dd7d0c91ff568860@group.calendar.google.com";
 
