@@ -351,6 +351,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
   // 선택된 reschedule 수업이 48시간 이내인지
   const isWithin48h = (iso: string) => new Date(iso).getTime() - Date.now() < 48 * 60 * 60 * 1000;
+  // 수업 시작 4시간 전부터는 예외 보강도 불가
+  const isWithin4h = (iso: string) => new Date(iso).getTime() - Date.now() < 4 * 60 * 60 * 1000;
 
   // 수업 선택 → 48시간 분기
   const proceedFromSession = (s: ClassSession) => {
@@ -360,6 +362,14 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     setCalMonth(d.getMonth());
     setSelectedDate(null);
     setSelectedSlot(null);
+    if (isWithin4h(s.scheduled_at)) {
+      toast({
+        title: "보강 신청 불가",
+        description: "수업 시작 4시간 전부터는 예외 사유여도 보강 신청이 불가합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (isWithin48h(s.scheduled_at)) {
       setUrgentReason(null);
       setStep("urgent");
@@ -384,6 +394,14 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     if (requestType === "makeup" && !selectedCancelledSession) return;
     if (requestType === "reschedule" && monthlyLimitReached) {
       toast({ title: "이번 달 보강 가능 횟수가 없습니다", description: `보강은 월 최대 ${MONTHLY_MAKEUP_LIMIT}회까지 신청 가능합니다.`, variant: "destructive" });
+      return;
+    }
+    if (requestType === "reschedule" && selectedSession && isWithin4h(selectedSession.scheduled_at)) {
+      toast({
+        title: "보강 신청 불가",
+        description: "수업 시작 4시간 전부터는 예외 사유여도 보강 신청이 불가합니다.",
+        variant: "destructive",
+      });
       return;
     }
     if (requestType === "reschedule" && selectedSession && isWithin48h(selectedSession.scheduled_at) && !urgentReason) {
@@ -841,10 +859,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <div className="space-y-2">
                       {reschedulableSessions.map(s => {
                         const within48 = isWithin48h(s.scheduled_at);
+                        const within4 = isWithin4h(s.scheduled_at);
                         return (
                           <button key={s.id}
                             onClick={() => proceedFromSession(s)}
-                            className="w-full rounded-lg border border-border p-3 text-left hover:border-primary/30 transition-colors"
+                            disabled={within4}
+                            className={cn(
+                              "w-full rounded-lg border border-border p-3 text-left transition-colors",
+                              within4 ? "opacity-50 cursor-not-allowed" : "hover:border-primary/30"
+                            )}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
@@ -853,7 +876,11 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                                 </p>
                                 {s.topic && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{s.topic}</p>}
                               </div>
-                              {within48 && (
+                              {within4 ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/20 text-destructive font-semibold shrink-0">
+                                  4시간 이내 신청불가
+                                </span>
+                              ) : within48 && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold shrink-0">
                                   48시간 이내
                                 </span>
