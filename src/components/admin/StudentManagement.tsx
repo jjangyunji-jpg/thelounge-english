@@ -2723,11 +2723,12 @@ export default function StudentManagement() {
                                   </div>
                                   <div className="space-y-1">
                                     <Label className="text-xs text-muted-foreground">담당 강사</Label>
-                                    <Select value={editInstructor} onValueChange={setEditInstructor}>
+                                    <Select value={editInstructor || "__none__"} onValueChange={(v) => setEditInstructor(v === "__none__" ? "" : v)}>
                                       <SelectTrigger className="h-8 text-sm">
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
+                                        <SelectItem value="__none__">미배정</SelectItem>
                                         {instructorNames.map((t) => (
                                           <SelectItem key={t} value={t}>{t}</SelectItem>
                                         ))}
