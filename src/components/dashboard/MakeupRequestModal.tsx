@@ -362,6 +362,14 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     setCalMonth(d.getMonth());
     setSelectedDate(null);
     setSelectedSlot(null);
+    if (isWithin4h(s.scheduled_at)) {
+      toast({
+        title: "보강 신청 불가",
+        description: "수업 시작 4시간 전부터는 예외 사유여도 보강 신청이 불가합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (isWithin48h(s.scheduled_at)) {
       setUrgentReason(null);
       setStep("urgent");
