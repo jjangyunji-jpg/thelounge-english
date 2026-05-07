@@ -734,11 +734,11 @@ export default function StudentManagement() {
   const saveInlineEdit = async (id: number) => {
     const student = students.find(s => s.id === id);
     if (student?.dbId) {
-      const isInstructorChanged = !!editInstructor && editInstructor !== student.instructor;
+      const isInstructorChanged = editInstructor !== student.instructor;
 
       // Look up instructor_id when instructor name changes
       let newInstructorId: string | null = null;
-      if (isInstructorChanged) {
+      if (isInstructorChanged && editInstructor) {
         const { data: instrData } = await supabase
           .from("instructors")
           .select("id")
@@ -751,7 +751,7 @@ export default function StudentManagement() {
       const updatePayload: Record<string, any> = {
         level: editLevel,
         extra_lessons: editExtra,
-        instructor_name: editInstructor,
+        instructor_name: editInstructor || null,
         learning_objective: editObjectives.length > 0 ? JSON.stringify(editObjectives) : null,
         english_name: editEnglishName.trim() || null,
         start_date: editStartDate ? format(editStartDate, "yyyy-MM-dd") : null,
@@ -760,7 +760,7 @@ export default function StudentManagement() {
         group_students: editGroupStudents,
         google_sheet_url: editGoogleSheetUrl.trim() || null,
       };
-      if (newInstructorId) {
+      if (isInstructorChanged) {
         updatePayload.instructor_id = newInstructorId;
       }
 
@@ -772,7 +772,7 @@ export default function StudentManagement() {
       const isScheduleChanged = oldSchedStr !== newSchedStr;
 
       // Keep future, not-yet-started sessions in sync with reassigned instructor
-      if (isInstructorChanged && !isScheduleChanged) {
+      if (isInstructorChanged && !isScheduleChanged && editInstructor) {
         await supabase
           .from("class_sessions")
           .update({ instructor_name: editInstructor })
