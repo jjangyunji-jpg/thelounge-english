@@ -1,0 +1,1 @@
+ALTER TABLE public.instructor_students ALTER COLUMN instructor_id DROP NOT NULL;
