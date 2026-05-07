@@ -396,6 +396,14 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       toast({ title: "이번 달 보강 가능 횟수가 없습니다", description: `보강은 월 최대 ${MONTHLY_MAKEUP_LIMIT}회까지 신청 가능합니다.`, variant: "destructive" });
       return;
     }
+    if (requestType === "reschedule" && selectedSession && isWithin4h(selectedSession.scheduled_at)) {
+      toast({
+        title: "보강 신청 불가",
+        description: "수업 시작 4시간 전부터는 예외 사유여도 보강 신청이 불가합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (requestType === "reschedule" && selectedSession && isWithin48h(selectedSession.scheduled_at) && !urgentReason) {
       toast({ title: "예외 사유 확인이 필요합니다", variant: "destructive" });
       setStep("urgent");
