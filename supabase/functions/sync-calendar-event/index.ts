@@ -258,7 +258,7 @@ Deno.serve(async (req) => {
       let title = new_title;
       if (!title) {
         const display = await resolveInstructorDisplayName(sb, instructor_name);
-        title = `(취) ${display}_${student_name}`;
+        title = `(취) ${display}_${studentLabel}`;
       }
       const tok = parseToken(gcalToken);
       if (tok) {
