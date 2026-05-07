@@ -135,8 +135,9 @@ export default function InstructorMakeupTab({ instructorId, instructorName, onSe
         .select("*")
         .order("start_date", { ascending: false }),
       supabase.from("class_sessions")
-        .select("id, scheduled_at, student_name")
+        .select("id, scheduled_at, student_name, cancellation_type")
         .eq("instructor_name", instructorName)
+        .is("cancellation_type", null)
         .gte("scheduled_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
     ]);
     setSlots((slotsRes.data || []) as AvailableSlot[]);
