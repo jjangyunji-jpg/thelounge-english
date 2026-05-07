@@ -219,7 +219,9 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const calendarId = await resolveCalendarId(sb, instructor_name);
+    const student_type = await resolveStudentType(sb, student_name);
+    const calendarId = await resolveCalendarId(sb, instructor_name, student_type);
+    const studentLabel = formatStudentLabel(student_name, student_type);
 
     // ── DELETE ──────────────────────────────────────────────
     if (action === "delete") {
