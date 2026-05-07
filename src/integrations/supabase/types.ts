@@ -885,7 +885,7 @@ export type Database = {
           google_sheet_url: string | null
           group_students: string[]
           id: string
-          instructor_id: string
+          instructor_id: string | null
           instructor_name: string | null
           learning_objective: string | null
           lesson_goal: string | null
@@ -917,7 +917,7 @@ export type Database = {
           google_sheet_url?: string | null
           group_students?: string[]
           id?: string
-          instructor_id: string
+          instructor_id?: string | null
           instructor_name?: string | null
           learning_objective?: string | null
           lesson_goal?: string | null
@@ -949,7 +949,7 @@ export type Database = {
           google_sheet_url?: string | null
           group_students?: string[]
           id?: string
-          instructor_id?: string
+          instructor_id?: string | null
           instructor_name?: string | null
           learning_objective?: string | null
           lesson_goal?: string | null
