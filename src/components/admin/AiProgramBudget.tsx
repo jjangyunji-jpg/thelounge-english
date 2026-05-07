@@ -318,19 +318,41 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
         </div>
       </div>
 
-      {/* Program-level breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {byProgram.map(p => (
-          <div key={p.key} className="rounded-lg border border-border bg-card p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-foreground">{p.label}</p>
-              <span className="text-[10px] text-muted-foreground">₩{p.price.toLocaleString()}/회</span>
+      {/* Program-level breakdown — grouped */}
+      <div className="space-y-3">
+        {[
+          { group: "challenge" as const, title: "일기 챌린지" },
+          { group: "lounge" as const, title: "다이어리 라운지 / 영어 PT" },
+        ].map(section => {
+          const items = byProgram.filter(p => p.group === section.group);
+          if (items.length === 0) return null;
+          const sectionGross = items.reduce((s, x) => s + x.gross, 0);
+          const sectionCount = items.reduce((s, x) => s + x.count, 0);
+          return (
+            <div key={section.group} className="rounded-lg border border-border bg-muted/20 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-foreground">{section.title}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {sectionCount}명 · ₩{sectionGross.toLocaleString()}
+                </p>
+              </div>
+              <div className={cn("grid gap-2", items.length === 1 ? "grid-cols-1" : items.length === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-3")}>
+                {items.map(p => (
+                  <div key={p.key} className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-foreground">{p.label}</p>
+                      <span className="text-[10px] text-muted-foreground">₩{p.price.toLocaleString()}{p.recurring ? "/월" : ""}</span>
+                    </div>
+                    <p className="text-lg font-bold text-foreground mt-1">{p.count}명 · ₩{p.gross.toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">실수령 ₩{p.net.toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p className="text-lg font-bold text-foreground mt-1">{p.count}명 · ₩{p.gross.toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">실수령 ₩{p.net.toLocaleString()}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
 
       {/* Active subscribers list (this month) */}
       <div>
