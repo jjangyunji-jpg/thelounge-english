@@ -354,123 +354,168 @@ export default function AiProgramBudget({ monthKey, monthLabel, onChange }: Prop
       </div>
 
 
-      {/* Active subscribers list (this month) */}
-      <div>
-        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-            <Calendar className="w-3 h-3" /> {monthLabel} 결제 대상 — {activeForMonth.length}명
-            {selected.size > 0 && <span className="text-primary">· {selected.size}명 선택</span>}
-          </p>
-          <div className="flex items-center gap-1.5">
-            {selected.size > 0 && (
-              <>
-                <button
-                  onClick={() => setSelectedPaid(true)}
-                  className="text-[11px] px-2 py-1 rounded-md bg-success/15 text-success border border-success/30 hover:bg-success/25 transition-colors flex items-center gap-1"
-                >
-                  <Check className="w-3 h-3" /> 선택 결제완료
-                </button>
-                <button
-                  onClick={() => setSelectedPaid(false)}
-                  className="text-[11px] px-2 py-1 rounded-md bg-muted text-muted-foreground border border-border hover:bg-muted/70 transition-colors flex items-center gap-1"
-                >
-                  <X className="w-3 h-3" /> 선택 미결제
-                </button>
-              </>
-            )}
-            {activeForMonth.some(s => !isPaid(s)) && (
-              <button
-                onClick={markAllPaid}
-                className="text-[11px] px-2 py-1 rounded-md bg-success/15 text-success border border-success/30 hover:bg-success/25 transition-colors flex items-center gap-1"
-              >
-                <Check className="w-3 h-3" /> 전체 결제완료
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 border-b border-border">
-              <tr>
-                <th className="text-center px-2 py-2 w-8">
-                  <input
-                    type="checkbox"
-                    checked={activeForMonth.length > 0 && selected.size === activeForMonth.length}
-                    onChange={toggleSelectAll}
-                    className="cursor-pointer"
-                  />
-                </th>
-                <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">구매자</th>
-                <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">프로그램</th>
-                <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">금액</th>
-                <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">실수령</th>
-                <th className="text-center px-3 py-2 font-semibold text-foreground text-xs w-28">현금/스토어</th>
-                <th className="text-center px-3 py-2 font-semibold text-foreground text-xs w-24">결제</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeForMonth.length === 0 ? (
-                <tr><td colSpan={7} className="px-3 py-6 text-center text-xs text-muted-foreground">이번 달 결제 대상이 없습니다. "구독자 관리"에서 추가하세요.</td></tr>
-              ) : activeForMonth.map(s => {
-                const paid = isPaid(s);
-                const amount = getAmount(s);
-                const net = Math.round(amount * (1 - STORE_FEE_RATE));
-                const info = programInfo.get(s.program_type);
-                const checked = selected.has(s.id);
-                return (
-                  <tr key={s.id} className={cn("border-b border-border last:border-0 hover:bg-muted/30", !paid && "opacity-60", checked && "bg-primary/5")}>
-                    <td className="px-2 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleSelect(s.id)}
-                        className="cursor-pointer"
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-foreground">{s.customer_name}</td>
-                    <td className="px-3 py-2 text-muted-foreground text-xs">
-                      {info?.label}
-                      {info?.recurring && <span className="ml-1 text-[9px] opacity-70">(구독)</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right text-muted-foreground text-xs">{paid ? `₩${amount.toLocaleString()}` : "—"}</td>
-                    <td className="px-3 py-2 text-right font-medium text-foreground">{paid ? `₩${net.toLocaleString()}` : "—"}</td>
-                    <td className="px-3 py-2 text-center">
-                      {(() => {
-                        const method = getMethod(s);
-                        return (
-                          <div className="inline-flex rounded-md border border-border overflow-hidden text-[10px]">
-                            <button
-                              onClick={() => setMethod(s, "store")}
-                              className={cn("px-2 py-1 transition-colors", method === "store" ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 font-semibold" : "text-muted-foreground hover:bg-muted")}
-                            >스토어</button>
-                            <button
-                              onClick={() => setMethod(s, "cash")}
-                              className={cn("px-2 py-1 transition-colors border-l border-border", method === "cash" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold" : "text-muted-foreground hover:bg-muted")}
-                            >현금</button>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        onClick={() => togglePaid(s)}
-                        className={cn(
-                          "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors",
-                          paid
-                            ? "bg-success/15 text-success border-success/30 hover:bg-success/25"
-                            : "bg-muted text-muted-foreground border-border hover:bg-muted/70"
+      {/* Active subscribers list (this month) — split by group */}
+      {(() => {
+        const challengeSubs = activeForMonth.filter(s => programInfo.get(s.program_type)?.group === "challenge");
+        const loungeSubs = activeForMonth.filter(s => programInfo.get(s.program_type)?.group === "lounge");
+        const loungeOptions = PROGRAM_TYPES.filter(p => p.group === "lounge");
+
+        const updateProgram = async (sub: Subscriber, newType: ProgramType) => {
+          if (sub.program_type === newType) return;
+          const { error } = await supabase.from("ai_program_subscribers" as any).update({ program_type: newType }).eq("id", sub.id);
+          if (error) { toast({ title: "변경 실패", description: error.message, variant: "destructive" }); return; }
+          loadData();
+        };
+
+        const renderTable = (
+          subs: Subscriber[],
+          opts: { editableProgram?: boolean; emptyText: string }
+        ) => (
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr>
+                  <th className="text-center px-2 py-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={subs.length > 0 && subs.every(s => selected.has(s.id))}
+                      onChange={() => {
+                        const allSelected = subs.length > 0 && subs.every(s => selected.has(s.id));
+                        setSelected(prev => {
+                          const next = new Set(prev);
+                          if (allSelected) subs.forEach(s => next.delete(s.id));
+                          else subs.forEach(s => next.add(s.id));
+                          return next;
+                        });
+                      }}
+                      className="cursor-pointer"
+                    />
+                  </th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">구매자</th>
+                  <th className="text-left px-3 py-2 font-semibold text-foreground text-xs">프로그램</th>
+                  <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">금액</th>
+                  <th className="text-right px-3 py-2 font-semibold text-foreground text-xs">실수령</th>
+                  <th className="text-center px-3 py-2 font-semibold text-foreground text-xs w-28">현금/스토어</th>
+                  <th className="text-center px-3 py-2 font-semibold text-foreground text-xs w-24">결제</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subs.length === 0 ? (
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-xs text-muted-foreground">{opts.emptyText}</td></tr>
+                ) : subs.map(s => {
+                  const paid = isPaid(s);
+                  const amount = getAmount(s);
+                  const net = Math.round(amount * (1 - STORE_FEE_RATE));
+                  const info = programInfo.get(s.program_type);
+                  const checked = selected.has(s.id);
+                  return (
+                    <tr key={s.id} className={cn("border-b border-border last:border-0 hover:bg-muted/30", !paid && "opacity-60", checked && "bg-primary/5")}>
+                      <td className="px-2 py-2 text-center">
+                        <input type="checkbox" checked={checked} onChange={() => toggleSelect(s.id)} className="cursor-pointer" />
+                      </td>
+                      <td className="px-3 py-2 text-foreground">{s.customer_name}</td>
+                      <td className="px-3 py-2 text-muted-foreground text-xs">
+                        {opts.editableProgram ? (
+                          <select
+                            value={s.program_type}
+                            onChange={e => updateProgram(s, e.target.value as ProgramType)}
+                            className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          >
+                            {loungeOptions.map(p => (
+                              <option key={p.key} value={p.key}>{p.label} (₩{p.price.toLocaleString()}/월)</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <>
+                            {info?.label}
+                            {info?.recurring && <span className="ml-1 text-[9px] opacity-70">(구독)</span>}
+                          </>
                         )}
-                      >
-                        {paid ? <><Check className="w-3 h-3" />결제완료</> : "미결제"}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      </td>
+                      <td className="px-3 py-2 text-right text-muted-foreground text-xs">{paid ? `₩${amount.toLocaleString()}` : "—"}</td>
+                      <td className="px-3 py-2 text-right font-medium text-foreground">{paid ? `₩${net.toLocaleString()}` : "—"}</td>
+                      <td className="px-3 py-2 text-center">
+                        {(() => {
+                          const method = getMethod(s);
+                          return (
+                            <div className="inline-flex rounded-md border border-border overflow-hidden text-[10px]">
+                              <button
+                                onClick={() => setMethod(s, "store")}
+                                className={cn("px-2 py-1 transition-colors", method === "store" ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 font-semibold" : "text-muted-foreground hover:bg-muted")}
+                              >스토어</button>
+                              <button
+                                onClick={() => setMethod(s, "cash")}
+                                className={cn("px-2 py-1 transition-colors border-l border-border", method === "cash" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold" : "text-muted-foreground hover:bg-muted")}
+                              >현금</button>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          onClick={() => togglePaid(s)}
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold border transition-colors",
+                            paid
+                              ? "bg-success/15 text-success border-success/30 hover:bg-success/25"
+                              : "bg-muted text-muted-foreground border-border hover:bg-muted/70"
+                          )}
+                        >
+                          {paid ? <><Check className="w-3 h-3" />결제완료</> : "미결제"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> {monthLabel} 결제 대상 — {activeForMonth.length}명
+                {selected.size > 0 && <span className="text-primary">· {selected.size}명 선택</span>}
+              </p>
+              <div className="flex items-center gap-1.5">
+                {selected.size > 0 && (
+                  <>
+                    <button onClick={() => setSelectedPaid(true)} className="text-[11px] px-2 py-1 rounded-md bg-success/15 text-success border border-success/30 hover:bg-success/25 transition-colors flex items-center gap-1">
+                      <Check className="w-3 h-3" /> 선택 결제완료
+                    </button>
+                    <button onClick={() => setSelectedPaid(false)} className="text-[11px] px-2 py-1 rounded-md bg-muted text-muted-foreground border border-border hover:bg-muted/70 transition-colors flex items-center gap-1">
+                      <X className="w-3 h-3" /> 선택 미결제
+                    </button>
+                  </>
+                )}
+                {activeForMonth.some(s => !isPaid(s)) && (
+                  <button onClick={markAllPaid} className="text-[11px] px-2 py-1 rounded-md bg-success/15 text-success border border-success/30 hover:bg-success/25 transition-colors flex items-center gap-1">
+                    <Check className="w-3 h-3" /> 전체 결제완료
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <span className="inline-block w-1 h-3 bg-primary rounded-full" />
+                21일 일기 챌린지 · {challengeSubs.length}명
+              </p>
+              {renderTable(challengeSubs, { emptyText: "이번 달 챌린지 결제 대상이 없습니다." })}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <span className="inline-block w-1 h-3 bg-primary rounded-full" />
+                다이어리 라운지 / 영어 PT · {loungeSubs.length}명
+              </p>
+              {renderTable(loungeSubs, { editableProgram: true, emptyText: "이번 달 라운지·PT 결제 대상이 없습니다." })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Subscriber Manager Panel */}
       {showManager && (
