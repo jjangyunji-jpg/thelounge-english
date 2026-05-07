@@ -273,6 +273,7 @@ export default function HomeworkFeedbackModal({
               <X className="w-4 h-4" />
             </button>
           </div>
+        </div>
 
         <div className="p-5 space-y-4">
           {/* Assignment description */}
