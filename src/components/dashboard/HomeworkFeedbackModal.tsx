@@ -1,9 +1,11 @@
-import React, { useState } from "react";
-import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2, Wand2, ArrowUp } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2, Wand2, ArrowUp, Volume2, Square } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
@@ -132,6 +134,63 @@ export default function HomeworkFeedbackModal({
   const Icon = meta.icon;
   const [unreviewLoading, setUnreviewLoading] = useState(false);
 
+  // TTS for past reading/memorizing homework descriptions
+  const { toast } = useToast();
+  const canListen =
+    (assignmentType === "reading" || assignmentType === "memorizing") &&
+    !!assignmentDescription?.trim();
+  const [speaking, setSpeaking] = useState(false);
+  const [loadingTts, setLoadingTts] = useState(false);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsUrlCacheRef = useRef<string | null>(null);
+
+  const stopSpeaking = useCallback(() => {
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current.currentTime = 0;
+    }
+    setSpeaking(false);
+  }, []);
+
+  const toggleSpeak = useCallback(async () => {
+    if (!canListen || loadingTts) return;
+    if (speaking) { stopSpeaking(); return; }
+    try {
+      let url = ttsUrlCacheRef.current;
+      if (!url) {
+        setLoadingTts(true);
+        const { data, error } = await supabase.functions.invoke("homework-tts", {
+          body: { text: assignmentDescription },
+        });
+        if (error) throw error;
+        if (!data?.audio_url) throw new Error("음성 URL을 받지 못했습니다.");
+        url = data.audio_url as string;
+        ttsUrlCacheRef.current = url;
+      }
+      const audio = new Audio(url);
+      ttsAudioRef.current = audio;
+      audio.onended = () => setSpeaking(false);
+      audio.onerror = () => { setSpeaking(false); toast({ title: "재생 실패", variant: "destructive" }); };
+      await audio.play();
+      setSpeaking(true);
+    } catch (e) {
+      toast({
+        title: "음성 생성 실패",
+        description: e instanceof Error ? e.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTts(false);
+    }
+  }, [canListen, speaking, loadingTts, assignmentDescription, stopSpeaking, toast]);
+
+  useEffect(() => () => {
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current = null;
+    }
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -189,9 +248,31 @@ export default function HomeworkFeedbackModal({
               )}
             </p>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {canListen && (
+              <button
+                onClick={toggleSpeak}
+                disabled={loadingTts}
+                title={speaking ? "듣기 중지" : "지문 듣기"}
+                className={cn(
+                  "flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md border transition-all",
+                  speaking
+                    ? "border-destructive/40 bg-destructive/10 text-destructive"
+                    : "border-border bg-muted/30 text-foreground hover:bg-muted/60",
+                  loadingTts && "opacity-60 cursor-wait"
+                )}
+              >
+                {loadingTts
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />생성중</>
+                  : speaking
+                    ? <><Square className="w-3.5 h-3.5" />중지</>
+                    : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
+              </button>
+            )}
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <div className="p-5 space-y-4">
@@ -260,7 +341,6 @@ export default function HomeworkFeedbackModal({
               <p className="text-xs text-muted-foreground">제출 내용 없음</p>
             )}
           </div>
-
 
 
           {/* Instructor feedback */}
