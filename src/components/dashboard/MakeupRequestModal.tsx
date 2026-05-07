@@ -859,10 +859,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <div className="space-y-2">
                       {reschedulableSessions.map(s => {
                         const within48 = isWithin48h(s.scheduled_at);
+                        const within4 = isWithin4h(s.scheduled_at);
                         return (
                           <button key={s.id}
                             onClick={() => proceedFromSession(s)}
-                            className="w-full rounded-lg border border-border p-3 text-left hover:border-primary/30 transition-colors"
+                            disabled={within4}
+                            className={cn(
+                              "w-full rounded-lg border border-border p-3 text-left transition-colors",
+                              within4 ? "opacity-50 cursor-not-allowed" : "hover:border-primary/30"
+                            )}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
@@ -871,7 +876,11 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                                 </p>
                                 {s.topic && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{s.topic}</p>}
                               </div>
-                              {within48 && (
+                              {within4 ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/20 text-destructive font-semibold shrink-0">
+                                  4시간 이내 신청불가
+                                </span>
+                              ) : within48 && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold shrink-0">
                                   48시간 이내
                                 </span>
