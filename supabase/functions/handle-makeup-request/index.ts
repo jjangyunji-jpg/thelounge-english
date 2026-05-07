@@ -311,7 +311,7 @@ serve(async (req) => {
         ? new Date(`${slot.slot_date}T${slot.slot_time}+09:00`).toISOString()
         : null;
 
-      if (makeupReq.request_type === "reschedule" && makeupReq.original_session_id) {
+      if (makeupReq.request_type === "reschedule") {
         if (!makeupReq.original_scheduled_at) throw new Error("원래 일정 정보가 없습니다.");
 
         const origDateStrForMatch = new Date(makeupReq.original_scheduled_at)
