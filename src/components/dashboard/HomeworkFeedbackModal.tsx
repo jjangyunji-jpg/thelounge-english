@@ -1,9 +1,11 @@
-import React, { useState } from "react";
-import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2, Wand2, ArrowUp } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2, Wand2, ArrowUp, Volume2, Square } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
