@@ -341,8 +341,6 @@ export default function HomeworkFeedbackModal({
               <p className="text-xs text-muted-foreground">제출 내용 없음</p>
             )}
           </div>
-        </div>
-
 
 
           {/* Instructor feedback */}
