@@ -87,18 +87,6 @@ function formatStudentLabel(student_name: string, student_type?: string): string
   return student_type === "corporate" ? `기업_${student_name}` : student_name;
 }
 
-async function resolveInstructorDisplayName(
-  sb: ReturnType<typeof createClient>,
-  instructor_name: string,
-): Promise<string> {
-  const [instRes, mapRes] = await Promise.all([
-    sb.from("instructors").select("english_name").eq("name", instructor_name).maybeSingle(),
-    sb.from("instructor_calendar_mapping").select("display_name").eq("instructor_name", instructor_name).maybeSingle(),
-  ]);
-  const eng = (instRes.data as { english_name?: string } | null)?.english_name;
-  const disp = (mapRes.data as { display_name?: string } | null)?.display_name;
-  return eng || disp || instructor_name;
-}
 
 async function searchEvents(
   calendarId: string,
