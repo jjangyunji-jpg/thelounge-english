@@ -1,0 +1,1 @@
+UPDATE class_sessions SET gcal_event_id = NULL WHERE id = '4e14d364-aac8-4a0a-b523-4f5de27e4c84';
