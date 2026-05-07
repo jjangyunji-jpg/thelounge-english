@@ -389,7 +389,7 @@ Deno.serve(async (req) => {
         );
       }
       const display = await resolveInstructorDisplayName(sb, instructor_name);
-      const title = `${display}_${student_name}`;
+      const title = `${display}_${studentLabel}`;
       const token = await createEvent({
         calendarId,
         title,
