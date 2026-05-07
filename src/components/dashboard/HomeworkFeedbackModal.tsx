@@ -248,10 +248,31 @@ export default function HomeworkFeedbackModal({
               )}
             </p>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+          <div className="flex items-center gap-1.5">
+            {canListen && (
+              <button
+                onClick={toggleSpeak}
+                disabled={loadingTts}
+                title={speaking ? "듣기 중지" : "지문 듣기"}
+                className={cn(
+                  "flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md border transition-all",
+                  speaking
+                    ? "border-destructive/40 bg-destructive/10 text-destructive"
+                    : "border-border bg-muted/30 text-foreground hover:bg-muted/60",
+                  loadingTts && "opacity-60 cursor-wait"
+                )}
+              >
+                {loadingTts
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />생성중</>
+                  : speaking
+                    ? <><Square className="w-3.5 h-3.5" />중지</>
+                    : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
+              </button>
+            )}
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
         <div className="p-5 space-y-4">
           {/* Assignment description */}
