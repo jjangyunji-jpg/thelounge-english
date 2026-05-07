@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { createCalendarEvent, deleteCalendarEvent, deleteCalendarEventsBySearch, formatEventTitle } from "./gcal.ts";
+import { createCalendarEvent, deleteCalendarEvent, deleteCalendarEventsBySearch, formatEventTitle, CORPORATE_CALENDAR_ID } from "./gcal.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
