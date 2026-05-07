@@ -152,7 +152,7 @@ serve(async (req) => {
           startISO: newScheduledAt,
           meetLink: stuInfo.meet_link || origSession.meet_link,
           description: `보강 (강사: ${origSession.instructor_name})`,
-          calendarId: instMapping.calendarId,
+          calendarId: stuInfo.student_type === "corporate" ? CORPORATE_CALENDAR_ID : instMapping.calendarId,
         });
 
         // 2) Create new makeup session at newScheduledAt — preserves notes/topic/remarks
