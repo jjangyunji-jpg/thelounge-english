@@ -20,7 +20,20 @@ const corsHeaders = {
 const GATEWAY_URL =
   "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 const DEFAULT_CALENDAR_ID = "reina@thelounge-english.co.kr";
+const CORPORATE_CALENDAR_ID = "c_6c6baefcf2b4191697b3b4927d20eb436833106c408687c2dd7d0c91ff568860@group.calendar.google.com";
 const WINDOW_MINUTES = 30;
+
+async function resolveStudentType(
+  sb: ReturnType<typeof createClient>,
+  studentName: string,
+): Promise<string> {
+  const { data } = await sb
+    .from("instructor_students")
+    .select("student_type")
+    .eq("student_name", studentName)
+    .maybeSingle();
+  return (data as { student_type?: string } | null)?.student_type || "regular";
+}
 
 function authHeaders() {
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
