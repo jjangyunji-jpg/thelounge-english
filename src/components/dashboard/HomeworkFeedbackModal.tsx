@@ -134,6 +134,63 @@ export default function HomeworkFeedbackModal({
   const Icon = meta.icon;
   const [unreviewLoading, setUnreviewLoading] = useState(false);
 
+  // TTS for past reading/memorizing homework descriptions
+  const { toast } = useToast();
+  const canListen =
+    (assignmentType === "reading" || assignmentType === "memorizing") &&
+    !!assignmentDescription?.trim();
+  const [speaking, setSpeaking] = useState(false);
+  const [loadingTts, setLoadingTts] = useState(false);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsUrlCacheRef = useRef<string | null>(null);
+
+  const stopSpeaking = useCallback(() => {
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current.currentTime = 0;
+    }
+    setSpeaking(false);
+  }, []);
+
+  const toggleSpeak = useCallback(async () => {
+    if (!canListen || loadingTts) return;
+    if (speaking) { stopSpeaking(); return; }
+    try {
+      let url = ttsUrlCacheRef.current;
+      if (!url) {
+        setLoadingTts(true);
+        const { data, error } = await supabase.functions.invoke("homework-tts", {
+          body: { text: assignmentDescription },
+        });
+        if (error) throw error;
+        if (!data?.audio_url) throw new Error("음성 URL을 받지 못했습니다.");
+        url = data.audio_url as string;
+        ttsUrlCacheRef.current = url;
+      }
+      const audio = new Audio(url);
+      ttsAudioRef.current = audio;
+      audio.onended = () => setSpeaking(false);
+      audio.onerror = () => { setSpeaking(false); toast({ title: "재생 실패", variant: "destructive" }); };
+      await audio.play();
+      setSpeaking(true);
+    } catch (e) {
+      toast({
+        title: "음성 생성 실패",
+        description: e instanceof Error ? e.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTts(false);
+    }
+  }, [canListen, speaking, loadingTts, assignmentDescription, stopSpeaking, toast]);
+
+  useEffect(() => () => {
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current = null;
+    }
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
