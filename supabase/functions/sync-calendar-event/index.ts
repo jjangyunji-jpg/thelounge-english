@@ -59,13 +59,32 @@ function parseToken(token: string | null | undefined): { calendarId: string; eve
 async function resolveCalendarId(
   sb: ReturnType<typeof createClient>,
   instructor_name: string,
+  student_type?: string,
 ): Promise<string> {
+  if (student_type === "corporate") return CORPORATE_CALENDAR_ID;
   const { data } = await sb
     .from("instructor_calendar_mapping")
     .select("gcal_calendar_id")
     .eq("instructor_name", instructor_name)
     .maybeSingle();
   return (data as { gcal_calendar_id?: string } | null)?.gcal_calendar_id || DEFAULT_CALENDAR_ID;
+}
+
+async function resolveInstructorDisplayName(
+  sb: ReturnType<typeof createClient>,
+  instructor_name: string,
+): Promise<string> {
+  const [instRes, mapRes] = await Promise.all([
+    sb.from("instructors").select("english_name").eq("name", instructor_name).maybeSingle(),
+    sb.from("instructor_calendar_mapping").select("display_name").eq("instructor_name", instructor_name).maybeSingle(),
+  ]);
+  const eng = (instRes.data as { english_name?: string } | null)?.english_name;
+  const disp = (mapRes.data as { display_name?: string } | null)?.display_name;
+  return eng || disp || instructor_name;
+}
+
+function formatStudentLabel(student_name: string, student_type?: string): string {
+  return student_type === "corporate" ? `기업_${student_name}` : student_name;
 }
 
 async function resolveInstructorDisplayName(
