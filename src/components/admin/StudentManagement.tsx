@@ -355,12 +355,21 @@ export default function StudentManagement() {
               return slots.map((sl: any) => `${sl.day} ${sl.time}`).join(", ");
             } catch { return "미설정"; }
           };
+          let newSchedulesRaw: { day: string; time: string; frequency?: string }[] = [];
+          try {
+            const parsed = next.schedules ? JSON.parse(next.schedules) : [];
+            if (Array.isArray(parsed)) newSchedulesRaw = parsed;
+          } catch { /* ignore */ }
           transfers.push({
             fromInstructor: prev.instructor_name || "미지정",
             toInstructor: next.instructor_name || "미지정",
             transferDate: prev.end_date,
             oldSchedules: formatSchedule(prev.schedules),
             newSchedules: formatSchedule(next.schedules),
+            oldRecordId: prev.id,
+            newRecordId: next.id,
+            newSchedulesRaw,
+            transferStatus: next.transfer_status || "",
           });
         }
       }
