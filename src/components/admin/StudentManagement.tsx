@@ -3291,6 +3291,20 @@ export default function StudentManagement() {
         instructorNames={instructorNames}
         onTransferred={loadStudentsFromDB}
       />
+      {editTransferTarget && (
+        <EditTransferModal
+          open={!!editTransferTarget}
+          onOpenChange={(o) => { if (!o) setEditTransferTarget(null); }}
+          studentName={editTransferTarget.studentName}
+          fromInstructor={editTransferTarget.transfer.fromInstructor}
+          toInstructor={editTransferTarget.transfer.toInstructor}
+          oldRecordId={editTransferTarget.transfer.oldRecordId || ""}
+          newRecordId={editTransferTarget.transfer.newRecordId || ""}
+          currentTransferDate={editTransferTarget.transfer.transferDate}
+          currentSchedules={editTransferTarget.transfer.newSchedulesRaw || []}
+          onUpdated={loadStudentsFromDB}
+        />
+      )}
     </div>
   );
 }
