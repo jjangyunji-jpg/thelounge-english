@@ -43,6 +43,7 @@ import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import { useToast } from "@/hooks/use-toast";
 import { autoGenerateSessions } from "@/lib/autoGenerateSessions";
 import TransferStudentModal from "./TransferStudentModal";
+import EditTransferModal from "./EditTransferModal";
 
 type StudentStatus = "active" | "graduated";
 type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
