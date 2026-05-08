@@ -406,37 +406,44 @@ export default function StudentManagement() {
   const handleCancelTransfer = async (studentName: string, transfer: TransferRecord) => {
     setCancellingTransfer(true);
     try {
-      // 1. Find the old inactive record (fromInstructor with end_date = transferDate)
-      const { data: oldRecords, error: oldErr } = await supabase
-        .from("instructor_students")
-        .select("id")
-        .eq("student_name", studentName)
-        .eq("instructor_name", transfer.fromInstructor)
-        .eq("end_date", transfer.transferDate)
-        .eq("status", "inactive")
-        .limit(1);
-      if (oldErr) throw oldErr;
-      if (!oldRecords || oldRecords.length === 0) throw new Error("이전 강사 레코드를 찾을 수 없습니다");
+      // Resolve record IDs (prefer the IDs we already enriched, fallback to query by transfer_from_id)
+      let oldRecordId = transfer.oldRecordId;
+      let newRecordId = transfer.newRecordId;
 
-      // 2. Find the new active record (toInstructor, active)
-      const { data: newRecords, error: newErr } = await supabase
-        .from("instructor_students")
-        .select("id")
-        .eq("student_name", studentName)
-        .eq("instructor_name", transfer.toInstructor)
-        .eq("status", "active")
-        .limit(1);
-      if (newErr) throw newErr;
-      if (!newRecords || newRecords.length === 0) throw new Error("새 강사 레코드를 찾을 수 없습니다");
+      if (!newRecordId) {
+        const { data: nr } = await supabase
+          .from("instructor_students")
+          .select("id, transfer_from_id")
+          .eq("student_name", studentName)
+          .eq("instructor_name", transfer.toInstructor)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        newRecordId = nr?.[0]?.id;
+        if (!oldRecordId) oldRecordId = (nr?.[0] as any)?.transfer_from_id || undefined;
+      }
+      if (!newRecordId) throw new Error("새 강사 레코드를 찾을 수 없습니다");
 
-      // 3. Reactivate old record
+      if (!oldRecordId) {
+        // Last resort: legacy lookup
+        const { data: orec } = await supabase
+          .from("instructor_students")
+          .select("id")
+          .eq("student_name", studentName)
+          .eq("instructor_name", transfer.fromInstructor)
+          .eq("end_date", transfer.transferDate)
+          .limit(1);
+        oldRecordId = orec?.[0]?.id;
+      }
+      if (!oldRecordId) throw new Error("이전 강사 레코드를 찾을 수 없습니다");
+
+      // 1. Restore old record (active, end_date null)
       const { error: reactivateErr } = await supabase
         .from("instructor_students")
         .update({ status: "active", end_date: null } as any)
-        .eq("id", oldRecords[0].id);
+        .eq("id", oldRecordId);
       if (reactivateErr) throw reactivateErr;
 
-      // 4. Delete unstarted sessions for the new instructor (no notes)
+      // 2. Delete unstarted/no-notes sessions for the new instructor
       const { data: newSessions } = await supabase
         .from("class_sessions")
         .select("id, notes")
@@ -450,11 +457,11 @@ export default function StudentManagement() {
         await supabase.from("class_sessions").delete().in("id", deleteSessionIds);
       }
 
-      // 5. Delete the new instructor_students record
+      // 3. Delete the new instructor_students record
       const { error: deleteErr } = await supabase
         .from("instructor_students")
         .delete()
-        .eq("id", newRecords[0].id);
+        .eq("id", newRecordId);
       if (deleteErr) throw deleteErr;
 
       toast({
