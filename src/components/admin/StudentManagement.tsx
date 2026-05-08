@@ -1762,39 +1762,52 @@ export default function StudentManagement() {
                               </div>
                             </div>
                             {isLatest && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {t.transferStatus === "pending" && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2 text-[11px] text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
-                                    disabled={cancellingTransfer}
+                                    className="h-6 px-2 text-[11px] text-navy hover:bg-navy/10 gap-1"
+                                    onClick={() => setEditTransferTarget({ studentName: student.name, transfer: t })}
                                   >
-                                    <Undo2 className="w-3 h-3" />
-                                    이관 취소
+                                    <Edit2 className="w-3 h-3" />
+                                    이관 수정
                                   </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>이관 취소 확인</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      {student.name} 수강생의 이관을 취소하시겠습니까?
-                                      <br />• {t.toInstructor} → {t.fromInstructor} 강사로 복원됩니다
-                                      <br />• 새 강사의 미시작 세션이 삭제됩니다
-                                      <br />• 이미 진행된 수업은 유지됩니다
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>취소</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      onClick={() => handleCancelTransfer(student.name, t)}
+                                )}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-[11px] text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                                      disabled={cancellingTransfer}
                                     >
-                                      이관 취소 실행
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                                      <Undo2 className="w-3 h-3" />
+                                      이관 취소
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>이관 취소 확인</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        {student.name} 수강생의 이관을 취소하시겠습니까?
+                                        <br />• {t.toInstructor} → {t.fromInstructor} 강사로 복원됩니다
+                                        <br />• 새 강사의 미시작 세션이 삭제됩니다
+                                        <br />• 이미 진행된 수업은 유지됩니다
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>취소</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        onClick={() => handleCancelTransfer(student.name, t)}
+                                      >
+                                        이관 취소 실행
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             )}
                           </div>
                           );
