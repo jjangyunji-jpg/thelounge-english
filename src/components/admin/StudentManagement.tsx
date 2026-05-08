@@ -43,6 +43,7 @@ import CorporateReportPreviewModal from "./CorporateReportPreviewModal";
 import { useToast } from "@/hooks/use-toast";
 import { autoGenerateSessions } from "@/lib/autoGenerateSessions";
 import TransferStudentModal from "./TransferStudentModal";
+import EditTransferModal from "./EditTransferModal";
 
 type StudentStatus = "active" | "graduated";
 type Level = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
@@ -118,6 +119,10 @@ interface TransferRecord {
   transferDate: string; // end_date of old record
   oldSchedules: string;
   newSchedules: string;
+  oldRecordId?: string;
+  newRecordId?: string;
+  newSchedulesRaw?: { day: string; time: string; frequency?: string }[];
+  transferStatus?: string;
 }
 
 interface Student {
@@ -351,12 +356,21 @@ export default function StudentManagement() {
               return slots.map((sl: any) => `${sl.day} ${sl.time}`).join(", ");
             } catch { return "미설정"; }
           };
+          let newSchedulesRaw: { day: string; time: string; frequency?: string }[] = [];
+          try {
+            const parsed = next.schedules ? JSON.parse(next.schedules) : [];
+            if (Array.isArray(parsed)) newSchedulesRaw = parsed;
+          } catch { /* ignore */ }
           transfers.push({
             fromInstructor: prev.instructor_name || "미지정",
             toInstructor: next.instructor_name || "미지정",
             transferDate: prev.end_date,
             oldSchedules: formatSchedule(prev.schedules),
             newSchedules: formatSchedule(next.schedules),
+            oldRecordId: prev.id,
+            newRecordId: next.id,
+            newSchedulesRaw,
+            transferStatus: next.transfer_status || "",
           });
         }
       }
@@ -389,41 +403,49 @@ export default function StudentManagement() {
   };
 
   const [cancellingTransfer, setCancellingTransfer] = useState(false);
+  const [editTransferTarget, setEditTransferTarget] = useState<{ studentName: string; transfer: TransferRecord } | null>(null);
 
   const handleCancelTransfer = async (studentName: string, transfer: TransferRecord) => {
     setCancellingTransfer(true);
     try {
-      // 1. Find the old inactive record (fromInstructor with end_date = transferDate)
-      const { data: oldRecords, error: oldErr } = await supabase
-        .from("instructor_students")
-        .select("id")
-        .eq("student_name", studentName)
-        .eq("instructor_name", transfer.fromInstructor)
-        .eq("end_date", transfer.transferDate)
-        .eq("status", "inactive")
-        .limit(1);
-      if (oldErr) throw oldErr;
-      if (!oldRecords || oldRecords.length === 0) throw new Error("이전 강사 레코드를 찾을 수 없습니다");
+      // Resolve record IDs (prefer the IDs we already enriched, fallback to query by transfer_from_id)
+      let oldRecordId = transfer.oldRecordId;
+      let newRecordId = transfer.newRecordId;
 
-      // 2. Find the new active record (toInstructor, active)
-      const { data: newRecords, error: newErr } = await supabase
-        .from("instructor_students")
-        .select("id")
-        .eq("student_name", studentName)
-        .eq("instructor_name", transfer.toInstructor)
-        .eq("status", "active")
-        .limit(1);
-      if (newErr) throw newErr;
-      if (!newRecords || newRecords.length === 0) throw new Error("새 강사 레코드를 찾을 수 없습니다");
+      if (!newRecordId) {
+        const { data: nr } = await supabase
+          .from("instructor_students")
+          .select("id, transfer_from_id")
+          .eq("student_name", studentName)
+          .eq("instructor_name", transfer.toInstructor)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        newRecordId = nr?.[0]?.id;
+        if (!oldRecordId) oldRecordId = (nr?.[0] as any)?.transfer_from_id || undefined;
+      }
+      if (!newRecordId) throw new Error("새 강사 레코드를 찾을 수 없습니다");
 
-      // 3. Reactivate old record
+      if (!oldRecordId) {
+        // Last resort: legacy lookup
+        const { data: orec } = await supabase
+          .from("instructor_students")
+          .select("id")
+          .eq("student_name", studentName)
+          .eq("instructor_name", transfer.fromInstructor)
+          .eq("end_date", transfer.transferDate)
+          .limit(1);
+        oldRecordId = orec?.[0]?.id;
+      }
+      if (!oldRecordId) throw new Error("이전 강사 레코드를 찾을 수 없습니다");
+
+      // 1. Restore old record (active, end_date null)
       const { error: reactivateErr } = await supabase
         .from("instructor_students")
         .update({ status: "active", end_date: null } as any)
-        .eq("id", oldRecords[0].id);
+        .eq("id", oldRecordId);
       if (reactivateErr) throw reactivateErr;
 
-      // 4. Delete unstarted sessions for the new instructor (no notes)
+      // 2. Delete unstarted/no-notes sessions for the new instructor
       const { data: newSessions } = await supabase
         .from("class_sessions")
         .select("id, notes")
@@ -437,11 +459,11 @@ export default function StudentManagement() {
         await supabase.from("class_sessions").delete().in("id", deleteSessionIds);
       }
 
-      // 5. Delete the new instructor_students record
+      // 3. Delete the new instructor_students record
       const { error: deleteErr } = await supabase
         .from("instructor_students")
         .delete()
-        .eq("id", newRecords[0].id);
+        .eq("id", newRecordId);
       if (deleteErr) throw deleteErr;
 
       toast({
@@ -1740,39 +1762,52 @@ export default function StudentManagement() {
                               </div>
                             </div>
                             {isLatest && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {t.transferStatus === "pending" && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2 text-[11px] text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
-                                    disabled={cancellingTransfer}
+                                    className="h-6 px-2 text-[11px] text-navy hover:bg-navy/10 gap-1"
+                                    onClick={() => setEditTransferTarget({ studentName: student.name, transfer: t })}
                                   >
-                                    <Undo2 className="w-3 h-3" />
-                                    이관 취소
+                                    <Edit2 className="w-3 h-3" />
+                                    이관 수정
                                   </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>이관 취소 확인</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      {student.name} 수강생의 이관을 취소하시겠습니까?
-                                      <br />• {t.toInstructor} → {t.fromInstructor} 강사로 복원됩니다
-                                      <br />• 새 강사의 미시작 세션이 삭제됩니다
-                                      <br />• 이미 진행된 수업은 유지됩니다
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>취소</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      onClick={() => handleCancelTransfer(student.name, t)}
+                                )}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-[11px] text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                                      disabled={cancellingTransfer}
                                     >
-                                      이관 취소 실행
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                                      <Undo2 className="w-3 h-3" />
+                                      이관 취소
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>이관 취소 확인</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        {student.name} 수강생의 이관을 취소하시겠습니까?
+                                        <br />• {t.toInstructor} → {t.fromInstructor} 강사로 복원됩니다
+                                        <br />• 새 강사의 미시작 세션이 삭제됩니다
+                                        <br />• 이미 진행된 수업은 유지됩니다
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>취소</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        onClick={() => handleCancelTransfer(student.name, t)}
+                                      >
+                                        이관 취소 실행
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             )}
                           </div>
                           );
@@ -3256,6 +3291,20 @@ export default function StudentManagement() {
         instructorNames={instructorNames}
         onTransferred={loadStudentsFromDB}
       />
+      {editTransferTarget && (
+        <EditTransferModal
+          open={!!editTransferTarget}
+          onOpenChange={(o) => { if (!o) setEditTransferTarget(null); }}
+          studentName={editTransferTarget.studentName}
+          fromInstructor={editTransferTarget.transfer.fromInstructor}
+          toInstructor={editTransferTarget.transfer.toInstructor}
+          oldRecordId={editTransferTarget.transfer.oldRecordId || ""}
+          newRecordId={editTransferTarget.transfer.newRecordId || ""}
+          currentTransferDate={editTransferTarget.transfer.transferDate}
+          currentSchedules={editTransferTarget.transfer.newSchedulesRaw || []}
+          onUpdated={loadStudentsFromDB}
+        />
+      )}
     </div>
   );
 }
