@@ -403,6 +403,7 @@ export default function StudentManagement() {
   };
 
   const [cancellingTransfer, setCancellingTransfer] = useState(false);
+  const [editTransferTarget, setEditTransferTarget] = useState<{ studentName: string; transfer: TransferRecord } | null>(null);
 
   const handleCancelTransfer = async (studentName: string, transfer: TransferRecord) => {
     setCancellingTransfer(true);
