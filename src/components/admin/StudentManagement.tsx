@@ -118,6 +118,10 @@ interface TransferRecord {
   transferDate: string; // end_date of old record
   oldSchedules: string;
   newSchedules: string;
+  oldRecordId?: string;
+  newRecordId?: string;
+  newSchedulesRaw?: { day: string; time: string; frequency?: string }[];
+  transferStatus?: string;
 }
 
 interface Student {
