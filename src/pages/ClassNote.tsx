@@ -361,7 +361,7 @@ export default function ClassNote() {
               )}
 
               {/* 숙제 */}
-              <StudentHomeworkPanel studentName={student} sessionId={selectedSession.id} />
+              <StudentHomeworkPanel studentName={student} sessionId={selectedSession.id} showPreviousCycle />
             </div>
 
             {/* ── RIGHT COLUMN: Expressions + Vocabulary ───────────────────── */}
