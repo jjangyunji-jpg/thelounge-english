@@ -1944,14 +1944,6 @@ export default function StudentDashboard() {
                 />
               )}
               <a
-                href="https://daily-diary-lounge.lovable.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold text-primary-foreground bg-gold hover:bg-gold/90 transition-colors whitespace-nowrap shadow-sm animate-pulse hover:animate-none"
-              >
-                📝 다이어리 라운지
-              </a>
-              <a
                 href="https://teodinvbdgbfnmlwmdks.supabase.co/storage/v1/object/public/guide-files/student_classroom_guide.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
