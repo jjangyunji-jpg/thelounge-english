@@ -626,7 +626,7 @@ export default function StudentHomeworkPanel({
       setLoading(false);
     };
     load();
-  }, [studentName, sessionId]);
+  }, [studentName, sessionId, showPreviousCycle]);
 
   const handleSubmitted = (assignmentId: string, sub: Submission) => {
     setSubmissions((prev) => ({ ...prev, [assignmentId]: sub }));
