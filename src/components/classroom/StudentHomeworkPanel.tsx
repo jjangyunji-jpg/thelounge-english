@@ -508,7 +508,23 @@ function SubmissionCard({
 }
 
 // ── Main Panel ─────────────────────────────────────────────────────────────────
-export default function StudentHomeworkPanel({ studentName, sessionId }: { studentName: string; sessionId: string }) {
+export default function StudentHomeworkPanel({
+  studentName,
+  sessionId,
+  showPreviousCycle = false,
+}: {
+  studentName: string;
+  sessionId: string;
+  /**
+   * When true (e.g. student dashboard 수업 노트 past-session view), display the
+   * homework cycle that was DUE BEFORE this session — i.e. the cards tied to
+   * the immediately-previous session. Submissions made between the previous
+   * session and this session are reflected as completion for THIS session view.
+   * When false (default — used in classroom during a live class), use the
+   * given sessionId directly.
+   */
+  showPreviousCycle?: boolean;
+}) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [loading, setLoading] = useState(true);
@@ -517,31 +533,46 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [{ data: asgn }, { data: subs }, { data: sessionRows }] = await Promise.all([
+
+      // First, fetch sessions to determine effective sessionId (for previous-cycle mode)
+      const { data: sessionRows } = await supabase
+        .from("class_sessions")
+        .select("id, scheduled_at")
+        .eq("student_name", studentName)
+        .order("scheduled_at", { ascending: true });
+      const sessions = (sessionRows ?? []) as { id: string; scheduled_at: string }[];
+
+      let effectiveSessionId = sessionId;
+      if (showPreviousCycle) {
+        const current = sessions.find((s) => s.id === sessionId);
+        if (current) {
+          const currentTs = new Date(current.scheduled_at).getTime();
+          const previous = [...sessions]
+            .filter((s) => new Date(s.scheduled_at).getTime() < currentTs)
+            .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0];
+          if (previous) effectiveSessionId = previous.id;
+        }
+      }
+
+      const [{ data: asgn }, { data: subs }] = await Promise.all([
         supabase
           .from("homework_assignments")
           .select("id, type, title, description, is_preset, session_id, preset_origin_id")
           .eq("student_name", studentName)
-          .or(`session_id.eq.${sessionId},is_preset.eq.true`)
+          .or(`session_id.eq.${effectiveSessionId},is_preset.eq.true`)
           .order("created_at", { ascending: true }),
         supabase
           .from("homework_submissions")
           .select("*")
           .eq("student_name", studentName),
-        supabase
-          .from("class_sessions")
-          .select("id, scheduled_at")
-          .eq("student_name", studentName)
-          .order("scheduled_at", { ascending: true }),
       ]);
 
       const assignmentRows = (asgn ?? []) as (Assignment & { preset_origin_id?: string | null })[];
       const submissionRows = (subs ?? []) as Submission[];
-      const sessions = (sessionRows ?? []) as { id: string; scheduled_at: string }[];
 
-      // Filter out preset templates that have session copies
+      // Filter out preset templates that have session copies for the effective session
       const copyOriginIds = new Set(
-        assignmentRows.filter(a => a.preset_origin_id && a.session_id === sessionId)
+        assignmentRows.filter(a => a.preset_origin_id && a.session_id === effectiveSessionId)
           .map(a => a.preset_origin_id)
       );
       const filtered = assignmentRows.filter(a => {
@@ -551,7 +582,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
 
       setAssignments(filtered);
 
-      const currentSession = sessions.find((s) => s.id === sessionId) ?? null;
+      const currentSession = sessions.find((s) => s.id === effectiveSessionId) ?? null;
       const currentSessionTime = currentSession ? new Date(currentSession.scheduled_at).getTime() : null;
       const nextSessionTime = currentSession
         ? sessions
@@ -595,7 +626,7 @@ export default function StudentHomeworkPanel({ studentName, sessionId }: { stude
       setLoading(false);
     };
     load();
-  }, [studentName, sessionId]);
+  }, [studentName, sessionId, showPreviousCycle]);
 
   const handleSubmitted = (assignmentId: string, sub: Submission) => {
     setSubmissions((prev) => ({ ...prev, [assignmentId]: sub }));

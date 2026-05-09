@@ -63,3 +63,5 @@ Use student_name as primary ID for sync; apply atomic updates on makeup slots.
 - [Makeup Cancel Flow](mem://features/scheduling/makeup-cancel-flow) — 학생 취소 요청 → 강사 승인 2단계, 48h 컷오프, cancel_requested status
 - [No-show Student Alert](mem://features/dashboards/no-show-student-alert) — 강사 노쇼 처리 시 학생 대시보드 알림 자동 발송 (target=student:이름)
 - [External Public API](mem://features/admin/external-api) — `x-api-key` 인증 공개 REST API (`/public-api/me`, `/sessions`), 어드민에서 학생별 키 발급/폐기
+- [Notes Homework Cycle](mem://features/student-dashboard/notes-homework-cycle) — 학생 대시보드 수업 노트는 직전 사이클 숙제 카드 표시 (showPreviousCycle prop)
+
