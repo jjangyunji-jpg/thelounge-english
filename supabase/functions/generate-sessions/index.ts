@@ -356,19 +356,53 @@ serve(async (req) => {
 
     // 7. Bulk insert
     let created = 0;
+    const insertedSessions: Array<{ id: string; student_name: string; instructor_name: string; scheduled_at: string; meet_link: string | null }> = [];
     if (sessionsToInsert.length > 0) {
       for (let i = 0; i < sessionsToInsert.length; i += 100) {
         const batch = sessionsToInsert.slice(i, i + 100);
         const { data: inserted, error: insertErr } = await sb
           .from("class_sessions")
           .upsert(batch, { onConflict: "student_name,scheduled_at", ignoreDuplicates: true })
-          .select("id");
+          .select("id, student_name, instructor_name, scheduled_at, meet_link");
         if (insertErr) {
           console.error("Insert error:", insertErr);
           throw new Error("세션 생성 중 오류가 발생했습니다.");
         }
         created += (inserted || []).length;
+        for (const row of inserted || []) insertedSessions.push(row as any);
       }
+    }
+
+    // 8. Sync each newly-created session to Google Calendar (best-effort).
+    // sync-calendar-event(create) checks the time window for an existing event
+    // first → if Reina/instructor already manually added it, only the token is
+    // saved (no duplicate). If not, a new event is created on the instructor's
+    // mapped calendar so future reschedules/cancellations have a token to use.
+    if (insertedSessions.length > 0) {
+      const fnUrl = `${supabaseUrl}/functions/v1/sync-calendar-event`;
+      await Promise.all(
+        insertedSessions.map(async (s) => {
+          try {
+            await fetch(fnUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${serviceKey}`,
+              },
+              body: JSON.stringify({
+                action: "create",
+                session_id: s.id,
+                instructor_name: s.instructor_name,
+                student_name: s.student_name,
+                scheduled_at: s.scheduled_at,
+                meet_link: s.meet_link,
+              }),
+            });
+          } catch (e) {
+            console.error("[generate-sessions] sync-calendar-event failed", s.id, e);
+          }
+        }),
+      );
     }
 
     return new Response(
