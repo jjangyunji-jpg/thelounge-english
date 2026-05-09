@@ -19,7 +19,9 @@ type: feature
 - 매핑이 없으면 기본 캘린더 `reina@thelounge-english.co.kr` (Organizer)로 폴백
 - 초기 매핑:
   - `장리원 → Class-Reina` (`c_b613a8fa91...@group.calendar.google.com`), english_name = `Reina`
+  - `박세이 → sadiethelounge@gmail.com`, english_name = `Sadie`
 - 새 강사 추가는 매니저가 강사 관리에서 영어이름 입력 + 매핑 테이블에 캘린더 row 추가
+- **자동 생성 세션도 캘린더 동기화**: `generate-sessions`가 새로 INSERT된 정규 수업마다 `sync-calendar-event(create)`를 fire-and-forget으로 호출 → 윈도우 검색으로 기존 이벤트 있으면 토큰만 저장(중복 방지), 없으면 강사 매핑 캘린더에 신규 생성. 이후 reschedule/cancel은 토큰 기반 PATCH/DELETE로 100% 정확.
 
 ## DB
 - `class_sessions.gcal_event_id text` — `"<calendarId>::<eventId>"` 형식 토큰 저장
