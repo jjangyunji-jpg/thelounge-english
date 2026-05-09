@@ -582,7 +582,7 @@ export default function StudentHomeworkPanel({
 
       setAssignments(filtered);
 
-      const currentSession = sessions.find((s) => s.id === sessionId) ?? null;
+      const currentSession = sessions.find((s) => s.id === effectiveSessionId) ?? null;
       const currentSessionTime = currentSession ? new Date(currentSession.scheduled_at).getTime() : null;
       const nextSessionTime = currentSession
         ? sessions
