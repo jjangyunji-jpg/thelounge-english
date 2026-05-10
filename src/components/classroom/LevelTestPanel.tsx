@@ -156,7 +156,7 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
                   </div>
                   {t.description && <p className="text-[11px] text-muted-foreground mt-0.5">{t.description}</p>}
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    합격 {t.pass_threshold}% · {t.question_count}문제 · 응시 {act.attempt_count}회
+                    합격 {t.pass_threshold}% · {t.question_count}문제 · 응시 {act.attempt_count}회 · 현재 Set {act.current_set ?? 1}
                   </p>
                 </div>
                 <div className="flex flex-col gap-1 flex-shrink-0">
