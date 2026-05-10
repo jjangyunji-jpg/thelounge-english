@@ -144,6 +144,14 @@ export default function HomeworkFeedbackModal({
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
   const ttsUrlCacheRef = useRef<string | null>(null);
 
+  // Corrected-text TTS (writing homework)
+  const correctedText = aiCorrection?.corrected || aiCorrection?.paraphrase?.paraphrased || "";
+  const canListenCorrected = assignmentType === "writing" && !!correctedText.trim();
+  const [speakingCorrected, setSpeakingCorrected] = useState(false);
+  const [loadingTtsCorrected, setLoadingTtsCorrected] = useState(false);
+  const ttsCorrectedAudioRef = useRef<HTMLAudioElement | null>(null);
+  const ttsCorrectedUrlCacheRef = useRef<string | null>(null);
+
   const stopSpeaking = useCallback(() => {
     if (ttsAudioRef.current) {
       ttsAudioRef.current.pause();
@@ -184,10 +192,54 @@ export default function HomeworkFeedbackModal({
     }
   }, [canListen, speaking, loadingTts, assignmentDescription, stopSpeaking, toast]);
 
+  const stopSpeakingCorrected = useCallback(() => {
+    if (ttsCorrectedAudioRef.current) {
+      ttsCorrectedAudioRef.current.pause();
+      ttsCorrectedAudioRef.current.currentTime = 0;
+    }
+    setSpeakingCorrected(false);
+  }, []);
+
+  const toggleSpeakCorrected = useCallback(async () => {
+    if (!canListenCorrected || loadingTtsCorrected) return;
+    if (speakingCorrected) { stopSpeakingCorrected(); return; }
+    try {
+      let url = ttsCorrectedUrlCacheRef.current;
+      if (!url) {
+        setLoadingTtsCorrected(true);
+        const { data, error } = await supabase.functions.invoke("homework-tts", {
+          body: { text: correctedText },
+        });
+        if (error) throw error;
+        if (!data?.audio_url) throw new Error("음성 URL을 받지 못했습니다.");
+        url = data.audio_url as string;
+        ttsCorrectedUrlCacheRef.current = url;
+      }
+      const audio = new Audio(url);
+      ttsCorrectedAudioRef.current = audio;
+      audio.onended = () => setSpeakingCorrected(false);
+      audio.onerror = () => { setSpeakingCorrected(false); toast({ title: "재생 실패", variant: "destructive" }); };
+      await audio.play();
+      setSpeakingCorrected(true);
+    } catch (e) {
+      toast({
+        title: "음성 생성 실패",
+        description: e instanceof Error ? e.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTtsCorrected(false);
+    }
+  }, [canListenCorrected, speakingCorrected, loadingTtsCorrected, correctedText, stopSpeakingCorrected, toast]);
+
   useEffect(() => () => {
     if (ttsAudioRef.current) {
       ttsAudioRef.current.pause();
       ttsAudioRef.current = null;
+    }
+    if (ttsCorrectedAudioRef.current) {
+      ttsCorrectedAudioRef.current.pause();
+      ttsCorrectedAudioRef.current = null;
     }
   }, []);
 
