@@ -1435,30 +1435,45 @@ export default function StudentManagement() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit flex-wrap">
-        {(["active", "paused", "graduated", "corporate"] as const).map((t) => {
-          const countForTab = students.filter((s) => {
-            if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
-            if (t === "corporate") return s.studentType === "corporate" && s.status === "active";
-            if (s.studentType === "corporate") return false;
-            if (t === "paused") return s.status === "active" && isOnPause(s);
-            if (t === "active") return s.status === "active" && !isOnPause(s);
-            return s.status === "graduated";
-          }).length;
-          const label = t === "active" ? "수강중" : t === "paused" ? "휴강중" : t === "corporate" ? "기업수강생" : "퇴원생";
-          return (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {label} ({countForTab}명)
-            </button>
-          );
-        })}
+      {/* Period selector + Tabs */}
+      <div className="flex flex-wrap items-center gap-3">
+        {periods.length > 0 && (
+          <select
+            value={selectedPeriodId}
+            onChange={(e) => setSelectedPeriodId(e.target.value)}
+            className="h-9 px-3 rounded-md border border-border bg-card text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            title="기간 선택"
+          >
+            {periods.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label} ({p.start_date.slice(5)} ~ {p.end_date.slice(5)})
+                {p.start_date <= todayStr && p.end_date >= todayStr ? " · 현재" : ""}
+              </option>
+            ))}
+          </select>
+        )}
+        <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit flex-wrap">
+          {(["active", "paused", "graduated", "corporate"] as const).map((t) => {
+            const countForTab = students.filter((s) => matchesTab(s, t)).length;
+            const label = t === "active" ? "수강중" : t === "paused" ? "휴강중" : t === "corporate" ? "기업수강생" : "퇴원생";
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label} ({countForTab}명)
+              </button>
+            );
+          })}
+        </div>
+        {selectedPeriod && !isCurrentPeriod && (
+          <span className="text-[11px] px-2 py-1 rounded-full bg-warning/15 text-warning font-semibold">
+            📅 {selectedPeriod.label} 기준 과거 기록
+          </span>
+        )}
       </div>
 
       {/* Search */}
