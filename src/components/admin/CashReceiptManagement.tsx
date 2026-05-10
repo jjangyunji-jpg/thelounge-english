@@ -437,7 +437,13 @@ export default function CashReceiptManagement() {
     .filter(s => {
       const baseEligible = s.status === "active" && isWithinPeriod(s);
       const hasConfRecord = confMap.has(s.student_name);
-      return baseEligible || hasConfRecord;
+      // Inactive students who were still active during this period (end_date after period end)
+      // — they should appear in past period views as billable.
+      const wasActiveInPastPeriod =
+        s.status === "inactive" &&
+        s.end_date && pEndDate && s.end_date > pEndDate &&
+        (!s.start_date || !pEndDate || s.start_date <= pEndDate);
+      return baseEligible || hasConfRecord || wasActiveInPastPeriod;
     })
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
