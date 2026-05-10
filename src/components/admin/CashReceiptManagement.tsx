@@ -949,6 +949,11 @@ export default function CashReceiptManagement() {
           {isInactive && (
             <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">퇴원</span>
           )}
+          {renewalWithdrawn.has(s.student_name) && (
+            <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold" title="모달에서 다음 달 연장을 거부함">
+              🚪 연장거부
+            </span>
+          )}
           {!isCorporate && (() => {
             const isCash = isCashPayment(s);
             const overridden = hasCashOverride(s.student_name);
