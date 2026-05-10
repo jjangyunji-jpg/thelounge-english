@@ -147,6 +147,54 @@ export default function TeachingMaterials() {
     fetchCategories();
   };
 
+  const handleCopyCategory = async (cat: Category) => {
+    const baseName = `${cat.name} (복사)`;
+    const name = prompt("복사할 폴더 이름을 입력하세요", baseName)?.trim();
+    if (!name) return;
+    const slug = (name.toLowerCase().replace(/[^a-z0-9가-힣]+/g, "_").replace(/^_|_$/g, "") || `cat_${Date.now()}`) + `_${Date.now().toString(36).slice(-4)}`;
+    const maxOrder = categories.length > 0 ? Math.max(...categories.map(c => c.sort_order)) + 1 : 0;
+
+    const { error: catErr } = await supabase.from("teaching_material_categories").insert({
+      name,
+      slug,
+      sort_order: maxOrder,
+      level: cat.level,
+      is_archived: cat.is_archived,
+    });
+    if (catErr) { toast({ title: "폴더 복사 실패", description: catErr.message, variant: "destructive" }); return; }
+
+    // Copy materials
+    const { data: srcMaterials } = await supabase
+      .from("teaching_materials")
+      .select("title, content, sort_order, is_active")
+      .eq("category", cat.slug)
+      .order("sort_order", { ascending: true });
+    if (srcMaterials && srcMaterials.length > 0) {
+      const rows = srcMaterials.map((m: any) => ({
+        category: slug,
+        title: m.title,
+        content: m.content,
+        sort_order: m.sort_order,
+        is_active: m.is_active,
+      }));
+      await supabase.from("teaching_materials").insert(rows);
+    }
+
+    // Copy instructor access mappings
+    const { data: srcLinks } = await supabase
+      .from("teaching_category_instructors")
+      .select("instructor_id")
+      .eq("category", cat.slug);
+    if (srcLinks && srcLinks.length > 0) {
+      const linkRows = srcLinks.map((l: any) => ({ category: slug, instructor_id: l.instructor_id }));
+      await supabase.from("teaching_category_instructors").insert(linkRows);
+    }
+
+    toast({ title: "폴더가 복사되었습니다 ✓", description: `${srcMaterials?.length ?? 0}개 자료 · ${srcLinks?.length ?? 0}명 권한 복사됨` });
+    await fetchCategories();
+    setCategory(slug);
+  };
+
   const handleToggleArchive = async (cat: Category) => {
     const next = !cat.is_archived;
     const { error } = await supabase.from("teaching_material_categories").update({ is_archived: next }).eq("id", cat.id);
@@ -393,6 +441,9 @@ export default function TeachingMaterials() {
                     </button>
                     <button onClick={e => { e.stopPropagation(); setEditingCategoryId(cat.id); setEditCategoryName(cat.name); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="이름 변경">
                       <Pencil className="w-3 h-3" />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); handleCopyCategory(cat); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="폴더 복사">
+                      <Copy className="w-3 h-3" />
                     </button>
                     <button onClick={e => { e.stopPropagation(); handleToggleArchive(cat); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title={cat.is_archived ? "보관함에서 복원" : "보관함으로 이동"}>
                       {cat.is_archived ? <ArchiveRestore className="w-3 h-3" /> : <Archive className="w-3 h-3" />}

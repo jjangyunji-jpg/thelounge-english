@@ -85,7 +85,7 @@ export default function CategoryAccessModal({ open, onOpenChange, categorySlug, 
             <Users className="w-4 h-4 text-gold" /> 폴더 접근 권한
           </DialogTitle>
           <DialogDescription className="text-xs">
-            <span className="font-medium text-foreground">{categoryName}</span> 폴더 — 선택된 강사만 이 폴더의 자료를 수업 노트에 삽입할 수 있습니다.
+            <span className="font-medium text-foreground">{categoryName}</span> 폴더 — 선택된 강사/관리자만 이 폴더의 자료를 수업 노트에 삽입할 수 있습니다. 관리자(Reina 등)도 강사로 수업할 경우 반드시 체크하세요.
           </DialogDescription>
         </DialogHeader>
 
