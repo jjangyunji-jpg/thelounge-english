@@ -297,6 +297,19 @@ function TestRunnerModal({
         attempt_count: (activation.attempt_count ?? 0) + 1,
       };
       if (passed && !activation.passed_at) updates.passed_at = new Date().toISOString();
+      // If failed, advance to next set if it exists
+      if (!passed) {
+        const { data: nextSetRows } = await supabase
+          .from("level_test_questions")
+          .select("set_number")
+          .eq("level_test_id", test.id)
+          .eq("is_active", true)
+          .eq("set_number", (activation.current_set ?? 1) + 1)
+          .limit(1);
+        if (nextSetRows && nextSetRows.length > 0) {
+          updates.current_set = (activation.current_set ?? 1) + 1;
+        }
+      }
       await supabase.from("level_test_activations").update(updates).eq("id", activation.id);
 
       setDone(true);
