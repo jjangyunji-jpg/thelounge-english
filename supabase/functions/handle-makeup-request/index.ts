@@ -135,12 +135,45 @@ serve(async (req) => {
           });
         }
 
-        // 1) Detach makeup_requests references and delete the original session
-        //    (we no longer mark it as sick — that was incorrectly labeling student-initiated reschedules)
+        // 1) Detach ALL makeup_requests references (INCLUDING this one) BEFORE
+        //    deleting the original session — otherwise the FK constraint
+        //    `makeup_requests_original_session_id_fkey` silently blocks the
+        //    DELETE and leaves a ghost session on the original date.
+        //    `original_scheduled_at` is preserved as the historical pointer.
         await sb.from("makeup_requests").update({ original_session_id: null })
-          .eq("original_session_id", makeupReq.original_session_id)
-          .neq("id", request_id);
-        await sb.from("class_sessions").delete().eq("id", makeupReq.original_session_id);
+          .eq("original_session_id", makeupReq.original_session_id);
+        const { error: delErr } = await sb.from("class_sessions").delete().eq("id", makeupReq.original_session_id);
+        if (delErr) {
+          console.error("[makeup-approve] failed to delete original session", makeupReq.original_session_id, delErr);
+          throw new Error(`원본 세션 삭제에 실패했습니다: ${delErr.message}`);
+        }
+        // Verify the row is actually gone — guard against silent failures
+        // (trigger errors, RLS quirks, etc.) that previously left ghost
+        // sessions on the original date alongside the new makeup session.
+        const { data: stillThere } = await sb
+          .from("class_sessions")
+          .select("id")
+          .eq("id", makeupReq.original_session_id)
+          .maybeSingle();
+        if (stillThere) {
+          // Retry once
+          await sb.from("class_sessions").delete().eq("id", makeupReq.original_session_id);
+          const { data: stillThere2 } = await sb
+            .from("class_sessions")
+            .select("id")
+            .eq("id", makeupReq.original_session_id)
+            .maybeSingle();
+          if (stillThere2) {
+            throw new Error("원본 세션이 삭제되지 않았습니다. 관리자에게 문의해주세요.");
+          }
+        }
+        // Also record the deleted KST date so the student calendar's virtual
+        // session layer never resurrects this slot.
+        await sb.from("deleted_session_dates").insert({
+          student_name: origSession.student_name,
+          deleted_date: origDateStr,
+        }).select();
+
 
         // GCAL: create a new event at the new time
         const stuInfo = await fetchStudentInfo(origSession.student_name);
