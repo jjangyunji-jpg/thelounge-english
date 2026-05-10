@@ -88,6 +88,7 @@ export default function LevelTestManagement() {
       if (error) throw error;
       const generated = (data?.questions ?? []) as any[];
       if (generated.length === 0) throw new Error("AI가 문제를 생성하지 못했습니다.");
+      const nextSet = (questions.reduce((m, q) => Math.max(m, q.set_number ?? 1), 0) || 0) + 1;
       const rows = generated.map((q) => ({
         level_test_id: selectedTest.id,
         category: q.category ?? "",
@@ -95,10 +96,16 @@ export default function LevelTestManagement() {
         choices: q.choices,
         correct_index: q.correct_index,
         explanation: q.explanation ?? "",
+        set_number: nextSet,
       }));
       const { error: insErr } = await supabase.from("level_test_questions").insert(rows);
       if (insErr) throw insErr;
-      toast({ title: `${rows.length}개 문제 생성 완료` });
+      const requested = data?.requested ?? count;
+      const got = data?.generated ?? rows.length;
+      toast({
+        title: `Set ${nextSet} 생성 완료 · ${rows.length}문제`,
+        description: got < requested ? `요청 ${requested}개 중 ${got}개 생성됨 (AI 응답 부족 시 다시 시도)` : undefined,
+      });
       await refresh();
     } catch (e: any) {
       toast({ title: "생성 실패", description: e.message, variant: "destructive" });
