@@ -3147,6 +3147,11 @@ export default function StudentManagement() {
 
                             {tab === "graduated" && (
                               <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-2">
+                                {renewalWithdrawn.has(student.name) && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">
+                                    🚪 연장 거부 (모달 응답)
+                                  </span>
+                                )}
                                 <p className="text-xs font-medium text-muted-foreground">
                                   ℹ️ 퇴원 처리된 수강생입니다.
                                 </p>
