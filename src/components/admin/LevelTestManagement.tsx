@@ -25,6 +25,7 @@ interface Question {
   correct_index: number;
   explanation: string | null;
   is_active: boolean;
+  set_number: number;
 }
 
 interface Attempt {
@@ -68,7 +69,7 @@ export default function LevelTestManagement() {
   const refresh = async () => {
     if (!selectedTestId) return;
     const [{ data: q }, { data: a }] = await Promise.all([
-      supabase.from("level_test_questions").select("*").eq("level_test_id", selectedTestId).order("category").order("created_at"),
+      supabase.from("level_test_questions").select("*").eq("level_test_id", selectedTestId).order("set_number").order("created_at"),
       supabase.from("level_test_attempts").select("*").eq("level_test_id", selectedTestId).order("submitted_at", { ascending: false }).limit(200),
     ]);
     setQuestions((q ?? []) as any);
@@ -87,6 +88,7 @@ export default function LevelTestManagement() {
       if (error) throw error;
       const generated = (data?.questions ?? []) as any[];
       if (generated.length === 0) throw new Error("AI가 문제를 생성하지 못했습니다.");
+      const nextSet = (questions.reduce((m, q) => Math.max(m, q.set_number ?? 1), 0) || 0) + 1;
       const rows = generated.map((q) => ({
         level_test_id: selectedTest.id,
         category: q.category ?? "",
@@ -94,10 +96,16 @@ export default function LevelTestManagement() {
         choices: q.choices,
         correct_index: q.correct_index,
         explanation: q.explanation ?? "",
+        set_number: nextSet,
       }));
       const { error: insErr } = await supabase.from("level_test_questions").insert(rows);
       if (insErr) throw insErr;
-      toast({ title: `${rows.length}개 문제 생성 완료` });
+      const requested = data?.requested ?? count;
+      const got = data?.generated ?? rows.length;
+      toast({
+        title: `Set ${nextSet} 생성 완료 · ${rows.length}문제`,
+        description: got < requested ? `요청 ${requested}개 중 ${got}개 생성됨 (AI 응답 부족 시 다시 시도)` : undefined,
+      });
       await refresh();
     } catch (e: any) {
       toast({ title: "생성 실패", description: e.message, variant: "destructive" });
@@ -109,6 +117,18 @@ export default function LevelTestManagement() {
   const handleDelete = async (id: string) => {
     if (!confirm("이 문제를 삭제할까요?")) return;
     const { error } = await supabase.from("level_test_questions").delete().eq("id", id);
+    if (error) toast({ title: "삭제 실패", description: error.message, variant: "destructive" });
+    else refresh();
+  };
+
+  const handleDeleteSet = async (setNum: number) => {
+    if (!selectedTestId) return;
+    if (!confirm(`Set ${setNum} 전체를 삭제할까요?`)) return;
+    const { error } = await supabase
+      .from("level_test_questions")
+      .delete()
+      .eq("level_test_id", selectedTestId)
+      .eq("set_number", setNum);
     if (error) toast({ title: "삭제 실패", description: error.message, variant: "destructive" });
     else refresh();
   };
@@ -267,8 +287,21 @@ export default function LevelTestManagement() {
               )}
               {questions.map((q, idx) => {
                 const isEditing = editingId === q.id;
+                const prevSet = idx === 0 ? null : questions[idx - 1].set_number;
+                const showSetHeader = q.set_number !== prevSet;
+                const setSize = questions.filter((qq) => qq.set_number === q.set_number).length;
                 return (
-                  <div key={q.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
+                  <div key={q.id}>
+                    {showSetHeader && (
+                      <div className="flex items-center justify-between gap-2 mt-3 mb-1.5 px-1">
+                        <span className="text-xs font-bold text-foreground">Set {q.set_number} <span className="text-muted-foreground font-normal">({setSize}문제)</span></span>
+                        <button
+                          onClick={() => handleDeleteSet(q.set_number)}
+                          className="text-[10px] text-destructive/80 hover:text-destructive inline-flex items-center gap-1"
+                        ><Trash2 className="w-3 h-3" /> Set 전체 삭제</button>
+                      </div>
+                    )}
+                    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] font-mono text-muted-foreground">#{idx + 1}</span>
@@ -348,6 +381,7 @@ export default function LevelTestManagement() {
                     ) : q.explanation ? (
                       <p className="text-[11px] text-muted-foreground italic">💡 {q.explanation}</p>
                     ) : null}
+                    </div>
                   </div>
                 );
               })}

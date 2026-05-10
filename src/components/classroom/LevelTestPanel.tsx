@@ -30,6 +30,7 @@ interface Activation {
   passed_at: string | null;
   best_score: number;
   attempt_count: number;
+  current_set: number;
 }
 interface Attempt {
   id: string;
@@ -81,13 +82,16 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
   }, [tests, activations]);
 
   const startTest = async (test: LevelTest) => {
+    const act = activations.find((a) => a.level_test_id === test.id);
+    const currentSet = act?.current_set ?? 1;
     const { data: pool } = await supabase
       .from("level_test_questions")
       .select("*")
       .eq("level_test_id", test.id)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("set_number", currentSet);
     if (!pool || pool.length === 0) {
-      toast({ title: "문제 없음", description: "아직 시험지가 준비되지 않았습니다.", variant: "destructive" });
+      toast({ title: "문제 없음", description: `Set ${currentSet} 문제가 아직 준비되지 않았습니다.`, variant: "destructive" });
       return;
     }
     // Shuffle and pick
@@ -152,7 +156,7 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
                   </div>
                   {t.description && <p className="text-[11px] text-muted-foreground mt-0.5">{t.description}</p>}
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    합격 {t.pass_threshold}% · {t.question_count}문제 · 응시 {act.attempt_count}회
+                    합격 {t.pass_threshold}% · {t.question_count}문제 · 응시 {act.attempt_count}회 · 현재 Set {act.current_set ?? 1}
                   </p>
                 </div>
                 <div className="flex flex-col gap-1 flex-shrink-0">
@@ -293,6 +297,19 @@ function TestRunnerModal({
         attempt_count: (activation.attempt_count ?? 0) + 1,
       };
       if (passed && !activation.passed_at) updates.passed_at = new Date().toISOString();
+      // If failed, advance to next set if it exists
+      if (!passed) {
+        const { data: nextSetRows } = await supabase
+          .from("level_test_questions")
+          .select("set_number")
+          .eq("level_test_id", test.id)
+          .eq("is_active", true)
+          .eq("set_number", (activation.current_set ?? 1) + 1)
+          .limit(1);
+        if (nextSetRows && nextSetRows.length > 0) {
+          updates.current_set = (activation.current_set ?? 1) + 1;
+        }
+      }
       await supabase.from("level_test_activations").update(updates).eq("id", activation.id);
 
       setDone(true);

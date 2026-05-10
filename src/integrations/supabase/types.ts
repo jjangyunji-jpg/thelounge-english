@@ -1144,6 +1144,7 @@ export type Database = {
           activated_by: string | null
           attempt_count: number
           best_score: number
+          current_set: number
           id: string
           level_test_id: string
           notes: string | null
@@ -1155,6 +1156,7 @@ export type Database = {
           activated_by?: string | null
           attempt_count?: number
           best_score?: number
+          current_set?: number
           id?: string
           level_test_id: string
           notes?: string | null
@@ -1166,6 +1168,7 @@ export type Database = {
           activated_by?: string | null
           attempt_count?: number
           best_score?: number
+          current_set?: number
           id?: string
           level_test_id?: string
           notes?: string | null
@@ -1240,6 +1243,7 @@ export type Database = {
           is_active: boolean
           level_test_id: string
           question: string
+          set_number: number
           updated_at: string
         }
         Insert: {
@@ -1252,6 +1256,7 @@ export type Database = {
           is_active?: boolean
           level_test_id: string
           question: string
+          set_number?: number
           updated_at?: string
         }
         Update: {
@@ -1264,6 +1269,7 @@ export type Database = {
           is_active?: boolean
           level_test_id?: string
           question?: string
+          set_number?: number
           updated_at?: string
         }
         Relationships: [
