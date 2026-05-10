@@ -135,11 +135,13 @@ serve(async (req) => {
           });
         }
 
-        // 1) Detach makeup_requests references and delete the original session
-        //    (we no longer mark it as sick — that was incorrectly labeling student-initiated reschedules)
+        // 1) Detach ALL makeup_requests references (INCLUDING this one) BEFORE
+        //    deleting the original session — otherwise the FK constraint
+        //    `makeup_requests_original_session_id_fkey` silently blocks the
+        //    DELETE and leaves a ghost session on the original date.
+        //    `original_scheduled_at` is preserved as the historical pointer.
         await sb.from("makeup_requests").update({ original_session_id: null })
-          .eq("original_session_id", makeupReq.original_session_id)
-          .neq("id", request_id);
+          .eq("original_session_id", makeupReq.original_session_id);
         const { error: delErr } = await sb.from("class_sessions").delete().eq("id", makeupReq.original_session_id);
         if (delErr) {
           console.error("[makeup-approve] failed to delete original session", makeupReq.original_session_id, delErr);
