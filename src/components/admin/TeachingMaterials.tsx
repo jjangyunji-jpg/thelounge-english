@@ -442,6 +442,9 @@ export default function TeachingMaterials() {
                     <button onClick={e => { e.stopPropagation(); setEditingCategoryId(cat.id); setEditCategoryName(cat.name); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="이름 변경">
                       <Pencil className="w-3 h-3" />
                     </button>
+                    <button onClick={e => { e.stopPropagation(); handleCopyCategory(cat); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title="폴더 복사">
+                      <Copy className="w-3 h-3" />
+                    </button>
                     <button onClick={e => { e.stopPropagation(); handleToggleArchive(cat); }} className="p-0.5 rounded hover:bg-primary-foreground/20 text-primary-foreground" title={cat.is_archived ? "보관함에서 복원" : "보관함으로 이동"}>
                       {cat.is_archived ? <ArchiveRestore className="w-3 h-3" /> : <Archive className="w-3 h-3" />}
                     </button>
