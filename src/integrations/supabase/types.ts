@@ -1138,6 +1138,180 @@ export type Database = {
         }
         Relationships: []
       }
+      level_test_activations: {
+        Row: {
+          activated_at: string
+          activated_by: string | null
+          attempt_count: number
+          best_score: number
+          id: string
+          level_test_id: string
+          notes: string | null
+          passed_at: string | null
+          student_name: string
+        }
+        Insert: {
+          activated_at?: string
+          activated_by?: string | null
+          attempt_count?: number
+          best_score?: number
+          id?: string
+          level_test_id: string
+          notes?: string | null
+          passed_at?: string | null
+          student_name: string
+        }
+        Update: {
+          activated_at?: string
+          activated_by?: string | null
+          attempt_count?: number
+          best_score?: number
+          id?: string
+          level_test_id?: string
+          notes?: string | null
+          passed_at?: string | null
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "level_test_activations_level_test_id_fkey"
+            columns: ["level_test_id"]
+            isOneToOne: false
+            referencedRelation: "level_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      level_test_attempts: {
+        Row: {
+          answers: Json
+          correct_count: number
+          id: string
+          level_test_id: string
+          passed: boolean
+          score: number
+          started_at: string
+          student_name: string
+          submitted_at: string
+          total_questions: number
+        }
+        Insert: {
+          answers?: Json
+          correct_count?: number
+          id?: string
+          level_test_id: string
+          passed?: boolean
+          score?: number
+          started_at?: string
+          student_name: string
+          submitted_at?: string
+          total_questions?: number
+        }
+        Update: {
+          answers?: Json
+          correct_count?: number
+          id?: string
+          level_test_id?: string
+          passed?: boolean
+          score?: number
+          started_at?: string
+          student_name?: string
+          submitted_at?: string
+          total_questions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "level_test_attempts_level_test_id_fkey"
+            columns: ["level_test_id"]
+            isOneToOne: false
+            referencedRelation: "level_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      level_test_questions: {
+        Row: {
+          category: string
+          choices: Json
+          correct_index: number
+          created_at: string
+          explanation: string | null
+          id: string
+          is_active: boolean
+          level_test_id: string
+          question: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          choices: Json
+          correct_index: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          is_active?: boolean
+          level_test_id: string
+          question: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          choices?: Json
+          correct_index?: number
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          is_active?: boolean
+          level_test_id?: string
+          question?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "level_test_questions_level_test_id_fkey"
+            columns: ["level_test_id"]
+            isOneToOne: false
+            referencedRelation: "level_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      level_tests: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          level: string
+          pass_threshold: number
+          question_count: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          level: string
+          pass_threshold?: number
+          question_count?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          level?: string
+          pass_threshold?: number
+          question_count?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       makeup_requests: {
         Row: {
           created_at: string

@@ -28,6 +28,7 @@ import { loadEffectiveStudentMeetInfo } from "@/lib/meetLink";
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentExpressionPanel from "@/components/classroom/StudentExpressionPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
+import LevelTestPanel from "@/components/classroom/LevelTestPanel";
 
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -1496,6 +1497,9 @@ export default function Classroom() {
               </div>
               {/* 숙제 */}
               <StudentHomeworkPanel studentName={session.dbStudentName} sessionId={session.sessionId} />
+              {/* 레벨 테스트 */}
+              <LevelTestPanel studentName={session.dbStudentName} role="student" />
+              {/* 강사 미리보기용 (학생 화면에서는 숨김) */}
             </div>
           ) : (
             <div className="flex-1 flex flex-col gap-5 min-w-0">
@@ -2018,6 +2022,17 @@ export default function Classroom() {
                 sessionId={session.sessionId}
                 instructorMode={true}
                 noteContext={notes}
+              />
+            </div>
+          )}
+
+          {/* 강사 뷰: 레벨 테스트 패널 */}
+          {session.sessionId && role === "instructor" && session.dbStudentName && (
+            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4 lg:gap-5 overflow-y-auto">
+              <LevelTestPanel
+                studentName={session.dbStudentName}
+                role="instructor"
+                instructorName={session.instructorName}
               />
             </div>
           )}
