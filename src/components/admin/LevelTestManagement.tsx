@@ -391,6 +391,7 @@ export default function LevelTestManagement() {
                     ) : q.explanation ? (
                       <p className="text-[11px] text-muted-foreground italic">💡 {q.explanation}</p>
                     ) : null}
+                    </div>
                   </div>
                 );
               })}
