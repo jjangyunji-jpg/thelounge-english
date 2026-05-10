@@ -315,16 +315,6 @@ export default function LevelTestManagement() {
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{q.category || "(미분류)"}</span>
                         )}
                       </div>
-                        {isEditing ? (
-                          <Input
-                            value={editDraft.category ?? ""}
-                            onChange={(e) => setEditDraft((d) => ({ ...d, category: e.target.value }))}
-                            className="h-6 w-32 text-[11px]"
-                          />
-                        ) : (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{q.category || "(미분류)"}</span>
-                        )}
-                      </div>
                       <div className="flex gap-1">
                         {isEditing ? (
                           <>
