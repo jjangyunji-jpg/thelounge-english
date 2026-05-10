@@ -108,6 +108,7 @@ export default function CashReceiptManagement() {
   const [activeTab, setActiveTab] = useState<"count" | "payment" | "ai" | "budget" | "summary">("count");
   const [pauseRanges, setPauseRanges] = useState<Map<string, { start: string; end: string | null }[]>>(new Map());
   const [refundFlags, setRefundFlags] = useState<Set<string>>(new Set());
+  const [renewalWithdrawn, setRenewalWithdrawn] = useState<Set<string>>(new Set());
   // Per-month cash payment override map (true = cash this month, false = store this month, undefined = use student default)
   const [cashOverrides, setCashOverrides] = useState<Map<string, boolean>>(new Map());
   // Per-month tax-invoice override for corporate students (true = 계산서 발급, false = 사업소득 3.3%, undefined = use student default)
@@ -218,6 +219,13 @@ export default function CashReceiptManagement() {
     setPrepaidCredits((creditRes.data as any as PrepaidCredit[]) || []);
     setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
     setAttendanceRequests((attendRes.data as any as AttendanceRequest[]) || []);
+
+    // Renewal withdrawals for current period
+    supabase.from("renewal_confirmations")
+      .select("student_name, decision")
+      .eq("period_id", currentPeriod.id)
+      .eq("decision", "withdraw")
+      .then(({ data }) => setRenewalWithdrawn(new Set((data || []).map((r: any) => r.student_name))));
 
     // Build pauses by student_name (resolved via instructor_students.id)
     const idToName = new Map(studData.map(s => [s.id, s.student_name]));
@@ -940,6 +948,11 @@ export default function CashReceiptManagement() {
           })()}
           {isInactive && (
             <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">퇴원</span>
+          )}
+          {renewalWithdrawn.has(s.student_name) && (
+            <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold" title="모달에서 다음 달 연장을 거부함">
+              🚪 연장거부
+            </span>
           )}
           {!isCorporate && (() => {
             const isCash = isCashPayment(s);

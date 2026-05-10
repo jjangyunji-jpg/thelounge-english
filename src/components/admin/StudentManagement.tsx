@@ -253,6 +253,7 @@ export default function StudentManagement() {
   const [reportPreview, setReportPreview] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState<string | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [renewalWithdrawn, setRenewalWithdrawn] = useState<Set<string>>(new Set());
 
   const handleInviteStudent = async () => {
     if (!inviteEmail.trim() || !inviteStudentName.trim()) return;
@@ -285,6 +286,15 @@ export default function StudentManagement() {
 
     // Load students from DB
     loadStudentsFromDB();
+
+    // Load renewal withdrawal records (decision='withdraw')
+    supabase
+      .from("renewal_confirmations")
+      .select("student_name, decision")
+      .eq("decision", "withdraw")
+      .then(({ data }) => {
+        setRenewalWithdrawn(new Set((data || []).map((r: any) => r.student_name)));
+      });
   }, []);
 
   const loadStudentsFromDB = async () => {
@@ -2556,6 +2566,11 @@ export default function StudentManagement() {
 
                   {tab === "graduated" && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-2">
+                      {renewalWithdrawn.has(student.name) && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">
+                          🚪 연장 거부 (모달 응답)
+                        </span>
+                      )}
                       <p className="text-xs font-medium text-muted-foreground">
                         ℹ️ 퇴원 처리된 수강생입니다. 수업 노트, 단어장 등 기존 데이터는 그대로 보관됩니다.
                       </p>
@@ -3132,6 +3147,11 @@ export default function StudentManagement() {
 
                             {tab === "graduated" && (
                               <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-2">
+                                {renewalWithdrawn.has(student.name) && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">
+                                    🚪 연장 거부 (모달 응답)
+                                  </span>
+                                )}
                                 <p className="text-xs font-medium text-muted-foreground">
                                   ℹ️ 퇴원 처리된 수강생입니다.
                                 </p>
