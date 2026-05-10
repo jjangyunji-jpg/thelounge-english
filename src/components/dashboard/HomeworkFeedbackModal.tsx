@@ -378,7 +378,28 @@ export default function HomeworkFeedbackModal({
                   </div>
                 </TabsContent>
                 <TabsContent value="corrected">
-                  <div className="rounded-lg border border-border bg-muted/10 p-4">
+                  <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-2">
+                    {canListenCorrected && (
+                      <div className="flex justify-end">
+                        <button
+                          onClick={toggleSpeakCorrected}
+                          disabled={loadingTtsCorrected}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors",
+                            speakingCorrected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-card text-foreground border-border hover:bg-muted"
+                          )}
+                          title="교정문 듣기"
+                        >
+                          {loadingTtsCorrected
+                            ? <><Loader2 className="w-3 h-3 animate-spin" />생성중</>
+                            : speakingCorrected
+                              ? <><Square className="w-3 h-3" />중지</>
+                              : <><Volume2 className="w-3 h-3" />교정문 듣기</>}
+                        </button>
+                      </div>
+                    )}
                     <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{aiCorrection.corrected}</p>
                   </div>
                 </TabsContent>
