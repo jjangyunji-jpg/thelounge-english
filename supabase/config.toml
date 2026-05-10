@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.issue-api-key]
 verify_jwt = false
+
+[functions.generate-level-test]
+verify_jwt = false
