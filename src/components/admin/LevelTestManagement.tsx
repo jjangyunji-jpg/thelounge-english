@@ -287,11 +287,34 @@ export default function LevelTestManagement() {
               )}
               {questions.map((q, idx) => {
                 const isEditing = editingId === q.id;
+                const prevSet = idx === 0 ? null : questions[idx - 1].set_number;
+                const showSetHeader = q.set_number !== prevSet;
+                const setSize = questions.filter((qq) => qq.set_number === q.set_number).length;
                 return (
-                  <div key={q.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
+                  <div key={q.id}>
+                    {showSetHeader && (
+                      <div className="flex items-center justify-between gap-2 mt-3 mb-1.5 px-1">
+                        <span className="text-xs font-bold text-foreground">Set {q.set_number} <span className="text-muted-foreground font-normal">({setSize}문제)</span></span>
+                        <button
+                          onClick={() => handleDeleteSet(q.set_number)}
+                          className="text-[10px] text-destructive/80 hover:text-destructive inline-flex items-center gap-1"
+                        ><Trash2 className="w-3 h-3" /> Set 전체 삭제</button>
+                      </div>
+                    )}
+                    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] font-mono text-muted-foreground">#{idx + 1}</span>
+                        {isEditing ? (
+                          <Input
+                            value={editDraft.category ?? ""}
+                            onChange={(e) => setEditDraft((d) => ({ ...d, category: e.target.value }))}
+                            className="h-6 w-32 text-[11px]"
+                          />
+                        ) : (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{q.category || "(미분류)"}</span>
+                        )}
+                      </div>
                         {isEditing ? (
                           <Input
                             value={editDraft.category ?? ""}
