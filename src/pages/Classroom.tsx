@@ -2026,6 +2026,17 @@ export default function Classroom() {
             </div>
           )}
 
+          {/* 강사 뷰: 레벨 테스트 패널 */}
+          {session.sessionId && role === "instructor" && session.dbStudentName && (
+            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4 lg:gap-5 overflow-y-auto">
+              <LevelTestPanel
+                studentName={session.dbStudentName}
+                role="instructor"
+                instructorName={session.instructorName}
+              />
+            </div>
+          )}
+
         </div>
         </div>
       )}
