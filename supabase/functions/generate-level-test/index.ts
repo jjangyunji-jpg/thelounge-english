@@ -30,8 +30,6 @@ ${tenseInstruction}
 
 추가 출제 지시: ${focus || "없음"}`;
 
-    const userPrompt = `${level} 레벨 ${count}문제를 만들어주세요.`;
-
     const tools = [{
       type: "function",
       function: {
