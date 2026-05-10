@@ -30,6 +30,7 @@ interface Activation {
   passed_at: string | null;
   best_score: number;
   attempt_count: number;
+  current_set: number;
 }
 interface Attempt {
   id: string;
