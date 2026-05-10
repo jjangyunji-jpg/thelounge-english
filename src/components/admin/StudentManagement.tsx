@@ -2573,7 +2573,10 @@ export default function StudentManagement() {
                           const { error } = await supabase.from("instructor_students").update({
                             status: "active",
                             withdrawal_reason: null,
+                            end_date: null,
                           }).eq("id", student.dbId);
+                          // 연장 거부로 인한 자동 퇴원이었다면 renewal_confirmations 기록도 삭제하여 재발 방지
+                          await supabase.from("renewal_confirmations").delete().eq("student_name", student.name);
                           if (error) {
                             toast({ title: "재등록 실패", description: error.message, variant: "destructive" });
                           } else {
