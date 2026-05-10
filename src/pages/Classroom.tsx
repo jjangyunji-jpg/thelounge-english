@@ -28,6 +28,7 @@ import { loadEffectiveStudentMeetInfo } from "@/lib/meetLink";
 import StudentVocabPanel from "@/components/classroom/StudentVocabPanel";
 import StudentExpressionPanel from "@/components/classroom/StudentExpressionPanel";
 import StudentHomeworkPanel from "@/components/classroom/StudentHomeworkPanel";
+import LevelTestPanel from "@/components/classroom/LevelTestPanel";
 
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import { supabase } from "@/integrations/supabase/client";
