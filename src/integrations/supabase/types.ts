@@ -1288,6 +1288,50 @@ export type Database = {
         }
         Relationships: []
       }
+      renewal_confirmations: {
+        Row: {
+          created_at: string
+          decided_at: string
+          decided_by_user_id: string | null
+          decided_via: string
+          decision: string
+          id: string
+          period_id: string
+          processed_at: string | null
+          student_name: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string
+          decided_by_user_id?: string | null
+          decided_via?: string
+          decision: string
+          id?: string
+          period_id: string
+          processed_at?: string | null
+          student_name: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string
+          decided_by_user_id?: string | null
+          decided_via?: string
+          decision?: string
+          id?: string
+          period_id?: string
+          processed_at?: string | null
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renewal_confirmations_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_periods: {
         Row: {
           created_at: string

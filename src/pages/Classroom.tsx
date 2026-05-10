@@ -21,6 +21,7 @@ import DialogueGeneratorModal from "@/components/classroom/DialogueGeneratorModa
 import NewsLessonGeneratorModal from "@/components/classroom/NewsLessonGeneratorModal";
 import InsightGeneratorModal from "@/components/classroom/InsightGeneratorModal";
 import KeyExpressionExtractModal from "@/components/classroom/KeyExpressionExtractModal";
+import RenewalDecisionModal from "@/components/classroom/RenewalDecisionModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
 import { loadEffectiveStudentMeetInfo } from "@/lib/meetLink";
 
@@ -2113,6 +2114,12 @@ export default function Classroom() {
           <Button size="sm" onClick={() => setReviewModalHw(null)}>닫기</Button>
         </div>
       </div>
+    )}
+    {role === "student" && session.dbStudentName && (
+      <RenewalDecisionModal
+        studentName={session.dbStudentName}
+        triggerKey={session.sessionId}
+      />
     )}
     </>
   );
