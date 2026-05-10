@@ -60,34 +60,61 @@ ${tenseInstruction}
       },
     }];
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools,
-        tool_choice: { type: "function", function: { name: "submit_questions" } },
-      }),
-    });
+    // Generate in small batches to avoid Gemini truncating tool-call output
+    const BATCH = 10;
+    const MAX_ATTEMPTS = 8;
+    const allQuestions: any[] = [];
+    let attempts = 0;
+    while (allQuestions.length < count && attempts < MAX_ATTEMPTS) {
+      attempts++;
+      const remaining = count - allQuestions.length;
+      const askFor = Math.min(BATCH, remaining);
+      const userPrompt = `${level} 레벨 ${askFor}문제를 만들어주세요. (이번 배치: ${askFor}문제)`;
 
-    if (!resp.ok) {
-      const txt = await resp.text();
-      throw new Error(`AI gateway ${resp.status}: ${txt}`);
+      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          tools,
+          tool_choice: { type: "function", function: { name: "submit_questions" } },
+        }),
+      });
+
+      if (!resp.ok) {
+        const txt = await resp.text();
+        console.error(`AI gateway batch ${attempts} failed:`, resp.status, txt);
+        if (resp.status === 429 || resp.status >= 500) {
+          await new Promise((r) => setTimeout(r, 800));
+          continue;
+        }
+        throw new Error(`AI gateway ${resp.status}: ${txt}`);
+      }
+      const data = await resp.json();
+      const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) {
+        console.warn(`Batch ${attempts}: no tool call returned`);
+        continue;
+      }
+      try {
+        const args = JSON.parse(toolCall.function.arguments);
+        const batch = Array.isArray(args.questions) ? args.questions : [];
+        allQuestions.push(...batch);
+      } catch (e) {
+        console.warn(`Batch ${attempts}: invalid JSON`, e);
+      }
     }
-    const data = await resp.json();
-    const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call returned");
-    const args = JSON.parse(toolCall.function.arguments);
-    const questions = args.questions ?? [];
 
-    return new Response(JSON.stringify({ questions }), {
+    const questions = allQuestions.slice(0, count);
+
+    return new Response(JSON.stringify({ questions, generated: questions.length, requested: count }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
