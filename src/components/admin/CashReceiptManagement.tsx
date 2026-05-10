@@ -220,6 +220,13 @@ export default function CashReceiptManagement() {
     setDeductions((dedRes.data as any as PrepaidDeduction[]) || []);
     setAttendanceRequests((attendRes.data as any as AttendanceRequest[]) || []);
 
+    // Renewal withdrawals for current period
+    supabase.from("renewal_confirmations")
+      .select("student_name, decision")
+      .eq("period_id", currentPeriod.id)
+      .eq("decision", "withdraw")
+      .then(({ data }) => setRenewalWithdrawn(new Set((data || []).map((r: any) => r.student_name))));
+
     // Build pauses by student_name (resolved via instructor_students.id)
     const idToName = new Map(studData.map(s => [s.id, s.student_name]));
     const pauseMap = new Map<string, { start: string; end: string | null }[]>();
