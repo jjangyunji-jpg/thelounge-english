@@ -315,7 +315,7 @@ export default function StudentManagement() {
       startDate: row.start_date || "",
       endDate: row.end_date || "",
       instructor: row.instructor_name || "",
-      status: (row.status as StudentStatus) || "active",
+      status: (row.status === "inactive" ? "graduated" : (row.status as StudentStatus)) || "active",
       totalLessons: row.total_lessons || 0,
       extraLessons: row.extra_lessons || 0,
       presetHomework: [],
