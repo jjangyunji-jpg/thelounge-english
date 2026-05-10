@@ -17,6 +17,7 @@ import CurriculumGuideEditor from "@/components/admin/CurriculumGuideEditor";
 import CashReceiptManagement from "@/components/admin/CashReceiptManagement";
 import SupportRequestManagement from "@/components/admin/SupportRequestManagement";
 import ApiKeysManagement from "@/components/admin/ApiKeysManagement";
+import LevelTestManagement from "@/components/admin/LevelTestManagement";
 
 import { Menu, X, Loader2, ArrowLeft } from "lucide-react";
 
