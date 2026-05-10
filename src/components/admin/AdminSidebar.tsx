@@ -52,6 +52,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "curriculum", label: "커리큘럼 가이드", icon: MapIcon },
       { id: "materials", label: "수업 자료", icon: Library },
+      { id: "level-tests", label: "레벨 테스트", icon: ClipboardCheck },
       { id: "guide", label: "이용가이드 관리", icon: FileQuestion },
     ],
   },
