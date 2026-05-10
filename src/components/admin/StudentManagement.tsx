@@ -286,6 +286,15 @@ export default function StudentManagement() {
 
     // Load students from DB
     loadStudentsFromDB();
+
+    // Load renewal withdrawal records (decision='withdraw')
+    supabase
+      .from("renewal_confirmations")
+      .select("student_name, decision")
+      .eq("decision", "withdraw")
+      .then(({ data }) => {
+        setRenewalWithdrawn(new Set((data || []).map((r: any) => r.student_name)));
+      });
   }, []);
 
   const loadStudentsFromDB = async () => {
