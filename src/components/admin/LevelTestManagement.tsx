@@ -121,6 +121,18 @@ export default function LevelTestManagement() {
     else refresh();
   };
 
+  const handleDeleteSet = async (setNum: number) => {
+    if (!selectedTestId) return;
+    if (!confirm(`Set ${setNum} 전체를 삭제할까요?`)) return;
+    const { error } = await supabase
+      .from("level_test_questions")
+      .delete()
+      .eq("level_test_id", selectedTestId)
+      .eq("set_number", setNum);
+    if (error) toast({ title: "삭제 실패", description: error.message, variant: "destructive" });
+    else refresh();
+  };
+
   const startEdit = (q: Question) => {
     setEditingId(q.id);
     setEditDraft({ ...q });
