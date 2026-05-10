@@ -1437,21 +1437,39 @@ export default function StudentManagement() {
 
       {/* Period selector + Tabs */}
       <div className="flex flex-wrap items-center gap-3">
-        {periods.length > 0 && (
-          <select
-            value={selectedPeriodId}
-            onChange={(e) => setSelectedPeriodId(e.target.value)}
-            className="h-9 px-3 rounded-md border border-border bg-card text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            title="기간 선택"
-          >
-            {periods.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label} ({p.start_date.slice(5)} ~ {p.end_date.slice(5)})
-                {p.start_date <= todayStr && p.end_date >= todayStr ? " · 현재" : ""}
-              </option>
-            ))}
-          </select>
-        )}
+        {periods.length > 0 && selectedPeriod && (() => {
+          const idx = periods.findIndex((p) => p.id === selectedPeriodId);
+          const prev = idx < periods.length - 1 ? periods[idx + 1] : null;
+          const next = idx > 0 ? periods[idx - 1] : null;
+          const fmtMD = (d: string) => {
+            const [, m, day] = d.split("-");
+            return `${parseInt(m, 10)}/${parseInt(day, 10)}`;
+          };
+          const [y, m] = selectedPeriod.start_date.split("-");
+          return (
+            <div className="flex items-center gap-1 h-9 px-2 rounded-md border border-border bg-card">
+              <button
+                onClick={() => prev && setSelectedPeriodId(prev.id)}
+                disabled={!prev}
+                className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-foreground"
+                title="이전 달"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm font-medium text-foreground px-2 whitespace-nowrap">
+                {parseInt(y, 10)}년 {parseInt(m, 10)}월 ({fmtMD(selectedPeriod.start_date)}~{fmtMD(selectedPeriod.end_date)})
+              </span>
+              <button
+                onClick={() => next && setSelectedPeriodId(next.id)}
+                disabled={!next}
+                className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed text-foreground"
+                title="다음 달"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        })()}
         <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit flex-wrap">
           {(["active", "paused", "graduated", "corporate"] as const).map((t) => {
             const countForTab = students.filter((s) => matchesTab(s, t)).length;
