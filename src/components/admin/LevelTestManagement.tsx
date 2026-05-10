@@ -69,7 +69,7 @@ export default function LevelTestManagement() {
   const refresh = async () => {
     if (!selectedTestId) return;
     const [{ data: q }, { data: a }] = await Promise.all([
-      supabase.from("level_test_questions").select("*").eq("level_test_id", selectedTestId).order("category").order("created_at"),
+      supabase.from("level_test_questions").select("*").eq("level_test_id", selectedTestId).order("set_number").order("created_at"),
       supabase.from("level_test_attempts").select("*").eq("level_test_id", selectedTestId).order("submitted_at", { ascending: false }).limit(200),
     ]);
     setQuestions((q ?? []) as any);
