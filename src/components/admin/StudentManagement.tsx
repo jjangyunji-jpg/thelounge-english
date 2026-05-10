@@ -254,6 +254,8 @@ export default function StudentManagement() {
   const [reportLoading, setReportLoading] = useState<string | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [renewalWithdrawn, setRenewalWithdrawn] = useState<Set<string>>(new Set());
+  const [periods, setPeriods] = useState<Array<{ id: string; label: string; start_date: string; end_date: string }>>([]);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
 
   const handleInviteStudent = async () => {
     if (!inviteEmail.trim() || !inviteStudentName.trim()) return;
