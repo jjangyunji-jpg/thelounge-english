@@ -1497,6 +1497,9 @@ export default function Classroom() {
               </div>
               {/* 숙제 */}
               <StudentHomeworkPanel studentName={session.dbStudentName} sessionId={session.sessionId} />
+              {/* 레벨 테스트 */}
+              <LevelTestPanel studentName={session.dbStudentName} role="student" />
+              {/* 강사 미리보기용 (학생 화면에서는 숨김) */}
             </div>
           ) : (
             <div className="flex-1 flex flex-col gap-5 min-w-0">
