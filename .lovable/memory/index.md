@@ -65,3 +65,4 @@ Use student_name as primary ID for sync; apply atomic updates on makeup slots.
 - [External Public API](mem://features/admin/external-api) — `x-api-key` 인증 공개 REST API (`/public-api/me`, `/sessions`), 어드민에서 학생별 키 발급/폐기
 - [Notes Homework Cycle](mem://features/student-dashboard/notes-homework-cycle) — 학생 대시보드 수업 노트는 직전 사이클 숙제 카드 표시 (showPreviousCycle prop)
 
+- [Renewal Decision Flow](mem://features/scheduling/renewal-decision) — 학생 클래스룸 진입 시 수강기간 마지막 주 연장/종료 모달, 거부 시 end_date+1 KST 9시 cron으로 자동 퇴원
