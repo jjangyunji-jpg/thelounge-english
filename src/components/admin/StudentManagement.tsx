@@ -1545,6 +1545,11 @@ export default function StudentManagement() {
                     {student.studentType === "corporate" && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">기업</span>
                     )}
+                    {renewalWithdrawn.has(student.name) && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold" title="연장 거부 (모달 응답)">
+                        🚪 연장거부
+                      </span>
+                    )}
                     {student.extraLessons > 0 && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-gold/15 text-gold-dark font-medium">
                         +{student.extraLessons}회
@@ -2746,6 +2751,11 @@ export default function StudentManagement() {
                                 return isNew ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-semibold">신규</span> : null;
                               })()}
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">기업</span>
+                              {renewalWithdrawn.has(student.name) && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold" title="연장 거부 (모달 응답)">
+                                  🚪 연장거부
+                                </span>
+                              )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5 truncate">
                               {student.instructor} · {student.startDate || "시작일 미정"}
