@@ -253,6 +253,7 @@ export default function StudentManagement() {
   const [reportPreview, setReportPreview] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState<string | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [renewalWithdrawn, setRenewalWithdrawn] = useState<Set<string>>(new Set());
 
   const handleInviteStudent = async () => {
     if (!inviteEmail.trim() || !inviteStudentName.trim()) return;
