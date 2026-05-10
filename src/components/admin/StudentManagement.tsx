@@ -550,41 +550,73 @@ export default function StudentManagement() {
 
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
 
-  // Helper: check if student is currently on pause
+  // Selected period (for monthly filter view)
+  const selectedPeriod = periods.find(p => p.id === selectedPeriodId);
+  const isCurrentPeriod = selectedPeriod
+    ? (selectedPeriod.start_date <= todayStr && selectedPeriod.end_date >= todayStr)
+    : true;
+
+  // Helper: check if student is currently on pause (today)
   const isOnPause = (s: Student) => {
     return s.pauses.some((p) => p.pause_start <= todayStr && (!p.pause_end || p.pause_end >= todayStr));
   };
 
-  const filtered = students.filter(
-    (s) => {
-      if (!s.name.includes(search)) return false;
-      // Hide transferred-out records after end_date has passed
-      if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+  // Helper: was the student on pause at any point during the selected period
+  const wasPausedDuring = (s: Student, period: { start_date: string; end_date: string }) => {
+    return s.pauses.some((p) => p.pause_start <= period.end_date && (!p.pause_end || p.pause_end >= period.start_date));
+  };
 
-      if (tab === "corporate") {
-        return s.studentType === "corporate" && s.status === "active";
-      }
-      if (s.studentType === "corporate") return false;
+  // Helper: did the student start by/within this period (i.e. existed during it)
+  const wasActiveDuring = (s: Student, period: { start_date: string; end_date: string }) => {
+    if (s.startDate && s.startDate > period.end_date) return false;
+    if (s.endDate && s.endDate < period.start_date) return false;
+    return true;
+  };
 
-      if (tab === "paused") {
-        return s.status === "active" && isOnPause(s);
+  // Helper: did the student withdraw within this period
+  const wasGraduatedDuring = (s: Student, period: { start_date: string; end_date: string }) => {
+    if (s.status !== "graduated") return false;
+    if (!s.endDate) return false;
+    return s.endDate >= period.start_date && s.endDate <= period.end_date;
+  };
+
+  const matchesTab = (s: Student, t: typeof tab) => {
+    if (t === "corporate") {
+      if (s.studentType !== "corporate") return false;
+      if (selectedPeriod) {
+        if (!wasActiveDuring(s, selectedPeriod)) return false;
+        if (wasGraduatedDuring(s, selectedPeriod)) return false;
+        return true;
       }
-      if (tab === "active") {
-        return s.status === "active" && !isOnPause(s);
-      }
-      // graduated
-      return s.status === "graduated";
+      return s.status === "active";
     }
-  );
-  const filteredCorporate = students.filter(
-    (s) => {
-      if (s.studentType !== "corporate" || !s.name.includes(search)) return false;
-      if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
-      if (tab === "paused") return s.status === "active" && isOnPause(s);
-      if (tab === "active") return s.status === "active" && !isOnPause(s);
-      return s.status === "graduated";
+    if (s.studentType === "corporate") return false;
+
+    if (selectedPeriod) {
+      if (t === "graduated") return wasGraduatedDuring(s, selectedPeriod);
+      // active or paused: must have existed during period and not have withdrawn within it
+      if (!wasActiveDuring(s, selectedPeriod)) return false;
+      if (wasGraduatedDuring(s, selectedPeriod)) return false;
+      if (t === "paused") return wasPausedDuring(s, selectedPeriod);
+      // active tab: existed during period AND not paused for the whole period
+      return !wasPausedDuring(s, selectedPeriod);
     }
-  );
+
+    // Fallback (no period loaded yet) — old behavior
+    if (s.endDate && s.endDate <= todayStr && s.status === "active") return false;
+    if (t === "paused") return s.status === "active" && isOnPause(s);
+    if (t === "active") return s.status === "active" && !isOnPause(s);
+    return s.status === "graduated";
+  };
+
+  const filtered = students.filter((s) => {
+    if (!s.name.includes(search)) return false;
+    return matchesTab(s, tab);
+  });
+  const filteredCorporate = students.filter((s) => {
+    if (s.studentType !== "corporate" || !s.name.includes(search)) return false;
+    return matchesTab(s, tab);
+  });
 
   // 학생의 정기 숙제 DB 로드
   const loadPresets = async (studentId: number, studentName: string) => {
