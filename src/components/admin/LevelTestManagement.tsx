@@ -25,6 +25,7 @@ interface Question {
   correct_index: number;
   explanation: string | null;
   is_active: boolean;
+  set_number: number;
 }
 
 interface Attempt {
