@@ -297,6 +297,19 @@ export default function StudentManagement() {
       .then(({ data }) => {
         setRenewalWithdrawn(new Set((data || []).map((r: any) => r.student_name)));
       });
+
+    // Load schedule periods for monthly filtering
+    supabase
+      .from("schedule_periods")
+      .select("id, label, start_date, end_date")
+      .order("start_date", { ascending: false })
+      .then(({ data }) => {
+        const list = (data || []) as Array<{ id: string; label: string; start_date: string; end_date: string }>;
+        setPeriods(list);
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+        const current = list.find(p => p.start_date <= today && p.end_date >= today) || list[0];
+        if (current) setSelectedPeriodId(current.id);
+      });
   }, []);
 
   const loadStudentsFromDB = async () => {
