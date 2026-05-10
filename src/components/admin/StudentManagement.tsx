@@ -2566,6 +2566,11 @@ export default function StudentManagement() {
 
                   {tab === "graduated" && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-2">
+                      {renewalWithdrawn.has(student.name) && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">
+                          🚪 연장 거부 (모달 응답)
+                        </span>
+                      )}
                       <p className="text-xs font-medium text-muted-foreground">
                         ℹ️ 퇴원 처리된 수강생입니다. 수업 노트, 단어장 등 기존 데이터는 그대로 보관됩니다.
                       </p>
