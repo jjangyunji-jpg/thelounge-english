@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, ArrowLeft, Library, FileQuestion, Target, MapIcon, MessageSquareHeart, Receipt, LifeBuoy, ChevronDown, KeyRound } from "lucide-react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, ArrowLeft, Library, FileQuestion, Target, MapIcon, MessageSquareHeart, Receipt, LifeBuoy, ChevronDown, KeyRound, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
