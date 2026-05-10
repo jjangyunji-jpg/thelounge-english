@@ -92,6 +92,8 @@ export default function Admin() {
         return <MessageCenter />;
       case "api-keys":
         return <ApiKeysManagement />;
+      case "level-tests":
+        return <LevelTestManagement />;
       case "settings":
         return <SystemSettings />;
       default:
