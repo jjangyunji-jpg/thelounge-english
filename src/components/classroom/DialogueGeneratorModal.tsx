@@ -190,6 +190,7 @@ export default function DialogueGeneratorModal({
           level,
           mustInclude,
           tone,
+          translationFirst,
           previousDialogue: dialogueHtml,
           revisionInstruction,
         },
