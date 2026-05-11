@@ -174,6 +174,32 @@ serve(async (req) => {
           deleted_date: origDateStr,
         }).select();
 
+        // Defensive sweep: remove any OTHER sibling sessions on the same
+        // KST date for this student that have no notes and haven't started.
+        // Prevents ghost rows (e.g. bulk-generated duplicates pre-dating the
+        // makeup request) from surviving the reschedule.
+        const dayStart = `${origDateStr}T00:00:00+09:00`;
+        const dayEnd = `${origDateStr}T23:59:59+09:00`;
+        const { data: siblings } = await sb
+          .from("class_sessions")
+          .select("id, notes, started_at, reschedule_origin_dates")
+          .eq("student_name", origSession.student_name)
+          .gte("scheduled_at", dayStart)
+          .lte("scheduled_at", dayEnd);
+        const ghostIds = (siblings || [])
+          .filter((s: any) =>
+            (!s.notes || s.notes === "") &&
+            !s.started_at &&
+            (!Array.isArray(s.reschedule_origin_dates) || s.reschedule_origin_dates.length === 0)
+          )
+          .map((s: any) => s.id);
+        if (ghostIds.length > 0) {
+          await sb.from("makeup_requests").update({ original_session_id: null })
+            .in("original_session_id", ghostIds);
+          await sb.from("class_sessions").delete().in("id", ghostIds);
+          console.log("[makeup-approve] swept ghost sessions on", origDateStr, ghostIds);
+        }
+
 
         // GCAL: create a new event at the new time
         const stuInfo = await fetchStudentInfo(origSession.student_name);
