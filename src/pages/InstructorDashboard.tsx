@@ -1793,13 +1793,13 @@ export default function InstructorDashboard() {
     return futureSessions.filter((s) => new Date(s.scheduled_at).toDateString() === nextDateStr);
   })();
 
-  const myAssignments = assignments.filter((a) => myStudentNames.has(a.student_name));
+  const myAssignments = assignments.filter((a) => activeStudentNames.has(a.student_name));
 
   // Find next upcoming session per student (for unchecked homework)
   const nowDate = new Date();
   const nextSessionByStudent = new Map<string, ClassSession>();
   sessions
-    .filter(s => new Date(s.scheduled_at) > nowDate && myStudentNames.has(s.student_name))
+    .filter(s => new Date(s.scheduled_at) > nowDate && activeStudentNames.has(s.student_name))
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
     .forEach(s => {
       if (!nextSessionByStudent.has(s.student_name)) {
@@ -1810,7 +1810,7 @@ export default function InstructorDashboard() {
   // Find most recent past session per student (for 과제 제출 현황)
   const latestSessionByStudent = new Map<string, string>();
   sessions
-    .filter(s => new Date(s.scheduled_at) <= nowDate && myStudentNames.has(s.student_name))
+    .filter(s => new Date(s.scheduled_at) <= nowDate && activeStudentNames.has(s.student_name))
     .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
     .forEach(s => {
       if (!latestSessionByStudent.has(s.student_name)) {
@@ -1822,6 +1822,11 @@ export default function InstructorDashboard() {
   // Each entry is { assignment, submission } so preset assignments with multiple submissions each get their own row
   type HwEntry = { assignment: HomeworkAssignment; submission: HomeworkSubmission };
 
+  const instructorNameSet = new Set<string>([instructor?.name || ""].concat(
+    students.filter(s => (!s.end_date || s.end_date >= todayKST) && s.instructor_name).map(s => s.instructor_name as string)
+  ));
+  const sessionById = new Map(sessions.map(s => [s.id, s]));
+
   const uncheckedHwAllEntries: HwEntry[] = (() => {
     const entries: HwEntry[] = [];
     for (const a of myAssignments) {
@@ -1832,7 +1837,9 @@ export default function InstructorDashboard() {
           entries.push({ assignment: a, submission: sub });
         }
       } else {
-        // For session-specific: single submission
+        // For session-specific: gate by session belonging to this instructor (post-transfer safety)
+        const sess = a.session_id ? sessionById.get(a.session_id) : null;
+        if (sess && !instructorNameSet.has(sess.instructor_name)) continue;
         const sub = submissions.find(s => s.assignment_id === a.id && s.status === "submitted");
         if (sub) entries.push({ assignment: a, submission: sub });
       }
