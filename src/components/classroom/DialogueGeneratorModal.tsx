@@ -315,6 +315,26 @@ export default function DialogueGeneratorModal({
               />
             </div>
 
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">출력 순서</Label>
+              <div className="flex items-center gap-1 rounded-md border border-border p-0.5 bg-muted/30">
+                <button
+                  type="button"
+                  onClick={() => setTranslationFirst(false)}
+                  className={`flex-1 h-8 text-xs rounded transition-colors ${!translationFirst ? "bg-navy text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Key Expressions → 영어 → 한국어
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTranslationFirst(true)}
+                  className={`flex-1 h-8 text-xs rounded transition-colors ${translationFirst ? "bg-navy text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Key Expressions → 한국어 → 영어
+                </button>
+              </div>
+            </div>
+
             <Button
               className="w-full bg-navy hover:bg-navy-light text-primary-foreground gap-2"
               onClick={handleGenerate}
