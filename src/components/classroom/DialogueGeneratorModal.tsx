@@ -126,6 +126,7 @@ export default function DialogueGeneratorModal({
         if (typeof data.level === "string") setLevel(data.level);
         if (typeof data.mustInclude === "string") setMustInclude(data.mustInclude);
         if (typeof data.tone === "string") setTone(data.tone);
+        if (typeof data.translationFirst === "boolean") setTranslationFirst(data.translationFirst);
       }
     } catch {
       // ignore
