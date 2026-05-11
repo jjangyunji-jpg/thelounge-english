@@ -19,6 +19,7 @@ serve(async (req) => {
       tone,
       previousDialogue,
       revisionInstruction,
+      translationFirst,
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -37,6 +38,19 @@ Rules:
 - If any input field is empty, use your best judgment to fill in reasonable defaults
 - The dialogue MUST be educational and relevant to the student's level`;
 
+    const englishBlock = `<h2>📝 Dialogue</h2>
+<p><strong>[Speaker A]:</strong> (English line)</p>
+<p><strong>[Speaker B]:</strong> (English line)</p>
+...continue the dialogue...`;
+
+    const koreanBlock = `<h2>🇰🇷 한국어 번역</h2>
+<p><strong>[Speaker A]:</strong> (Korean translation)</p>
+<p><strong>[Speaker B]:</strong> (Korean translation)</p>
+...continue translations...`;
+
+    const secondBlock = translationFirst ? koreanBlock : englishBlock;
+    const thirdBlock = translationFirst ? englishBlock : koreanBlock;
+
     const baseFormatInstructions = `Format the output EXACTLY like this (use HTML formatting):
 
 <h2>📚 Key Expressions</h2>
@@ -50,19 +64,13 @@ Rules:
 
 <hr>
 
-<h2>📝 Dialogue</h2>
-<p><strong>[Speaker A]:</strong> (English line)</p>
-<p><strong>[Speaker B]:</strong> (English line)</p>
-...continue the dialogue...
+${secondBlock}
 
 <hr>
 
-<h2>🇰🇷 한국어 번역</h2>
-<p><strong>[Speaker A]:</strong> (Korean translation)</p>
-<p><strong>[Speaker B]:</strong> (Korean translation)</p>
-...continue translations...
+${thirdBlock}
 
-Pick the most useful, natural expressions from the dialogue for the Key Expressions table. Focus on phrases the student can reuse in real life. Use the actual speaker names from the input. Make the dialogue feel real and natural, not like a textbook exercise.`;
+Pick the most useful, natural expressions from the dialogue for the Key Expressions table. Focus on phrases the student can reuse in real life. Use the actual speaker names from the input. Make the dialogue feel real and natural, not like a textbook exercise. Keep the section order EXACTLY as shown above.`;
 
     let userPrompt: string;
 

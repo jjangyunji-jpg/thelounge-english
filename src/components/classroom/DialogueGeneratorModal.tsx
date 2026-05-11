@@ -59,6 +59,7 @@ export default function DialogueGeneratorModal({
   const [level, setLevel] = useState(defaultLevel);
   const [mustInclude, setMustInclude] = useState("");
   const [tone, setTone] = useState("Casual");
+  const [translationFirst, setTranslationFirst] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [revising, setRevising] = useState(false);
 
@@ -125,6 +126,7 @@ export default function DialogueGeneratorModal({
         if (typeof data.level === "string") setLevel(data.level);
         if (typeof data.mustInclude === "string") setMustInclude(data.mustInclude);
         if (typeof data.tone === "string") setTone(data.tone);
+        if (typeof data.translationFirst === "boolean") setTranslationFirst(data.translationFirst);
       }
     } catch {
       // ignore
@@ -138,7 +140,7 @@ export default function DialogueGeneratorModal({
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-dialogue", {
-        body: { situation, speakers, student, level, mustInclude, tone },
+        body: { situation, speakers, student, level, mustInclude, tone, translationFirst },
       });
 
       if (error) throw error;
@@ -150,7 +152,7 @@ export default function DialogueGeneratorModal({
       try {
         localStorage.setItem(
           getStorageKey(defaultStudentName),
-          JSON.stringify({ situation, speakers, student, level, mustInclude, tone }),
+          JSON.stringify({ situation, speakers, student, level, mustInclude, tone, translationFirst }),
         );
       } catch {
         // ignore quota errors
@@ -188,6 +190,7 @@ export default function DialogueGeneratorModal({
           level,
           mustInclude,
           tone,
+          translationFirst,
           previousDialogue: dialogueHtml,
           revisionInstruction,
         },
@@ -310,6 +313,26 @@ export default function DialogueGeneratorModal({
                 onChange={(e) => setMustInclude(e.target.value)}
                 className="resize-none h-16 text-sm"
               />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">출력 순서</Label>
+              <div className="flex items-center gap-1 rounded-md border border-border p-0.5 bg-muted/30">
+                <button
+                  type="button"
+                  onClick={() => setTranslationFirst(false)}
+                  className={`flex-1 h-8 text-xs rounded transition-colors ${!translationFirst ? "bg-navy text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Key Expressions → 영어 → 한국어
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTranslationFirst(true)}
+                  className={`flex-1 h-8 text-xs rounded transition-colors ${translationFirst ? "bg-navy text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Key Expressions → 한국어 → 영어
+                </button>
+              </div>
             </div>
 
             <Button
