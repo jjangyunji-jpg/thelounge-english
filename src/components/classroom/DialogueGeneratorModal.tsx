@@ -152,7 +152,7 @@ export default function DialogueGeneratorModal({
       try {
         localStorage.setItem(
           getStorageKey(defaultStudentName),
-          JSON.stringify({ situation, speakers, student, level, mustInclude, tone }),
+          JSON.stringify({ situation, speakers, student, level, mustInclude, tone, translationFirst }),
         );
       } catch {
         // ignore quota errors
