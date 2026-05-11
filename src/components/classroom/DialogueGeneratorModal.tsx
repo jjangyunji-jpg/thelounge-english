@@ -59,6 +59,7 @@ export default function DialogueGeneratorModal({
   const [level, setLevel] = useState(defaultLevel);
   const [mustInclude, setMustInclude] = useState("");
   const [tone, setTone] = useState("Casual");
+  const [translationFirst, setTranslationFirst] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [revising, setRevising] = useState(false);
 
