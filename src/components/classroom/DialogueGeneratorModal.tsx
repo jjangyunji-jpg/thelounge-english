@@ -140,7 +140,7 @@ export default function DialogueGeneratorModal({
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-dialogue", {
-        body: { situation, speakers, student, level, mustInclude, tone },
+        body: { situation, speakers, student, level, mustInclude, tone, translationFirst },
       });
 
       if (error) throw error;
