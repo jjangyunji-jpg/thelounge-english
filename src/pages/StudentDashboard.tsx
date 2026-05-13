@@ -660,8 +660,7 @@ export default function StudentDashboard() {
 
   // 강사/관리자 뷰에서도 매니저 학생을 열었으면 드롭다운 노출
   useEffect(() => {
-    if (!isInstructorView || !viewingStudentName) return;
-    (async () => {
+    if (!isInstructorView || !viewingStudentName || isManagerMode) return;
       const { data: rec } = await supabase
         .from("instructor_students")
         .select("corporate_role, corporate_account")
