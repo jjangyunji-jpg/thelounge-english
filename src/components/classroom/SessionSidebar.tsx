@@ -11,6 +11,7 @@ interface SessionItem {
   ended_at?: string | null;
   cancellation_type?: string | null;
   cancellation_resolution?: string | null;
+  reschedule_origin_dates?: string[] | null;
 }
 
 const CANCEL_BADGES: Record<string, { label: string; cls: string }> = {
@@ -47,6 +48,19 @@ function fmtDate(dateStr: string) {
     day: "numeric",
     timeZone: "Asia/Seoul",
   });
+}
+
+/** YYYY-MM-DD in KST */
+function kstDateKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+
+/** "M월 D일" from YYYY-MM-DD */
+function fmtShortKor(ymd: string): string {
+  const [, m, d] = ymd.split("-");
+  return `${parseInt(m, 10)}월 ${parseInt(d, 10)}일`;
 }
 
 /** Strip HTML tags and return plain text */
@@ -98,8 +112,50 @@ export default function SessionSidebar({
     return d;
   }, []);
 
-  const pastSessions = useMemo(() => sessions.filter(s => new Date(s.scheduled_at) <= now), [sessions, now]);
-  const futureSessions = useMemo(() => sessions.filter(s => new Date(s.scheduled_at) > now), [sessions, now]);
+  // Build map: KST date → session, and set of dates that have been "moved away"
+  const { sessionByDate, movedFromDates } = useMemo(() => {
+    const byDate = new Map<string, SessionItem>();
+    const moved = new Set<string>();
+    for (const s of sessions) {
+      byDate.set(kstDateKey(s.scheduled_at), s);
+    }
+    for (const s of sessions) {
+      for (const orig of s.reschedule_origin_dates ?? []) {
+        const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
+        moved.add(key);
+      }
+    }
+    return { sessionByDate: byDate, movedFromDates: moved };
+  }, [sessions]);
+
+  // Hide sessions whose KST date has been moved away to a later date
+  const visibleSessions = useMemo(
+    () => sessions.filter(s => !movedFromDates.has(kstDateKey(s.scheduled_at))),
+    [sessions, movedFromDates]
+  );
+
+  // For a given session, walk back through origin chain and collect cancellation labels
+  const getOriginChain = (s: SessionItem): { date: string; label: string }[] => {
+    const chain: { date: string; label: string }[] = [];
+    const visited = new Set<string>();
+    const walk = (origins: string[] | null | undefined) => {
+      for (const orig of origins ?? []) {
+        const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        const originSess = sessionByDate.get(key);
+        if (originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]) {
+          chain.push({ date: key, label: CANCEL_BADGES[originSess.cancellation_type].label });
+        }
+        if (originSess) walk(originSess.reschedule_origin_dates);
+      }
+    };
+    walk(s.reschedule_origin_dates);
+    return chain;
+  };
+
+  const pastSessions = useMemo(() => visibleSessions.filter(s => new Date(s.scheduled_at) <= now), [visibleSessions, now]);
+  const futureSessions = useMemo(() => visibleSessions.filter(s => new Date(s.scheduled_at) > now), [visibleSessions, now]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim();
@@ -134,6 +190,8 @@ export default function SessionSidebar({
 
   const renderSessionItem = (s: SessionItem) => {
     const canDelete = onDelete && isDeletable(s);
+    const originChain = getOriginChain(s);
+    const isMakeup = originChain.length > 0;
     return (
       <div
         key={s.id}
@@ -158,6 +216,26 @@ export default function SessionSidebar({
                 {CANCEL_BADGES[s.cancellation_type].label}
               </span>
             )}
+            {/* Inherited badges from cancelled origin(s) */}
+            {originChain.map((o, i) => (
+              <span
+                key={`${o.date}-${i}`}
+                className={cn(
+                  "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
+                  "bg-muted text-muted-foreground"
+                )}
+              >
+                {o.label}
+              </span>
+            ))}
+            {isMakeup && (
+              <span className={cn(
+                "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
+                RESOLUTION_BADGES.makeup.cls
+              )}>
+                {RESOLUTION_BADGES.makeup.label}
+              </span>
+            )}
             {s.cancellation_resolution && RESOLUTION_BADGES[s.cancellation_resolution] && (
               <span className={cn(
                 "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
@@ -167,6 +245,11 @@ export default function SessionSidebar({
               </span>
             )}
           </div>
+          {originChain.length > 0 && (
+            <p className="text-[9px] text-muted-foreground/80 mt-0.5 leading-tight">
+              {originChain.map(o => `(${fmtShortKor(o.date)} 수업 ${o.label})`).join(" ")}
+            </p>
+          )}
           {s.topic && (
             <p className="text-[10px] text-muted-foreground mt-0.5 truncate pr-5">
               {s.topic}
