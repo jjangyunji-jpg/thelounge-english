@@ -946,10 +946,12 @@ export default function CashReceiptManagement() {
         </td>
         <td className="px-4 py-3">
           <span className={cn("font-medium", isConfirmed ? "text-muted-foreground line-through" : "text-foreground")}>
-            {s.student_name}
+            {isCorporate && s.group_students?.length > 0
+              ? [s.student_name, ...s.group_students].sort((a, b) => a.localeCompare(b, "ko")).join(" + ")
+              : s.student_name}
           </span>
-          {s.group_students?.length > 0 && (
-            <span className="ml-1.5 text-[10px] text-muted-foreground">(그룹 {s.group_students.length + 1}인)</span>
+          {isCorporate && s.group_students?.length > 0 && (
+            <span className="ml-1.5 text-[10px] text-muted-foreground">(그룹 {s.group_students.length + 1}인 · 회당 70k)</span>
           )}
           {(() => {
             const isNew = s.start_date && currentPeriod && s.start_date >= currentPeriod.start_date && s.start_date <= currentPeriod.end_date;
