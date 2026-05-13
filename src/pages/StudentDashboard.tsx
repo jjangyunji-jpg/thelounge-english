@@ -1982,6 +1982,22 @@ export default function StudentDashboard() {
               <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{authNickname || student} 님</p>
             </div>
           </div>
+          {isManagerMode && managedStudents.length > 0 && (
+            <select
+              value={selectedManagedStudent || ""}
+              onChange={(e) => {
+                const display = e.target.value;
+                setSelectedManagedStudent(display);
+                setAuthStudent(display.split(" + ")[0]);
+              }}
+              className="ml-2 bg-background border border-border rounded-md text-xs px-2 py-1 text-foreground max-w-[200px] truncate"
+              title="관리 학생 선택"
+            >
+              {managedStudents.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          )}
           {(authStudent || viewingStudentName) && (
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {authUserId && (
