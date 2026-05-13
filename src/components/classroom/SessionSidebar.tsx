@@ -11,6 +11,7 @@ interface SessionItem {
   ended_at?: string | null;
   cancellation_type?: string | null;
   cancellation_resolution?: string | null;
+  reschedule_origin_dates?: string[] | null;
 }
 
 const CANCEL_BADGES: Record<string, { label: string; cls: string }> = {
