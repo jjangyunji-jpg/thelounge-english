@@ -1546,6 +1546,17 @@ export default function StudentDashboard() {
     );
   }
 
+  // 매니저 모드: 회사 수업 목록 + 수업별 신청
+  if (isManagerMode && managerCorporateAccount) {
+    return (
+      <ManagerDashboard
+        managerName={viewingStudentName || authNickname || "매니저"}
+        corporateAccount={managerCorporateAccount}
+        onLogout={isInstructorView ? () => navigate(-1) : handleLogout}
+      />
+    );
+  }
+
   return (
     <>
     <div className="min-h-screen bg-background">
