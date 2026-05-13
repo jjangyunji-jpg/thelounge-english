@@ -112,8 +112,50 @@ export default function SessionSidebar({
     return d;
   }, []);
 
-  const pastSessions = useMemo(() => sessions.filter(s => new Date(s.scheduled_at) <= now), [sessions, now]);
-  const futureSessions = useMemo(() => sessions.filter(s => new Date(s.scheduled_at) > now), [sessions, now]);
+  // Build map: KST date → session, and set of dates that have been "moved away"
+  const { sessionByDate, movedFromDates } = useMemo(() => {
+    const byDate = new Map<string, SessionItem>();
+    const moved = new Set<string>();
+    for (const s of sessions) {
+      byDate.set(kstDateKey(s.scheduled_at), s);
+    }
+    for (const s of sessions) {
+      for (const orig of s.reschedule_origin_dates ?? []) {
+        const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
+        moved.add(key);
+      }
+    }
+    return { sessionByDate: byDate, movedFromDates: moved };
+  }, [sessions]);
+
+  // Hide sessions whose KST date has been moved away to a later date
+  const visibleSessions = useMemo(
+    () => sessions.filter(s => !movedFromDates.has(kstDateKey(s.scheduled_at))),
+    [sessions, movedFromDates]
+  );
+
+  // For a given session, walk back through origin chain and collect cancellation labels
+  const getOriginChain = (s: SessionItem): { date: string; label: string }[] => {
+    const chain: { date: string; label: string }[] = [];
+    const visited = new Set<string>();
+    const walk = (origins: string[] | null | undefined) => {
+      for (const orig of origins ?? []) {
+        const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        const originSess = sessionByDate.get(key);
+        if (originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]) {
+          chain.push({ date: key, label: CANCEL_BADGES[originSess.cancellation_type].label });
+        }
+        if (originSess) walk(originSess.reschedule_origin_dates);
+      }
+    };
+    walk(s.reschedule_origin_dates);
+    return chain;
+  };
+
+  const pastSessions = useMemo(() => visibleSessions.filter(s => new Date(s.scheduled_at) <= now), [visibleSessions, now]);
+  const futureSessions = useMemo(() => visibleSessions.filter(s => new Date(s.scheduled_at) > now), [visibleSessions, now]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim();
