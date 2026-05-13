@@ -154,7 +154,7 @@ export default function ClassNote() {
       // Also include sessions where this student appears in group_students column
       const { data: groupSessions } = await supabase
         .from("class_sessions")
-        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at, cancellation_type, cancellation_resolution")
+        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at, cancellation_type, cancellation_resolution, reschedule_origin_dates")
         .contains("group_students", [student])
         .order("scheduled_at", { ascending: false })
         .limit(50);
