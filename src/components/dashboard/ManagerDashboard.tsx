@@ -21,6 +21,12 @@ interface ManagedSchedule {
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
+interface UpcomingSession {
+  id: string;
+  scheduled_at: string;
+  label: string;
+}
+
 function fmtNext(iso: string) {
   const d = new Date(iso);
   const dateStr = d.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
@@ -38,6 +44,7 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ManagedSchedule[]>([]);
+  const [upcoming, setUpcoming] = useState<UpcomingSession[]>([]);
   const [bookingFor, setBookingFor] = useState<ManagedSchedule | null>(null);
 
   const load = async () => {
@@ -75,7 +82,14 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
       .gte("scheduled_at", monthStart.toISOString())
       .order("scheduled_at", { ascending: true });
 
-    const built: ManagedSchedule[] = learners.map((l) => {
+    // Dedupe group classes: only keep row whose student_name is alphabetically first in the group
+    const dedupedLearners = learners.filter((l) => {
+      const members = [l.student_name, ...((l.group_students as string[]) || [])];
+      const first = [...members].sort()[0];
+      return l.student_name === first;
+    });
+
+    const built: ManagedSchedule[] = dedupedLearners.map((l) => {
       const isGroup = (l.group_students || []).length > 0;
       const display = isGroup
         ? [l.student_name, ...(l.group_students as string[])].sort().join(" + ")
@@ -121,6 +135,25 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
     });
 
     setItems(built);
+
+    // Build unified upcoming session list (this month, future, not cancelled)
+    const nowMs = Date.now();
+    const labelByName = new Map<string, string>();
+    built.forEach((b) => labelByName.set(b.primaryName, b.displayName));
+    const up: UpcomingSession[] = (sessions || [])
+      .filter(
+        (s: any) =>
+          labelByName.has(s.student_name) &&
+          !s.cancellation_type &&
+          new Date(s.scheduled_at).getTime() >= nowMs
+      )
+      .map((s: any) => ({
+        id: s.id,
+        scheduled_at: s.scheduled_at,
+        label: labelByName.get(s.student_name) || s.student_name,
+      }));
+    setUpcoming(up);
+
     setLoading(false);
   };
 
@@ -162,6 +195,27 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
             각 수업별로 보강·추가 신청을 진행할 수 있습니다.
           </p>
         </div>
+
+        {/* Unified upcoming schedule */}
+        <section className="mb-6 border border-border rounded-xl bg-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-4 h-4 text-gold" />
+            <h2 className="font-semibold text-foreground text-sm">이번 달 예정 수업</h2>
+            <span className="text-[11px] text-muted-foreground">({upcoming.length}건)</span>
+          </div>
+          {upcoming.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">예정된 수업이 없습니다.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {upcoming.map((u) => (
+                <li key={u.id} className="py-2 flex items-center justify-between gap-3 text-xs">
+                  <span className="text-foreground/90">{fmtNext(u.scheduled_at)}</span>
+                  <span className="font-medium text-foreground truncate">{u.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         {items.length === 0 ? (
           <div className="text-center py-12 text-sm text-muted-foreground">
