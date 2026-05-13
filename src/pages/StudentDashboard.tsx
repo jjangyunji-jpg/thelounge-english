@@ -539,6 +539,11 @@ export default function StudentDashboard() {
   const [isInstructorView, setIsInstructorView] = useState(false);
   const [viewingStudentName, setViewingStudentName] = useState<string | null>(null);
 
+  // Manager mode: corporate_role='manager' user managing multiple learners
+  const [isManagerMode, setIsManagerMode] = useState(false);
+  const [managedStudents, setManagedStudents] = useState<string[]>([]);
+  const [selectedManagedStudent, setSelectedManagedStudent] = useState<string | null>(null);
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
@@ -558,6 +563,50 @@ export default function StudentDashboard() {
             setAuthLoading(false);
             return;
           }
+        }
+
+        // Check if this user is a corporate manager (corporate_role='manager')
+        const { data: managerRecord } = await supabase
+          .from("instructor_students")
+          .select("corporate_role, corporate_account")
+          .eq("user_id", session.user.id)
+          .eq("corporate_role", "manager")
+          .maybeSingle();
+
+        if (managerRecord && managerRecord.corporate_account) {
+          // Fetch all learners under same corporate_account
+          const { data: learners } = await supabase
+            .from("instructor_students")
+            .select("student_name, group_students")
+            .eq("corporate_account", managerRecord.corporate_account)
+            .neq("corporate_role", "manager")
+            .eq("status", "active");
+
+          // Build unique learner display list (each instructor_students row = one schedule)
+          const names = Array.from(new Set((learners || []).map((l: any) => {
+            const group = l.group_students || [];
+            if (group.length > 0) {
+              return [l.student_name, ...group].sort().join(" + ");
+            }
+            return l.student_name;
+          })));
+          // Map display name → primary student_name (first in sort) used for queries
+          const primaryFor = (display: string) => display.split(" + ")[0];
+
+          setIsManagerMode(true);
+          setManagedStudents(names);
+          const initial = names[0] || null;
+          setSelectedManagedStudent(initial);
+          if (initial) setAuthStudent(primaryFor(initial));
+
+          const { data: profile } = await supabase
+            .from("student_profiles")
+            .select("nickname")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          setAuthNickname(profile?.nickname || null);
+          setAuthLoading(false);
+          return;
         }
 
         // Check if student has a linked instructor_students record
@@ -1933,6 +1982,22 @@ export default function StudentDashboard() {
               <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{authNickname || student} 님</p>
             </div>
           </div>
+          {isManagerMode && managedStudents.length > 0 && (
+            <select
+              value={selectedManagedStudent || ""}
+              onChange={(e) => {
+                const display = e.target.value;
+                setSelectedManagedStudent(display);
+                setAuthStudent(display.split(" + ")[0]);
+              }}
+              className="ml-2 bg-background border border-border rounded-md text-xs px-2 py-1 text-foreground max-w-[200px] truncate"
+              title="관리 학생 선택"
+            >
+              {managedStudents.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          )}
           {(authStudent || viewingStudentName) && (
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {authUserId && (
