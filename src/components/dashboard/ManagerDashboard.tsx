@@ -356,12 +356,13 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
           </div>
         </section>
 
+        <div>
         {items.length === 0 ? (
           <div className="text-center py-12 text-sm text-muted-foreground">
             관리 중인 수업이 없습니다.
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             {items.map((it) => (
               <div
                 key={it.id}
@@ -421,6 +422,8 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
             ))}
           </div>
         )}
+        </div>
+        </div>
       </main>
 
       {bookingFor && (
