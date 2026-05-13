@@ -135,15 +135,18 @@ export default function SessionSidebar({
   );
 
   // For a given session, look up direct origins only (one hop) and collect cancellation labels.
-  // Don't recurse — earlier links in the chain represent separate makeup events already resolved.
-  const getOriginChain = (s: SessionItem): { date: string; label: string }[] => {
-    const chain: { date: string; label: string }[] = [];
+  // If the origin session was deleted (not in sessionByDate), still record the date with no label
+  // so the 보강 badge and date subtitle still appear.
+  const getOriginChain = (s: SessionItem): { date: string; label: string | null }[] => {
+    const chain: { date: string; label: string | null }[] = [];
     for (const orig of s.reschedule_origin_dates ?? []) {
       const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
       const originSess = sessionByDate.get(key);
-      if (originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]) {
-        chain.push({ date: key, label: CANCEL_BADGES[originSess.cancellation_type].label });
-      }
+      const label =
+        originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]
+          ? CANCEL_BADGES[originSess.cancellation_type].label
+          : null;
+      chain.push({ date: key, label });
     }
     return chain;
   };
