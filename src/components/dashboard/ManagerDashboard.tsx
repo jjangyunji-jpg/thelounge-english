@@ -135,6 +135,25 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
     });
 
     setItems(built);
+
+    // Build unified upcoming session list (this month, future, not cancelled)
+    const nowMs = Date.now();
+    const labelByName = new Map<string, string>();
+    built.forEach((b) => labelByName.set(b.primaryName, b.displayName));
+    const up: UpcomingSession[] = (sessions || [])
+      .filter(
+        (s: any) =>
+          labelByName.has(s.student_name) &&
+          !s.cancellation_type &&
+          new Date(s.scheduled_at).getTime() >= nowMs
+      )
+      .map((s: any) => ({
+        id: s.id,
+        scheduled_at: s.scheduled_at,
+        label: labelByName.get(s.student_name) || s.student_name,
+      }));
+    setUpcoming(up);
+
     setLoading(false);
   };
 
