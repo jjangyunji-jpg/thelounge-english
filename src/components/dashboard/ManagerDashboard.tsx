@@ -234,8 +234,9 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
           </p>
         </div>
 
+        <div className="grid gap-4 lg:grid-cols-2 items-start">
         {/* Unified upcoming schedule */}
-        <section className="mb-6 border border-border rounded-xl bg-card p-4">
+        <section className="border border-border rounded-xl bg-card p-4 lg:sticky lg:top-20">
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="w-4 h-4 text-gold" />
             <h2 className="font-semibold text-foreground text-sm">
