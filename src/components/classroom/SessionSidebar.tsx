@@ -214,17 +214,19 @@ export default function SessionSidebar({
               </span>
             )}
             {/* Inherited badges from cancelled origin(s) */}
-            {originChain.map((o, i) => (
-              <span
-                key={`${o.date}-${i}`}
-                className={cn(
-                  "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
-                  "bg-muted text-muted-foreground"
-                )}
-              >
-                {o.label}
-              </span>
-            ))}
+            {originChain.map((o, i) =>
+              o.label ? (
+                <span
+                  key={`${o.date}-${i}`}
+                  className={cn(
+                    "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
+                    "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {o.label}
+                </span>
+              ) : null
+            )}
             {isMakeup && (
               <span className={cn(
                 "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
