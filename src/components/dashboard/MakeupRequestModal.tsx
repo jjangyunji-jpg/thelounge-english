@@ -1075,7 +1075,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     onClick={() => setStep("no_slots")}
                   >
                     <CalendarX className="w-4 h-4 mr-1.5" />
-                    가능한 일정이 없나요?
+                    가능한 일정이 없나요? 🤔
                   </Button>
 
                   {selectedDate && (
