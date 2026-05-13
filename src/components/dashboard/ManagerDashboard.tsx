@@ -82,7 +82,7 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
         : l.student_name;
 
       const matched = (sessions || []).filter(
-        (s: any) => s.student_name === l.primaryName || s.student_name === l.student_name
+        (s: any) => s.student_name === l.student_name
       );
 
       // count this month (exclude cancelled)
