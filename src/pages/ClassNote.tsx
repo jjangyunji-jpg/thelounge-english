@@ -29,6 +29,7 @@ interface ClassSession {
   ended_at: string | null;
   cancellation_type: string | null;
   cancellation_resolution: string | null;
+  reschedule_origin_dates?: string[] | null;
 }
 
 function formatDate(dateStr: string) {
