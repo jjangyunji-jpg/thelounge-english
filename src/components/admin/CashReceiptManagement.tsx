@@ -26,6 +26,8 @@ interface StudentRecord {
   cash_payment: boolean;
   corporate_rate: number | null;
   tax_invoice: boolean;
+  corporate_role: string | null;
+  corporate_account: string | null;
 }
 
 const STORE_FEE_RATE = 0.0495; // 스마트스토어 수수료 4.95%
