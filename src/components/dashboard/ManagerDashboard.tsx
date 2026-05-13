@@ -44,6 +44,7 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ManagedSchedule[]>([]);
+  const [upcoming, setUpcoming] = useState<UpcomingSession[]>([]);
   const [bookingFor, setBookingFor] = useState<ManagedSchedule | null>(null);
 
   const load = async () => {
