@@ -50,6 +50,19 @@ function fmtDate(dateStr: string) {
   });
 }
 
+/** YYYY-MM-DD in KST */
+function kstDateKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+
+/** "M월 D일" from YYYY-MM-DD */
+function fmtShortKor(ymd: string): string {
+  const [, m, d] = ymd.split("-");
+  return `${parseInt(m, 10)}월 ${parseInt(d, 10)}일`;
+}
+
 /** Strip HTML tags and return plain text */
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
