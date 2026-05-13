@@ -635,7 +635,7 @@ export default function StudentDashboard() {
     });
   }, [urlStudentName]);
 
-  // 강사/관리자 뷰에서도 매니저 학생을 열었으면 드롭다운 노출
+  // 강사/관리자가 매니저 학생을 열었을 때도 매니저 대시보드로 표시
   useEffect(() => {
     if (!isInstructorView || !viewingStudentName || isManagerMode) return;
     (async () => {
@@ -646,24 +646,10 @@ export default function StudentDashboard() {
         .eq("corporate_role", "manager")
         .maybeSingle();
       if (!rec?.corporate_account) return;
-      const { data: learners } = await supabase
-        .from("instructor_students")
-        .select("student_name, group_students")
-        .eq("corporate_account", rec.corporate_account)
-        .neq("corporate_role", "manager")
-        .eq("status", "active");
-      const names = Array.from(new Set((learners || []).map((l: any) => {
-        const group = l.group_students || [];
-        if (group.length > 0) return [l.student_name, ...group].sort().join(" + ");
-        return l.student_name;
-      })));
-      if (names.length === 0) return;
       setIsManagerMode(true);
-      setManagedStudents(names);
-      setSelectedManagedStudent(names[0]);
-      setViewingStudentName(names[0].split(" + ")[0]);
+      setManagerCorporateAccount(rec.corporate_account);
     })();
-  }, [isInstructorView, viewingStudentName]);
+  }, [isInstructorView, viewingStudentName, isManagerMode]);
 
   // instructor view > auth 학생명 > URL 파라미터 > 기본값 순 우선순위
   const student = viewingStudentName || authStudent || urlStudent || "정유리";
