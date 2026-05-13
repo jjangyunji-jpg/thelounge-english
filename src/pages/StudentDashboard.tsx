@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import BugReportModal from "@/components/dashboard/BugReportModal";
 import MakeupRequestModal from "@/components/dashboard/MakeupRequestModal";
+import ManagerDashboard from "@/components/dashboard/ManagerDashboard";
 import NotificationInbox from "@/components/dashboard/NotificationInbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -539,10 +540,9 @@ export default function StudentDashboard() {
   const [isInstructorView, setIsInstructorView] = useState(false);
   const [viewingStudentName, setViewingStudentName] = useState<string | null>(null);
 
-  // Manager mode: corporate_role='manager' user managing multiple learners
+  // Manager mode: corporate_role='manager' user (회사 매니저, 본인은 수업 X)
   const [isManagerMode, setIsManagerMode] = useState(false);
-  const [managedStudents, setManagedStudents] = useState<string[]>([]);
-  const [selectedManagedStudent, setSelectedManagedStudent] = useState<string | null>(null);
+  const [managerCorporateAccount, setManagerCorporateAccount] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -574,30 +574,8 @@ export default function StudentDashboard() {
           .maybeSingle();
 
         if (managerRecord && managerRecord.corporate_account) {
-          // Fetch all learners under same corporate_account
-          const { data: learners } = await supabase
-            .from("instructor_students")
-            .select("student_name, group_students")
-            .eq("corporate_account", managerRecord.corporate_account)
-            .neq("corporate_role", "manager")
-            .eq("status", "active");
-
-          // Build unique learner display list (each instructor_students row = one schedule)
-          const names = Array.from(new Set((learners || []).map((l: any) => {
-            const group = l.group_students || [];
-            if (group.length > 0) {
-              return [l.student_name, ...group].sort().join(" + ");
-            }
-            return l.student_name;
-          })));
-          // Map display name → primary student_name (first in sort) used for queries
-          const primaryFor = (display: string) => display.split(" + ")[0];
-
           setIsManagerMode(true);
-          setManagedStudents(names);
-          const initial = names[0] || null;
-          setSelectedManagedStudent(initial);
-          if (initial) setAuthStudent(primaryFor(initial));
+          setManagerCorporateAccount(managerRecord.corporate_account);
 
           const { data: profile } = await supabase
             .from("student_profiles")
@@ -658,7 +636,7 @@ export default function StudentDashboard() {
     });
   }, [urlStudentName]);
 
-  // 강사/관리자 뷰에서도 매니저 학생을 열었으면 드롭다운 노출
+  // 강사/관리자가 매니저 학생을 열었을 때도 매니저 대시보드로 표시
   useEffect(() => {
     if (!isInstructorView || !viewingStudentName || isManagerMode) return;
     (async () => {
@@ -669,24 +647,10 @@ export default function StudentDashboard() {
         .eq("corporate_role", "manager")
         .maybeSingle();
       if (!rec?.corporate_account) return;
-      const { data: learners } = await supabase
-        .from("instructor_students")
-        .select("student_name, group_students")
-        .eq("corporate_account", rec.corporate_account)
-        .neq("corporate_role", "manager")
-        .eq("status", "active");
-      const names = Array.from(new Set((learners || []).map((l: any) => {
-        const group = l.group_students || [];
-        if (group.length > 0) return [l.student_name, ...group].sort().join(" + ");
-        return l.student_name;
-      })));
-      if (names.length === 0) return;
       setIsManagerMode(true);
-      setManagedStudents(names);
-      setSelectedManagedStudent(names[0]);
-      setViewingStudentName(names[0].split(" + ")[0]);
+      setManagerCorporateAccount(rec.corporate_account);
     })();
-  }, [isInstructorView, viewingStudentName]);
+  }, [isInstructorView, viewingStudentName, isManagerMode]);
 
   // instructor view > auth 학생명 > URL 파라미터 > 기본값 순 우선순위
   const student = viewingStudentName || authStudent || urlStudent || "정유리";
@@ -1583,6 +1547,17 @@ export default function StudentDashboard() {
     );
   }
 
+  // 매니저 모드: 회사 수업 목록 + 수업별 신청
+  if (isManagerMode && managerCorporateAccount) {
+    return (
+      <ManagerDashboard
+        managerName={viewingStudentName || authNickname || "매니저"}
+        corporateAccount={managerCorporateAccount}
+        onLogout={isInstructorView ? () => navigate(-1) : handleLogout}
+      />
+    );
+  }
+
   return (
     <>
     <div className="min-h-screen bg-background">
@@ -2012,24 +1987,6 @@ export default function StudentDashboard() {
               <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{authNickname || student} 님</p>
             </div>
           </div>
-          {isManagerMode && managedStudents.length > 0 && (
-            <select
-              value={selectedManagedStudent || ""}
-              onChange={(e) => {
-                const display = e.target.value;
-                const primary = display.split(" + ")[0];
-                setSelectedManagedStudent(display);
-                if (isInstructorView) setViewingStudentName(primary);
-                else setAuthStudent(primary);
-              }}
-              className="ml-2 bg-background border border-border rounded-md text-xs px-2 py-1 text-foreground max-w-[200px] truncate"
-              title="관리 학생 선택"
-            >
-              {managedStudents.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          )}
           {(authStudent || viewingStudentName) && (
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
               {authUserId && (
