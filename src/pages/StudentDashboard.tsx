@@ -565,6 +565,50 @@ export default function StudentDashboard() {
           }
         }
 
+        // Check if this user is a corporate manager (corporate_role='manager')
+        const { data: managerRecord } = await supabase
+          .from("instructor_students")
+          .select("corporate_role, corporate_account")
+          .eq("user_id", session.user.id)
+          .eq("corporate_role", "manager")
+          .maybeSingle();
+
+        if (managerRecord && managerRecord.corporate_account) {
+          // Fetch all learners under same corporate_account
+          const { data: learners } = await supabase
+            .from("instructor_students")
+            .select("student_name, group_students")
+            .eq("corporate_account", managerRecord.corporate_account)
+            .neq("corporate_role", "manager")
+            .eq("status", "active");
+
+          // Build unique learner display list (each instructor_students row = one schedule)
+          const names = Array.from(new Set((learners || []).map((l: any) => {
+            const group = l.group_students || [];
+            if (group.length > 0) {
+              return [l.student_name, ...group].sort().join(" + ");
+            }
+            return l.student_name;
+          })));
+          // Map display name → primary student_name (first in sort) used for queries
+          const primaryFor = (display: string) => display.split(" + ")[0];
+
+          setIsManagerMode(true);
+          setManagedStudents(names);
+          const initial = names[0] || null;
+          setSelectedManagedStudent(initial);
+          if (initial) setAuthStudent(primaryFor(initial));
+
+          const { data: profile } = await supabase
+            .from("student_profiles")
+            .select("nickname")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          setAuthNickname(profile?.nickname || null);
+          setAuthLoading(false);
+          return;
+        }
+
         // Check if student has a linked instructor_students record
         const { data: linkedRecord } = await supabase
           .from("instructor_students")
