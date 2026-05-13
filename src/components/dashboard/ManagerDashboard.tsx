@@ -75,7 +75,14 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
       .gte("scheduled_at", monthStart.toISOString())
       .order("scheduled_at", { ascending: true });
 
-    const built: ManagedSchedule[] = learners.map((l) => {
+    // Dedupe group classes: only keep row whose student_name is alphabetically first in the group
+    const dedupedLearners = learners.filter((l) => {
+      const members = [l.student_name, ...((l.group_students as string[]) || [])];
+      const first = [...members].sort()[0];
+      return l.student_name === first;
+    });
+
+    const built: ManagedSchedule[] = dedupedLearners.map((l) => {
       const isGroup = (l.group_students || []).length > 0;
       const display = isGroup
         ? [l.student_name, ...(l.group_students as string[])].sort().join(" + ")
