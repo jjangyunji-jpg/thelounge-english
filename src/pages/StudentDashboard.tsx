@@ -539,6 +539,11 @@ export default function StudentDashboard() {
   const [isInstructorView, setIsInstructorView] = useState(false);
   const [viewingStudentName, setViewingStudentName] = useState<string | null>(null);
 
+  // Manager mode: corporate_role='manager' user managing multiple learners
+  const [isManagerMode, setIsManagerMode] = useState(false);
+  const [managedStudents, setManagedStudents] = useState<string[]>([]);
+  const [selectedManagedStudent, setSelectedManagedStudent] = useState<string | null>(null);
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
