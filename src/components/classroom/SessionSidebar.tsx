@@ -134,23 +134,17 @@ export default function SessionSidebar({
     [sessions, movedFromDates]
   );
 
-  // For a given session, walk back through origin chain and collect cancellation labels
+  // For a given session, look up direct origins only (one hop) and collect cancellation labels.
+  // Don't recurse — earlier links in the chain represent separate makeup events already resolved.
   const getOriginChain = (s: SessionItem): { date: string; label: string }[] => {
     const chain: { date: string; label: string }[] = [];
-    const visited = new Set<string>();
-    const walk = (origins: string[] | null | undefined) => {
-      for (const orig of origins ?? []) {
-        const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
-        if (visited.has(key)) continue;
-        visited.add(key);
-        const originSess = sessionByDate.get(key);
-        if (originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]) {
-          chain.push({ date: key, label: CANCEL_BADGES[originSess.cancellation_type].label });
-        }
-        if (originSess) walk(originSess.reschedule_origin_dates);
+    for (const orig of s.reschedule_origin_dates ?? []) {
+      const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
+      const originSess = sessionByDate.get(key);
+      if (originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]) {
+        chain.push({ date: key, label: CANCEL_BADGES[originSess.cancellation_type].label });
       }
-    };
-    walk(s.reschedule_origin_dates);
+    }
     return chain;
   };
 
