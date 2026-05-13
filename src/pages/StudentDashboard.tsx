@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import BugReportModal from "@/components/dashboard/BugReportModal";
 import MakeupRequestModal from "@/components/dashboard/MakeupRequestModal";
+import ManagerDashboard from "@/components/dashboard/ManagerDashboard";
 import NotificationInbox from "@/components/dashboard/NotificationInbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
