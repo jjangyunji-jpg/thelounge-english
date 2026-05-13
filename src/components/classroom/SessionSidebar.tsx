@@ -190,6 +190,8 @@ export default function SessionSidebar({
 
   const renderSessionItem = (s: SessionItem) => {
     const canDelete = onDelete && isDeletable(s);
+    const originChain = getOriginChain(s);
+    const isMakeup = originChain.length > 0;
     return (
       <div
         key={s.id}
@@ -214,6 +216,26 @@ export default function SessionSidebar({
                 {CANCEL_BADGES[s.cancellation_type].label}
               </span>
             )}
+            {/* Inherited badges from cancelled origin(s) */}
+            {originChain.map((o, i) => (
+              <span
+                key={`${o.date}-${i}`}
+                className={cn(
+                  "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
+                  "bg-muted text-muted-foreground"
+                )}
+              >
+                {o.label}
+              </span>
+            ))}
+            {isMakeup && (
+              <span className={cn(
+                "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
+                RESOLUTION_BADGES.makeup.cls
+              )}>
+                {RESOLUTION_BADGES.makeup.label}
+              </span>
+            )}
             {s.cancellation_resolution && RESOLUTION_BADGES[s.cancellation_resolution] && (
               <span className={cn(
                 "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
@@ -223,6 +245,11 @@ export default function SessionSidebar({
               </span>
             )}
           </div>
+          {originChain.length > 0 && (
+            <p className="text-[9px] text-muted-foreground/80 mt-0.5 leading-tight">
+              {originChain.map(o => `(${fmtShortKor(o.date)} 수업 ${o.label})`).join(" ")}
+            </p>
+          )}
           {s.topic && (
             <p className="text-[10px] text-muted-foreground mt-0.5 truncate pr-5">
               {s.topic}
