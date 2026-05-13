@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Calendar, Users, User as UserIcon, Plus, LogOut } from "lucide-react";
+import { Loader2, Calendar, Users, User as UserIcon, Plus, LogOut, X, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import MakeupRequestModal from "./MakeupRequestModal";
 import { useNavigate } from "react-router-dom";
