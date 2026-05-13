@@ -47,6 +47,43 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
   const [items, setItems] = useState<ManagedSchedule[]>([]);
   const [upcoming, setUpcoming] = useState<UpcomingSession[]>([]);
   const [bookingFor, setBookingFor] = useState<ManagedSchedule | null>(null);
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+
+  // Build current KST month cells (with leading/trailing pad)
+  const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const monthYear = kstNow.getFullYear();
+  const monthIdx = kstNow.getMonth();
+  const firstDow = new Date(monthYear, monthIdx, 1).getDay();
+  const daysInMonth = new Date(monthYear, monthIdx + 1, 0).getDate();
+  const cells: { year: number; month: number; day: number; outside: boolean }[] = [];
+  // leading
+  const prevDays = new Date(monthYear, monthIdx, 0).getDate();
+  for (let i = firstDow - 1; i >= 0; i--) {
+    cells.push({ year: monthYear, month: monthIdx - 1, day: prevDays - i, outside: true });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ year: monthYear, month: monthIdx, day: d, outside: false });
+  }
+  while (cells.length % 7 !== 0) {
+    const last = cells[cells.length - 1];
+    const next = new Date(last.year, last.month, last.day + 1);
+    cells.push({ year: next.getFullYear(), month: next.getMonth(), day: next.getDate(), outside: true });
+  }
+
+  // Group upcoming sessions by date key (KST)
+  const sessionsByDate = new Map<string, UpcomingSession[]>();
+  upcoming.forEach((u) => {
+    const d = new Date(new Date(u.scheduled_at).toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toDateString();
+    const arr = sessionsByDate.get(key) || [];
+    arr.push(u);
+    sessionsByDate.set(key, arr);
+  });
+
+  const todayKey = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate()).toDateString();
+  const selectedSessions = selectedDateKey ? (sessionsByDate.get(selectedDateKey) || []) : [];
+  const selectedDateObj = selectedDateKey ? new Date(selectedDateKey) : null;
+
 
   const load = async () => {
     setLoading(true);
