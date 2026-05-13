@@ -497,6 +497,14 @@ export default function CashReceiptManagement() {
 
   const corporateStudents = deduped
     .filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
+    // Hide managers (수업 안 받음, 청구 대상 아님)
+    .filter(s => s.corporate_role !== "manager")
+    // For groups, only show one row (the primary = first alphabetical of self + group_students)
+    .filter(s => {
+      if (!s.group_students || s.group_students.length === 0) return true;
+      const members = [s.student_name, ...s.group_students].sort((a, b) => a.localeCompare(b, "ko"));
+      return members[0] === s.student_name;
+    })
     .filter(isWithinPeriod)
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
