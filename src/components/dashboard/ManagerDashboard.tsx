@@ -21,6 +21,12 @@ interface ManagedSchedule {
 
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
+interface UpcomingSession {
+  id: string;
+  scheduled_at: string;
+  label: string;
+}
+
 function fmtNext(iso: string) {
   const d = new Date(iso);
   const dateStr = d.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
