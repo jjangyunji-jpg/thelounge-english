@@ -139,7 +139,7 @@ export default function ClassNote() {
       // Query sessions for all related student names
       let query = supabase
         .from("class_sessions")
-        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at, cancellation_type, cancellation_resolution")
+        .select("id, scheduled_at, topic, level, instructor_name, notes, remarks, started_at, ended_at, cancellation_type, cancellation_resolution, reschedule_origin_dates")
         .in("student_name", allNames)
         .order("scheduled_at", { ascending: false })
         .limit(50);
