@@ -135,15 +135,18 @@ export default function SessionSidebar({
   );
 
   // For a given session, look up direct origins only (one hop) and collect cancellation labels.
-  // Don't recurse — earlier links in the chain represent separate makeup events already resolved.
-  const getOriginChain = (s: SessionItem): { date: string; label: string }[] => {
-    const chain: { date: string; label: string }[] = [];
+  // If the origin session was deleted (not in sessionByDate), still record the date with no label
+  // so the 보강 badge and date subtitle still appear.
+  const getOriginChain = (s: SessionItem): { date: string; label: string | null }[] => {
+    const chain: { date: string; label: string | null }[] = [];
     for (const orig of s.reschedule_origin_dates ?? []) {
       const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
       const originSess = sessionByDate.get(key);
-      if (originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]) {
-        chain.push({ date: key, label: CANCEL_BADGES[originSess.cancellation_type].label });
-      }
+      const label =
+        originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]
+          ? CANCEL_BADGES[originSess.cancellation_type].label
+          : null;
+      chain.push({ date: key, label });
     }
     return chain;
   };
@@ -211,17 +214,19 @@ export default function SessionSidebar({
               </span>
             )}
             {/* Inherited badges from cancelled origin(s) */}
-            {originChain.map((o, i) => (
-              <span
-                key={`${o.date}-${i}`}
-                className={cn(
-                  "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
-                  "bg-muted text-muted-foreground"
-                )}
-              >
-                {o.label}
-              </span>
-            ))}
+            {originChain.map((o, i) =>
+              o.label ? (
+                <span
+                  key={`${o.date}-${i}`}
+                  className={cn(
+                    "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
+                    "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {o.label}
+                </span>
+              ) : null
+            )}
             {isMakeup && (
               <span className={cn(
                 "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
@@ -241,7 +246,7 @@ export default function SessionSidebar({
           </div>
           {originChain.length > 0 && (
             <p className="text-[9px] text-muted-foreground/80 mt-0.5 leading-tight">
-              {originChain.map(o => `(${fmtShortKor(o.date)} 수업 ${o.label})`).join(" ")}
+              {originChain.map(o => o.label ? `(${fmtShortKor(o.date)} 수업 ${o.label})` : `(${fmtShortKor(o.date)} 수업)`).join(" ")}
             </p>
           )}
           {s.topic && (
