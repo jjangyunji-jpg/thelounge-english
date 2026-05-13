@@ -1,44 +1,91 @@
-## 예약형 강사 이관 시스템
 
-### 현재 문제점
-- 이관 즉시 실행 → 이관일 이전에도 신규 강사가 접근 불가
-- 모든 미시작 세션 삭제 → 이관일 이전 세션까지 삭제됨
-- 세션 자동 생성 안 됨
+## 목표
+기업 수강생의 "매니저(신청·결제 담당)"와 "학생(실제 수강)"을 데이터 모델에서 분리하고, 결제확인 화면을 **그룹 단위 청구**로 재구성한다.
 
-### 구현 계획
+---
 
-#### 1. DB 변경: `instructor_students` 테이블에 이관 메타데이터 추가
-- `transfer_from_id` (uuid, nullable) — 이관 원본 레코드 ID (이전 강사의 instructor_students.id)
-- `transfer_date` (date, nullable) — 이관 예정일
-- `transfer_status` (text, nullable) — `pending` | `completed` | `cancelled`
+## 1. 스키마 변경 (마이그레이션)
 
-이관 설정 시:
-- 기존 레코드: **active 유지** (이관일까지 기존 강사가 계속 수업)
-- 신규 레코드: `status='active'`, `transfer_status='pending'`, `transfer_date` 설정
+`instructor_students`에 컬럼 추가:
+- `corporate_role` text default `'learner'` — `'learner'` | `'manager'` | `'learner_manager'`
+- `corporate_account` text nullable — 회사/매니저 그룹 식별자
 
-#### 2. 이관 설정 시 동작 (TransferStudentModal)
-1. 신규 강사 레코드 생성 (`transfer_status: 'pending'`, `transfer_from_id: 기존레코드ID`)
-2. 기존 레코드는 **그대로 active 유지** (end_date만 이관일로 설정)
-3. 이관일 이후의 기존 강사 미시작/노트없는 세션만 삭제
-4. `autoGenerateSessions()` 호출하여 신규 강사의 이관일 이후 세션 자동 생성
+인덱스: `corporate_account` 조회용.
 
-#### 3. 접근 권한 처리
-- 신규 강사 (`transfer_status='pending'`): 해당 학생의 모든 세션 노트 **읽기 전용** 접근 가능
-- 이관일 이전 세션: 기존 강사만 수정 가능
-- 이관일 이후 세션: 신규 강사만 수정 가능
+---
 
-#### 4. 이관일 도래 시 처리
-- 수동 또는 자동으로 `transfer_status`를 `completed`로 전환
-- 기존 레코드: `status='inactive'` 전환
-- 실질적으로는 이관일이 지나면 세션이 이미 신규 강사 명의로 생성되어 있으므로, 상태 전환은 정리 차원
+## 2. 데이터 마이그레이션
 
-#### 5. 피드백 귀속
-- 이관일 기준 자동 분리 (기존 로직 유지 — `instructor_name` 기반)
-- 이미 구현된 "세션 수 기준 피드백 대상 강사 자동 지정" 로직과 호환
+| student_name | corporate_role | corporate_account | group_students 변경 |
+|---|---|---|---|
+| 전현지 | manager | 전현지팀 | [] |
+| 도은, 지아나, 선혜, 연정, 지은 | learner | 전현지팀 | (현재 그대로 유지) |
+| 김동욱 | manager | 황재민팀 | [] |
+| 황재민 | learner | 황재민팀 | **[] (김동욱 제거)** |
+| 환웅, 오의식 | learner_manager | (본인명) | [] |
 
-### 영향받는 파일
-- `supabase/migrations/` — 새 컬럼 3개 추가
-- `TransferStudentModal.tsx` — 이관 로직 수정
-- `InstructorDashboard.tsx` — pending 이관 학생 노트 읽기 권한
-- `autoGenerateSessions.ts` — 이관 후 자동 호출
-- `generate-sessions` edge function — 이관일 기준 필터링
+황재민의 group_students에서 김동욱 제거 → 자동 50k 적용.
+
+---
+
+## 3. 코드 변경
+
+### A. 결제확인 (CashReceiptManagement) — 가장 큰 변경
+- `corporate_role='manager'` 행은 학생 목록에서 완전히 제외 (또는 매니저 섹션 분리)
+- 청구 행을 `corporate_account` 단위로 그룹화:
+  - learner_manager 단독 → 1행, 50k × 회수
+  - 그룹 (도은+지아나) → 1행 표시 "도은 + 지아나", 70k × 회수 (그룹 수업 횟수 = 한 명 기준)
+  - 개인 (지은, 황재민) → 1행, 50k × 회수
+- billable_count 계산: 그룹의 경우 멤버 1명의 수업 카운트 사용 (전원이 동일하다고 가정)
+- billable_overrides는 student_name 기준 유지 (그룹 대표자 = group_students 정렬 시 첫 이름)
+
+### B. SessionCountReport
+- manager 행 제외
+- 학생별 카운트는 그대로 유지 (개별 수업 출결 추적 목적)
+
+### C. 세션 자동 생성 (autoGenerateSessions)
+- `corporate_role='manager'` 행은 스킵
+
+### D. 보강 신청 (MakeupRequestModal)
+- 로그인 사용자가 manager면 → 첫 단계에 "어느 학생 대신 신청?" 학생 선택 추가
+- learner_manager는 본인 자동 선택
+- 일반 learner도 본인 자동 선택
+
+### E. 학생 대시보드 (StudentDashboard)
+- manager 로그인 시 → 관리하는 learner 목록 표시, 학생 전환 탭/드롭다운으로 각 학생의 일정·노트·보강 조회
+- learner_manager는 일반 학생 UI 그대로
+
+### F. 어드민 학생 관리 (StudentManagement)
+- 기업 탭 안에서 매니저 행은 별도 섹션 또는 "매니저" 뱃지로 표기
+- 학생 카드에 corporate_account 표시
+
+### G. 등록/수정 폼 (TransferStudentModal 등)
+- `corporate_role` 라디오 + `corporate_account` 텍스트 입력 추가 (기업 수강생 선택 시)
+
+---
+
+## 4. 검증
+- 마이그레이션 후 황재민 단가가 50k로 표시되는지 확인
+- 도은+지아나 그룹이 결제확인에 1행으로 70k×N 표시되는지 확인
+- 전현지 로그인 시 학생 5명 목록이 보이는지 확인
+- manager 행이 세션 자동 생성에서 제외되는지 확인
+
+---
+
+## 5. 영향 범위 (변경 파일)
+- `supabase/migrations/<new>.sql` (신규)
+- `src/components/admin/CashReceiptManagement.tsx`
+- `src/components/admin/SessionCountReport.tsx`
+- `src/components/admin/StudentManagement.tsx`
+- `src/components/admin/TransferStudentModal.tsx`
+- `src/components/admin/EditTransferModal.tsx`
+- `src/lib/autoGenerateSessions.ts`
+- `src/components/dashboard/MakeupRequestModal.tsx`
+- `src/pages/StudentDashboard.tsx`
+
+---
+
+## 비고
+- `class_sessions`, `homework_assignments` 등은 student_name 기반이라 영향 없음
+- 보강 슬롯·기존 청구 데이터에 영향 없음
+- manager 행은 user_id로 로그인하지만 수업/결제에서는 invisible

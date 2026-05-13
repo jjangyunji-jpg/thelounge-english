@@ -26,6 +26,8 @@ interface StudentRecord {
   cash_payment: boolean;
   corporate_rate: number | null;
   tax_invoice: boolean;
+  corporate_role: string | null;
+  corporate_account: string | null;
 }
 
 const STORE_FEE_RATE = 0.0495; // 스마트스토어 수수료 4.95%
@@ -186,7 +188,7 @@ export default function CashReceiptManagement() {
 
     const [studRes, receiptRes, confRes, sessRes, corpSessRes, creditRes, dedRes, attendRes, rescheduledOutRes, pauseRes, prevSessRes, billableOvRes] = await Promise.all([
       // Fetch all (active + paused + inactive) so we can show breakdown counts
-      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date, cash_payment, corporate_rate, tax_invoice"),
+      supabase.from("instructor_students").select("id, student_name, schedules, student_type, status, group_students, start_date, pause_start, pause_end, end_date, cash_payment, corporate_rate, tax_invoice, corporate_role, corporate_account"),
       supabase.from("cash_receipts" as any).select("student_name, receipt_type, receipt_number, recurring, recurring_attendance"),
       supabase.from("payment_confirmations" as any).select("*").eq("month", periodKey),
       // Regular: period-based — also fetch reschedule_origin_dates
@@ -495,6 +497,14 @@ export default function CashReceiptManagement() {
 
   const corporateStudents = deduped
     .filter(s => s.student_type === "corporate" && !TEST_ACCOUNTS.includes(s.student_name))
+    // Hide managers (수업 안 받음, 청구 대상 아님)
+    .filter(s => s.corporate_role !== "manager")
+    // For groups, only show one row (the primary = first alphabetical of self + group_students)
+    .filter(s => {
+      if (!s.group_students || s.group_students.length === 0) return true;
+      const members = [s.student_name, ...s.group_students].sort((a, b) => a.localeCompare(b, "ko"));
+      return members[0] === s.student_name;
+    })
     .filter(isWithinPeriod)
     .sort((a, b) => a.student_name.localeCompare(b.student_name, "ko"));
 
@@ -936,10 +946,12 @@ export default function CashReceiptManagement() {
         </td>
         <td className="px-4 py-3">
           <span className={cn("font-medium", isConfirmed ? "text-muted-foreground line-through" : "text-foreground")}>
-            {s.student_name}
+            {isCorporate && s.group_students?.length > 0
+              ? [s.student_name, ...s.group_students].sort((a, b) => a.localeCompare(b, "ko")).join(" + ")
+              : s.student_name}
           </span>
-          {s.group_students?.length > 0 && (
-            <span className="ml-1.5 text-[10px] text-muted-foreground">(그룹 {s.group_students.length + 1}인)</span>
+          {isCorporate && s.group_students?.length > 0 && (
+            <span className="ml-1.5 text-[10px] text-muted-foreground">(그룹 {s.group_students.length + 1}인 · 회당 70k)</span>
           )}
           {(() => {
             const isNew = s.start_date && currentPeriod && s.start_date >= currentPeriod.start_date && s.start_date <= currentPeriod.end_date;

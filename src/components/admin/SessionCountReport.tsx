@@ -191,8 +191,9 @@ export default function SessionCountReport() {
 
     const studPromise = supabase
       .from("instructor_students")
-      .select("id, student_name, student_type, status, group_students, instructor_name, schedules")
+      .select("id, student_name, student_type, status, group_students, instructor_name, schedules, corporate_role")
       .eq("status", "active")
+      .neq("corporate_role", "manager")
       .then(r => r);
 
     const pausePromise = supabase
