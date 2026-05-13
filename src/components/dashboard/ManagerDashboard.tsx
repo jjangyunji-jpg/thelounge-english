@@ -122,7 +122,7 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
         displayName: display,
         isGroup,
         instructorName: l.instructor_name || "—",
-        schedules: l.schedules || [],
+        schedules: Array.isArray(l.schedules) ? l.schedules : [],
         nextSessionAt: next?.scheduled_at || null,
         monthCount,
       };
