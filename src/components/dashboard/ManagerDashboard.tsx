@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Calendar, Users, User as UserIcon, Plus, LogOut } from "lucide-react";
+import { Loader2, Calendar, Users, User as UserIcon, Plus, LogOut, X, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import MakeupRequestModal from "./MakeupRequestModal";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +47,43 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
   const [items, setItems] = useState<ManagedSchedule[]>([]);
   const [upcoming, setUpcoming] = useState<UpcomingSession[]>([]);
   const [bookingFor, setBookingFor] = useState<ManagedSchedule | null>(null);
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+
+  // Build current KST month cells (with leading/trailing pad)
+  const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const monthYear = kstNow.getFullYear();
+  const monthIdx = kstNow.getMonth();
+  const firstDow = new Date(monthYear, monthIdx, 1).getDay();
+  const daysInMonth = new Date(monthYear, monthIdx + 1, 0).getDate();
+  const cells: { year: number; month: number; day: number; outside: boolean }[] = [];
+  // leading
+  const prevDays = new Date(monthYear, monthIdx, 0).getDate();
+  for (let i = firstDow - 1; i >= 0; i--) {
+    cells.push({ year: monthYear, month: monthIdx - 1, day: prevDays - i, outside: true });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ year: monthYear, month: monthIdx, day: d, outside: false });
+  }
+  while (cells.length % 7 !== 0) {
+    const last = cells[cells.length - 1];
+    const next = new Date(last.year, last.month, last.day + 1);
+    cells.push({ year: next.getFullYear(), month: next.getMonth(), day: next.getDate(), outside: true });
+  }
+
+  // Group upcoming sessions by date key (KST)
+  const sessionsByDate = new Map<string, UpcomingSession[]>();
+  upcoming.forEach((u) => {
+    const d = new Date(new Date(u.scheduled_at).toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toDateString();
+    const arr = sessionsByDate.get(key) || [];
+    arr.push(u);
+    sessionsByDate.set(key, arr);
+  });
+
+  const todayKey = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate()).toDateString();
+  const selectedSessions = selectedDateKey ? (sessionsByDate.get(selectedDateKey) || []) : [];
+  const selectedDateObj = selectedDateKey ? new Date(selectedDateKey) : null;
+
 
   const load = async () => {
     setLoading(true);
@@ -200,21 +238,121 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
         <section className="mb-6 border border-border rounded-xl bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="w-4 h-4 text-gold" />
-            <h2 className="font-semibold text-foreground text-sm">이번 달 예정 수업</h2>
+            <h2 className="font-semibold text-foreground text-sm">
+              {monthIdx + 1}월 수업 캘린더
+            </h2>
             <span className="text-[11px] text-muted-foreground">({upcoming.length}건)</span>
           </div>
-          {upcoming.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2">예정된 수업이 없습니다.</p>
-          ) : (
-            <ul className="divide-y divide-border">
-              {upcoming.map((u) => (
-                <li key={u.id} className="py-2 flex items-center justify-between gap-3 text-xs">
-                  <span className="text-foreground/90">{fmtNext(u.scheduled_at)}</span>
-                  <span className="font-medium text-foreground truncate">{u.label}</span>
-                </li>
-              ))}
-            </ul>
+
+          <div className="grid grid-cols-7 text-center mb-1">
+            {DAYS_KO.map((d, i) => (
+              <div
+                key={d}
+                className={cn(
+                  "text-[10px] font-semibold pb-1",
+                  i === 0 ? "text-destructive/70" : "text-muted-foreground"
+                )}
+              >
+                {d}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-px">
+            {cells.map((cell, idx) => {
+              const date = new Date(cell.year, cell.month, cell.day);
+              const dateKey = date.toDateString();
+              const hasSession = sessionsByDate.has(dateKey);
+              const isToday = dateKey === todayKey;
+              const isSelected = selectedDateKey === dateKey;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() =>
+                    setSelectedDateKey((prev) => (prev === dateKey ? null : dateKey))
+                  }
+                  className={cn(
+                    "relative aspect-square flex flex-col items-center justify-center rounded-md text-[11px] font-medium transition-all cursor-pointer",
+                    isSelected ? "ring-2 ring-gold ring-offset-1 ring-offset-card" : "",
+                    isToday
+                      ? "bg-navy text-primary-foreground font-bold shadow-sm"
+                      : hasSession
+                      ? "bg-gold/15 text-gold-dark font-semibold hover:bg-gold/25"
+                      : cell.outside
+                      ? "text-muted-foreground/40 hover:bg-muted/30"
+                      : "text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  {cell.outside ? `${cell.month + 1}/${cell.day}` : cell.day}
+                  {hasSession && !isToday && (
+                    <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-gold" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedDateObj && (
+            <div className="mt-3 rounded-md border border-border bg-muted/20 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-foreground">
+                  {selectedDateObj.getMonth() + 1}월 {selectedDateObj.getDate()}일 (
+                  {DAYS_KO[selectedDateObj.getDay()]})
+                </p>
+                <button
+                  onClick={() => setSelectedDateKey(null)}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="닫기"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              {selectedSessions.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">예정된 수업이 없습니다.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {selectedSessions
+                    .sort(
+                      (a, b) =>
+                        new Date(a.scheduled_at).getTime() -
+                        new Date(b.scheduled_at).getTime()
+                    )
+                    .map((s) => (
+                      <div
+                        key={s.id}
+                        className="flex items-start gap-2 rounded-md bg-card border border-border px-2 py-1.5"
+                      >
+                        <Clock className="w-3 h-3 text-gold flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-semibold text-foreground">
+                            {new Date(s.scheduled_at).toLocaleTimeString("ko-KR", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              timeZone: "Asia/Seoul",
+                              hour12: false,
+                            })}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {s.label}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           )}
+
+          <div className="flex items-center gap-3 pt-3 text-[10px] text-muted-foreground flex-wrap">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-gold" />
+              수업일
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-navy" />
+              오늘
+            </div>
+          </div>
         </section>
 
         {items.length === 0 ? (
