@@ -196,6 +196,27 @@ export default function ManagerDashboard({ managerName, corporateAccount, onLogo
           </p>
         </div>
 
+        {/* Unified upcoming schedule */}
+        <section className="mb-6 border border-border rounded-xl bg-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-4 h-4 text-gold" />
+            <h2 className="font-semibold text-foreground text-sm">이번 달 예정 수업</h2>
+            <span className="text-[11px] text-muted-foreground">({upcoming.length}건)</span>
+          </div>
+          {upcoming.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">예정된 수업이 없습니다.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {upcoming.map((u) => (
+                <li key={u.id} className="py-2 flex items-center justify-between gap-3 text-xs">
+                  <span className="text-foreground/90">{fmtNext(u.scheduled_at)}</span>
+                  <span className="font-medium text-foreground truncate">{u.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         {items.length === 0 ? (
           <div className="text-center py-12 text-sm text-muted-foreground">
             관리 중인 수업이 없습니다.
