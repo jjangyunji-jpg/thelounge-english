@@ -117,11 +117,12 @@ serve(async (req) => {
       .single();
     if (pErr || !period) throw new Error("Period not found");
 
-    // 2. Get active students with schedules
+    // 2. Get active students with schedules (skip corporate managers - 수업 안 받음)
     let studentQuery = sb
       .from("instructor_students")
-      .select("id, student_name, schedules, level, instructor_name, meet_link, start_date, end_date, group_students")
-      .eq("status", "active");
+      .select("id, student_name, schedules, level, instructor_name, meet_link, start_date, end_date, group_students, corporate_role")
+      .eq("status", "active")
+      .neq("corporate_role", "manager");
     if (filterStudentName) {
       studentQuery = studentQuery.eq("student_name", filterStudentName);
     }
