@@ -109,6 +109,7 @@ interface ClassSession {
   reschedule_origin_dates?: string[];
   cancellation_type?: string | null;
   cancellation_resolution?: string | null;
+  is_urgent_makeup?: boolean | null;
 }
 
 interface Assignment {
