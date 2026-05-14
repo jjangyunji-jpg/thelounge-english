@@ -612,7 +612,36 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">보강 유형을 선택해주세요</p>
 
-                  {cancelledSessions.length > 0 && (
+                  {(() => {
+                    // 보강 가능 기간 내인 취소 수업만 노출
+                    // 규칙: 원본이 속한 schedule_period 내 (마지막 주면 다음 기간 첫 주까지)에 오늘이 포함되어야 함
+                    const todayKst = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                    const eligibleCancelled = cancelledSessions.filter(s => {
+                      const originDate = new Date(s.scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                      const period = periodOfDate(originDate);
+                      if (!period) {
+                        // period 정보 없으면 같은 KST 연-월 내일 때만 허용
+                        return originDate.slice(0, 7) === todayKst.slice(0, 7);
+                      }
+                      const endDate = new Date(period.end_date + "T00:00:00Z");
+                      const origDate = new Date(originDate + "T00:00:00Z");
+                      const daysToEnd = Math.round((endDate.getTime() - origDate.getTime()) / 86400000);
+                      let end = period.end_date;
+                      if (daysToEnd <= 6) {
+                        const next = periods
+                          .filter(p => p.start_date > period.end_date)
+                          .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
+                        if (next) {
+                          const nextStart = new Date(next.start_date + "T00:00:00Z");
+                          const nextStartPlus6 = new Date(nextStart.getTime() + 6 * 86400000)
+                            .toISOString().slice(0, 10);
+                          end = nextStartPlus6 < next.end_date ? nextStartPlus6 : next.end_date;
+                        }
+                      }
+                      return todayKst >= period.start_date && todayKst <= end;
+                    });
+                    if (eligibleCancelled.length === 0) return null;
+                    return (
                     <div className="space-y-2">
                       <p className="text-xs font-semibold text-[hsl(var(--gold-dark))] flex items-center gap-1.5">
                         <AlertCircle className="w-3.5 h-3.5" /> 보강이 필요한 수업
