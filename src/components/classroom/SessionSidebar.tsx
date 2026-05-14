@@ -120,8 +120,11 @@ export default function SessionSidebar({
       byDate.set(kstDateKey(s.scheduled_at), s);
     }
     for (const s of sessions) {
+      const selfKey = kstDateKey(s.scheduled_at);
       for (const orig of s.reschedule_origin_dates ?? []) {
         const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
+        // Skip self-reference (rescheduled away then back to the same KST date)
+        if (key === selfKey) continue;
         moved.add(key);
       }
     }
@@ -139,8 +142,10 @@ export default function SessionSidebar({
   // so the 보강 badge and date subtitle still appear.
   const getOriginChain = (s: SessionItem): { date: string; label: string | null }[] => {
     const chain: { date: string; label: string | null }[] = [];
+    const selfKey = kstDateKey(s.scheduled_at);
     for (const orig of s.reschedule_origin_dates ?? []) {
       const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
+      if (key === selfKey) continue;
       const originSess = sessionByDate.get(key);
       const label =
         originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]
