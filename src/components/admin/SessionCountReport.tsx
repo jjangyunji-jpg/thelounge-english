@@ -298,9 +298,15 @@ export default function SessionCountReport() {
 
   // Aggregate per student
   const rows = useMemo<(SessionCountRow & { instructor_name: string; billable_overridden: boolean; computed_billable: number })[]>(() => {
-    const dedupedStudents = Array.from(
-      new Map(students.map(s => [s.student_name, s])).values()
-    ).filter(s => !TEST_ACCOUNTS.includes(s.student_name));
+    const dedupMap = new Map<string, typeof students[number]>();
+    students.forEach(s => {
+      const existing = dedupMap.get(s.student_name);
+      // Prefer active record over inactive when duplicates exist
+      if (!existing || (existing.status !== "active" && s.status === "active")) {
+        dedupMap.set(s.student_name, s);
+      }
+    });
+    const dedupedStudents = Array.from(dedupMap.values()).filter(s => !TEST_ACCOUNTS.includes(s.student_name));
 
     const byName = new Map<string, SessionRow[]>();
     sessions.forEach(s => {
