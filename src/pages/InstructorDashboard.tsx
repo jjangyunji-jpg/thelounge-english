@@ -1778,9 +1778,12 @@ export default function InstructorDashboard() {
       .filter((s) => !s.end_date || s.end_date >= todayKST)
       .map((s) => s.student_name)
   );
-  const todaySessions = sessions.filter((s) => isToday(s.scheduled_at))
+  const movedAwayKeysAll = getMovedAwayKeys(sessions);
+  const todaySessions = sessions
+    .filter((s) => isToday(s.scheduled_at) && !isEffectivelyInactive(s, movedAwayKeysAll))
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-  const upcomingSessions = sessions.filter((s) => msUntil(s.scheduled_at) > 0)
+  const upcomingSessions = sessions
+    .filter((s) => msUntil(s.scheduled_at) > 0 && !isEffectivelyInactive(s, movedAwayKeysAll))
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
   // Next class day sessions (first future date that has sessions, excluding today)
