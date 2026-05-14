@@ -1868,19 +1868,10 @@ export default function InstructorDashboard() {
     return entries;
   })();
 
-  const uncheckedHwEntries = uncheckedHwAllEntries.filter(({ assignment: a }) => {
-    if (a.is_preset) return true;
-    const nextSess = nextSessionByStudent.get(a.student_name);
-    if (!nextSess) {
-      const latestSid = latestSessionByStudent.get(a.student_name);
-      return a.session_id && a.session_id === latestSid;
-    }
-    const pastSessions = sessions
-      .filter(s => s.student_name === a.student_name && new Date(s.scheduled_at) <= nowDate)
-      .sort((x, y) => new Date(y.scheduled_at).getTime() - new Date(x.scheduled_at).getTime());
-    const latestPast = pastSessions[0];
-    return latestPast && a.session_id === latestPast.id;
-  });
+  // Keep ALL submitted-but-unreviewed entries in the main 미확인 list, regardless of how
+  // many sessions have passed since the assignment. Submitted homework should never be
+  // hidden in a collapsed "older" section just because the next class already happened.
+  const uncheckedHwEntries = uncheckedHwAllEntries;
 
   const uncheckedSubIds = new Set(uncheckedHwEntries.map(e => e.submission.id));
   const olderUncheckedHwEntries = uncheckedHwAllEntries.filter(e => !uncheckedSubIds.has(e.submission.id));
