@@ -803,26 +803,34 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "cancel_session" && (
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">취소할 수업을 선택해주세요</p>
-                  {reschedulableSessions.length === 0 ? (
+                  {cancellableSessions.length === 0 ? (
                     <div className="rounded-xl border border-border p-6 text-center space-y-2">
                       <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto" />
                       <p className="text-xs text-muted-foreground">취소 가능한 수업이 없습니다</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {reschedulableSessions.map(s => (
+                      {cancellableSessions.map(s => {
+                        const isPast = new Date(s.scheduled_at).getTime() <= Date.now();
+                        return (
                         <button key={s.id}
                           onClick={() => { setSessionToCancel(s); setStep("cancel_confirm"); }}
                           className="w-full rounded-lg border border-border p-3 text-left hover:border-destructive/40 transition-colors"
                         >
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-foreground">
-                              {fmtSessionDate(s.scheduled_at)} {fmtSessionTime(s.scheduled_at)}
-                            </p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-bold text-foreground">
+                                {fmtSessionDate(s.scheduled_at)} {fmtSessionTime(s.scheduled_at)}
+                              </p>
+                              {isPast && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">지난 수업</span>
+                              )}
+                            </div>
                             {s.topic && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{s.topic}</p>}
                           </div>
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
