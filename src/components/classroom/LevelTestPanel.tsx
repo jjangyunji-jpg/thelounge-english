@@ -92,10 +92,9 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
     const act = activations.find((a) => a.level_test_id === test.id);
     const currentSet = act?.current_set ?? 1;
     const { data: pool } = await supabase
-      .from("level_test_questions")
-      .select("*")
+      .from("level_test_questions_safe" as any)
+      .select("id, category, question, choices, set_number")
       .eq("level_test_id", test.id)
-      .eq("is_active", true)
       .eq("set_number", currentSet);
     if (!pool || pool.length === 0) {
       toast({ title: "문제 없음", description: `Set ${currentSet} 문제가 아직 준비되지 않았습니다.`, variant: "destructive" });
