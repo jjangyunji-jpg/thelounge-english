@@ -61,6 +61,7 @@ export default function NotesEditor({
   editorRef,
   studentName = "",
   level = "B1",
+  autoHeight = false,
 }: NotesEditorProps) {
   const { toast } = useToast();
   const isUpdatingRef = useRef(false);
