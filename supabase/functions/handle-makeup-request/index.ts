@@ -231,6 +231,7 @@ serve(async (req) => {
           remarks: origSession.remarks || null,
           reschedule_origin_dates: [origDateStr],
           gcal_event_id: newEventId,
+          is_urgent_makeup: !!makeupReq.urgent_reason,
         });
 
         // Re-open original time slot for other students (only if not already exists)
