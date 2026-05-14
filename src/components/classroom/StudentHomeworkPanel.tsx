@@ -208,8 +208,7 @@ function SubmissionCard({
           .from("homework-files")
           .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("homework-files").getPublicUrl(path);
-        fileStorageUrl = pub.publicUrl;
+        fileStorageUrl = path;
       }
 
       let resultSub: Submission | null = null;
