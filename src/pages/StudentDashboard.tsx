@@ -2295,10 +2295,33 @@ export default function StudentDashboard() {
 
           {/* Makeup Alert Banner */}
           {(() => {
+            const todayKst = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+            const isMakeupEligible = (s: typeof allSessions[number]) => {
+              const originDate = new Date(s.scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+              const period = schedulePeriods.find(p => originDate >= p.start_date && originDate <= p.end_date);
+              if (!period) return originDate.slice(0, 7) === todayKst.slice(0, 7);
+              const endDate = new Date(period.end_date + "T00:00:00Z");
+              const origDate = new Date(originDate + "T00:00:00Z");
+              const daysToEnd = Math.round((endDate.getTime() - origDate.getTime()) / 86400000);
+              let end = period.end_date;
+              if (daysToEnd <= 6) {
+                const next = schedulePeriods
+                  .filter(p => p.start_date > period.end_date)
+                  .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
+                if (next) {
+                  const nextStart = new Date(next.start_date + "T00:00:00Z");
+                  const nextStartPlus6 = new Date(nextStart.getTime() + 6 * 86400000)
+                    .toISOString().slice(0, 10);
+                  end = nextStartPlus6 < next.end_date ? nextStartPlus6 : next.end_date;
+                }
+              }
+              return todayKst >= period.start_date && todayKst <= end;
+            };
             const makeupSessions = allSessions.filter(s =>
               s.cancellation_resolution === 'makeup' &&
               s.cancellation_type &&
-              s.cancellation_type !== 'no_show'
+              s.cancellation_type !== 'no_show' &&
+              isMakeupEligible(s)
             );
             if (makeupSessions.length === 0) return null;
             return (
