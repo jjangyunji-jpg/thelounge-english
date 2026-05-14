@@ -38,6 +38,7 @@ interface NotesEditorProps {
   editorRef?: React.MutableRefObject<any>;
   studentName?: string;
   level?: string;
+  autoHeight?: boolean;
 }
 
 interface SlashMenuItem {
