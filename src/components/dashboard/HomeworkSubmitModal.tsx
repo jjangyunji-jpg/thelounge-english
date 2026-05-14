@@ -298,8 +298,8 @@ export default function HomeworkSubmitModal({
           .from("homework-files")
           .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("homework-files").getPublicUrl(path);
-        fileStorageUrl = pub.publicUrl;
+        // Store bare path; signed URL is generated on demand at view time
+        fileStorageUrl = path;
       }
 
       const status = asDraft ? "draft" : "submitted";
