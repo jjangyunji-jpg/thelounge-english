@@ -927,21 +927,14 @@ export default function StudentDashboard() {
     if (!isCorporateStudent) {
       const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
       const currentMonth = nowKst.slice(0, 7); // YYYY-MM
-      // 이번 달에 완료된 수업이 있는지 확인
-      const completedThisMonth = visibleAllSessions.filter(s => {
-        if (!s.ended_at) return false;
-        const sessionDate = new Date(s.scheduled_at);
-        const sessionMonth = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(sessionDate).slice(0, 7);
-        return sessionMonth === currentMonth;
+      const today = nowKst; // YYYY-MM-DD
+      // 현재 활성 수강기간 (오늘이 start_date 이후인지)
+      const activePeriod = (periodsRes.data || []).find((p: SchedulePeriod) => {
+        return p.start_date <= today && p.end_date >= today;
       });
-      if (completedThisMonth.length >= 1) {
-        // month 컬럼에는 period ID 또는 YYYY-MM 형식이 저장될 수 있으므로 둘 다 확인
-        const activePeriod = (periodsRes.data || []).find((p: SchedulePeriod) => {
-          const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-          return p.start_date <= today && p.end_date >= today;
-        });
-        const monthCandidates = [currentMonth];
-        if (activePeriod) monthCandidates.push(activePeriod.id);
+      // 수강기간 시작일이 도래했으면 미결제 팝업 후보
+      if (activePeriod) {
+        const monthCandidates = [currentMonth, activePeriod.id];
 
         const { data: paymentConfs } = await supabase
           .from("payment_confirmations")
@@ -950,9 +943,10 @@ export default function StudentDashboard() {
           .in("month", monthCandidates);
 
         const paymentConf = paymentConfs?.find(c => c.confirmed) || paymentConfs?.[0] || null;
-        
+
         if (!paymentConf || !paymentConf.confirmed) {
-          const dismissedKey = `payment_reminder_dismissed_${student}_${currentMonth}`;
+          // 오늘 하루만 dismiss (날짜 단위 키)
+          const dismissedKey = `payment_reminder_dismissed_${student}_${today}`;
           if (!localStorage.getItem(dismissedKey)) {
             setShowPaymentReminder(true);
           }
