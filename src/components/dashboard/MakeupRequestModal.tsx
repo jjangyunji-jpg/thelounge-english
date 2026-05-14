@@ -780,7 +780,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <p className="text-sm font-bold text-foreground flex items-center gap-2">
                       <Plus className="w-4 h-4 text-[hsl(var(--success))]" /> 수업 추가
                     </p>
-                    <p className="text-xs text-muted-foreground">수업 횟수를 추가로 신청합니다</p>
+                    <p className="text-xs text-muted-foreground">4회 수업 외에 수업횟수를 추가합니다. 보강은 일정 변경으로 진행해주세요.</p>
                   </button>
                   <button
                     onClick={() => { setRequestType("cancel"); setSessionToCancel(null); setStep("cancel_session"); }}
