@@ -657,7 +657,7 @@ export default function NotesEditor({
       <div
         ref={editorContainerRef}
         className={cn(
-          "h-[546px] overflow-y-auto relative",
+          autoHeight ? "relative" : "h-[546px] overflow-y-auto relative",
           !editable && "cursor-default opacity-70"
         )}
         onScroll={(e) => {
