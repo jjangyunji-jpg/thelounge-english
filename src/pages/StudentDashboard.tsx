@@ -2261,6 +2261,12 @@ export default function StudentDashboard() {
                     <p className="text-xs text-muted-foreground">
                       담당: {(() => { const n = nextSessionFromDB?.instructor_name || studentRecord?.instructor_name; return n ? (instructorEnMap.get(n) || n) : "-"; })()}
                     </p>
+                    {!nextClassIsVirtual && nextSessionFromDB?.reschedule_origin_dates && nextSessionFromDB.reschedule_origin_dates.length > 0 && (
+                      <p className="text-[10px] text-gold-dark mt-0.5 flex items-center gap-1 flex-wrap">
+                        <MakeupBadges isMakeup isUrgent={nextSessionFromDB.is_urgent_makeup} />
+                        <span>{formatMovedFromText(nextSessionFromDB.reschedule_origin_dates)}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-navy/10 text-navy font-bold">
