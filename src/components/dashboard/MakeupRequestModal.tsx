@@ -159,10 +159,10 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       ]);
 
       const { data: instrData } = await supabase
-        .from("instructors")
+        .from("instructors_public" as any)
         .select("name, english_name");
       const enMap = new Map<string, string>();
-      for (const i of (instrData || []) as Array<{ name: string; english_name: string | null }>) {
+      for (const i of ((instrData || []) as unknown as Array<{ name: string; english_name: string | null }>)) {
         if (i?.name) enMap.set(i.name, formatInstructorName(i.name, i.english_name));
       }
       setInstructorEnMap(enMap);
