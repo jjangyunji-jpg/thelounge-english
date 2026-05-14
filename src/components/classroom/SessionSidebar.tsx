@@ -1,6 +1,7 @@
 import { useState, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X, Download, Calendar, Trash2 } from "lucide-react";
+import { getMovedAwayKeys, kstDateKey as sharedKstDateKey } from "@/lib/sessionVisibility";
 
 interface SessionItem {
   id: string;
