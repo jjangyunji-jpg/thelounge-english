@@ -202,6 +202,21 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     return sessions.filter(s => new Date(s.scheduled_at).getTime() > Date.now());
   }, [sessions]);
 
+  // 취소 가능한 수업: 미래 + 지난 일정 모두 (이미 취소되었거나 강사가 시작한 수업은 sessions 쿼리 단계에서 제외됨)
+  // 최신순 정렬 (미래 먼저, 그 다음 가까운 과거)
+  const cancellableSessions = useMemo(() => {
+    const now = Date.now();
+    return [...sessions].sort((a, b) => {
+      const at = new Date(a.scheduled_at).getTime();
+      const bt = new Date(b.scheduled_at).getTime();
+      const aFuture = at > now;
+      const bFuture = bt > now;
+      if (aFuture !== bFuture) return aFuture ? -1 : 1;
+      if (aFuture) return at - bt; // 미래는 가까운 순
+      return bt - at; // 과거는 최근 순
+    });
+  }, [sessions]);
+
   const activePeriod = useMemo<SchedulePeriod | null>(() => {
     const originIso =
       requestType === "reschedule" ? selectedSession?.scheduled_at :
@@ -515,19 +530,14 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
 
   const handleConfirmCancellation = async () => {
     if (!sessionToCancel) return;
-    const cls = classifyCancellation(sessionToCancel.scheduled_at);
-    if (cls.earlyWarning) {
-      const ok = confirm("이 수업은 시작까지 48시간 이상 남아 있어 '일정 변경'으로 보강 신청이 가능합니다.\n\n그래도 취소하시면 수업 횟수에서 차감됩니다. 계속하시겠어요?");
-      if (!ok) return;
-    }
     setCancelling(true);
-    const { data, error } = await supabase.rpc("student_cancel_class_session" as any, { _session_id: sessionToCancel.id });
+    const { error } = await supabase.rpc("student_cancel_class_session" as any, { _session_id: sessionToCancel.id });
     setCancelling(false);
     if (error) {
       toast({ title: "취소 실패", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "수업이 취소되었습니다", description: cls.label });
+    toast({ title: "수업이 취소되었습니다", description: "수업 횟수에서 차감됩니다." });
     onClose();
   };
 
@@ -788,26 +798,34 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "cancel_session" && (
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">취소할 수업을 선택해주세요</p>
-                  {reschedulableSessions.length === 0 ? (
+                  {cancellableSessions.length === 0 ? (
                     <div className="rounded-xl border border-border p-6 text-center space-y-2">
                       <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto" />
                       <p className="text-xs text-muted-foreground">취소 가능한 수업이 없습니다</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {reschedulableSessions.map(s => (
+                      {cancellableSessions.map(s => {
+                        const isPast = new Date(s.scheduled_at).getTime() <= Date.now();
+                        return (
                         <button key={s.id}
                           onClick={() => { setSessionToCancel(s); setStep("cancel_confirm"); }}
                           className="w-full rounded-lg border border-border p-3 text-left hover:border-destructive/40 transition-colors"
                         >
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-foreground">
-                              {fmtSessionDate(s.scheduled_at)} {fmtSessionTime(s.scheduled_at)}
-                            </p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-bold text-foreground">
+                                {fmtSessionDate(s.scheduled_at)} {fmtSessionTime(s.scheduled_at)}
+                              </p>
+                              {isPast && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">지난 수업</span>
+                              )}
+                            </div>
                             {s.topic && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{s.topic}</p>}
                           </div>
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -816,6 +834,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {/* STEP: 수업 취소 - 확정 */}
               {step === "cancel_confirm" && sessionToCancel && (() => {
                 const canReschedule = !isWithin48h(sessionToCancel.scheduled_at) && !monthlyLimitReached;
+                const isPast = new Date(sessionToCancel.scheduled_at).getTime() <= Date.now();
                 return (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
@@ -824,11 +843,12 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     </p>
                     <p className="text-sm font-semibold text-foreground">
                       {fmtSessionDate(sessionToCancel.scheduled_at)} {fmtSessionTime(sessionToCancel.scheduled_at)}
+                      {isPast && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium align-middle">지난 수업</span>}
                     </p>
                     <p className="text-[11px] text-foreground/80 leading-relaxed pt-1 border-t border-destructive/20">
                       {canReschedule
-                        ? `해당 수업은 일정 변경이 가능하며, 취소 시 수업 횟수에서 차감됩니다. 취소된 수업은 되돌릴 수 없습니다. 일정 변경을 원하시면 뒤로가기 후 "일정 변경"을 이용해주세요.`
-                        : "취소 시 수업 횟수에서 차감됩니다. 취소된 수업은 되돌릴 수 없습니다."}
+                        ? `해당 수업은 아직 일정 변경(보강)이 가능합니다. 그대로 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 보강을 원하시면 뒤로가기 후 "일정 변경"을 이용해주세요.`
+                        : `이 수업을 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 취소된 수업은 되돌릴 수 없습니다. 정말 수업을 취소하시겠습니까?`}
                     </p>
                   </div>
                   <div className="flex gap-2">
