@@ -700,7 +700,98 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                 </div>
               )}
 
-              {/* STEP: 수업 취소 - 세션 선택 */}
+              {/* Past — 보강 유형 선택 아래에 표시 */}
+              {pastRequests.length > 0 && step === "type" && (
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <p className="text-xs font-semibold text-muted-foreground">이전 신청 내역</p>
+                  {pastRequests.map(r => {
+                    const isFutureApproved = r.status === "approved";
+                    const isCancelRequested = r.status === "cancel_requested";
+                    const rejectionLabel = r.rejection_code ? REJECTION_LABELS[r.rejection_code] : null;
+                    const bookedSlot = slots.find(s => s.id === r.slot_id);
+                    let slotISO: string | null = bookedSlot
+                      ? new Date(`${bookedSlot.slot_date}T${bookedSlot.slot_time}+09:00`).toISOString()
+                      : null;
+                    if (!slotISO && r.original_scheduled_at) {
+                      const origDateStr = new Date(r.original_scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                      const makeupSess = sessions.find(s =>
+                        s.instructor_name === r.instructor_name &&
+                        Array.isArray(s.reschedule_origin_dates) &&
+                        s.reschedule_origin_dates.includes(origDateStr)
+                      );
+                      if (makeupSess) slotISO = makeupSess.scheduled_at;
+                    }
+                    const within48 = slotISO ? new Date(slotISO).getTime() - Date.now() < 48 * 60 * 60 * 1000 : true;
+                    const displayDate = bookedSlot
+                      ? `${fmtDateKo(bookedSlot.slot_date)} ${fmtTimeKo(bookedSlot.slot_time)}`
+                      : (slotISO ? `${fmtSessionDate(slotISO)} ${fmtSessionTime(slotISO)}` : null);
+                    return (
+                      <div key={r.id} className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-foreground">
+                            {r.request_type === "extra" ? "수업 추가" : "일정 변경"}
+                          </p>
+                          <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full",
+                            r.status === "approved" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" :
+                            r.status === "cancel_requested" ? "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]" :
+                            r.status === "rejected" ? "bg-destructive/10 text-destructive" :
+                            r.status === "changed" ? "bg-primary/10 text-primary" :
+                            "bg-muted text-muted-foreground"
+                          )}>
+                            {r.status === "approved" ? "보강 확정" :
+                             r.status === "cancel_requested" ? "취소 승인 대기" :
+                             r.status === "rejected" ? "강사 거절" :
+                             r.status === "changed" ? "일정 변경" : "취소됨"}
+                          </span>
+                        </div>
+                        {displayDate && (
+                          <p className="text-[10px] text-muted-foreground">
+                            보강: {displayDate}
+                          </p>
+                        )}
+                        {(rejectionLabel || r.reject_reason) && (
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            사유: {rejectionLabel || r.reject_reason}
+                          </p>
+                        )}
+                        {isFutureApproved && (
+                          <button
+                            disabled={within48}
+                            onClick={async () => {
+                              if (within48) return;
+                              if (!confirm("보강 일정 취소를 요청하시겠습니까?\n강사의 승인 후 취소가 확정됩니다.")) return;
+                              const { error } = await supabase.from("makeup_requests")
+                                .update({ status: "cancel_requested" } as any)
+                                .eq("id", r.id);
+                              if (error) {
+                                toast({ title: "취소 요청 실패", description: error.message, variant: "destructive" });
+                              } else {
+                                toast({ title: "취소 요청이 전송되었습니다", description: "강사의 승인을 기다려주세요." });
+                                setMyRequests(prev => prev.map(x => x.id === r.id ? { ...x, status: "cancel_requested" } : x));
+                              }
+                            }}
+                            className={cn(
+                              "text-[11px] font-medium",
+                              within48
+                                ? "text-muted-foreground/60 cursor-not-allowed"
+                                : "text-destructive hover:underline"
+                            )}
+                            title={within48 ? "보강 48시간 전부터는 취소할 수 없습니다" : ""}
+                          >
+                            {within48 ? "취소 불가 (48시간 이내)" : "취소 요청하기"}
+                          </button>
+                        )}
+                        {isCancelRequested && (
+                          <p className="text-[10px] text-[hsl(var(--warning))] font-medium">
+                            강사 승인 대기 중 — 승인되면 원래 일정으로 복원됩니다
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {step === "cancel_session" && (
                 <div className="space-y-3">
                   <p className="text-sm font-bold text-foreground">취소할 수업을 선택해주세요</p>
