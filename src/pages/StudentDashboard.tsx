@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { MakeupBadges, formatMovedFromText } from "@/components/MakeupBadges";
 import FeedbackSurveyModal from "@/components/classroom/FeedbackSurveyModal";
 
 import WeeklyTasksSection from "@/components/dashboard/WeeklyTasksSection";
