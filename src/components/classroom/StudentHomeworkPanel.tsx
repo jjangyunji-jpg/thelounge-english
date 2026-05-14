@@ -208,8 +208,7 @@ function SubmissionCard({
           .from("homework-files")
           .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("homework-files").getPublicUrl(path);
-        fileStorageUrl = pub.publicUrl;
+        fileStorageUrl = path;
       }
 
       let resultSub: Submission | null = null;
@@ -471,10 +470,13 @@ function SubmissionCard({
                 </div>
               )}
               {submission?.file_url && (
-                <a href={submission.file_url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 mt-2 text-xs text-blue-500 hover:underline">
+                <button type="button" onClick={async () => {
+                  const { getHomeworkFileSignedUrl } = await import("@/lib/homeworkFileUrl");
+                  const url = await getHomeworkFileSignedUrl(submission.file_url);
+                  if (url) window.open(url, "_blank", "noopener,noreferrer");
+                }} className="flex items-center gap-2 mt-2 text-xs text-blue-500 hover:underline">
                   <Paperclip className="w-3 h-3" /> 이전 제출 파일 보기
-                </a>
+                </button>
               )}
             </div>
           )}

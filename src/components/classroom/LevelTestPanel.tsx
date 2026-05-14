@@ -20,8 +20,15 @@ interface Question {
   category: string;
   question: string;
   choices: string[];
-  correct_index: number;
+}
+interface GradedAnswer {
+  question_id: string;
+  category: string;
+  question: string;
+  picked: number;
+  correct: number;
   explanation: string | null;
+  is_correct: boolean;
 }
 interface Activation {
   id: string;
@@ -85,10 +92,9 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
     const act = activations.find((a) => a.level_test_id === test.id);
     const currentSet = act?.current_set ?? 1;
     const { data: pool } = await supabase
-      .from("level_test_questions")
-      .select("*")
+      .from("level_test_questions_safe" as any)
+      .select("id, category, question, choices, set_number")
       .eq("level_test_id", test.id)
-      .eq("is_active", true)
       .eq("set_number", currentSet);
     if (!pool || pool.length === 0) {
       toast({ title: "문제 없음", description: `Set ${currentSet} 문제가 아직 준비되지 않았습니다.`, variant: "destructive" });
@@ -239,19 +245,16 @@ function TestRunnerModal({
   const { toast } = useToast();
   const [index, setIndex] = useState(0);
   const [picks, setPicks] = useState<number[]>(() => questions.map(() => -1));
-  const [revealed, setRevealed] = useState<boolean[]>(() => questions.map(() => false));
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [startedAt] = useState(() => new Date().toISOString());
+  const [result, setResult] = useState<{ score: number; correct_count: number; total: number; passed: boolean; answers: GradedAnswer[] } | null>(null);
 
   const current = questions[index];
   const picked = picks[index];
-  const isRevealed = revealed[index];
 
   const choose = (i: number) => {
-    if (isRevealed) return;
     setPicks((p) => p.map((v, idx) => (idx === index ? i : v)));
-    setRevealed((r) => r.map((v, idx) => (idx === index ? true : v)));
   };
 
   const next = () => {
@@ -264,54 +267,17 @@ function TestRunnerModal({
 
   const submit = async () => {
     setSubmitting(true);
-    const correctCount = picks.reduce((acc, p, i) => acc + (p === questions[i].correct_index ? 1 : 0), 0);
-    const score = Math.round((correctCount / questions.length) * 100);
-    const passed = score >= test.pass_threshold;
-    const answers = questions.map((q, i) => ({
-      question_id: q.id,
-      category: q.category,
-      question: q.question,
-      picked: picks[i],
-      correct: q.correct_index,
-      is_correct: picks[i] === q.correct_index,
-    }));
-
     try {
-      const { error } = await supabase.from("level_test_attempts").insert({
-        student_name: studentName,
-        level_test_id: test.id,
-        score,
-        total_questions: questions.length,
-        correct_count: correctCount,
-        passed,
-        answers,
-        started_at: startedAt,
-        submitted_at: new Date().toISOString(),
+      const { data, error } = await supabase.functions.invoke("grade-level-test", {
+        body: {
+          test_id: test.id,
+          picks: questions.map((q, i) => ({ question_id: q.id, picked: picks[i] })),
+          started_at: startedAt,
+        },
       });
       if (error) throw error;
-
-      // Update activation summary
-      const newBest = Math.max(activation.best_score ?? 0, score);
-      const updates: any = {
-        best_score: newBest,
-        attempt_count: (activation.attempt_count ?? 0) + 1,
-      };
-      if (passed && !activation.passed_at) updates.passed_at = new Date().toISOString();
-      // If failed, advance to next set if it exists
-      if (!passed) {
-        const { data: nextSetRows } = await supabase
-          .from("level_test_questions")
-          .select("set_number")
-          .eq("level_test_id", test.id)
-          .eq("is_active", true)
-          .eq("set_number", (activation.current_set ?? 1) + 1)
-          .limit(1);
-        if (nextSetRows && nextSetRows.length > 0) {
-          updates.current_set = (activation.current_set ?? 1) + 1;
-        }
-      }
-      await supabase.from("level_test_activations").update(updates).eq("id", activation.id);
-
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setResult(data as any);
       setDone(true);
     } catch (e: any) {
       toast({ title: "제출 실패", description: e.message, variant: "destructive" });
@@ -320,13 +286,13 @@ function TestRunnerModal({
     }
   };
 
-  const correctCount = done ? picks.reduce((acc, p, i) => acc + (p === questions[i].correct_index ? 1 : 0), 0) : 0;
-  const score = done ? Math.round((correctCount / questions.length) * 100) : 0;
-  const passed = score >= test.pass_threshold;
+  const score = result?.score ?? 0;
+  const correctCount = result?.correct_count ?? 0;
+  const passed = result?.passed ?? false;
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <ClipboardCheck className="w-4 h-4 text-gold" />
@@ -348,19 +314,13 @@ function TestRunnerModal({
             <div className="space-y-1.5">
               {current.choices.map((c, ci) => {
                 const isPick = picked === ci;
-                const isCorrect = current.correct_index === ci;
-                const showState = isRevealed;
                 return (
                   <button
                     key={ci}
                     onClick={() => choose(ci)}
-                    disabled={isRevealed}
                     className={cn(
                       "w-full text-left rounded-lg border-2 p-2.5 text-sm transition-all",
-                      !showState && "border-border hover:border-gold/40 hover:bg-muted/30",
-                      showState && isCorrect && "border-green-400 bg-green-50 dark:bg-green-950/30",
-                      showState && isPick && !isCorrect && "border-red-400 bg-red-50 dark:bg-red-950/30",
-                      showState && !isPick && !isCorrect && "border-border opacity-60"
+                      isPick ? "border-gold bg-gold/10" : "border-border hover:border-gold/40 hover:bg-muted/30",
                     )}
                   >
                     <span className="text-[10px] font-bold text-muted-foreground mr-2">{String.fromCharCode(65 + ci)}.</span>
@@ -369,29 +329,58 @@ function TestRunnerModal({
                 );
               })}
             </div>
-            {isRevealed && current.explanation && (
-              <div className="rounded-lg p-2.5 bg-muted/40 border border-border text-[12px] text-foreground/80">
-                💡 {current.explanation}
-              </div>
-            )}
-            {isRevealed && (
-              <Button onClick={next} disabled={submitting} className="w-full bg-gold text-accent-foreground hover:bg-gold/90">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : index + 1 >= questions.length ? "제출하고 결과 보기" : "다음 문제"}
+            <Button onClick={next} disabled={picked < 0 || submitting} className="w-full bg-gold text-accent-foreground hover:bg-gold/90">
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : index + 1 >= questions.length ? "제출하고 결과 보기" : "다음 문제"}
+            </Button>
+            {index > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setIndex((i) => Math.max(0, i - 1))} className="w-full text-xs">
+                이전 문제
               </Button>
             )}
           </div>
         )}
 
-        {done && (
-          <div className="py-4 space-y-3 text-center">
-            <div className={cn("text-5xl font-bold", passed ? "text-green-500" : "text-amber-500")}>{score}%</div>
-            <p className="text-sm text-muted-foreground">정답 {correctCount} / {questions.length}</p>
-            <div className={cn("rounded-lg p-3 text-sm font-semibold",
-              passed ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-                     : "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
-            )}>
-              {passed ? "🎉 축하합니다! 합격하셨어요." : `합격까지 ${test.pass_threshold - score}% 부족합니다. 다시 도전해보세요!`}
+        {done && result && (
+          <div className="py-4 space-y-3">
+            <div className="text-center space-y-2">
+              <div className={cn("text-5xl font-bold", passed ? "text-green-500" : "text-amber-500")}>{score}%</div>
+              <p className="text-sm text-muted-foreground">정답 {correctCount} / {result.total}</p>
+              <div className={cn("rounded-lg p-3 text-sm font-semibold",
+                passed ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+                       : "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+              )}>
+                {passed ? "🎉 축하합니다! 합격하셨어요." : `합격까지 ${test.pass_threshold - score}% 부족합니다. 다시 도전해보세요!`}
+              </div>
             </div>
+
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-semibold text-muted-foreground">📋 문제별 결과</p>
+              {result.answers.map((ans, i) => {
+                const q = questions.find((qq) => qq.id === ans.question_id);
+                return (
+                  <div key={ans.question_id} className={cn("rounded-lg border p-2.5 text-xs", ans.is_correct ? "border-green-300 bg-green-50/50 dark:bg-green-950/10" : "border-red-300 bg-red-50/50 dark:bg-red-950/10")}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-mono text-muted-foreground">Q{i + 1}</span>
+                      {ans.category && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{ans.category}</span>}
+                      <span className={cn("text-[10px] font-bold ml-auto", ans.is_correct ? "text-green-600" : "text-red-600")}>
+                        {ans.is_correct ? "정답" : "오답"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-foreground/80 mb-1">{ans.question}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      선택: {ans.picked >= 0 && q ? `${String.fromCharCode(65 + ans.picked)}. ${q.choices[ans.picked] ?? ""}` : "-"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      정답: {ans.correct >= 0 && q ? `${String.fromCharCode(65 + ans.correct)}. ${q.choices[ans.correct] ?? ""}` : "-"}
+                    </p>
+                    {ans.explanation && (
+                      <p className="text-[10px] text-foreground/70 mt-1 pt-1 border-t border-border/50">💡 {ans.explanation}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
             <Button onClick={onClose} className="w-full">완료</Button>
           </div>
         )}
