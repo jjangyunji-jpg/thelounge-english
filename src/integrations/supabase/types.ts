@@ -2200,6 +2200,50 @@ export type Database = {
         }
         Relationships: []
       }
+      level_test_questions_safe: {
+        Row: {
+          category: string | null
+          choices: Json | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          level_test_id: string | null
+          question: string | null
+          set_number: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          choices?: Json | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          level_test_id?: string | null
+          question?: string | null
+          set_number?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          choices?: Json | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          level_test_id?: string | null
+          question?: string | null
+          set_number?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "level_test_questions_level_test_id_fkey"
+            columns: ["level_test_id"]
+            isOneToOne: false
+            referencedRelation: "level_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_view_student_data: {
