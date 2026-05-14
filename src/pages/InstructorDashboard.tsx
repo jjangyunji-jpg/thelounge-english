@@ -1780,12 +1780,31 @@ export default function InstructorDashboard() {
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
   // Next class day sessions (first future date that has sessions, excluding today)
+  // Also exclude sessions whose KST date has been moved away (rescheduled to another date)
   const nextClassDaySessions = (() => {
     const todayStr = new Date().toDateString();
+    const kstDateKey = (iso: string) => {
+      const d = new Date(iso);
+      const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+      return kst.toISOString().slice(0, 10);
+    };
+    // Build set of KST dates that have been moved away (origin → another session per student)
+    const movedAwayKeys = new Set<string>();
+    for (const s of sessions) {
+      const selfKey = kstDateKey(s.scheduled_at);
+      for (const orig of s.reschedule_origin_dates ?? []) {
+        const key = typeof orig === "string" ? String(orig).slice(0, 10) : String(orig);
+        if (key === selfKey) continue;
+        movedAwayKeys.add(`${s.student_name}__${key}`);
+      }
+    }
     const futureSessions = sessions
       .filter((s) => {
         const d = new Date(s.scheduled_at);
-        return d.toDateString() !== todayStr && d.getTime() > Date.now() && !s.cancellation_type;
+        if (d.toDateString() === todayStr || d.getTime() <= Date.now()) return false;
+        if (s.cancellation_type) return false;
+        if (movedAwayKeys.has(`${s.student_name}__${kstDateKey(s.scheduled_at)}`)) return false;
+        return true;
       })
       .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
     if (futureSessions.length === 0) return [];
