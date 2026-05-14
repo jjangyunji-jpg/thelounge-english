@@ -20,8 +20,15 @@ interface Question {
   category: string;
   question: string;
   choices: string[];
-  correct_index: number;
+}
+interface GradedAnswer {
+  question_id: string;
+  category: string;
+  question: string;
+  picked: number;
+  correct: number;
   explanation: string | null;
+  is_correct: boolean;
 }
 interface Activation {
   id: string;
