@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X, Download, Calendar, Trash2 } from "lucide-react";
 
@@ -38,6 +38,7 @@ interface SessionSidebarProps {
   initialOpen?: boolean;
   showFutureSection?: boolean;
   onDownloadAllPdf?: (periodMonths: number | null) => void;
+  footerSlot?: ReactNode;
 }
 
 function fmtDate(dateStr: string) {
@@ -99,6 +100,7 @@ export default function SessionSidebar({
   initialOpen = false,
   showFutureSection = true,
   onDownloadAllPdf,
+  footerSlot,
 }: SessionSidebarProps) {
   const [collapsed, setCollapsed] = useState(!initialOpen);
   const [searchQuery, setSearchQuery] = useState("");
@@ -280,7 +282,7 @@ export default function SessionSidebar({
     <div
       className={cn(
         "flex-shrink-0 border-r border-border bg-muted/20 flex flex-col transition-all duration-200 overflow-hidden",
-        collapsed ? "w-10" : "w-52"
+        collapsed ? "w-10" : (footerSlot ? "w-64" : "w-52")
       )}
     >
       {/* Toggle */}
@@ -433,6 +435,13 @@ export default function SessionSidebar({
               {pastSessions.map(renderSessionItem)}
             </>
           )}
+        </div>
+      )}
+
+      {/* Footer slot — e.g. Level Test panel for instructor */}
+      {!collapsed && footerSlot && (
+        <div className="border-t border-border bg-background/40 max-h-[55%] overflow-y-auto p-2">
+          {footerSlot}
         </div>
       )}
     </div>

@@ -1572,6 +1572,33 @@ export type Database = {
         }
         Relationships: []
       }
+      student_lesson_goals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          goal: string
+          id: string
+          student_name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          goal: string
+          id?: string
+          student_name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          goal?: string
+          id?: string
+          student_name?: string
+        }
+        Relationships: []
+      }
       student_pauses: {
         Row: {
           created_at: string

@@ -6,7 +6,7 @@ import {
   Sparkles, ExternalLink, ChevronDown, ChevronUp,
   Plus, ArrowLeft, Wifi, WifiOff, RotateCcw,
   PenLine, BookOpen, Mic, Brain, X, Pencil, Check, Edit3, BookMarked, Paperclip,
-  Loader2, Monitor, Download, History, Maximize2, Trash2, MessageCircle, Newspaper, Lightbulb,
+  Loader2, Monitor, Download, History, Maximize2, Trash2, MessageCircle, Newspaper, Lightbulb, Target,
 } from "lucide-react";
 import SessionSidebar from "@/components/classroom/SessionSidebar";
 import { Button } from "@/components/ui/button";
@@ -329,6 +329,13 @@ export default function Classroom() {
   const [reviewSubmission, setReviewSubmission] = useState<any>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const remarksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ── 수업 목표 (장기, 시점별 버전 관리) ─────────────────
+  const [lessonGoal, setLessonGoal] = useState("");
+  const [lessonGoalOriginal, setLessonGoalOriginal] = useState("");
+  const [lessonGoalEffectiveFrom, setLessonGoalEffectiveFrom] = useState<string | null>(null);
+  const [lessonGoalSaving, setLessonGoalSaving] = useState(false);
+  const [lessonGoalSaved, setLessonGoalSaved] = useState(false);
+  const [lessonGoalOpen, setLessonGoalOpen] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
@@ -576,6 +583,54 @@ export default function Classroom() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [session.sessionId]);
+
+  // Load active lesson goal for this session (most recent goal effective at scheduled_at)
+  useEffect(() => {
+    if (!session.sessionId || !session.dbStudentName || !session.scheduledAt) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("student_lesson_goals")
+        .select("goal, effective_from")
+        .eq("student_name", session.dbStudentName)
+        .lte("effective_from", session.scheduledAt.toISOString())
+        .order("effective_from", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      const g = data?.goal ?? "";
+      setLessonGoal(g);
+      setLessonGoalOriginal(g);
+      setLessonGoalEffectiveFrom(data?.effective_from ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [session.sessionId, session.dbStudentName, session.scheduledAt]);
+
+  const handleSaveLessonGoal = async () => {
+    if (!session.dbStudentName) return;
+    const text = lessonGoal.trim();
+    if (text === lessonGoalOriginal.trim()) return;
+    setLessonGoalSaving(true);
+    const nowIso = new Date().toISOString();
+    const { data: userData } = await supabase.auth.getSession();
+    const uid = userData.session?.user?.id ?? null;
+    const { error } = await supabase.from("student_lesson_goals").insert({
+      student_name: session.dbStudentName,
+      goal: text,
+      effective_from: nowIso,
+      created_by: uid,
+    });
+    setLessonGoalSaving(false);
+    if (!error) {
+      setLessonGoalOriginal(text);
+      setLessonGoalEffectiveFrom(nowIso);
+      setLessonGoalSaved(true);
+      toast({ title: "수업 목표가 저장되었습니다.", description: "이후 진행되는 모든 수업에 적용됩니다." });
+      setTimeout(() => setLessonGoalSaved(false), 2000);
+    } else {
+      toast({ title: "저장 실패", description: error.message, variant: "destructive" });
+    }
+  };
 
   const dataLoadedForRef = useRef<string | null>(null);
   useEffect(() => {
@@ -1466,6 +1521,15 @@ export default function Classroom() {
             } : undefined}
             loading={sidebarLoading}
             initialOpen={true}
+            footerSlot={
+              role === "instructor" && session.sessionId && session.dbStudentName ? (
+                <LevelTestPanel
+                  studentName={session.dbStudentName}
+                  role="instructor"
+                  instructorName={session.instructorName}
+                />
+              ) : undefined
+            }
           />
           <div className="flex-1 flex flex-col md:flex-row gap-3 sm:gap-5 px-3 sm:px-4 py-3 sm:py-5 max-w-7xl w-full mx-auto overflow-y-auto">
 
@@ -1667,6 +1731,52 @@ export default function Classroom() {
                         <button
                           onClick={handleRemarksSave}
                           disabled={remarksSaving || !session.sessionId}
+                          className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 disabled:opacity-40"
+                        >
+                          저장
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── 수업 목표 (장기, 시점별 버전) — collapsible ───────── */}
+              {role === "instructor" && (
+                <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+                  <button
+                    onClick={() => setLessonGoalOpen(!lessonGoalOpen)}
+                    className="w-full px-4 py-2.5 flex items-center gap-2 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <Target className="w-3.5 h-3.5 text-gold flex-shrink-0" />
+                    <span className="text-xs font-semibold text-foreground">수업 목표</span>
+                    <span className="text-[10px] text-muted-foreground">(장기)</span>
+                    {lessonGoalEffectiveFrom && (
+                      <span className="text-[10px] text-muted-foreground ml-1">
+                        · {new Date(lessonGoalEffectiveFrom).toLocaleDateString("ko-KR", { year: "2-digit", month: "numeric", day: "numeric", timeZone: "Asia/Seoul" })} 적용
+                      </span>
+                    )}
+                    <div className="flex items-center gap-2 ml-auto">
+                      {lessonGoalSaving && <span className="text-[10px] text-muted-foreground">저장 중...</span>}
+                      {lessonGoalSaved && !lessonGoalSaving && <span className="text-[10px] text-[hsl(var(--success))] flex items-center gap-0.5"><Check className="w-3 h-3" />저장됨</span>}
+                      <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", lessonGoalOpen && "rotate-180")} />
+                    </div>
+                  </button>
+                  {lessonGoalOpen && (
+                    <div className="p-3 border-t border-border/50 space-y-2">
+                      <Textarea
+                        value={lessonGoal}
+                        onChange={e => setLessonGoal(e.target.value)}
+                        placeholder="이 학생의 장기 학습 목표를 입력하세요. 저장 시점 이후의 모든 수업에 동일하게 적용되며, 과거 수업은 당시 목표가 그대로 유지됩니다."
+                        className="resize-none text-sm min-h-[80px]"
+                      />
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] text-muted-foreground">
+                          수정 후 저장하면 <span className="font-semibold">오늘 이후의 수업</span>부터 새 목표가 반영됩니다.
+                        </p>
+                        <button
+                          onClick={handleSaveLessonGoal}
+                          disabled={lessonGoalSaving || !session.dbStudentName || lessonGoal.trim() === lessonGoalOriginal.trim()}
                           className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 disabled:opacity-40"
                         >
                           저장
@@ -2026,16 +2136,7 @@ export default function Classroom() {
             </div>
           )}
 
-          {/* 강사 뷰: 레벨 테스트 패널 */}
-          {session.sessionId && role === "instructor" && session.dbStudentName && (
-            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4 lg:gap-5 overflow-y-auto">
-              <LevelTestPanel
-                studentName={session.dbStudentName}
-                role="instructor"
-                instructorName={session.instructorName}
-              />
-            </div>
-          )}
+          {/* 강사 뷰: 레벨 테스트 패널은 SessionSidebar 푸터로 이동됨 */}
 
         </div>
         </div>

@@ -22,6 +22,7 @@ Use student_name as primary ID for sync; apply atomic updates on makeup slots.
 - [Settlement System](mem://features/settlement-system) — Ended_at based, no_show included, cancel logic, pay structures
 - [MVP Constraints](mem://features/mvp-constraints) — Features removed from dashboard to header or dedicated spaces
 - [Goal Management](mem://features/goal-management) — learning_objective vs topic, auto sync to lesson_goal, auto-save
+- [Lesson Goal Versioning](mem://features/classroom/lesson-goal-versioning) — 비고 아래 장기 수업 목표. student_lesson_goals INSERT-only로 시점별 버전 누적, 과거 수업은 당시 목표 유지
 - [Backup System](mem://features/backup-system) — Version history, PDF export preserving complex HTML and tables
 - [Instructor Guide](mem://features/instructor-guide) — Guide PDF loaded via Supabase Storage public URL
 - [Corporate Report Layout](mem://features/group-and-irregular-classes/report-layout) — PDF layout, AI summary editable, notes included
