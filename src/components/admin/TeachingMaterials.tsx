@@ -502,6 +502,7 @@ export default function TeachingMaterials() {
                   autoCorrectEnabled={false}
                   onAutoCorrectToggle={noopToggle}
                   isAutoCorrecting={false}
+                  autoHeight
                 />
               </div>
               <div className="flex gap-2 justify-end">
@@ -547,6 +548,7 @@ export default function TeachingMaterials() {
                           autoCorrectEnabled={false}
                           onAutoCorrectToggle={noopToggle}
                           isAutoCorrecting={false}
+                          autoHeight
                         />
                       </div>
                       <div className="flex gap-2 justify-end">

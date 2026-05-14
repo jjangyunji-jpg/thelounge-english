@@ -38,6 +38,7 @@ interface NotesEditorProps {
   editorRef?: React.MutableRefObject<any>;
   studentName?: string;
   level?: string;
+  autoHeight?: boolean;
 }
 
 interface SlashMenuItem {
@@ -60,6 +61,7 @@ export default function NotesEditor({
   editorRef,
   studentName = "",
   level = "B1",
+  autoHeight = false,
 }: NotesEditorProps) {
   const { toast } = useToast();
   const isUpdatingRef = useRef(false);
@@ -655,7 +657,7 @@ export default function NotesEditor({
       <div
         ref={editorContainerRef}
         className={cn(
-          "h-[546px] overflow-y-auto relative",
+          autoHeight ? "relative" : "h-[546px] overflow-y-auto relative",
           !editable && "cursor-default opacity-70"
         )}
         onScroll={(e) => {
