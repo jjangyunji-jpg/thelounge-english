@@ -136,18 +136,17 @@ export default function SessionSidebar({
   // For a given session, look up direct origins only (one hop) and collect cancellation labels.
   // If the origin session was deleted (not in sessionByDate), still record the date with no label
   // so the 보강 badge and date subtitle still appear.
-  const getOriginChain = (s: SessionItem): { date: string; label: string | null }[] => {
-    const chain: { date: string; label: string | null }[] = [];
+  const getOriginChain = (s: SessionItem): { date: string; label: string | null; sameDay?: boolean }[] => {
+    const chain: { date: string; label: string | null; sameDay?: boolean }[] = [];
     const selfKey = kstDateKey(s.scheduled_at);
     for (const orig of s.reschedule_origin_dates ?? []) {
       const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
-      if (key === selfKey) continue;
       const originSess = sessionByDate.get(key);
       const label =
         originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]
           ? CANCEL_BADGES[originSess.cancellation_type].label
           : null;
-      chain.push({ date: key, label });
+      chain.push({ date: key, label, sameDay: key === selfKey });
     }
     return chain;
   };
@@ -247,7 +246,10 @@ export default function SessionSidebar({
           </div>
           {originChain.length > 0 && (
             <p className="text-[9px] text-muted-foreground/80 mt-0.5 leading-tight">
-              {originChain.map(o => o.label ? `(${fmtShortKor(o.date)} 수업 ${o.label})` : `(${fmtShortKor(o.date)} 수업)`).join(" ")}
+              {originChain.map(o => {
+                const dateLabel = o.sameDay ? `${fmtShortKor(o.date)} 시간 변경` : `${fmtShortKor(o.date)} 수업`;
+                return o.label ? `(${dateLabel} ${o.label})` : `(${dateLabel})`;
+              }).join(" ")}
             </p>
           )}
           {s.topic && (
