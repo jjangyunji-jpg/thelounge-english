@@ -1466,6 +1466,15 @@ export default function Classroom() {
             } : undefined}
             loading={sidebarLoading}
             initialOpen={true}
+            footerSlot={
+              role === "instructor" && session.sessionId && session.dbStudentName ? (
+                <LevelTestPanel
+                  studentName={session.dbStudentName}
+                  role="instructor"
+                  instructorName={session.instructorName}
+                />
+              ) : undefined
+            }
           />
           <div className="flex-1 flex flex-col md:flex-row gap-3 sm:gap-5 px-3 sm:px-4 py-3 sm:py-5 max-w-7xl w-full mx-auto overflow-y-auto">
 
@@ -2026,16 +2035,7 @@ export default function Classroom() {
             </div>
           )}
 
-          {/* 강사 뷰: 레벨 테스트 패널 */}
-          {session.sessionId && role === "instructor" && session.dbStudentName && (
-            <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4 lg:gap-5 overflow-y-auto">
-              <LevelTestPanel
-                studentName={session.dbStudentName}
-                role="instructor"
-                instructorName={session.instructorName}
-              />
-            </div>
-          )}
+          {/* 강사 뷰: 레벨 테스트 패널은 SessionSidebar 푸터로 이동됨 */}
 
         </div>
         </div>
