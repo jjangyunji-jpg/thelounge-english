@@ -1743,24 +1743,24 @@ export default function Classroom() {
 
               {/* ── 수업 목표 (장기, 시점별 버전) — 항상 표시 ───────── */}
               {role === "instructor" && (
-                <div className="rounded-xl border border-border bg-card shadow-card px-4 py-2.5">
+                <div className="rounded-xl border border-border bg-card shadow-card px-5 py-4">
                   {!lessonGoalOpen ? (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Target className="w-3.5 h-3.5 text-gold flex-shrink-0" />
-                      <span className="text-xs font-semibold text-foreground">수업목표 :</span>
-                      <span className="text-xs text-foreground flex-1 min-w-0 break-words">
-                        {lessonGoal.trim() ? lessonGoal : <span className="text-muted-foreground italic">아직 설정되지 않음</span>}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Target className="w-5 h-5 text-gold flex-shrink-0" />
+                      <span className="text-base font-semibold text-foreground">수업목표 :</span>
+                      <span className="text-base text-foreground flex-1 min-w-0 break-words font-medium">
+                        {lessonGoal.trim() ? lessonGoal : <span className="text-muted-foreground italic font-normal">아직 설정되지 않음</span>}
                       </span>
                       {lessonGoalEffectiveFrom && lessonGoal.trim() && (
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {new Date(lessonGoalEffectiveFrom).toLocaleDateString("ko-KR", { year: "2-digit", month: "numeric", day: "numeric", timeZone: "Asia/Seoul" })} 적용
                         </span>
                       )}
                       <button
                         onClick={() => setLessonGoalOpen(true)}
-                        className="text-[10px] font-medium text-navy hover:text-navy-light px-2 py-1 rounded hover:bg-navy/5 transition-colors flex items-center gap-1"
+                        className="text-xs font-medium text-navy hover:text-navy-light px-2.5 py-1.5 rounded hover:bg-navy/5 transition-colors flex items-center gap-1"
                       >
-                        <Pencil className="w-3 h-3" />수정
+                        <Pencil className="w-3.5 h-3.5" />수정
                       </button>
                     </div>
                   ) : (
