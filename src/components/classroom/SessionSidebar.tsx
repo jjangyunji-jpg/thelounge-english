@@ -246,7 +246,10 @@ export default function SessionSidebar({
           </div>
           {originChain.length > 0 && (
             <p className="text-[9px] text-muted-foreground/80 mt-0.5 leading-tight">
-              {originChain.map(o => o.label ? `(${fmtShortKor(o.date)} 수업 ${o.label})` : `(${fmtShortKor(o.date)} 수업)`).join(" ")}
+              {originChain.map(o => {
+                const dateLabel = o.sameDay ? `${fmtShortKor(o.date)} 시간 변경` : `${fmtShortKor(o.date)} 수업`;
+                return o.label ? `(${dateLabel} ${o.label})` : `(${dateLabel})`;
+              }).join(" ")}
             </p>
           )}
           {s.topic && (
