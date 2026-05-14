@@ -584,6 +584,54 @@ export default function Classroom() {
     return () => { supabase.removeChannel(channel); };
   }, [session.sessionId]);
 
+  // Load active lesson goal for this session (most recent goal effective at scheduled_at)
+  useEffect(() => {
+    if (!session.sessionId || !session.dbStudentName || !session.scheduledAt) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("student_lesson_goals")
+        .select("goal, effective_from")
+        .eq("student_name", session.dbStudentName)
+        .lte("effective_from", session.scheduledAt.toISOString())
+        .order("effective_from", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      const g = data?.goal ?? "";
+      setLessonGoal(g);
+      setLessonGoalOriginal(g);
+      setLessonGoalEffectiveFrom(data?.effective_from ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [session.sessionId, session.dbStudentName, session.scheduledAt]);
+
+  const handleSaveLessonGoal = async () => {
+    if (!session.dbStudentName) return;
+    const text = lessonGoal.trim();
+    if (text === lessonGoalOriginal.trim()) return;
+    setLessonGoalSaving(true);
+    const nowIso = new Date().toISOString();
+    const { data: userData } = await supabase.auth.getSession();
+    const uid = userData.session?.user?.id ?? null;
+    const { error } = await supabase.from("student_lesson_goals").insert({
+      student_name: session.dbStudentName,
+      goal: text,
+      effective_from: nowIso,
+      created_by: uid,
+    });
+    setLessonGoalSaving(false);
+    if (!error) {
+      setLessonGoalOriginal(text);
+      setLessonGoalEffectiveFrom(nowIso);
+      setLessonGoalSaved(true);
+      toast({ title: "수업 목표가 저장되었습니다.", description: "이후 진행되는 모든 수업에 적용됩니다." });
+      setTimeout(() => setLessonGoalSaved(false), 2000);
+    } else {
+      toast({ title: "저장 실패", description: error.message, variant: "destructive" });
+    }
+  };
+
   const dataLoadedForRef = useRef<string | null>(null);
   useEffect(() => {
     if (sessionLoading || !session.sessionId) return;
