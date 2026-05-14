@@ -236,6 +236,11 @@ export default function SessionSidebar({
                 {RESOLUTION_BADGES.makeup.label}
               </span>
             )}
+            {isMakeup && s.is_urgent_makeup && (
+              <span className="inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0 bg-destructive/15 text-destructive">
+                예외보강
+              </span>
+            )}
             {s.cancellation_resolution && RESOLUTION_BADGES[s.cancellation_resolution] && (
               <span className={cn(
                 "inline-flex items-center px-1.5 py-0 rounded text-[8px] font-semibold leading-relaxed flex-shrink-0",
