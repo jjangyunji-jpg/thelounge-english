@@ -189,10 +189,11 @@ export default function SessionCountReport() {
     const startTs = `${currentRange.start}T00:00:00+09:00`;
     const endTs = `${currentRange.end}T23:59:59+09:00`;
 
+    // Include inactive (withdrawn) students too — they may have completed sessions in this period
+    // that must still appear in the count. Post-filter below removes those with zero activity.
     const studPromise = supabase
       .from("instructor_students")
-      .select("id, student_name, student_type, status, group_students, instructor_name, schedules, corporate_role")
-      .eq("status", "active")
+      .select("id, student_name, student_type, status, group_students, instructor_name, schedules, corporate_role, end_date")
       .neq("corporate_role", "manager")
       .then(r => r);
 
