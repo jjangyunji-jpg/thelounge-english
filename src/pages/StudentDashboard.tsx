@@ -927,21 +927,14 @@ export default function StudentDashboard() {
     if (!isCorporateStudent) {
       const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
       const currentMonth = nowKst.slice(0, 7); // YYYY-MM
-      // 이번 달에 완료된 수업이 있는지 확인
-      const completedThisMonth = visibleAllSessions.filter(s => {
-        if (!s.ended_at) return false;
-        const sessionDate = new Date(s.scheduled_at);
-        const sessionMonth = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(sessionDate).slice(0, 7);
-        return sessionMonth === currentMonth;
+      const today = nowKst; // YYYY-MM-DD
+      // 현재 활성 수강기간 (오늘이 start_date 이후인지)
+      const activePeriod = (periodsRes.data || []).find((p: SchedulePeriod) => {
+        return p.start_date <= today && p.end_date >= today;
       });
-      if (completedThisMonth.length >= 1) {
-        // month 컬럼에는 period ID 또는 YYYY-MM 형식이 저장될 수 있으므로 둘 다 확인
-        const activePeriod = (periodsRes.data || []).find((p: SchedulePeriod) => {
-          const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-          return p.start_date <= today && p.end_date >= today;
-        });
-        const monthCandidates = [currentMonth];
-        if (activePeriod) monthCandidates.push(activePeriod.id);
+      // 수강기간 시작일이 도래했으면 미결제 팝업 후보
+      if (activePeriod) {
+        const monthCandidates = [currentMonth, activePeriod.id];
 
         const { data: paymentConfs } = await supabase
           .from("payment_confirmations")
@@ -950,9 +943,10 @@ export default function StudentDashboard() {
           .in("month", monthCandidates);
 
         const paymentConf = paymentConfs?.find(c => c.confirmed) || paymentConfs?.[0] || null;
-        
+
         if (!paymentConf || !paymentConf.confirmed) {
-          const dismissedKey = `payment_reminder_dismissed_${student}_${currentMonth}`;
+          // 오늘 하루만 dismiss (날짜 단위 키)
+          const dismissedKey = `payment_reminder_dismissed_${student}_${today}`;
           if (!localStorage.getItem(dismissedKey)) {
             setShowPaymentReminder(true);
           }
@@ -1642,7 +1636,7 @@ export default function StudentDashboard() {
               </div>
               <h3 className="text-sm font-bold text-foreground">수업료 결제 안내</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                수업이 시작되었지만 아직 이번 달 수업료가<br />결제되지 않았습니다. 결제를 진행해 주세요.
+                이번 달 수강기간이 시작되었습니다.<br />아직 수업료가 결제되지 않았어요. 결제를 진행해 주세요.
               </p>
             </div>
             <div className="px-5 pb-5 flex flex-col gap-2">
@@ -1650,9 +1644,8 @@ export default function StudentDashboard() {
                 size="sm"
                 className="w-full bg-gold hover:bg-gold/90 text-foreground font-semibold"
                 onClick={() => {
-                  const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-                  const currentMonth = nowKst.slice(0, 7);
-                  localStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                  localStorage.setItem(`payment_reminder_dismissed_${student}_${today}`, "1");
                   setShowPaymentReminder(false);
                   setShowPaymentModal(true);
                 }}
@@ -1662,9 +1655,8 @@ export default function StudentDashboard() {
               <button
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
                 onClick={() => {
-                  const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-                  const currentMonth = nowKst.slice(0, 7);
-                  localStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                  localStorage.setItem(`payment_reminder_dismissed_${student}_${today}`, "1");
                   setShowPaymentReminder(false);
                 }}
               >
