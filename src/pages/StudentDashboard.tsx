@@ -872,7 +872,7 @@ export default function StudentDashboard() {
       // Fetch all instructors' english_name for display
       {
         const { data: allInstr } = await supabase
-          .from("instructors")
+          .from("instructors_public" as any)
           .select("name, english_name");
         const enMap = new Map<string, string>();
         for (const i of (allInstr || []) as Array<{ name: string; english_name: string | null }>) {
