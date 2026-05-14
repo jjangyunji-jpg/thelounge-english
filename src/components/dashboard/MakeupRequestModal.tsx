@@ -202,6 +202,21 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
     return sessions.filter(s => new Date(s.scheduled_at).getTime() > Date.now());
   }, [sessions]);
 
+  // 취소 가능한 수업: 미래 + 지난 일정 모두 (이미 취소되었거나 강사가 시작한 수업은 sessions 쿼리 단계에서 제외됨)
+  // 최신순 정렬 (미래 먼저, 그 다음 가까운 과거)
+  const cancellableSessions = useMemo(() => {
+    const now = Date.now();
+    return [...sessions].sort((a, b) => {
+      const at = new Date(a.scheduled_at).getTime();
+      const bt = new Date(b.scheduled_at).getTime();
+      const aFuture = at > now;
+      const bFuture = bt > now;
+      if (aFuture !== bFuture) return aFuture ? -1 : 1;
+      if (aFuture) return at - bt; // 미래는 가까운 순
+      return bt - at; // 과거는 최근 순
+    });
+  }, [sessions]);
+
   const activePeriod = useMemo<SchedulePeriod | null>(() => {
     const originIso =
       requestType === "reschedule" ? selectedSession?.scheduled_at :
