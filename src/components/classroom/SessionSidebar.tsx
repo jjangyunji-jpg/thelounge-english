@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X, Download, Calendar, Trash2 } from "lucide-react";
 
@@ -38,6 +38,7 @@ interface SessionSidebarProps {
   initialOpen?: boolean;
   showFutureSection?: boolean;
   onDownloadAllPdf?: (periodMonths: number | null) => void;
+  footerSlot?: ReactNode;
 }
 
 function fmtDate(dateStr: string) {
@@ -99,6 +100,7 @@ export default function SessionSidebar({
   initialOpen = false,
   showFutureSection = true,
   onDownloadAllPdf,
+  footerSlot,
 }: SessionSidebarProps) {
   const [collapsed, setCollapsed] = useState(!initialOpen);
   const [searchQuery, setSearchQuery] = useState("");
