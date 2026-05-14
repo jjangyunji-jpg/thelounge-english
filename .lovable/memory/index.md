@@ -67,3 +67,4 @@ Use student_name as primary ID for sync; apply atomic updates on makeup slots.
 - [Notes Homework Cycle](mem://features/student-dashboard/notes-homework-cycle) — 학생 대시보드 수업 노트는 직전 사이클 숙제 카드 표시 (showPreviousCycle prop)
 
 - [Renewal Decision Flow](mem://features/scheduling/renewal-decision) — 학생 클래스룸 진입 시 수강기간 마지막 주 연장/종료 모달, 거부 시 end_date+1 KST 9시 cron으로 자동 퇴원
+- [Session Visibility Helper](mem://features/scheduling/session-visibility-helper) — getMovedAwayKeys/isEffectivelyInactive 공통 헬퍼로 보강·취소 세션 필터 통일
