@@ -1741,6 +1741,52 @@ export default function Classroom() {
                 </div>
               )}
 
+              {/* ── 수업 목표 (장기, 시점별 버전) — collapsible ───────── */}
+              {role === "instructor" && (
+                <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+                  <button
+                    onClick={() => setLessonGoalOpen(!lessonGoalOpen)}
+                    className="w-full px-4 py-2.5 flex items-center gap-2 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <Target className="w-3.5 h-3.5 text-gold flex-shrink-0" />
+                    <span className="text-xs font-semibold text-foreground">수업 목표</span>
+                    <span className="text-[10px] text-muted-foreground">(장기)</span>
+                    {lessonGoalEffectiveFrom && (
+                      <span className="text-[10px] text-muted-foreground ml-1">
+                        · {new Date(lessonGoalEffectiveFrom).toLocaleDateString("ko-KR", { year: "2-digit", month: "numeric", day: "numeric", timeZone: "Asia/Seoul" })} 적용
+                      </span>
+                    )}
+                    <div className="flex items-center gap-2 ml-auto">
+                      {lessonGoalSaving && <span className="text-[10px] text-muted-foreground">저장 중...</span>}
+                      {lessonGoalSaved && !lessonGoalSaving && <span className="text-[10px] text-[hsl(var(--success))] flex items-center gap-0.5"><Check className="w-3 h-3" />저장됨</span>}
+                      <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", lessonGoalOpen && "rotate-180")} />
+                    </div>
+                  </button>
+                  {lessonGoalOpen && (
+                    <div className="p-3 border-t border-border/50 space-y-2">
+                      <Textarea
+                        value={lessonGoal}
+                        onChange={e => setLessonGoal(e.target.value)}
+                        placeholder="이 학생의 장기 학습 목표를 입력하세요. 저장 시점 이후의 모든 수업에 동일하게 적용되며, 과거 수업은 당시 목표가 그대로 유지됩니다."
+                        className="resize-none text-sm min-h-[80px]"
+                      />
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] text-muted-foreground">
+                          수정 후 저장하면 <span className="font-semibold">오늘 이후의 수업</span>부터 새 목표가 반영됩니다.
+                        </p>
+                        <button
+                          onClick={handleSaveLessonGoal}
+                          disabled={lessonGoalSaving || !session.dbStudentName || lessonGoal.trim() === lessonGoalOriginal.trim()}
+                          className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 disabled:opacity-40"
+                        >
+                          저장
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
                 <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30">
                   <div className="flex items-center gap-2">
