@@ -970,7 +970,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                   <div className="rounded-lg border-l-4 border-[hsl(var(--warning))] bg-[hsl(var(--warning))]/10 px-3 py-2.5 flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-[hsl(var(--warning))] shrink-0 mt-0.5" />
                     <p className="text-[11px] text-foreground/80 leading-relaxed">
-                      잦은 일정 변경은 강사 스케줄 운영과 다른 학생들의 수업에도 영향을 줍니다. 반복될 경우 보강 신청과 수업 재등록이 제한될 수 있습니다.
+                      모든 강사님은 수강생의 수업을 위해 시간을 비워두고 계시며, 잦은 일정 변경은 강사 스케줄 운영과 다른 학생들의 수업에도 영향을 줍니다. 또한 수업의 지속성이 떨어져 수강생 본인의 학습의지에도 영향을 줍니다. 만약 보강이 반복될 경우, 보강 신청과 수업 재등록이 제한될 수 있습니다.
                     </p>
                   </div>
 
