@@ -329,6 +329,13 @@ export default function Classroom() {
   const [reviewSubmission, setReviewSubmission] = useState<any>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const remarksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ── 수업 목표 (장기, 시점별 버전 관리) ─────────────────
+  const [lessonGoal, setLessonGoal] = useState("");
+  const [lessonGoalOriginal, setLessonGoalOriginal] = useState("");
+  const [lessonGoalEffectiveFrom, setLessonGoalEffectiveFrom] = useState<string | null>(null);
+  const [lessonGoalSaving, setLessonGoalSaving] = useState(false);
+  const [lessonGoalSaved, setLessonGoalSaved] = useState(false);
+  const [lessonGoalOpen, setLessonGoalOpen] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState(false);
   const [saveFlash, setSaveFlash] = useState(false);
