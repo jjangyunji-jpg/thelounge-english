@@ -189,10 +189,11 @@ export default function SessionCountReport() {
     const startTs = `${currentRange.start}T00:00:00+09:00`;
     const endTs = `${currentRange.end}T23:59:59+09:00`;
 
+    // Include inactive (withdrawn) students too — they may have completed sessions in this period
+    // that must still appear in the count. Post-filter below removes those with zero activity.
     const studPromise = supabase
       .from("instructor_students")
-      .select("id, student_name, student_type, status, group_students, instructor_name, schedules, corporate_role")
-      .eq("status", "active")
+      .select("id, student_name, student_type, status, group_students, instructor_name, schedules, corporate_role, end_date")
       .neq("corporate_role", "manager")
       .then(r => r);
 
@@ -297,9 +298,15 @@ export default function SessionCountReport() {
 
   // Aggregate per student
   const rows = useMemo<(SessionCountRow & { instructor_name: string; billable_overridden: boolean; computed_billable: number })[]>(() => {
-    const dedupedStudents = Array.from(
-      new Map(students.map(s => [s.student_name, s])).values()
-    ).filter(s => !TEST_ACCOUNTS.includes(s.student_name));
+    const dedupMap = new Map<string, typeof students[number]>();
+    students.forEach(s => {
+      const existing = dedupMap.get(s.student_name);
+      // Prefer active record over inactive when duplicates exist
+      if (!existing || (existing.status !== "active" && s.status === "active")) {
+        dedupMap.set(s.student_name, s);
+      }
+    });
+    const dedupedStudents = Array.from(dedupMap.values()).filter(s => !TEST_ACCOUNTS.includes(s.student_name));
 
     const byName = new Map<string, SessionRow[]>();
     sessions.forEach(s => {
