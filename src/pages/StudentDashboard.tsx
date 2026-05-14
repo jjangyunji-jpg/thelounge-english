@@ -1636,7 +1636,7 @@ export default function StudentDashboard() {
               </div>
               <h3 className="text-sm font-bold text-foreground">수업료 결제 안내</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                수업이 시작되었지만 아직 이번 달 수업료가<br />결제되지 않았습니다. 결제를 진행해 주세요.
+                이번 달 수강기간이 시작되었습니다.<br />아직 수업료가 결제되지 않았어요. 결제를 진행해 주세요.
               </p>
             </div>
             <div className="px-5 pb-5 flex flex-col gap-2">
@@ -1644,9 +1644,8 @@ export default function StudentDashboard() {
                 size="sm"
                 className="w-full bg-gold hover:bg-gold/90 text-foreground font-semibold"
                 onClick={() => {
-                  const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-                  const currentMonth = nowKst.slice(0, 7);
-                  localStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                  localStorage.setItem(`payment_reminder_dismissed_${student}_${today}`, "1");
                   setShowPaymentReminder(false);
                   setShowPaymentModal(true);
                 }}
@@ -1656,9 +1655,8 @@ export default function StudentDashboard() {
               <button
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
                 onClick={() => {
-                  const nowKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-                  const currentMonth = nowKst.slice(0, 7);
-                  localStorage.setItem(`payment_reminder_dismissed_${student}_${currentMonth}`, "1");
+                  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+                  localStorage.setItem(`payment_reminder_dismissed_${student}_${today}`, "1");
                   setShowPaymentReminder(false);
                 }}
               >
