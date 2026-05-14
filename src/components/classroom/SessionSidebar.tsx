@@ -193,7 +193,7 @@ export default function SessionSidebar({
   const renderSessionItem = (s: SessionItem) => {
     const canDelete = onDelete && isDeletable(s);
     const originChain = getOriginChain(s);
-    const isMakeup = originChain.length > 0;
+    const isMakeup = (s.reschedule_origin_dates ?? []).length > 0;
     return (
       <div
         key={s.id}
