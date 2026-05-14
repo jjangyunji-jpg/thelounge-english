@@ -13,6 +13,7 @@ interface SessionItem {
   cancellation_type?: string | null;
   cancellation_resolution?: string | null;
   reschedule_origin_dates?: string[] | null;
+  is_urgent_makeup?: boolean | null;
 }
 
 const CANCEL_BADGES: Record<string, { label: string; cls: string }> = {
