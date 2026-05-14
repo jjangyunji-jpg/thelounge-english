@@ -1,6 +1,7 @@
 import { useState, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { FileText, ChevronLeft, ChevronRight, ChevronDown, Search, X, Download, Calendar, Trash2 } from "lucide-react";
+import { getMovedAwayKeys, kstDateKey as sharedKstDateKey } from "@/lib/sessionVisibility";
 
 interface SessionItem {
   id: string;
@@ -114,22 +115,15 @@ export default function SessionSidebar({
     return d;
   }, []);
 
-  // Build map: KST date → session, and set of dates that have been "moved away"
+  // Build map: KST date → session, and set of dates that have been "moved away".
+  // movedFromDates uses the shared helper so InstructorDashboard/StudentDashboard
+  // stay in sync when the rule changes.
   const { sessionByDate, movedFromDates } = useMemo(() => {
     const byDate = new Map<string, SessionItem>();
-    const moved = new Set<string>();
     for (const s of sessions) {
-      byDate.set(kstDateKey(s.scheduled_at), s);
+      byDate.set(sharedKstDateKey(s.scheduled_at), s);
     }
-    for (const s of sessions) {
-      const selfKey = kstDateKey(s.scheduled_at);
-      for (const orig of s.reschedule_origin_dates ?? []) {
-        const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
-        // Skip self-reference (rescheduled away then back to the same KST date)
-        if (key === selfKey) continue;
-        moved.add(key);
-      }
-    }
+    const moved = getMovedAwayKeys(sessions, { scoped: false });
     return { sessionByDate: byDate, movedFromDates: moved };
   }, [sessions]);
 
