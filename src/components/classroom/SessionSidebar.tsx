@@ -437,6 +437,13 @@ export default function SessionSidebar({
           )}
         </div>
       )}
+
+      {/* Footer slot — e.g. Level Test panel for instructor */}
+      {!collapsed && footerSlot && (
+        <div className="border-t border-border bg-background/40 max-h-[55%] overflow-y-auto p-2">
+          {footerSlot}
+        </div>
+      )}
     </div>
   );
 }
