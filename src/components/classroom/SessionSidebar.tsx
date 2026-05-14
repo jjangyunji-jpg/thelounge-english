@@ -136,18 +136,17 @@ export default function SessionSidebar({
   // For a given session, look up direct origins only (one hop) and collect cancellation labels.
   // If the origin session was deleted (not in sessionByDate), still record the date with no label
   // so the 보강 badge and date subtitle still appear.
-  const getOriginChain = (s: SessionItem): { date: string; label: string | null }[] => {
-    const chain: { date: string; label: string | null }[] = [];
+  const getOriginChain = (s: SessionItem): { date: string; label: string | null; sameDay?: boolean }[] => {
+    const chain: { date: string; label: string | null; sameDay?: boolean }[] = [];
     const selfKey = kstDateKey(s.scheduled_at);
     for (const orig of s.reschedule_origin_dates ?? []) {
       const key = typeof orig === "string" ? orig.slice(0, 10) : orig;
-      if (key === selfKey) continue;
       const originSess = sessionByDate.get(key);
       const label =
         originSess?.cancellation_type && CANCEL_BADGES[originSess.cancellation_type]
           ? CANCEL_BADGES[originSess.cancellation_type].label
           : null;
-      chain.push({ date: key, label });
+      chain.push({ date: key, label, sameDay: key === selfKey });
     }
     return chain;
   };
