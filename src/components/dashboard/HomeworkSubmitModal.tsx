@@ -57,14 +57,32 @@ function useAudioRecorder() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const start = useCallback(async () => {
+    // 1) 인앱 브라우저 / 구형 환경에서 API 자체가 없는 경우
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+      alert("이 브라우저에서는 녹음이 지원되지 않습니다.\n카카오톡/네이버 등 인앱 브라우저로 열린 경우, 우측 상단 메뉴에서 'Safari로 열기' 또는 'Chrome으로 열기'를 눌러 다시 시도해 주세요.");
+      return;
+    }
+    if (typeof window.MediaRecorder === "undefined") {
+      alert("이 브라우저는 음성 녹음을 지원하지 않습니다.\nSafari(iOS) 또는 Chrome 최신 버전에서 다시 시도해 주세요.");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
+      // iOS Safari는 webm 미지원 → 지원되는 mimeType 자동 선택
+      const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/aac", ""];
+      let chosenMime = "";
+      for (const m of candidates) {
+        if (m === "" || (window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(m))) {
+          chosenMime = m;
+          break;
+        }
+      }
+      const mr = chosenMime ? new MediaRecorder(stream, { mimeType: chosenMime }) : new MediaRecorder(stream);
       mediaRef.current = mr;
       chunksRef.current = [];
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: chosenMime || "audio/webm" });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach(t => t.stop());
@@ -73,7 +91,18 @@ function useAudioRecorder() {
       setRecording(true);
       setDuration(0);
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
-    } catch { alert("마이크 접근 권한이 필요합니다."); }
+    } catch (err: any) {
+      const name = err?.name || "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        alert("마이크 권한이 차단되어 있습니다.\n[설정 → Safari/Chrome → 마이크]에서 권한을 허용한 뒤 다시 시도해 주세요.");
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        alert("사용 가능한 마이크를 찾을 수 없습니다.");
+      } else if (name === "NotReadableError") {
+        alert("다른 앱이 마이크를 사용 중입니다. 해당 앱을 종료한 뒤 다시 시도해 주세요.");
+      } else {
+        alert(`녹음을 시작할 수 없습니다.\n(${name || "Unknown"}: ${err?.message ?? ""})\n\n인앱 브라우저(카카오톡 등)에서 열린 경우 'Safari/Chrome으로 열기'를 사용해 주세요.`);
+      }
+    }
   }, []);
 
   const stop = useCallback(() => {
