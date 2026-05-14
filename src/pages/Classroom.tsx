@@ -880,7 +880,7 @@ export default function Classroom() {
       const isInstructor = role === "instructor";
       let query = supabase
         .from("class_sessions")
-        .select("id, scheduled_at, topic, notes, started_at, ended_at, cancellation_type, cancellation_resolution, reschedule_origin_dates")
+        .select("id, scheduled_at, topic, notes, started_at, ended_at, cancellation_type, cancellation_resolution, reschedule_origin_dates, is_urgent_makeup")
         .eq("student_name", session.dbStudentName)
         .order("scheduled_at", { ascending: false })
         .limit(30);
