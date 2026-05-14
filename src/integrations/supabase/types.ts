@@ -231,6 +231,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "business_meeting_attendees_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "business_meeting_attendees_meeting_id_fkey"
             columns: ["meeting_id"]
             isOneToOne: false
@@ -280,6 +287,13 @@ export type Database = {
             columns: ["instructor_id"]
             isOneToOne: false
             referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_meetings_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors_public"
             referencedColumns: ["id"]
           },
         ]
@@ -801,6 +815,13 @@ export type Database = {
             referencedRelation: "instructors"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "instructor_available_slots_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       instructor_calendar_mapping: {
@@ -993,6 +1014,13 @@ export type Database = {
             columns: ["instructor_id"]
             isOneToOne: false
             referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_students_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors_public"
             referencedColumns: ["id"]
           },
           {
@@ -1832,6 +1860,13 @@ export type Database = {
             referencedRelation: "instructors"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "teaching_category_instructors_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       teaching_material_categories: {
@@ -2135,8 +2170,42 @@ export type Database = {
         }
         Relationships: []
       }
+      instructors_public: {
+        Row: {
+          active: boolean | null
+          english_name: string | null
+          id: string | null
+          meet_link: string | null
+          name: string | null
+          position: string | null
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          english_name?: string | null
+          id?: string | null
+          meet_link?: string | null
+          name?: string | null
+          position?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          english_name?: string | null
+          id?: string | null
+          meet_link?: string | null
+          name?: string | null
+          position?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      can_view_student_data: {
+        Args: { _group_students?: string[]; _student_name: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
