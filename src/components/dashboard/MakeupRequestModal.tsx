@@ -646,7 +646,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                       <p className="text-xs font-semibold text-[hsl(var(--gold-dark))] flex items-center gap-1.5">
                         <AlertCircle className="w-3.5 h-3.5" /> 보강이 필요한 수업
                       </p>
-                      {cancelledSessions.map(s => {
+                      {eligibleCancelled.map(s => {
                         const cancelLabel = s.cancellation_type === 'sick' ? '병결' :
                           s.cancellation_type === 'instructor_cancel' ? '강사취소' :
                           s.cancellation_type === 'advance_cancel' ? '사전취소' : '취소';
@@ -682,7 +682,8 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                         );
                       })}
                     </div>
-                  )}
+                    );
+                  })()}
 
                   <div className="rounded-lg border border-[hsl(var(--gold)/0.3)] bg-[hsl(var(--gold)/0.05)] px-3 py-2 text-[11px] text-foreground/80 leading-relaxed">
                     모든 보강은 <span className="font-semibold">월 최대 2회</span>까지 신청 가능합니다 (긴급 예외 보강 포함).
