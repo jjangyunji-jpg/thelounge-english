@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { BASE_PAY, LEVEL_RATES, getLevelCategory, calcSessionPay } from "@/lib/instructorPay";
 import { getMovedAwayKeys, isEffectivelyInactive, kstDateKey as kstDateKeyShared } from "@/lib/sessionVisibility";
+import { MakeupBadges } from "@/components/MakeupBadges";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -102,6 +103,7 @@ interface ClassSession {
   ended_at: string | null;
   notes: string | null;
   reschedule_origin_dates?: string[];
+  is_urgent_makeup?: boolean | null;
   cancellation_type?: CancellationType | null;
   cancellation_resolution?: CancellationResolution | null;
   is_carryover?: boolean;
@@ -619,9 +621,10 @@ function CollapsibleSessions({ sessions, onReschedule, onTopicChange }: { sessio
             );
           })()}
           {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
-            <p className="ml-5 text-[9px] text-gold-dark flex items-center gap-1">
+            <p className="ml-5 text-[9px] text-gold-dark flex items-center gap-1 flex-wrap">
               <RefreshCw className="w-2.5 h-2.5" />
-              {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경
+              <MakeupBadges isMakeup isUrgent={s.is_urgent_makeup} />
+              <span>{s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경</span>
             </p>
           )}
           {/* Inline topic editing */}
@@ -2376,9 +2379,10 @@ export default function InstructorDashboard() {
                               </div>
                               <p className="text-[11px] text-muted-foreground">{s.topic || s.level}</p>
                               {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
-                                <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
+                                <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5 flex-wrap">
                                   <RefreshCw className="w-2.5 h-2.5" />
-                                  {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨
+                                  <MakeupBadges isMakeup isUrgent={s.is_urgent_makeup} />
+                                  <span>{s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨</span>
                                 </p>
                               )}
                             </div>
@@ -2711,9 +2715,10 @@ export default function InstructorDashboard() {
                                           </div>
                                           <p className="text-[11px] text-muted-foreground truncate">{s.topic || s.level}</p>
                                           {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
-                                            <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5">
+                                            <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5 flex-wrap">
                                               <RefreshCw className="w-2.5 h-2.5" />
-                                              {s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨
+                                              <MakeupBadges isMakeup isUrgent={s.is_urgent_makeup} />
+                                              <span>{s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨</span>
                                             </p>
                                           )}
                                         </div>

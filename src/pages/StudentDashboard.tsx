@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { MakeupBadges, formatMovedFromText } from "@/components/MakeupBadges";
 import FeedbackSurveyModal from "@/components/classroom/FeedbackSurveyModal";
 
 import WeeklyTasksSection from "@/components/dashboard/WeeklyTasksSection";
@@ -109,6 +110,7 @@ interface ClassSession {
   reschedule_origin_dates?: string[];
   cancellation_type?: string | null;
   cancellation_resolution?: string | null;
+  is_urgent_makeup?: boolean | null;
 }
 
 interface Assignment {
@@ -701,14 +703,14 @@ export default function StudentDashboard() {
     setLoading(true);
     try {
     const [sessRes, allSessRes, groupSessRes, groupAllSessRes, hwRes, subRes, vocRes, testRes, studentRes, periodsRes, holidaysRes, deletedDatesRes] = await Promise.all([
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup")
         .eq("student_name", student).order("scheduled_at", { ascending: false }).limit(20),
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup")
         .eq("student_name", student).order("scheduled_at", { ascending: true }),
       // Group sessions: where student is in group_students array
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,student_name")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup,student_name")
         .contains("group_students", [student]).order("scheduled_at", { ascending: false }).limit(20),
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup")
         .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
       supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id,preset_origin_id,created_at")
         .eq("student_name", student).order("created_at", { ascending: false }),
@@ -2080,6 +2082,12 @@ export default function StudentDashboard() {
                       {nextClassIsVirtual ? "정기 수업" : (nextSessionFromDB?.topic || "다음 수업")}
                     </p>
                     <p className="text-[10px] text-muted-foreground">{fmtDateTime(nextClassDate.toISOString())}</p>
+                    {!nextClassIsVirtual && nextSessionFromDB?.reschedule_origin_dates && nextSessionFromDB.reschedule_origin_dates.length > 0 && (
+                      <p className="text-[9px] text-gold-dark mt-0.5 flex items-center gap-1 flex-wrap">
+                        <MakeupBadges isMakeup isUrgent={nextSessionFromDB.is_urgent_makeup} />
+                        <span>{formatMovedFromText(nextSessionFromDB.reschedule_origin_dates)}</span>
+                      </p>
+                    )}
                   </div>
                   <span className="text-[10px] font-bold text-navy flex-shrink-0">{timeUntilLabel(nextClassDate.toISOString())}</span>
                 </div>
@@ -2253,6 +2261,12 @@ export default function StudentDashboard() {
                     <p className="text-xs text-muted-foreground">
                       담당: {(() => { const n = nextSessionFromDB?.instructor_name || studentRecord?.instructor_name; return n ? (instructorEnMap.get(n) || n) : "-"; })()}
                     </p>
+                    {!nextClassIsVirtual && nextSessionFromDB?.reschedule_origin_dates && nextSessionFromDB.reschedule_origin_dates.length > 0 && (
+                      <p className="text-[10px] text-gold-dark mt-0.5 flex items-center gap-1 flex-wrap">
+                        <MakeupBadges isMakeup isUrgent={nextSessionFromDB.is_urgent_makeup} />
+                        <span>{formatMovedFromText(nextSessionFromDB.reschedule_origin_dates)}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-navy/10 text-navy font-bold">

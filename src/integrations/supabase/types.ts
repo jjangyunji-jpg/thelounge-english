@@ -415,6 +415,7 @@ export type Database = {
           id: string
           instructor_name: string
           is_carryover: boolean
+          is_urgent_makeup: boolean
           level: string
           meet_link: string | null
           notes: string | null
@@ -438,6 +439,7 @@ export type Database = {
           id?: string
           instructor_name: string
           is_carryover?: boolean
+          is_urgent_makeup?: boolean
           level?: string
           meet_link?: string | null
           notes?: string | null
@@ -461,6 +463,7 @@ export type Database = {
           id?: string
           instructor_name?: string
           is_carryover?: boolean
+          is_urgent_makeup?: boolean
           level?: string
           meet_link?: string | null
           notes?: string | null
