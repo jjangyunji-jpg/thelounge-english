@@ -310,6 +310,7 @@ serve(async (req) => {
           topic: transferTopic,
           remarks: transferRemarks,
           gcal_event_id: newEventId,
+          is_urgent_makeup: !!makeupReq.urgent_reason,
         });
 
         // Clear notes/topic from original cancelled session (moved, not copied)
