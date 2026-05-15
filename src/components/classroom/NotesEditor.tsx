@@ -686,6 +686,56 @@ export default function NotesEditor({
             )}
           </div>
 
+          {/* Table contextual toolbar — visible when cursor is inside a table */}
+          {editor?.isActive("table") && (
+            <div className="flex items-center gap-0.5 px-3 py-1 border-b border-border bg-muted/10 flex-wrap text-[11px] text-muted-foreground">
+              <span className="mr-1.5 font-medium">표:</span>
+              <button
+                title="행 추가 (아래)"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().addRowAfter().run(); }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Plus className="w-3 h-3" /><Rows3 className="w-3 h-3" />
+              </button>
+              <button
+                title="열 추가 (오른쪽)"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().addColumnAfter().run(); }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Plus className="w-3 h-3" /><Columns3 className="w-3 h-3" />
+              </button>
+              <span className="mx-1 text-border">|</span>
+              <button
+                title="현재 행 삭제"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().deleteRow().run(); }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <Trash2 className="w-3 h-3" /><Rows3 className="w-3 h-3" />
+              </button>
+              <button
+                title="현재 열 삭제"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().deleteColumn().run(); }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <Trash2 className="w-3 h-3" /><Columns3 className="w-3 h-3" />
+              </button>
+              <span className="mx-1 text-border">|</span>
+              <button
+                title="헤더 행 토글"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeaderRow().run(); }}
+                className="px-1.5 py-0.5 rounded hover:bg-muted hover:text-foreground transition-colors"
+              >
+                헤더
+              </button>
+              <button
+                title="표 전체 삭제"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().deleteTable().run(); }}
+                className="ml-auto flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />표 삭제
+              </button>
+            </div>
+          )}
         </>
       )}
 
