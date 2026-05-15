@@ -312,7 +312,7 @@ export default function TeachingMaterials() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-32">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-foreground">수업 자료 관리</h2>
