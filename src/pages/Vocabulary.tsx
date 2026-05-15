@@ -416,6 +416,49 @@ export default function Vocabulary() {
               <span className="hidden sm:inline">PDF</span>
             </button>
           )}
+          {words.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowRangeMenu(v => !v)}
+                disabled={exportingAll}
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg border border-gold/50 text-gold-dark hover:bg-gold/10 text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap disabled:opacity-50"
+                title="범위 선택 PDF 다운로드"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">범위</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {showRangeMenu && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setShowRangeMenu(false)} />
+                  <div className="absolute right-0 mt-1 w-40 bg-card border border-border rounded-lg shadow-xl z-30 overflow-hidden">
+                    <div className="px-3 py-2 text-[10px] font-semibold text-muted-foreground border-b border-border">PDF 범위 선택</div>
+                    {RANGE_OPTIONS.map(opt => {
+                      const filtered = opt.months === 0
+                        ? words
+                        : words.filter(w => w.week_label >= getWeekLabelNMonthsAgo(opt.months));
+                      return (
+                        <button
+                          key={opt.months}
+                          onClick={async () => {
+                            setShowRangeMenu(false);
+                            if (filtered.length === 0 || exportingAll) return;
+                            setExportingAll(true);
+                            try { await exportWordsPdf(filtered, displayName || student || ""); }
+                            finally { setExportingAll(false); }
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-muted text-foreground transition-colors"
+                        >
+                          <span>{opt.label}</span>
+                          <span className="text-[10px] text-muted-foreground">{filtered.length}개</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           <button onClick={() => student && load(student)} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0" title="새로고침">
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           </button>
