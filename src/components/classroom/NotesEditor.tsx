@@ -140,18 +140,53 @@ export default function NotesEditor({
       },
       transformPastedHTML(html) {
         // Notion pastes tables as nested divs or splits each row into
-        // its own <table>. Merge them into a single standard HTML table.
+        // its own <table>. Merge ONLY adjacent fragmented tables (single-row
+        // siblings with no meaningful content between them) so that pasting
+        // two distinct tables keeps them separate.
         const doc = new DOMParser().parseFromString(html, "text/html");
 
-        const tables = doc.querySelectorAll("table");
-        if (tables.length > 1) {
+        const isBlank = (node: Node | null): boolean => {
+          if (!node) return true;
+          if (node.nodeType === Node.TEXT_NODE) return !(node.textContent || "").trim();
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node as Element;
+            if (el.tagName === "BR") return true;
+            return !el.textContent?.trim() && el.querySelectorAll("img,table,hr,iframe").length === 0;
+          }
+          return true;
+        };
+
+        const allTables = Array.from(doc.querySelectorAll("table"));
+        const visited = new Set<Element>();
+        for (const start of allTables) {
+          if (visited.has(start)) continue;
+          // Collect adjacent fragmented tables (each with a single row)
+          const group: HTMLTableElement[] = [];
+          const startRows = start.querySelectorAll("tr").length;
+          if (startRows !== 1) { visited.add(start); continue; }
+          group.push(start as HTMLTableElement);
+          visited.add(start);
+          let cursor: Node | null = start.nextSibling;
+          while (cursor) {
+            if (cursor.nodeType === Node.ELEMENT_NODE && (cursor as Element).tagName === "TABLE") {
+              const t = cursor as HTMLTableElement;
+              if (t.querySelectorAll("tr").length !== 1) break;
+              group.push(t);
+              visited.add(t);
+              cursor = t.nextSibling;
+              continue;
+            }
+            if (!isBlank(cursor)) break;
+            cursor = cursor.nextSibling;
+          }
+          if (group.length < 2) continue;
+
           const merged = doc.createElement("table");
           const tbody = doc.createElement("tbody");
-          tables.forEach((t, i) => {
-            const rows = t.querySelectorAll("tr");
-            rows.forEach((row, ri) => {
+          group.forEach((t, i) => {
+            t.querySelectorAll("tr").forEach((row) => {
               const newRow = row.cloneNode(true) as HTMLTableRowElement;
-              if (i === 0 && ri === 0) {
+              if (i === 0) {
                 newRow.querySelectorAll("td").forEach((td) => {
                   const th = doc.createElement("th");
                   th.innerHTML = td.innerHTML;
@@ -160,10 +195,10 @@ export default function NotesEditor({
               }
               tbody.appendChild(newRow);
             });
-            t.remove();
           });
           merged.appendChild(tbody);
-          doc.body.prepend(merged);
+          group[0].replaceWith(merged);
+          for (let i = 1; i < group.length; i++) group[i].remove();
         }
 
         return doc.body.innerHTML;
