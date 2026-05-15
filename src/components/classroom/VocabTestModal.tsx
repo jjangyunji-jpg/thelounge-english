@@ -34,9 +34,10 @@ interface Answer {
   synonymOf?: string;
 }
 
-function buildQuestions(words: VocabWord[], mode: TestMode): Question[] {
+function buildQuestions(words: VocabWord[], mode: TestMode, overrideCount?: number): Question[] {
   const shuffled = [...words].sort(() => Math.random() - 0.5);
-  const count = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
+  const defaultCount = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
+  const count = overrideCount && overrideCount > 0 ? Math.min(overrideCount, words.length) : defaultCount;
   const selected = shuffled.slice(0, count);
   return selected.map((w) => {
     if (mode === "choice") {
