@@ -387,7 +387,15 @@ export default function WeeklyTasksSection({
                   </span>
                 ) : latestSessionWeekLabel && weekVocabCount > 0 ? (
                   <button
-                    onClick={() => navigate(`/my/vocabulary?startTest=${encodeURIComponent(latestSessionWeekLabel)}`)}
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      params.set("startTest", latestSessionWeekLabel);
+                      // 어드민/매니저/강사가 학생 대시보드를 열람 중일 때 학생명을 보존
+                      const currentName = new URLSearchParams(window.location.search).get("name");
+                      if (currentName) params.set("name", currentName);
+                      else if (studentName) params.set("name", studentName);
+                      navigate(`/my/vocabulary?${params.toString()}`);
+                    }}
                     className="flex-shrink-0 text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10"
                   >
                     테스트하기
