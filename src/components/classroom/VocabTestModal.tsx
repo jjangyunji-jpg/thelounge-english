@@ -379,13 +379,21 @@ export default function VocabTestModal({
   const [saving, setSaving] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
 
-  const questionCount = questionCountOverride && questionCountOverride > 0
+  const defaultCount = questionCountOverride && questionCountOverride > 0
     ? Math.min(questionCountOverride, words.length)
     : (words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5)));
+  // 사용자가 confirm 화면에서 직접 문항 수를 변경할 수 있도록 state로 관리
+  const [selectedCount, setSelectedCount] = useState<number>(defaultCount);
+  const questionCount = selectedCount === 0 ? words.length : Math.min(selectedCount, words.length);
+
+  // 동적 옵션: 단어가 적을 땐 큰 옵션 숨김
+  const COUNT_OPTIONS = [10, 20, 40, 0].filter(
+    (c) => c === 0 || c <= words.length || c === 10
+  );
 
   const startTest = (mode: TestMode) => {
     setTestMode(mode);
-    const qs = buildQuestions(words, mode, questionCountOverride);
+    const qs = buildQuestions(words, mode, questionCount);
     setQuestions(qs);
     setCurrentIdx(0);
     setAnswers([]);
@@ -498,6 +506,33 @@ export default function VocabTestModal({
                   <p className="text-xs text-muted-foreground mt-0.5">
                     총 {questionCount}개 단어 · 모드를 선택하세요
                   </p>
+                </div>
+              </div>
+
+              {/* 문항 수 선택 */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-foreground">문항 수</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {COUNT_OPTIONS.map((cnt) => {
+                    const isActive = selectedCount === cnt;
+                    const disabled = cnt !== 0 && cnt > words.length && cnt !== 10;
+                    return (
+                      <button
+                        key={cnt}
+                        onClick={() => !disabled && setSelectedCount(cnt)}
+                        disabled={disabled}
+                        className={cn(
+                          "px-2.5 py-2 rounded-lg border text-xs font-medium transition-all",
+                          isActive
+                            ? "border-gold bg-gold/10 text-gold-dark"
+                            : "border-border bg-card text-muted-foreground hover:border-gold/40",
+                          disabled && "opacity-40 cursor-not-allowed",
+                        )}
+                      >
+                        {cnt === 0 ? `전체 (${words.length})` : `${cnt}개`}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
