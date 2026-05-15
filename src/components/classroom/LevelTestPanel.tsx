@@ -244,39 +244,11 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
                   {role === "student" && passed && passedAttempt && (
                     <span className="text-xs text-green-600 font-bold">{passedAttempt.score}%</span>
                   )}
-                  {role === "instructor" && (
-                    <>
-                      <Button size="sm" variant="outline" onClick={() => setHistoryModal(t)} className="h-7 text-[11px] gap-1">
-                        <Eye className="w-3 h-3" /> 결과 보기
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDeactivate(act)} className="h-6 text-[10px] text-muted-foreground hover:text-destructive gap-1">
-                        <Trash2 className="w-3 h-3" /> 비활성화
-                      </Button>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
           );
         })}
-
-        {/* Instructor: activate buttons for not-yet-activated tests */}
-        {role === "instructor" && inactiveTests.length > 0 && (
-          <div className="pt-2 border-t border-border space-y-1.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">활성화 가능한 테스트</p>
-            {inactiveTests.map((t) => (
-              <Button
-                key={t.id}
-                size="sm"
-                variant="outline"
-                onClick={() => handleActivate(t)}
-                className="w-full justify-start h-8 text-xs gap-1.5"
-              >
-                <Plus className="w-3 h-3" /> {t.title} 활성화
-              </Button>
-            ))}
-          </div>
-        )}
       </div>
 
       {testModal && (
