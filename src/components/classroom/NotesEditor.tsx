@@ -93,7 +93,46 @@ export default function NotesEditor({
         blockquote: {},
       }),
       Underline,
-      Table.configure({ resizable: true, allowTableNodeSelection: true }),
+      Table.extend({
+        addKeyboardShortcuts() {
+          const handleDelete = () => {
+            const { selection } = this.editor.state;
+            if (!(selection instanceof CellSelection)) return false;
+            const sel = selection as CellSelection;
+            // Whole column(s) selected → delete columns
+            if (sel.isColSelection()) {
+              return this.editor.chain().focus().deleteColumn().run();
+            }
+            // Whole row(s) selected → delete rows
+            if (sel.isRowSelection()) {
+              return this.editor.chain().focus().deleteRow().run();
+            }
+            // Multiple cells selected → clear their content
+            let cleared = false;
+            const tr = this.editor.state.tr;
+            sel.forEachCell((_cell, pos) => {
+              const node = this.editor.state.doc.nodeAt(pos);
+              if (!node) return;
+              const start = pos + 1;
+              const end = pos + node.nodeSize - 1;
+              if (end > start) {
+                tr.delete(tr.mapping.map(start), tr.mapping.map(end));
+                cleared = true;
+              }
+            });
+            if (cleared) {
+              this.editor.view.dispatch(tr);
+              return true;
+            }
+            return false;
+          };
+          return {
+            Backspace: handleDelete,
+            Delete: handleDelete,
+            "Mod-Backspace": handleDelete,
+          };
+        },
+      }).configure({ resizable: true, allowTableNodeSelection: true }),
       TableRow,
       TableCell,
       TableHeader,
