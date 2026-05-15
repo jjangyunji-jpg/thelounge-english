@@ -116,14 +116,14 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (activation) {
-      const updates: Record<string, unknown> = {
-        best_score: Math.max(activation.best_score ?? 0, score),
-        attempt_count: (activation.attempt_count ?? 0) + 1,
-      };
-      if (passed && !activation.passed_at) {
-        updates.passed_at = new Date().toISOString();
-      }
-      if (!passed) {
+      if (passed) {
+        // Auto-deactivate on pass; attempt history is retained in level_test_attempts
+        await admin.from("level_test_activations").delete().eq("id", activation.id);
+      } else {
+        const updates: Record<string, unknown> = {
+          best_score: Math.max(activation.best_score ?? 0, score),
+          attempt_count: (activation.attempt_count ?? 0) + 1,
+        };
         const { data: nextSetRows } = await admin
           .from("level_test_questions")
           .select("set_number")
@@ -134,8 +134,8 @@ Deno.serve(async (req) => {
         if (nextSetRows && nextSetRows.length > 0) {
           updates.current_set = (activation.current_set ?? 1) + 1;
         }
+        await admin.from("level_test_activations").update(updates).eq("id", activation.id);
       }
-      await admin.from("level_test_activations").update(updates).eq("id", activation.id);
     }
 
     return json({ score, correct_count: correctCount, total, passed, answers });
