@@ -637,6 +637,7 @@ export default function Vocabulary() {
           weekLabel={autoTestWeekLabel || "랜덤"}
           completedTests={0}
           scheduledAt={new Date()}
+          questionCountOverride={testWords.length}
           onClose={() => setTestWords(null)}
           onTestComplete={() => {}}
         />
