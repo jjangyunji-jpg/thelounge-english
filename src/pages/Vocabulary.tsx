@@ -144,13 +144,27 @@ interface RangePickerProps {
   studentName: string;
 }
 
+const TEST_COUNT_OPTIONS = [10, 20, 40, 0]; // 0 = 전체
+
 function RangePickerModal({ onStart, onClose, allWords, studentName }: RangePickerProps) {
   const [selectedRange, setSelectedRange] = useState(3);
+  const [selectedCount, setSelectedCount] = useState<number>(20);
   const [exporting, setExporting] = useState(false);
 
   const filteredWords = selectedRange === 0
     ? allWords
     : allWords.filter(w => w.week_label >= getWeekLabelNMonthsAgo(selectedRange));
+
+  const testWordsCount = selectedCount === 0
+    ? filteredWords.length
+    : Math.min(selectedCount, filteredWords.length);
+
+  const startTest = () => {
+    if (filteredWords.length === 0) return;
+    const shuffled = [...filteredWords].sort(() => Math.random() - 0.5);
+    const picked = selectedCount === 0 ? shuffled : shuffled.slice(0, selectedCount);
+    onStart(picked, "test");
+  };
 
   const handleExportPdf = async () => {
     if (filteredWords.length === 0) return;
