@@ -379,13 +379,21 @@ export default function VocabTestModal({
   const [saving, setSaving] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
 
-  const questionCount = questionCountOverride && questionCountOverride > 0
+  const defaultCount = questionCountOverride && questionCountOverride > 0
     ? Math.min(questionCountOverride, words.length)
     : (words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5)));
+  // 사용자가 confirm 화면에서 직접 문항 수를 변경할 수 있도록 state로 관리
+  const [selectedCount, setSelectedCount] = useState<number>(defaultCount);
+  const questionCount = selectedCount === 0 ? words.length : Math.min(selectedCount, words.length);
+
+  // 동적 옵션: 단어가 적을 땐 큰 옵션 숨김
+  const COUNT_OPTIONS = [10, 20, 40, 0].filter(
+    (c) => c === 0 || c <= words.length || c === 10
+  );
 
   const startTest = (mode: TestMode) => {
     setTestMode(mode);
-    const qs = buildQuestions(words, mode, questionCountOverride);
+    const qs = buildQuestions(words, mode, questionCount);
     setQuestions(qs);
     setCurrentIdx(0);
     setAnswers([]);
