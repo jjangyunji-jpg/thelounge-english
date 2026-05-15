@@ -41,6 +41,7 @@ interface SessionSidebarProps {
   showFutureSection?: boolean;
   onDownloadAllPdf?: (periodMonths: number | null) => void;
   footerSlot?: ReactNode;
+  headerSlot?: ReactNode;
 }
 
 function fmtDate(dateStr: string) {
