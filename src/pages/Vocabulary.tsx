@@ -298,6 +298,8 @@ export default function Vocabulary() {
   const [autoTestTriggered, setAutoTestTriggered] = useState(false);
   const [autoTestWeekLabel, setAutoTestWeekLabel] = useState<string | null>(null);
   const [exportingAll, setExportingAll] = useState(false);
+  const [showPdfRangePicker, setShowPdfRangePicker] = useState(false);
+  const [pdfRangeMonths, setPdfRangeMonths] = useState(0);
 
   useEffect(() => {
     const init = async () => {
