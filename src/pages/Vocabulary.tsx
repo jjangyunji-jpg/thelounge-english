@@ -298,6 +298,7 @@ export default function Vocabulary() {
   const [autoTestTriggered, setAutoTestTriggered] = useState(false);
   const [autoTestWeekLabel, setAutoTestWeekLabel] = useState<string | null>(null);
   const [exportingAll, setExportingAll] = useState(false);
+  const [showRangeMenu, setShowRangeMenu] = useState(false);
 
   useEffect(() => {
     const init = async () => {
