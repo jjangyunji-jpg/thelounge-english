@@ -1588,8 +1588,12 @@ export default function InstructorDashboard() {
       studentNames.length > 0
         ? supabase.from("class_sessions").select("*").in("student_name", studentNames).order("scheduled_at", { ascending: false })
         : Promise.resolve({ data: [] }),
-      supabase.from("homework_assignments").select("id,title,type,description,student_name,session_id,is_preset,preset_origin_id"),
-      supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction"),
+      studentNames.length > 0
+        ? supabase.from("homework_assignments").select("id,title,type,description,student_name,session_id,is_preset,preset_origin_id").in("student_name", studentNames)
+        : Promise.resolve({ data: [] }),
+      studentNames.length > 0
+        ? supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction").in("student_name", studentNames)
+        : Promise.resolve({ data: [] }),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
       supabase.from("vocabulary_tests").select("id,student_name,started_at,completed_at,score,total"),
