@@ -364,10 +364,11 @@ function ResultItem({ question, answer }: { question: Question; answer: Answer }
 
 // ── Main Modal ──
 export default function VocabTestModal({
-  words, studentName, weekLabel, completedTests, scheduledAt, onClose, onTestComplete,
+  words, studentName, weekLabel, completedTests, scheduledAt, onClose, onTestComplete, questionCountOverride,
 }: {
   words: VocabWord[]; studentName: string; weekLabel: string; completedTests: number;
   scheduledAt: Date; onClose: () => void; onTestComplete: () => void;
+  questionCountOverride?: number;
 }) {
   const { toast } = useToast();
   const [phase, setPhase] = useState<Phase>("confirm");
@@ -378,11 +379,13 @@ export default function VocabTestModal({
   const [saving, setSaving] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
 
-  const questionCount = words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5));
+  const questionCount = questionCountOverride && questionCountOverride > 0
+    ? Math.min(questionCountOverride, words.length)
+    : (words.length <= 10 ? words.length : Math.min(20, Math.round(10 + (words.length - 10) * 0.5)));
 
   const startTest = (mode: TestMode) => {
     setTestMode(mode);
-    const qs = buildQuestions(words, mode);
+    const qs = buildQuestions(words, mode, questionCountOverride);
     setQuestions(qs);
     setCurrentIdx(0);
     setAnswers([]);
