@@ -300,6 +300,8 @@ export default function Vocabulary() {
 
   useEffect(() => {
     const init = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlName = params.get("name");
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { data: profile } = await supabase
@@ -307,13 +309,14 @@ export default function Vocabulary() {
           .select("student_name, nickname")
           .eq("user_id", session.user.id)
           .maybeSingle();
-        if (profile?.student_name) setStudent(profile.student_name);
-        if (profile?.nickname) setDisplayName(profile.nickname);
-      } else {
-        const params = new URLSearchParams(window.location.search);
-        const name = params.get("name");
-        if (name) setStudent(name);
+        if (profile?.student_name) {
+          setStudent(profile.student_name);
+          if (profile.nickname) setDisplayName(profile.nickname);
+          return;
+        }
       }
+      // Fallback: URL ?name= (강사/매니저가 학생 단어장을 열람할 때)
+      if (urlName) setStudent(urlName);
     };
     init();
   }, []);
