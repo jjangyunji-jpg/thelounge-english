@@ -376,7 +376,7 @@ export default function Vocabulary() {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur border-b border-border px-3 sm:px-5 py-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <button onClick={() => navigate("/my/dashboard")}
+          <button onClick={() => { if (window.history.length > 1) navigate(-1); else navigate("/my/dashboard"); }}
             className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors flex-shrink-0"
           >
             <ChevronLeft className="w-4 h-4 text-foreground" />
