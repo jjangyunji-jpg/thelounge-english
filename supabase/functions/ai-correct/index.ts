@@ -459,10 +459,39 @@ Respond in Korean for explanations and feedback.`;
       throw new Error("AI gateway error");
     }
 
-    const data = await response.json();
+    let data = await response.json();
 
     // Extract result from tool call
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    let toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+
+    // Fallback: if Pro returned no tool call (e.g. finish_reason MAX_TOKENS or safety),
+    // retry once with Flash which is more reliable for structured tool output.
+    if (!toolCall?.function?.arguments && !data.choices?.[0]?.message?.content) {
+      const finishReason = data.choices?.[0]?.finish_reason;
+      console.warn("AI returned no tool_call. finish_reason:", finishReason, "mode:", mode, "— retrying with flash");
+      const retryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          tools,
+          tool_choice,
+        }),
+      });
+      if (retryResponse.ok) {
+        data = await retryResponse.json();
+        toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      } else {
+        console.error("Retry AI gateway error:", retryResponse.status, await retryResponse.text());
+      }
+    }
     if (toolCall?.function?.arguments) {
       const result = JSON.parse(toolCall.function.arguments);
 
