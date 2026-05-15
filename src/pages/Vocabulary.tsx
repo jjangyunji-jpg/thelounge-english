@@ -147,17 +147,40 @@ interface RangePickerProps {
 const TEST_COUNT_OPTIONS = [10, 20, 40, 0]; // 0 = 전체
 
 function RangePickerModal({ onStart, onClose, allWords, studentName }: RangePickerProps) {
+  const [rangeMode, setRangeMode] = useState<"month" | "week">("month");
   const [selectedRange, setSelectedRange] = useState(3);
   const [selectedCount, setSelectedCount] = useState<number>(20);
   const [exporting, setExporting] = useState(false);
 
-  const filteredWords = selectedRange === 0
-    ? allWords
-    : allWords.filter(w => w.week_label >= getWeekLabelNMonthsAgo(selectedRange));
+  // All unique weeks (newest first)
+  const allWeeks = Array.from(new Set(allWords.map(w => w.week_label))).sort((a, b) => b.localeCompare(a));
+  const allWeeksKey = allWeeks.join("|");
+  const [selectedWeeks, setSelectedWeeks] = useState<Set<string>>(() => new Set(allWeeks));
+
+  useEffect(() => {
+    setSelectedWeeks(prev => {
+      const next = new Set<string>();
+      allWeeks.forEach(w => { if (prev.has(w)) next.add(w); });
+      return next.size === 0 ? new Set(allWeeks) : next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allWeeksKey]);
+
+  const filteredWords = rangeMode === "month"
+    ? (selectedRange === 0 ? allWords : allWords.filter(w => w.week_label >= getWeekLabelNMonthsAgo(selectedRange)))
+    : allWords.filter(w => selectedWeeks.has(w.week_label));
 
   const testWordsCount = selectedCount === 0
     ? filteredWords.length
     : Math.min(selectedCount, filteredWords.length);
+
+  const toggleWeek = (label: string) => {
+    setSelectedWeeks(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  };
 
   const startTest = () => {
     if (filteredWords.length === 0) return;
@@ -176,7 +199,7 @@ function RangePickerModal({ onStart, onClose, allWords, studentName }: RangePick
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+      <div className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-sm max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-5 pt-5 pb-3 border-b border-border">
           <h2 className="text-base font-bold text-foreground flex items-center gap-2">
             <Brain className="w-4.5 h-4.5 text-gold" />
@@ -185,28 +208,79 @@ function RangePickerModal({ onStart, onClose, allWords, studentName }: RangePick
           <p className="text-xs text-muted-foreground mt-1">학습 범위를 선택하고 공부 또는 테스트를 시작하세요</p>
         </div>
 
-        <div className="p-5 space-y-4">
-          {/* Range selector */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-foreground">학습 범위</label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {RANGE_OPTIONS.map(opt => (
-                <button key={opt.months} onClick={() => setSelectedRange(opt.months)}
-                  className={cn(
-                    "px-2.5 py-2 rounded-lg border text-xs font-medium transition-all",
-                    selectedRange === opt.months
-                      ? "border-gold bg-gold/10 text-gold-dark"
-                      : "border-border bg-card text-muted-foreground hover:border-gold/40"
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] text-muted-foreground">
-              선택된 단어: <span className="font-bold text-foreground">{filteredWords.length}개</span>
-            </p>
+        <div className="p-5 space-y-4 overflow-y-auto">
+          {/* Mode tabs */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-muted/40 rounded-lg">
+            <button onClick={() => setRangeMode("month")}
+              className={cn(
+                "px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all",
+                rangeMode === "month" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >개월별</button>
+            <button onClick={() => setRangeMode("week")}
+              className={cn(
+                "px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all",
+                rangeMode === "week" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >주차 직접 선택</button>
           </div>
+
+          {rangeMode === "month" ? (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-foreground">학습 범위</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {RANGE_OPTIONS.map(opt => (
+                  <button key={opt.months} onClick={() => setSelectedRange(opt.months)}
+                    className={cn(
+                      "px-2.5 py-2 rounded-lg border text-xs font-medium transition-all",
+                      selectedRange === opt.months
+                        ? "border-gold bg-gold/10 text-gold-dark"
+                        : "border-border bg-card text-muted-foreground hover:border-gold/40"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                선택된 단어: <span className="font-bold text-foreground">{filteredWords.length}개</span>
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-foreground">주차 선택 ({selectedWeeks.size}/{allWeeks.length})</label>
+                <div className="flex gap-1">
+                  <button onClick={() => setSelectedWeeks(new Set(allWeeks))}
+                    className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:border-gold/40 hover:text-gold-dark transition-colors"
+                  >전체</button>
+                  <button onClick={() => setSelectedWeeks(new Set())}
+                    className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:border-gold/40 hover:text-gold-dark transition-colors"
+                  >해제</button>
+                </div>
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-border divide-y divide-border/50">
+                {allWeeks.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground text-center py-4">선택할 주차가 없습니다</p>
+                ) : allWeeks.map(wl => {
+                  const count = allWords.filter(w => w.week_label === wl).length;
+                  const checked = selectedWeeks.has(wl);
+                  return (
+                    <label key={wl} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/30 cursor-pointer">
+                      <input type="checkbox" checked={checked} onChange={() => toggleWeek(wl)}
+                        className="w-3.5 h-3.5 accent-gold cursor-pointer"
+                      />
+                      <span className="text-xs font-medium text-foreground flex-1">{fmtWeek(wl)}</span>
+                      <span className="text-[10px] text-muted-foreground">{count}개</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                선택된 단어: <span className="font-bold text-foreground">{filteredWords.length}개</span>
+              </p>
+            </div>
+          )}
 
           {/* Test question count selector */}
           <div className="space-y-2">
