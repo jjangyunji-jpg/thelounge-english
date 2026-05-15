@@ -399,6 +399,22 @@ export default function Vocabulary() {
               <span className="sm:hidden">학습</span>
             </button>
           )}
+          {words.length > 0 && (
+            <button
+              onClick={async () => {
+                if (exportingAll) return;
+                setExportingAll(true);
+                try { await exportWordsPdf(words, displayName || student || ""); }
+                finally { setExportingAll(false); }
+              }}
+              disabled={exportingAll}
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg border border-gold/50 text-gold-dark hover:bg-gold/10 text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap disabled:opacity-50"
+              title="전체 단어장 PDF 다운로드"
+            >
+              {exportingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+          )}
           <button onClick={() => student && load(student)} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0" title="새로고침">
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           </button>
