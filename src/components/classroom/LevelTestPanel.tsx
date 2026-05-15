@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ClipboardCheck, Loader2, Play, RotateCcw, Award, Eye, Plus, Trash2 } from "lucide-react";
+import { ClipboardCheck, Loader2, Play, RotateCcw, Award, Eye, Plus, Trash2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -63,6 +63,7 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
   const [loading, setLoading] = useState(true);
   const [testModal, setTestModal] = useState<{ test: LevelTest; questions: Question[] } | null>(null);
   const [historyModal, setHistoryModal] = useState<LevelTest | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const refresh = async () => {
     const [{ data: t }, { data: a }, { data: at }] = await Promise.all([
@@ -131,10 +132,19 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
   if (role === "instructor") {
     return (
       <div className="px-2 py-2 space-y-1.5">
-        <div className="flex items-center gap-1.5 px-1">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full flex items-center gap-1.5 px-1 py-0.5 hover:bg-muted/40 rounded transition-colors"
+        >
+          <ChevronDown className={cn("w-3 h-3 text-muted-foreground transition-transform", expanded ? "" : "-rotate-90")} />
           <ClipboardCheck className="w-3 h-3 text-gold" />
           <span className="text-[10px] font-semibold text-foreground uppercase tracking-wide">레벨 테스트</span>
-        </div>
+          {!expanded && activations.length > 0 && (
+            <span className="ml-auto text-[9px] text-muted-foreground">{activations.length}개 활성</span>
+          )}
+        </button>
+        {expanded && (
+        <>
         <div className="flex flex-wrap gap-1">
           {tests.map((t) => {
             const act = activations.find((a) => a.level_test_id === t.id);
@@ -182,6 +192,8 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
           </div>
         )}
         <p className="text-[9px] text-muted-foreground/70 px-1 pt-0.5">칩을 클릭해 활성/비활성 토글</p>
+        </>
+        )}
 
         {historyModal && (
           <AttemptHistoryModal
