@@ -1521,7 +1521,7 @@ export default function Classroom() {
             } : undefined}
             loading={sidebarLoading}
             initialOpen={true}
-            footerSlot={
+            headerSlot={
               role === "instructor" && session.sessionId && session.dbStudentName ? (
                 <LevelTestPanel
                   studentName={session.dbStudentName}
