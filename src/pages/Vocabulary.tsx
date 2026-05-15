@@ -298,6 +298,8 @@ export default function Vocabulary() {
   const [autoTestTriggered, setAutoTestTriggered] = useState(false);
   const [autoTestWeekLabel, setAutoTestWeekLabel] = useState<string | null>(null);
   const [exportingAll, setExportingAll] = useState(false);
+  const [showPdfRangePicker, setShowPdfRangePicker] = useState(false);
+  const [pdfRangeMonths, setPdfRangeMonths] = useState(0);
 
   useEffect(() => {
     const init = async () => {
@@ -402,15 +404,10 @@ export default function Vocabulary() {
           )}
           {words.length > 0 && (
             <button
-              onClick={async () => {
-                if (exportingAll) return;
-                setExportingAll(true);
-                try { await exportWordsPdf(words, displayName || student || ""); }
-                finally { setExportingAll(false); }
-              }}
+              onClick={() => setShowPdfRangePicker(true)}
               disabled={exportingAll}
               className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg border border-gold/50 text-gold-dark hover:bg-gold/10 text-[11px] sm:text-xs font-semibold transition-colors whitespace-nowrap disabled:opacity-50"
-              title="전체 단어장 PDF 다운로드"
+              title="단어장 PDF 다운로드"
             >
               {exportingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">PDF</span>
@@ -451,6 +448,68 @@ export default function Vocabulary() {
           onClose={() => setShowRangePicker(false)}
         />
       )}
+
+      {/* PDF Range Picker Modal */}
+      {showPdfRangePicker && (() => {
+        const filtered = pdfRangeMonths === 0
+          ? words
+          : words.filter(w => w.week_label >= getWeekLabelNMonthsAgo(pdfRangeMonths));
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowPdfRangePicker(false)}>
+            <div className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+              <div className="px-5 pt-5 pb-3 border-b border-border">
+                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <Download className="w-4 h-4 text-gold" />
+                  단어장 PDF 다운로드
+                </h2>
+                <p className="text-xs text-muted-foreground mt-1">다운로드할 범위를 선택해 주세요</p>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-foreground">범위</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {RANGE_OPTIONS.map(opt => (
+                      <button key={opt.months} onClick={() => setPdfRangeMonths(opt.months)}
+                        className={cn(
+                          "px-2.5 py-2 rounded-lg border text-xs font-medium transition-all",
+                          pdfRangeMonths === opt.months
+                            ? "border-gold bg-gold/10 text-gold-dark"
+                            : "border-border bg-card text-muted-foreground hover:border-gold/40"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    선택된 단어: <span className="font-bold text-foreground">{filtered.length}개</span>
+                  </p>
+                </div>
+                <Button
+                  onClick={async () => {
+                    if (filtered.length === 0 || exportingAll) return;
+                    setExportingAll(true);
+                    try {
+                      await exportWordsPdf(filtered, displayName || student || "");
+                      setShowPdfRangePicker(false);
+                    } finally { setExportingAll(false); }
+                  }}
+                  disabled={filtered.length === 0 || exportingAll}
+                  className="w-full h-10 text-sm gap-2 bg-navy hover:bg-navy-light text-primary-foreground"
+                >
+                  {exportingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {exportingAll ? "PDF 생성 중..." : `확인 (${filtered.length}개 다운로드)`}
+                </Button>
+              </div>
+              <div className="px-5 py-3 border-t border-border bg-muted/20">
+                <button onClick={() => setShowPdfRangePicker(false)} className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Study Mode */}
       {studyWords && studyWords.length > 0 && (
