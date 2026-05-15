@@ -509,6 +509,33 @@ export default function VocabTestModal({
                 </div>
               </div>
 
+              {/* 문항 수 선택 */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-foreground">문항 수</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {COUNT_OPTIONS.map((cnt) => {
+                    const isActive = selectedCount === cnt;
+                    const disabled = cnt !== 0 && cnt > words.length && cnt !== 10;
+                    return (
+                      <button
+                        key={cnt}
+                        onClick={() => !disabled && setSelectedCount(cnt)}
+                        disabled={disabled}
+                        className={cn(
+                          "px-2.5 py-2 rounded-lg border text-xs font-medium transition-all",
+                          isActive
+                            ? "border-gold bg-gold/10 text-gold-dark"
+                            : "border-border bg-card text-muted-foreground hover:border-gold/40",
+                          disabled && "opacity-40 cursor-not-allowed",
+                        )}
+                      >
+                        {cnt === 0 ? `전체 (${words.length})` : `${cnt}개`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Mode selection */}
               <div className="space-y-2">
                 <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold gap-2"
