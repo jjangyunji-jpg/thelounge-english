@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import {
   Bold, Underline as UnderlineIcon, Heading1, Heading2, Heading3, Minus, Table2, Loader2,
   MessageSquareQuote, PenLine, Sparkles, Image as ImageIcon,
+  Trash2, Rows3, Columns3, Plus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -140,18 +141,53 @@ export default function NotesEditor({
       },
       transformPastedHTML(html) {
         // Notion pastes tables as nested divs or splits each row into
-        // its own <table>. Merge them into a single standard HTML table.
+        // its own <table>. Merge ONLY adjacent fragmented tables (single-row
+        // siblings with no meaningful content between them) so that pasting
+        // two distinct tables keeps them separate.
         const doc = new DOMParser().parseFromString(html, "text/html");
 
-        const tables = doc.querySelectorAll("table");
-        if (tables.length > 1) {
+        const isBlank = (node: Node | null): boolean => {
+          if (!node) return true;
+          if (node.nodeType === Node.TEXT_NODE) return !(node.textContent || "").trim();
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node as Element;
+            if (el.tagName === "BR") return true;
+            return !el.textContent?.trim() && el.querySelectorAll("img,table,hr,iframe").length === 0;
+          }
+          return true;
+        };
+
+        const allTables = Array.from(doc.querySelectorAll("table"));
+        const visited = new Set<Element>();
+        for (const start of allTables) {
+          if (visited.has(start)) continue;
+          // Collect adjacent fragmented tables (each with a single row)
+          const group: HTMLTableElement[] = [];
+          const startRows = start.querySelectorAll("tr").length;
+          if (startRows !== 1) { visited.add(start); continue; }
+          group.push(start as HTMLTableElement);
+          visited.add(start);
+          let cursor: Node | null = start.nextSibling;
+          while (cursor) {
+            if (cursor.nodeType === Node.ELEMENT_NODE && (cursor as Element).tagName === "TABLE") {
+              const t = cursor as HTMLTableElement;
+              if (t.querySelectorAll("tr").length !== 1) break;
+              group.push(t);
+              visited.add(t);
+              cursor = t.nextSibling;
+              continue;
+            }
+            if (!isBlank(cursor)) break;
+            cursor = cursor.nextSibling;
+          }
+          if (group.length < 2) continue;
+
           const merged = doc.createElement("table");
           const tbody = doc.createElement("tbody");
-          tables.forEach((t, i) => {
-            const rows = t.querySelectorAll("tr");
-            rows.forEach((row, ri) => {
+          group.forEach((t, i) => {
+            t.querySelectorAll("tr").forEach((row) => {
               const newRow = row.cloneNode(true) as HTMLTableRowElement;
-              if (i === 0 && ri === 0) {
+              if (i === 0) {
                 newRow.querySelectorAll("td").forEach((td) => {
                   const th = doc.createElement("th");
                   th.innerHTML = td.innerHTML;
@@ -160,10 +196,10 @@ export default function NotesEditor({
               }
               tbody.appendChild(newRow);
             });
-            t.remove();
           });
           merged.appendChild(tbody);
-          doc.body.prepend(merged);
+          group[0].replaceWith(merged);
+          for (let i = 1; i < group.length; i++) group[i].remove();
         }
 
         return doc.body.innerHTML;
@@ -650,6 +686,56 @@ export default function NotesEditor({
             )}
           </div>
 
+          {/* Table contextual toolbar — visible when cursor is inside a table */}
+          {editor?.isActive("table") && (
+            <div className="flex items-center gap-0.5 px-3 py-1 border-b border-border bg-muted/10 flex-wrap text-[11px] text-muted-foreground">
+              <span className="mr-1.5 font-medium">표:</span>
+              <button
+                title="행 추가 (아래)"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().addRowAfter().run(); }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Plus className="w-3 h-3" /><Rows3 className="w-3 h-3" />
+              </button>
+              <button
+                title="열 추가 (오른쪽)"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().addColumnAfter().run(); }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Plus className="w-3 h-3" /><Columns3 className="w-3 h-3" />
+              </button>
+              <span className="mx-1 text-border">|</span>
+              <button
+                title="현재 행 삭제"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().deleteRow().run(); }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <Trash2 className="w-3 h-3" /><Rows3 className="w-3 h-3" />
+              </button>
+              <button
+                title="현재 열 삭제"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().deleteColumn().run(); }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <Trash2 className="w-3 h-3" /><Columns3 className="w-3 h-3" />
+              </button>
+              <span className="mx-1 text-border">|</span>
+              <button
+                title="헤더 행 토글"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeaderRow().run(); }}
+                className="px-1.5 py-0.5 rounded hover:bg-muted hover:text-foreground transition-colors"
+              >
+                헤더
+              </button>
+              <button
+                title="표 전체 삭제"
+                onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().deleteTable().run(); }}
+                className="ml-auto flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />표 삭제
+              </button>
+            </div>
+          )}
         </>
       )}
 
