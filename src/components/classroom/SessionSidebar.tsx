@@ -104,6 +104,7 @@ export default function SessionSidebar({
   showFutureSection = true,
   onDownloadAllPdf,
   footerSlot,
+  headerSlot,
 }: SessionSidebarProps) {
   const [collapsed, setCollapsed] = useState(!initialOpen);
   const [searchQuery, setSearchQuery] = useState("");
