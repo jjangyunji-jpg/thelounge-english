@@ -208,6 +208,31 @@ function RangePickerModal({ onStart, onClose, allWords, studentName }: RangePick
             </p>
           </div>
 
+          {/* Test question count selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-foreground">테스트 문항 수</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {TEST_COUNT_OPTIONS.map(cnt => (
+                <button key={cnt} onClick={() => setSelectedCount(cnt)}
+                  className={cn(
+                    "px-2.5 py-2 rounded-lg border text-xs font-medium transition-all",
+                    selectedCount === cnt
+                      ? "border-gold bg-gold/10 text-gold-dark"
+                      : "border-border bg-card text-muted-foreground hover:border-gold/40"
+                  )}
+                >
+                  {cnt === 0 ? "전체" : `${cnt}개`}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              테스트 출제: <span className="font-bold text-foreground">{testWordsCount}개</span>
+              {selectedCount !== 0 && filteredWords.length > selectedCount && (
+                <span className="text-muted-foreground/70"> (랜덤 선택)</span>
+              )}
+            </p>
+          </div>
+
           {/* Action buttons */}
           <div className="space-y-2">
             <Button onClick={() => onStart(filteredWords, "study")} disabled={filteredWords.length === 0}
@@ -216,12 +241,12 @@ function RangePickerModal({ onStart, onClose, allWords, studentName }: RangePick
               <BookMarked className="w-4 h-4" />
               단어 학습하기 ({filteredWords.length}개)
             </Button>
-            <Button onClick={() => onStart(filteredWords, "test")} disabled={filteredWords.length === 0}
+            <Button onClick={startTest} disabled={filteredWords.length === 0}
               variant="outline"
               className="w-full h-10 text-sm gap-2 border-gold/50 text-gold-dark hover:bg-gold/10"
             >
               <Play className="w-4 h-4" />
-              테스트 시작
+              테스트 시작 ({testWordsCount}개)
             </Button>
             <Button onClick={handleExportPdf} disabled={filteredWords.length === 0 || exporting}
               variant="outline"
