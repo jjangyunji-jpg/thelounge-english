@@ -481,8 +481,8 @@ export default function Vocabulary() {
     if (mode === "study") {
       setStudyWords(filtered);
     } else {
-      const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-      setTestWords(shuffled.slice(0, Math.min(50, shuffled.length)));
+      // picker가 이미 사용자가 선택한 문항 수만큼 잘라서 넘겨주므로 그대로 사용
+      setTestWords([...filtered].sort(() => Math.random() - 0.5));
     }
   };
 
