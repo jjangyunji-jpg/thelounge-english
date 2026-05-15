@@ -306,6 +306,13 @@ export default function SessionSidebar({
         )}
       </button>
 
+      {/* Header slot — e.g. Level Test chips for instructor */}
+      {!collapsed && headerSlot && (
+        <div className="border-b border-border bg-background/40">
+          {headerSlot}
+        </div>
+      )}
+
       {/* Download All PDF */}
       {!collapsed && onDownloadAllPdf && (
         <div className="px-2 py-2 border-b border-border">
