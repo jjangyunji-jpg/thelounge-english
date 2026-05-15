@@ -41,6 +41,7 @@ interface SessionSidebarProps {
   showFutureSection?: boolean;
   onDownloadAllPdf?: (periodMonths: number | null) => void;
   footerSlot?: ReactNode;
+  headerSlot?: ReactNode;
 }
 
 function fmtDate(dateStr: string) {
@@ -103,6 +104,7 @@ export default function SessionSidebar({
   showFutureSection = true,
   onDownloadAllPdf,
   footerSlot,
+  headerSlot,
 }: SessionSidebarProps) {
   const [collapsed, setCollapsed] = useState(!initialOpen);
   const [searchQuery, setSearchQuery] = useState("");
@@ -284,7 +286,7 @@ export default function SessionSidebar({
     <div
       className={cn(
         "flex-shrink-0 border-r border-border bg-muted/20 flex flex-col transition-all duration-200 overflow-hidden",
-        collapsed ? "w-10" : (footerSlot ? "w-64" : "w-52")
+        collapsed ? "w-10" : ((footerSlot || headerSlot) ? "w-64" : "w-52")
       )}
     >
       {/* Toggle */}
@@ -303,6 +305,13 @@ export default function SessionSidebar({
           </div>
         )}
       </button>
+
+      {/* Header slot — e.g. Level Test chips for instructor */}
+      {!collapsed && headerSlot && (
+        <div className="border-b border-border bg-background/40">
+          {headerSlot}
+        </div>
+      )}
 
       {/* Download All PDF */}
       {!collapsed && onDownloadAllPdf && (

@@ -127,6 +127,75 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
 
   if (tests.length === 0) return null;
 
+  // ─── Instructor compact chip layout (for sidebar header) ───
+  if (role === "instructor") {
+    return (
+      <div className="px-2 py-2 space-y-1.5">
+        <div className="flex items-center gap-1.5 px-1">
+          <ClipboardCheck className="w-3 h-3 text-gold" />
+          <span className="text-[10px] font-semibold text-foreground uppercase tracking-wide">레벨 테스트</span>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {tests.map((t) => {
+            const act = activations.find((a) => a.level_test_id === t.id);
+            const isActive = !!act;
+            const passed = !!act?.passed_at;
+            return (
+              <button
+                key={t.id}
+                onClick={() => isActive ? handleDeactivate(act!) : handleActivate(t)}
+                className={cn(
+                  "h-7 px-2 rounded-md text-[10px] font-semibold border transition-all inline-flex items-center gap-1",
+                  isActive
+                    ? "bg-gold text-accent-foreground border-gold hover:bg-gold/80"
+                    : "bg-card text-muted-foreground border-border hover:border-gold/50 hover:text-foreground",
+                )}
+                title={isActive ? "클릭해서 비활성화" : "클릭해서 활성화"}
+              >
+                {t.level}
+                {passed && <Award className="w-2.5 h-2.5" />}
+              </button>
+            );
+          })}
+        </div>
+        {activations.length > 0 && (
+          <div className="space-y-0.5 pt-1">
+            {activations.map((act) => {
+              const t = tests.find((x) => x.id === act.level_test_id);
+              if (!t) return null;
+              const passed = !!act.passed_at;
+              return (
+                <div key={act.id} className="flex items-center gap-1.5 px-1 text-[10px]">
+                  <span className="font-semibold text-foreground">{t.level}</span>
+                  <span className={cn("flex-1 truncate", passed ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+                    {passed ? `통과 ${act.best_score}%` : act.attempt_count > 0 ? `진행중 · 최고 ${act.best_score}%` : "미응시"}
+                  </span>
+                  <button
+                    onClick={() => setHistoryModal(t)}
+                    className="text-[10px] text-gold hover:text-gold/80 underline-offset-2 hover:underline"
+                  >
+                    결과
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <p className="text-[9px] text-muted-foreground/70 px-1 pt-0.5">칩을 클릭해 활성/비활성 토글</p>
+
+        {historyModal && (
+          <AttemptHistoryModal
+            test={historyModal}
+            attempts={attempts}
+            studentName={studentName}
+            onClose={() => setHistoryModal(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // ─── Student card layout (unchanged) ───
   return (
     <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center gap-2 bg-muted/30">
@@ -175,39 +244,11 @@ export default function LevelTestPanel({ studentName, role, instructorName }: Pr
                   {role === "student" && passed && passedAttempt && (
                     <span className="text-xs text-green-600 font-bold">{passedAttempt.score}%</span>
                   )}
-                  {role === "instructor" && (
-                    <>
-                      <Button size="sm" variant="outline" onClick={() => setHistoryModal(t)} className="h-7 text-[11px] gap-1">
-                        <Eye className="w-3 h-3" /> 결과 보기
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDeactivate(act)} className="h-6 text-[10px] text-muted-foreground hover:text-destructive gap-1">
-                        <Trash2 className="w-3 h-3" /> 비활성화
-                      </Button>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
           );
         })}
-
-        {/* Instructor: activate buttons for not-yet-activated tests */}
-        {role === "instructor" && inactiveTests.length > 0 && (
-          <div className="pt-2 border-t border-border space-y-1.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">활성화 가능한 테스트</p>
-            {inactiveTests.map((t) => (
-              <Button
-                key={t.id}
-                size="sm"
-                variant="outline"
-                onClick={() => handleActivate(t)}
-                className="w-full justify-start h-8 text-xs gap-1.5"
-              >
-                <Plus className="w-3 h-3" /> {t.title} 활성화
-              </Button>
-            ))}
-          </div>
-        )}
       </div>
 
       {testModal && (
