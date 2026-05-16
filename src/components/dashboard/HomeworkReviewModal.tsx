@@ -131,18 +131,10 @@ function InlineCorrectedText({
     const isEditing = editingIndex === err.origIdx;
 
     if (isDismissed) {
-      // 취소된 교정: 일반 텍스트로 보이되, hover 시 작은 되돌리기 버튼 노출
+      // 취소된 교정: 완전 일반 텍스트로 흐름에 합쳐 수동 교정 매칭 대상이 되도록 함
+      // (되돌리기는 본문 아래 별도 패널에서 처리)
       parts.push(
-        <span key={key++} className="relative inline-flex items-baseline group/undo">
-          <span>{remaining.slice(idx, idx + err.original.length)}</span>
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleDismiss(err.origIdx); }}
-            className="opacity-0 group-hover/undo:opacity-100 transition-opacity ml-0.5 text-muted-foreground hover:text-[hsl(var(--navy))]"
-            title="교정 되돌리기"
-          >
-            <Undo2 className="w-2.5 h-2.5" />
-          </button>
-        </span>
+        <span key={key++}>{remaining.slice(idx, idx + err.original.length)}</span>
       );
     } else {
       parts.push(
@@ -515,6 +507,33 @@ export default function HomeworkReviewModal({
                 ) : (
                   <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{textContent}</p>
                 )}
+              </div>
+            )}
+
+            {/* 취소된 AI 교정 되돌리기 패널 */}
+            {aiResult && dismissedIndices.size > 0 && (
+              <div className="rounded-lg border border-dashed border-border bg-muted/5 p-2.5 space-y-1.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <Undo2 className="w-3 h-3" /> 취소된 교정 ({dismissedIndices.size})
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {Array.from(dismissedIndices).map((i) => {
+                    const err = editedAICorrections.get(i) ?? aiResult.errors[i];
+                    if (!err) return null;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => toggleDismiss(i)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/40 hover:bg-muted/70 border border-border text-[10px] transition-colors"
+                        title="되돌리기"
+                      >
+                        <span className="line-through text-muted-foreground">{err.original}</span>
+                        <span className="text-[hsl(var(--navy))] font-semibold">→ {err.corrected}</span>
+                        <Undo2 className="w-2.5 h-2.5 text-muted-foreground" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
