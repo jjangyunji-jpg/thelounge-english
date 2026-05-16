@@ -526,7 +526,36 @@ Respond in Korean for explanations and feedback.`;
       }
     }
     if (toolCall?.function?.arguments) {
-      const result = JSON.parse(toolCall.function.arguments);
+      let result: any;
+      try {
+        result = JSON.parse(toolCall.function.arguments);
+      } catch (parseErr) {
+        console.warn("Tool args JSON parse failed, retrying with flash:", parseErr);
+        const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            tools,
+            tool_choice,
+          }),
+        });
+        if (!retry.ok) {
+          console.error("Retry failed:", retry.status, await retry.text());
+          throw new Error("AI returned invalid JSON and retry failed");
+        }
+        const retryData = await retry.json();
+        const retryArgs = retryData.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+        if (!retryArgs) throw new Error("Retry returned no tool call");
+        result = JSON.parse(retryArgs);
+      }
 
       // Post-process: trim errors but keep 1 context word when lengths differ
       if (result.errors && Array.isArray(result.errors)) {
