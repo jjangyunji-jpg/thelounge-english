@@ -509,6 +509,33 @@ export default function HomeworkReviewModal({
                 )}
               </div>
             )}
+
+            {/* 취소된 AI 교정 되돌리기 패널 */}
+            {aiResult && dismissedIndices.size > 0 && (
+              <div className="rounded-lg border border-dashed border-border bg-muted/5 p-2.5 space-y-1.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <Undo2 className="w-3 h-3" /> 취소된 교정 ({dismissedIndices.size})
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {Array.from(dismissedIndices).map((i) => {
+                    const err = editedAICorrections.get(i) ?? aiResult.errors[i];
+                    if (!err) return null;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => toggleDismiss(i)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/40 hover:bg-muted/70 border border-border text-[10px] transition-colors"
+                        title="되돌리기"
+                      >
+                        <span className="line-through text-muted-foreground">{err.original}</span>
+                        <span className="text-[hsl(var(--navy))] font-semibold">→ {err.corrected}</span>
+                        <Undo2 className="w-2.5 h-2.5 text-muted-foreground" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
 
