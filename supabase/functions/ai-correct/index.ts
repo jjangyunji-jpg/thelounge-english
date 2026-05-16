@@ -436,7 +436,7 @@ Respond in Korean for explanations and feedback.`;
         Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       };
-      apiModel = "gpt-4o-mini";
+      apiModel = "gpt-4.1-nano";
     } else {
       apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
       apiHeaders = {
