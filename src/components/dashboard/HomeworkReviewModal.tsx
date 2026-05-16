@@ -131,15 +131,9 @@ function InlineCorrectedText({
     const isEditing = editingIndex === err.origIdx;
 
     if (isDismissed) {
+      // 취소된 교정은 그냥 일반 텍스트로 표시 (수동 교정 대상에 포함 가능)
       parts.push(
-        <span key={key++}
-          className="inline-flex items-baseline gap-0.5 cursor-pointer group relative rounded px-0.5 bg-muted/40 hover:bg-muted/60 transition-colors"
-          onClick={() => onToggleDismiss(err.origIdx)}
-          title="클릭하여 교정 복원"
-        >
-          <span className="text-foreground">{remaining.slice(idx, idx + err.original.length)}</span>
-          <Undo2 className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity inline-block ml-0.5" />
-        </span>
+        <span key={key++}>{remaining.slice(idx, idx + err.original.length)}</span>
       );
     } else {
       parts.push(
