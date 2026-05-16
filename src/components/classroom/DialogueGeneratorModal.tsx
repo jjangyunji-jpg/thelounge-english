@@ -112,12 +112,21 @@ export default function DialogueGeneratorModal({
     setStep("input");
     setDialogueHtml("");
     setRevisionInstruction("");
+    // Reset to defaults first so previous student's inputs don't bleed through
+    setSituation("");
+    setSpeakers("");
+    setStudent(defaultStudentName);
+    setLevel(defaultLevel);
+    setMustInclude("");
+    setTone("Casual");
+    setTranslationFirst(false);
+
     try {
       const storageKey = getStorageKey(defaultStudentName);
-      let saved = localStorage.getItem(storageKey);
-      if (!saved && storageKey !== DIALOGUE_STORAGE_KEY_BASE) {
-        saved = localStorage.getItem(DIALOGUE_STORAGE_KEY_BASE);
-      }
+      // Only load saved inputs for THIS student — no global fallback
+      const saved = storageKey !== DIALOGUE_STORAGE_KEY_BASE
+        ? localStorage.getItem(storageKey)
+        : null;
       if (saved) {
         const data = JSON.parse(saved);
         if (typeof data.situation === "string") setSituation(data.situation);
