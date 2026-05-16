@@ -350,18 +350,29 @@ Be strict. Most student writing should fall between 3-7:
 - 고급: Sophisticated vocabulary, idioms, precise word choice
 - 최고급: Near-native lexical range with nuanced word selection
 
-IMPORTANT for errors — CONCISE BUT MEANINGFUL:
-- The "original" field must be an exact substring from the student's text that contains the error
-- The "corrected" field must be the replacement for that substring
-- Include just enough context to show what changed meaningfully — NOT the whole sentence, but NOT just a single isolated word if the fix involves insertion or restructuring
-- GOOD: original="liked go" corrected="liked to go" (missing word insertion — show the surrounding context)
-- GOOD: original="go Japan" corrected="go to Japan" (missing preposition — show where it's inserted)
-- GOOD: original="me" corrected="I" (simple word swap — single word is fine)
-- GOOD: original="go" corrected="went" (tense fix — single word is fine)
-- BAD: original="I liked go Japan" corrected="I liked to go to Japan" — TOO LONG (whole sentence)
-- BAD: original="to" corrected="to go to" — CONFUSING without context
-- Rule: if the fix is a word swap, show just that word. If the fix adds/removes words, include 1 neighboring word for context.
-- Keep explanations concise in Korean.
+## 🎯 MINIMAL-EDIT RULE (HIGHEST PRIORITY for errors)
+You MUST produce the SMALLEST possible diff. Each error should cover the FEWEST words needed to express the fix — usually 1-3 words. **NEVER include the entire sentence.**
+
+- The "original" field must be an exact substring from the student's text containing only the error.
+- The "corrected" field must be the replacement for that exact substring.
+- Split a sentence with multiple errors into MULTIPLE separate error entries — one per localized fix.
+- If a word just needs deletion (e.g. an extra "while"), output original="extra word" corrected="" (empty string) and explain in Korean.
+- If you can fix it by changing/adding/removing 1-2 words, DO IT THAT WAY. Do not rewrite surrounding correct words.
+
+GOOD examples (do this):
+- original="warried" corrected="was worried" (single word fix)
+- original="while his prepare" corrected="about his preparation for" (localized phrase fix)
+- original="go Japan" corrected="go to Japan" (insert preposition, minimal context)
+- original="centuries" corrected="country" (single word swap)
+- original="me" corrected="I" / original="go" corrected="went"
+
+BAD examples (NEVER do this):
+- original="I warried a lot while his prepare Malaca trip" corrected="I was worried a lot about his Malaca trip preparation" ❌ rewrites whole sentence
+- original="he looks forward to about go to the malaca trip" corrected="he is looking forward to going on the Malaca trip" ❌ whole sentence — should be split into 2-3 minimal edits
+
+Rule of thumb: if your "original" contains more than ~4 words OR words that are already correct in the student's text, you are doing it WRONG. Break it into smaller separate errors.
+
+Keep explanations concise in Korean.
 
 For feedback.praise: Write like a friendly YouTube comment — casual, warm, with emojis! 🎉 Use 반말 or casual 존댓말 (e.g. "오 이 부분 진짜 잘 썼다! 👏 특히 시제 일관성이 좋고, 문장 연결도 자연스럽네요~ 💪"). **반드시 2~3문장**으로 구체적인 잘한 점을 짚어주세요 (예: 특정 문법, 어휘 선택, 문장 구조, 흐름 등). 한 문장으로 끝내지 마세요. Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
 For feedback.priorities: Provide exactly 3 strings, each a friendly but specific improvement tip in Korean (with emoji). Write like giving advice to a friend, not a formal report.`;
