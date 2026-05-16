@@ -345,6 +345,9 @@ serve(async (req) => {
 
           if (existingSet.has(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`)) continue;
 
+          // Skip dates that were explicitly removed (makeup reschedule, etc.)
+          if (deletedDateSet.has(`${student.student_name}|${dateStr}`)) continue;
+
           // Weekly cap check: don't exceed expected sessions per week
           const wk = weekKey(dateStr);
           const countKey = `${student.student_name}|${student.instructor_name || ""}|${wk}`;
