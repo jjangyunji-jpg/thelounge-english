@@ -1848,6 +1848,12 @@ export default function Classroom() {
                     >
                       <Lightbulb className="w-3 h-3" />Insight
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => setOpicModalOpen(true)}
+                      disabled={isDisabled}
+                      className="h-7 text-xs gap-1.5 transition-all border-sky-300 text-sky-600 hover:bg-sky-50"
+                    >
+                      <Mic className="w-3 h-3" />OPIc
+                    </Button>
                     {role === "instructor" && (
                       <Button size="sm" variant="outline" onClick={() => setKeyExprModalOpen(true)}
                         disabled={isDisabled}
