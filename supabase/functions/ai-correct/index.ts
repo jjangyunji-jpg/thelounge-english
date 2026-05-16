@@ -470,7 +470,7 @@ Respond in Korean for explanations and feedback.`;
         ],
         tools,
         tool_choice,
-        max_tokens: 4096,
+        max_tokens: 16384,
       }),
     });
 
