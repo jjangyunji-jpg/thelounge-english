@@ -58,7 +58,7 @@ function buildToolsAndChoice(mode: string) {
               feedback: {
                 type: "object",
                 properties: {
-                  praise: { type: "string", description: "Warm praise about grammar/structure in Korean" },
+                  praise: { type: "string", description: "Warm praise about grammar/structure in Korean — must be 2-3 sentences" },
                   priorities: {
                     type: "array",
                     items: { type: "string" },
@@ -363,7 +363,7 @@ IMPORTANT for errors — CONCISE BUT MEANINGFUL:
 - Rule: if the fix is a word swap, show just that word. If the fix adds/removes words, include 1 neighboring word for context.
 - Keep explanations concise in Korean.
 
-For feedback.praise: Write like a friendly YouTube comment — casual, warm, with emojis! 🎉 Use 반말 or casual 존댓말 (e.g. "오 이 부분 진짜 잘 썼다! 👏", "문장 구조 깔끔하게 잘 잡았네요~ 💪"). Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
+For feedback.praise: Write like a friendly YouTube comment — casual, warm, with emojis! 🎉 Use 반말 or casual 존댓말 (e.g. "오 이 부분 진짜 잘 썼다! 👏 특히 시제 일관성이 좋고, 문장 연결도 자연스럽네요~ 💪"). **반드시 2~3문장**으로 구체적인 잘한 점을 짚어주세요 (예: 특정 문법, 어휘 선택, 문장 구조, 흐름 등). 한 문장으로 끝내지 마세요. Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
 For feedback.priorities: Provide exactly 3 strings, each a friendly but specific improvement tip in Korean (with emoji). Write like giving advice to a friend, not a formal report.`;
       userPrompt = `Review this student's English homework: "${text}"`;
     } else if (mode === "notes_correct") {
