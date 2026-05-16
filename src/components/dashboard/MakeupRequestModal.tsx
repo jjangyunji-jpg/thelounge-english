@@ -104,6 +104,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const [myRequests, setMyRequests] = useState<MakeupReq[]>([]);
   const [periods, setPeriods] = useState<SchedulePeriod[]>([]);
   const [instructorEnMap, setInstructorEnMap] = useState<Map<string, string>>(new Map());
+  const [isCorporate, setIsCorporate] = useState(false);
 
   const [step, setStep] = useState<Step>("type");
   const [requestType, setRequestType] = useState<"reschedule" | "extra" | "makeup" | "cancel">("reschedule");
@@ -166,6 +167,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
         if (i?.name) enMap.set(i.name, formatInstructorName(i.name, i.english_name));
       }
       setInstructorEnMap(enMap);
+
+      // Detect corporate student
+      const { data: typeRow } = await supabase
+        .from("instructor_students")
+        .select("student_type")
+        .eq("student_name", studentName)
+        .limit(1)
+        .maybeSingle();
+      setIsCorporate(((typeRow as any)?.student_type) === "corporate");
 
       const sessionMap = new Map<string, ClassSession>();
       for (const s of (sessionsRes.data || [])) sessionMap.set(s.id, s as ClassSession);
@@ -531,13 +541,21 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const handleConfirmCancellation = async () => {
     if (!sessionToCancel) return;
     setCancelling(true);
-    const { error } = await supabase.rpc("student_cancel_class_session" as any, { _session_id: sessionToCancel.id });
+    const { data, error } = await supabase.rpc("student_cancel_class_session" as any, { _session_id: sessionToCancel.id });
     setCancelling(false);
     if (error) {
       toast({ title: "취소 실패", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "수업이 취소되었습니다", description: "수업 횟수에서 차감됩니다." });
+    const action = (data as any)?.action;
+    const ct = (data as any)?.cancellation_type;
+    if (action === "deleted") {
+      toast({ title: "수업이 취소되었습니다", description: "해당 수업은 결제에서 제외됩니다." });
+    } else if (ct === "late_cancel") {
+      toast({ title: "수업이 취소되었습니다", description: "48시간 이내 취소로 결제에는 포함됩니다." });
+    } else {
+      toast({ title: "수업이 취소되었습니다", description: "수업 횟수에서 차감됩니다." });
+    }
     onClose();
   };
 
@@ -862,6 +880,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "cancel_confirm" && sessionToCancel && (() => {
                 const canReschedule = !isWithin48h(sessionToCancel.scheduled_at) && !monthlyLimitReached;
                 const isPast = new Date(sessionToCancel.scheduled_at).getTime() <= Date.now();
+                const within48 = isWithin48h(sessionToCancel.scheduled_at);
                 return (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
@@ -871,11 +890,16 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <p className="text-sm font-semibold text-foreground">
                       {fmtSessionDate(sessionToCancel.scheduled_at)} {fmtSessionTime(sessionToCancel.scheduled_at)}
                       {isPast && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium align-middle">지난 수업</span>}
+                      {isCorporate && within48 && !isPast && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium align-middle">48h 이내 취소</span>}
                     </p>
                     <p className="text-[11px] text-foreground/80 leading-relaxed pt-1 border-t border-destructive/20">
-                      {canReschedule
-                        ? `해당 수업은 아직 일정 변경(보강)이 가능합니다. 그대로 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 보강을 원하시면 뒤로가기 후 "일정 변경"을 이용해주세요.`
-                        : `이 수업을 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 취소된 수업은 되돌릴 수 없습니다. 정말 수업을 취소하시겠습니까?`}
+                      {isCorporate
+                        ? (within48
+                            ? `수업 시작 48시간 이내 취소입니다. 해당 수업은 "48h 이내 취소"로 기록되며 결제에 포함됩니다. 정말 취소하시겠습니까?`
+                            : `해당 수업은 일정에서 완전히 삭제되며 결제에서 제외됩니다. 취소된 수업은 되돌릴 수 없습니다. 정말 취소하시겠습니까?`)
+                        : (canReschedule
+                            ? `해당 수업은 아직 일정 변경(보강)이 가능합니다. 그대로 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 보강을 원하시면 뒤로가기 후 "일정 변경"을 이용해주세요.`
+                            : `이 수업을 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 취소된 수업은 되돌릴 수 없습니다. 정말 수업을 취소하시겠습니까?`)}
                     </p>
                   </div>
                   <div className="flex gap-2">

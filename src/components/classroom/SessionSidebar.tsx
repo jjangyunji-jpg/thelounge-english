@@ -19,6 +19,7 @@ interface SessionItem {
 const CANCEL_BADGES: Record<string, { label: string; cls: string }> = {
   no_show: { label: "미참석", cls: "bg-warning/15 text-warning" },
   student_cancel: { label: "당일 취소", cls: "bg-destructive/15 text-destructive" },
+  late_cancel: { label: "48h 이내 취소", cls: "bg-destructive/15 text-destructive" },
   sick: { label: "병결", cls: "bg-muted text-muted-foreground" },
   instructor_cancel: { label: "강사 취소", cls: "bg-muted text-muted-foreground" },
   advance_cancel: { label: "사전 취소", cls: "bg-muted text-muted-foreground" },
