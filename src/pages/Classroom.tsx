@@ -20,6 +20,7 @@ import NoteVersionsModal from "@/components/classroom/NoteVersionsModal";
 import DialogueGeneratorModal from "@/components/classroom/DialogueGeneratorModal";
 import NewsLessonGeneratorModal from "@/components/classroom/NewsLessonGeneratorModal";
 import InsightGeneratorModal from "@/components/classroom/InsightGeneratorModal";
+import OpicGeneratorModal from "@/components/classroom/OpicGeneratorModal";
 import KeyExpressionExtractModal from "@/components/classroom/KeyExpressionExtractModal";
 import RenewalDecisionModal from "@/components/classroom/RenewalDecisionModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
