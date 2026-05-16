@@ -168,6 +168,15 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
       }
       setInstructorEnMap(enMap);
 
+      // Detect corporate student
+      const { data: typeRow } = await supabase
+        .from("instructor_students")
+        .select("student_type")
+        .eq("student_name", studentName)
+        .limit(1)
+        .maybeSingle();
+      setIsCorporate(((typeRow as any)?.student_type) === "corporate");
+
       const sessionMap = new Map<string, ClassSession>();
       for (const s of (sessionsRes.data || [])) sessionMap.set(s.id, s as ClassSession);
       for (const s of (groupSessRes.data || [])) sessionMap.set(s.id, s as ClassSession);
