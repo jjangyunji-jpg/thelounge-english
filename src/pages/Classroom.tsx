@@ -20,6 +20,7 @@ import NoteVersionsModal from "@/components/classroom/NoteVersionsModal";
 import DialogueGeneratorModal from "@/components/classroom/DialogueGeneratorModal";
 import NewsLessonGeneratorModal from "@/components/classroom/NewsLessonGeneratorModal";
 import InsightGeneratorModal from "@/components/classroom/InsightGeneratorModal";
+import OpicGeneratorModal from "@/components/classroom/OpicGeneratorModal";
 import KeyExpressionExtractModal from "@/components/classroom/KeyExpressionExtractModal";
 import RenewalDecisionModal from "@/components/classroom/RenewalDecisionModal";
 import { exportNotesPdf } from "@/lib/exportNotesPdf";
@@ -351,6 +352,7 @@ export default function Classroom() {
   const [dialogueModalOpen, setDialogueModalOpen] = useState(false);
   const [newsLessonModalOpen, setNewsLessonModalOpen] = useState(false);
   const [insightModalOpen, setInsightModalOpen] = useState(false);
+  const [opicModalOpen, setOpicModalOpen] = useState(false);
   const [keyExprModalOpen, setKeyExprModalOpen] = useState(false);
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
 
@@ -1846,6 +1848,12 @@ export default function Classroom() {
                     >
                       <Lightbulb className="w-3 h-3" />Insight
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => setOpicModalOpen(true)}
+                      disabled={isDisabled}
+                      className="h-7 text-xs gap-1.5 transition-all border-sky-300 text-sky-600 hover:bg-sky-50"
+                    >
+                      <Mic className="w-3 h-3" />OPIc
+                    </Button>
                     {role === "instructor" && (
                       <Button size="sm" variant="outline" onClick={() => setKeyExprModalOpen(true)}
                         disabled={isDisabled}
@@ -2188,6 +2196,19 @@ export default function Classroom() {
     <InsightGeneratorModal
       open={insightModalOpen}
       onClose={() => setInsightModalOpen(false)}
+      defaultLevel={session.level}
+      defaultStudentName={session.dbStudentName}
+      onInsert={(html) => {
+        const editor = notesEditorRef.current;
+        if (editor) {
+          editor.chain().focus().insertContent(html).run();
+          setNotes(editor.getHTML());
+        }
+      }}
+    />
+    <OpicGeneratorModal
+      open={opicModalOpen}
+      onClose={() => setOpicModalOpen(false)}
       defaultLevel={session.level}
       defaultStudentName={session.dbStudentName}
       onInsert={(html) => {
