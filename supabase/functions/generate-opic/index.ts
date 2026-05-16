@@ -75,7 +75,16 @@ CRITICAL RULES:
   - Natural fillers/discourse markers used sparingly (you know, I mean, like — not overused)
   - Past-tense storytelling for question 2 with a clear beginning-middle-end
   - Opinion + reasoning + example for question 3
-  - Sound like a confident, fluent speaker — NOT textbook English`;
+  - Sound like a confident, fluent speaker — NOT textbook English
+
+BOLD FORMATTING for model answers (CRITICAL):
+- In EVERY model answer, wrap the following with <strong>...</strong> tags so they visually stand out:
+  · Connectors / conjunctions (e.g., because, although, however, so, but, while, since, even though, whereas)
+  · Linking words & discourse markers (e.g., To be honest, What I mean is, On top of that, The thing is, Looking back, As a matter of fact, In my opinion, For example, By the way, Anyway, That said, In the end)
+  · Adverbs (e.g., honestly, basically, actually, definitely, eventually, suddenly, usually, especially, surprisingly, totally, completely, recently)
+  · Filler words / hesitation markers (e.g., you know, I mean, like, well, um, sort of, kind of, I guess)
+- Do NOT bold regular nouns, verbs, or content words — only the categories above.
+- Apply bolding ONLY inside the 3 model answers, NOT in the questions.`;
 
     const userPrompt = `Create one OPIc practice set.
 
