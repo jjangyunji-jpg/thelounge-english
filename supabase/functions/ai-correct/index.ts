@@ -559,7 +559,9 @@ Respond in Korean for explanations and feedback.`;
 
       // Post-process: trim errors but keep 1 context word when lengths differ
       if (result.errors && Array.isArray(result.errors)) {
-        result.errors = result.errors.map((err: { original: string; corrected: string; explanation?: string }) => {
+        result.errors = result.errors
+          .filter((err: any) => err && typeof err.original === "string" && typeof err.corrected === "string")
+          .map((err: { original: string; corrected: string; explanation?: string }) => {
           const origWords = err.original.split(/\s+/);
           const corrWords = err.corrected.split(/\s+/);
           if (origWords.length <= 3 && corrWords.length <= 3) return err; // already short enough
