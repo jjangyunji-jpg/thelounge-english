@@ -131,18 +131,10 @@ function InlineCorrectedText({
     const isEditing = editingIndex === err.origIdx;
 
     if (isDismissed) {
-      // 취소된 교정: 일반 텍스트로 보이되, hover 시 작은 되돌리기 버튼 노출
+      // 취소된 교정: 완전 일반 텍스트로 흐름에 합쳐 수동 교정 매칭 대상이 되도록 함
+      // (되돌리기는 본문 아래 별도 패널에서 처리)
       parts.push(
-        <span key={key++} className="relative inline-flex items-baseline group/undo">
-          <span>{remaining.slice(idx, idx + err.original.length)}</span>
-          <button
-            onClick={(e) => { e.stopPropagation(); onToggleDismiss(err.origIdx); }}
-            className="opacity-0 group-hover/undo:opacity-100 transition-opacity ml-0.5 text-muted-foreground hover:text-[hsl(var(--navy))]"
-            title="교정 되돌리기"
-          >
-            <Undo2 className="w-2.5 h-2.5" />
-          </button>
-        </span>
+        <span key={key++}>{remaining.slice(idx, idx + err.original.length)}</span>
       );
     } else {
       parts.push(
