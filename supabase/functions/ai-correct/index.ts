@@ -422,16 +422,37 @@ Respond in Korean for explanations and feedback.`;
 
     const { tools, tool_choice } = buildToolsAndChoice(mode);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
+    // Use direct OpenAI API for homework_review and paraphrase (instructor controls cost via own API key)
+    const useOpenAIDirect = (mode === "homework_review" || mode === "paraphrase");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+
+    let apiUrl: string;
+    let apiHeaders: Record<string, string>;
+    let apiModel: string;
+
+    if (useOpenAIDirect && OPENAI_API_KEY) {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      apiHeaders = {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      };
+      apiModel = "gpt-4o-mini";
+    } else {
+      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+      apiHeaders = {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
-      },
+      };
+      apiModel = (mode === "homework_review" || mode === "notes_correct" || mode === "correct" || mode === "paraphrase")
+        ? "google/gemini-2.5-pro"
+        : "google/gemini-2.5-flash";
+    }
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: apiHeaders,
       body: JSON.stringify({
-        model: (mode === "homework_review" || mode === "notes_correct" || mode === "correct" || mode === "paraphrase")
-          ? "google/gemini-2.5-pro"
-          : "google/gemini-2.5-flash",
+        model: apiModel,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
