@@ -2206,6 +2206,19 @@ export default function Classroom() {
         }
       }}
     />
+    <OpicGeneratorModal
+      open={opicModalOpen}
+      onClose={() => setOpicModalOpen(false)}
+      defaultLevel={session.level}
+      defaultStudentName={session.dbStudentName}
+      onInsert={(html) => {
+        const editor = notesEditorRef.current;
+        if (editor) {
+          editor.chain().focus().insertContent(html).run();
+          setNotes(editor.getHTML());
+        }
+      }}
+    />
     <KeyExpressionExtractModal
       open={keyExprModalOpen}
       onClose={() => setKeyExprModalOpen(false)}
