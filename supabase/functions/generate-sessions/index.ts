@@ -182,6 +182,25 @@ serve(async (req) => {
     // Track sessions per student per week (for weekly cap check)
     const weeklySessionCount = new Map<string, number>();
 
+    // 4.1 Pre-load deleted_session_dates within the period so we never
+    // re-create a session on a KST date that was explicitly removed
+    // (e.g. via makeup reschedule). Key: `${student_name}|${YYYY-MM-DD}`.
+    const deletedDateSet = new Set<string>();
+    {
+      const studentNamesForQuery = students.map((s: any) => s.student_name);
+      if (studentNamesForQuery.length > 0) {
+        const { data: deletedRows } = await sb
+          .from("deleted_session_dates")
+          .select("student_name, deleted_date")
+          .in("student_name", studentNamesForQuery)
+          .gte("deleted_date", period.start_date)
+          .lte("deleted_date", period.end_date);
+        for (const r of deletedRows || []) {
+          deletedDateSet.add(`${r.student_name}|${r.deleted_date}`);
+        }
+      }
+    }
+
     for (const s of existingSessions || []) {
       const dateStr = toKstDateStr(s.scheduled_at);
       const instructorKey = s.instructor_name || "";
@@ -325,6 +344,9 @@ serve(async (req) => {
           if (!isMatchingWeek(dateStr, period.start_date, freq)) continue;
 
           if (existingSet.has(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`)) continue;
+
+          // Skip dates that were explicitly removed (makeup reschedule, etc.)
+          if (deletedDateSet.has(`${student.student_name}|${dateStr}`)) continue;
 
           // Weekly cap check: don't exceed expected sessions per week
           const wk = weekKey(dateStr);
