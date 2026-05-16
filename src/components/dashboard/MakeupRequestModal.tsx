@@ -880,6 +880,7 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
               {step === "cancel_confirm" && sessionToCancel && (() => {
                 const canReschedule = !isWithin48h(sessionToCancel.scheduled_at) && !monthlyLimitReached;
                 const isPast = new Date(sessionToCancel.scheduled_at).getTime() <= Date.now();
+                const within48 = isWithin48h(sessionToCancel.scheduled_at);
                 return (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
@@ -889,11 +890,16 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
                     <p className="text-sm font-semibold text-foreground">
                       {fmtSessionDate(sessionToCancel.scheduled_at)} {fmtSessionTime(sessionToCancel.scheduled_at)}
                       {isPast && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium align-middle">지난 수업</span>}
+                      {isCorporate && within48 && !isPast && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium align-middle">48h 이내 취소</span>}
                     </p>
                     <p className="text-[11px] text-foreground/80 leading-relaxed pt-1 border-t border-destructive/20">
-                      {canReschedule
-                        ? `해당 수업은 아직 일정 변경(보강)이 가능합니다. 그대로 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 보강을 원하시면 뒤로가기 후 "일정 변경"을 이용해주세요.`
-                        : `이 수업을 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 취소된 수업은 되돌릴 수 없습니다. 정말 수업을 취소하시겠습니까?`}
+                      {isCorporate
+                        ? (within48
+                            ? `수업 시작 48시간 이내 취소입니다. 해당 수업은 "48h 이내 취소"로 기록되며 결제에 포함됩니다. 정말 취소하시겠습니까?`
+                            : `해당 수업은 일정에서 완전히 삭제되며 결제에서 제외됩니다. 취소된 수업은 되돌릴 수 없습니다. 정말 취소하시겠습니까?`)
+                        : (canReschedule
+                            ? `해당 수업은 아직 일정 변경(보강)이 가능합니다. 그대로 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 보강을 원하시면 뒤로가기 후 "일정 변경"을 이용해주세요.`
+                            : `이 수업을 취소하시면 수업 횟수에서 차감되며 보강이 불가합니다. 취소된 수업은 되돌릴 수 없습니다. 정말 수업을 취소하시겠습니까?`)}
                     </p>
                   </div>
                   <div className="flex gap-2">
