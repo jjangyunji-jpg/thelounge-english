@@ -352,6 +352,7 @@ export default function Classroom() {
   const [dialogueModalOpen, setDialogueModalOpen] = useState(false);
   const [newsLessonModalOpen, setNewsLessonModalOpen] = useState(false);
   const [insightModalOpen, setInsightModalOpen] = useState(false);
+  const [opicModalOpen, setOpicModalOpen] = useState(false);
   const [keyExprModalOpen, setKeyExprModalOpen] = useState(false);
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false);
 
