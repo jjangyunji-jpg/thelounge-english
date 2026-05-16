@@ -541,13 +541,21 @@ export default function MakeupRequestModal({ studentName, instructorName, groupS
   const handleConfirmCancellation = async () => {
     if (!sessionToCancel) return;
     setCancelling(true);
-    const { error } = await supabase.rpc("student_cancel_class_session" as any, { _session_id: sessionToCancel.id });
+    const { data, error } = await supabase.rpc("student_cancel_class_session" as any, { _session_id: sessionToCancel.id });
     setCancelling(false);
     if (error) {
       toast({ title: "취소 실패", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "수업이 취소되었습니다", description: "수업 횟수에서 차감됩니다." });
+    const action = (data as any)?.action;
+    const ct = (data as any)?.cancellation_type;
+    if (action === "deleted") {
+      toast({ title: "수업이 취소되었습니다", description: "해당 수업은 결제에서 제외됩니다." });
+    } else if (ct === "late_cancel") {
+      toast({ title: "수업이 취소되었습니다", description: "48시간 이내 취소로 결제에는 포함됩니다." });
+    } else {
+      toast({ title: "수업이 취소되었습니다", description: "수업 횟수에서 차감됩니다." });
+    }
     onClose();
   };
 
