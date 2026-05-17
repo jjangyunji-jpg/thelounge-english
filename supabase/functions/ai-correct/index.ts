@@ -374,8 +374,8 @@ Rule of thumb: if your "original" contains more than ~4 words OR words that are 
 
 Keep explanations concise in Korean.
 
-For feedback.praise: Write like a friendly YouTube comment — casual, warm, with emojis! 🎉 Use 반말 or casual 존댓말 (e.g. "오 이 부분 진짜 잘 썼다! 👏 특히 시제 일관성이 좋고, 문장 연결도 자연스럽네요~ 💪"). **반드시 2~3문장**으로 구체적인 잘한 점을 짚어주세요 (예: 특정 문법, 어휘 선택, 문장 구조, 흐름 등). 한 문장으로 끝내지 마세요. Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
-For feedback.priorities: Provide exactly 3 strings, each a friendly but specific improvement tip in Korean (with emoji). Write like giving advice to a friend, not a formal report.`;
+For feedback.praise: 따뜻하고 정중한 존댓말로 격려해주세요 🎉 (예: "이 부분 정말 잘 쓰셨어요! 👏 특히 시제 일관성이 훌륭하고, 문장 연결도 아주 자연스럽습니다 💪"). **반드시 2~3문장**으로 구체적인 잘한 점을 짚어주세요 (예: 특정 문법, 어휘 선택, 문장 구조, 흐름 등). 한 문장으로 끝내지 마세요. 반드시 존댓말("~요", "~습니다")로 작성하고, 반말은 절대 사용하지 마세요. Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
+For feedback.priorities: Provide exactly 3 strings, each a warm, respectful improvement tip in Korean using 정중한 존댓말 (with emoji). 격려하는 말투로 작성하되, 반드시 존댓말("~요", "~보세요", "~면 좋아요")을 사용하고 반말은 절대 쓰지 마세요.`;
       userPrompt = `Review this student's English homework: "${text}"`;
     } else if (mode === "notes_correct") {
       systemPrompt = `You are an expert English language teacher. Correct grammar and expression errors in the student's text.
