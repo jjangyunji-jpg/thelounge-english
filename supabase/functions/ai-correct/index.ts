@@ -374,8 +374,8 @@ Rule of thumb: if your "original" contains more than ~4 words OR words that are 
 
 Keep explanations concise in Korean.
 
-For feedback.praise: Write like a friendly YouTube comment — casual, warm, with emojis! 🎉 Use 반말 or casual 존댓말 (e.g. "오 이 부분 진짜 잘 썼다! 👏 특히 시제 일관성이 좋고, 문장 연결도 자연스럽네요~ 💪"). **반드시 2~3문장**으로 구체적인 잘한 점을 짚어주세요 (예: 특정 문법, 어휘 선택, 문장 구조, 흐름 등). 한 문장으로 끝내지 마세요. Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
-For feedback.priorities: Provide exactly 3 strings, each a friendly but specific improvement tip in Korean (with emoji). Write like giving advice to a friend, not a formal report.`;
+For feedback.praise: 따뜻하고 정중한 존댓말로 격려해주세요 🎉 (예: "이 부분 정말 잘 쓰셨어요! 👏 특히 시제 일관성이 훌륭하고, 문장 연결도 아주 자연스럽습니다 💪"). **반드시 2~3문장**으로 구체적인 잘한 점을 짚어주세요 (예: 특정 문법, 어휘 선택, 문장 구조, 흐름 등). 한 문장으로 끝내지 마세요. 반드시 존댓말("~요", "~습니다")로 작성하고, 반말은 절대 사용하지 마세요. Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
+For feedback.priorities: Provide exactly 3 strings, each a warm, respectful improvement tip in Korean using 정중한 존댓말 (with emoji). 격려하는 말투로 작성하되, 반드시 존댓말("~요", "~보세요", "~면 좋아요")을 사용하고 반말은 절대 쓰지 마세요.`;
       userPrompt = `Review this student's English homework: "${text}"`;
     } else if (mode === "notes_correct") {
       systemPrompt = `You are an expert English language teacher. Correct grammar and expression errors in the student's text.
@@ -418,12 +418,12 @@ The "paraphrased" output MUST be split into MULTIPLE paragraphs separated by a b
 - detected_level: The CEFR level you assessed for the student's text
 - target_level: One level above (e.g. B1 → B2)
 - paraphrased: The model essay (English only, no markdown, MUST contain \\n\\n between paragraphs as described above)
-- key_improvements: Exactly 3 short bullet points (Korean, friendly tone with emoji, e.g. "문장을 'because' 대신 'since'로 연결해서 더 매끄럽게 만들었어요 ✨"). At least ONE bullet should mention the paragraph/structure improvement (e.g. "한 덩어리였던 글을 도입–본문–마무리 3문단으로 나눠서 흐름이 훨씬 명확해졌어요 ✨").
-- instructor_comment: Friendly comment to send to the student (Korean, warm YouTube-comment style with emojis, ~3-4 sentences). 
+- key_improvements: Exactly 3 short bullet points (Korean, 정중하고 따뜻한 존댓말 with emoji, e.g. "문장을 'because' 대신 'since'로 연결해서 더 매끄럽게 만들었어요 ✨"). At least ONE bullet should mention the paragraph/structure improvement (e.g. "한 덩어리였던 글을 도입–본문–마무리 3문단으로 나눠서 흐름이 훨씬 명확해졌어요 ✨"). 반드시 존댓말("~요", "~습니다")만 사용하고 반말은 절대 쓰지 마세요.
+- instructor_comment: 학생에게 보내는 따뜻하고 격려하는 코멘트 (Korean, 정중한 존댓말 with emojis, ~3-4 sentences).
 
 ## INSTRUCTOR COMMENT TONE
-Write like a friendly YouTube comment — casual, warm, encouraging. Use 반말 or casual 존댓말. Example tone:
-"오 ${"\""} 이 글 진짜 잘 썼다! 👏 문법 거의 완벽해서 이번엔 한 단계 위 표현으로 다듬은 모델 에세이를 같이 보내줄게~ 🌟 비교해보면서 'as a result of' 같은 connector 어떻게 쓰는지 익혀두면 다음 글에서 바로 써먹을 수 있을 거야! 💪"`;
+존중과 격려가 담긴 따뜻한 존댓말로 작성하세요. 반말은 절대 사용하지 마세요. Example tone:
+"이 글 정말 잘 쓰셨어요! 👏 문법이 거의 완벽해서, 이번엔 한 단계 위 표현으로 다듬은 모델 에세이를 함께 보내드릴게요 🌟 비교해보시면서 'as a result of' 같은 connector를 어떻게 쓰는지 익혀두시면 다음 글에서 바로 활용하실 수 있을 거예요 💪"`;
       userPrompt = `Student's writing:\n\n"${text}"\n\nDetect the level, then paraphrase one level above with the same content.`;
     } else {
       systemPrompt = `You are an expert English language teacher analyzing a student's spoken English.
