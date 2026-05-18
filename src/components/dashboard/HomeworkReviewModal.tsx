@@ -236,6 +236,19 @@ export default function HomeworkReviewModal({
         body: { text: textContent, mode: "homework_review" },
       });
       if (error) throw error;
+      if (!data || (data as any).error) {
+        throw new Error((data as any)?.error || "AI 응답이 비어있어요.");
+      }
+      const hasErrors = Array.isArray(data.errors) && data.errors.length > 0;
+      const hasFeedback = data.feedback && (data.feedback.praise || (data.feedback.priorities || []).length > 0);
+      if (!hasErrors && !hasFeedback) {
+        toast({
+          title: "교정 결과가 비어있어요",
+          description: "AI가 결과를 만들지 못했어요. 다시 시도해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
       setAiResult(data);
       // Auto-populate instructor note with AI feedback
       const feedbackText = [
