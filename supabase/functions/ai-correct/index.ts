@@ -510,8 +510,8 @@ Respond in Korean for explanations and feedback.`;
     // Extract result from tool call
     let toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
 
-    // Fallback: if Pro returned no tool call (e.g. finish_reason MAX_TOKENS or safety),
-    // retry once with Flash which is more reliable for structured tool output.
+    // Fallback: if no tool call (e.g. finish_reason MAX_TOKENS or safety),
+    // retry once with Flash + explicit max_tokens.
     if (!toolCall?.function?.arguments && !data.choices?.[0]?.message?.content) {
       const finishReason = data.choices?.[0]?.finish_reason;
       console.warn("AI returned no tool_call. finish_reason:", finishReason, "mode:", mode, "— retrying with flash");
@@ -529,6 +529,7 @@ Respond in Korean for explanations and feedback.`;
           ],
           tools,
           tool_choice,
+          max_tokens: 8192,
         }),
       });
       if (retryResponse.ok) {
@@ -536,6 +537,18 @@ Respond in Korean for explanations and feedback.`;
         toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
       } else {
         console.error("Retry AI gateway error:", retryResponse.status, await retryResponse.text());
+      }
+
+      // If still nothing, return a clear error to the client
+      if (!toolCall?.function?.arguments && !data.choices?.[0]?.message?.content) {
+        const fr = data.choices?.[0]?.finish_reason;
+        const msg = fr === "length" || fr === "MAX_TOKENS"
+          ? "AI 응답이 너무 길어 잘렸어요. 텍스트를 줄이거나 다시 시도해주세요."
+          : "AI가 응답을 생성하지 못했어요. 잠시 후 다시 시도해주세요.";
+        return new Response(JSON.stringify({ error: msg }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
     if (toolCall?.function?.arguments) {
