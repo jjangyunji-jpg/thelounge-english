@@ -27,8 +27,8 @@ interface Category {
   is_archived: boolean;
 }
 
-const LEVELS = ["A", "B", "C"] as const;
-type LevelFilter = "unassigned" | "A" | "B" | "C" | "archived";
+const LEVELS = ["A", "B", "B-테마", "C"] as const;
+type LevelFilter = "unassigned" | "A" | "B" | "B-테마" | "C" | "archived";
 
 export default function TeachingMaterials() {
   const { toast } = useToast();
