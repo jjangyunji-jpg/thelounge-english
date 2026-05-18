@@ -326,6 +326,7 @@ export default function TeachingMaterials() {
         {([
           { key: "A", label: "A 레벨" },
           { key: "B", label: "B 레벨" },
+          { key: "B-테마", label: "B-테마" },
           { key: "C", label: "C 레벨" },
           { key: "unassigned", label: "미분류" },
           { key: "archived", label: "보관함" },
