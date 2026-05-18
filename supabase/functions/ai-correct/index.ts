@@ -467,7 +467,7 @@ Respond in Korean for explanations and feedback.`;
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       };
-      apiModel = (mode === "homework_review" || mode === "notes_correct" || mode === "correct" || mode === "paraphrase")
+      apiModel = (mode === "notes_correct" || mode === "correct" || mode === "paraphrase")
         ? "google/gemini-2.5-pro"
         : "google/gemini-2.5-flash";
     }
