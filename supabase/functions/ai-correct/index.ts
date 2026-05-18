@@ -375,23 +375,20 @@ Rule of thumb: if your "original" contains more than ~4 words OR words that are 
 Keep explanations concise in Korean.
 
 For feedback.praise: 따뜻하고 정중한 존댓말로 격려해주세요 🎉 (예: "이 부분 정말 잘 쓰셨어요! 👏 특히 시제 일관성이 훌륭하고, 문장 연결도 아주 자연스럽습니다 💪"). **반드시 2~3문장**으로 구체적인 잘한 점을 짚어주세요 (예: 특정 문법, 어휘 선택, 문장 구조, 흐름 등). 한 문장으로 끝내지 마세요. 반드시 존댓말("~요", "~습니다")로 작성하고, 반말은 절대 사용하지 마세요. Focus ONLY on grammar usage or logical structure. Do NOT praise effort, attitude, or topic choice.
-For feedback.priorities: Provide exactly 3 strings, each a warm, respectful, **구체적이고 실용적인** improvement tip in Korean using 정중한 존댓말 (with emoji).
+For feedback.priorities: 정확히 3개의 문자열. **각 priority는 한 줄(1~2문장 피드백 + 학생 글에서 인용한 before/after 예시 1개)로 매우 간결하게** 작성하세요. 길게 설명하지 마세요.
 
-각 priority는 반드시 다음 구조를 따라야 합니다:
-1. **무엇을 개선해야 하는지** (구체적 포인트 — 문법 항목, 어휘, 문장 구조 등)
-2. **왜 그게 중요한지 / 어떤 효과가 있는지** (1문장 설명)
-3. **학생 글에서 가져온 실제 예시** — ❌ 학생이 쓴 원문 → ✅ 개선된 버전 (반드시 학생의 실제 문장을 인용해서 before/after로 보여주세요)
-4. 가능하면 **응용 팁이나 비슷한 패턴의 추가 예시** 1개
-
-각 priority는 최소 3~5문장으로 충분히 풍부하게 작성하세요. 한 줄짜리 추상적 조언("문법을 더 신경쓰세요")은 절대 금지입니다.
+형식 (반드시 이 형식만 사용):
+"<짧은 피드백 (emoji 포함)> ❌ <학생이 쓴 원문 짧게> → ✅ <개선된 버전>"
 
 좋은 예시:
-"시제 일관성을 조금만 더 신경 써보시면 좋겠어요 ⏰ 과거 경험을 이야기할 때 현재 시제와 과거 시제가 섞이면 독자가 시간 흐름을 따라가기 어려워져요. 예를 들어 학생분이 쓰신 '❌ Yesterday I go to the cafe and met my friend' 문장은 '✅ Yesterday I went to the cafe and met my friend'처럼 둘 다 과거형으로 통일해주시면 자연스러워집니다 ✨ 비슷하게 'I was studying when my phone rings' → 'I was studying when my phone rang'처럼, 한 문장 안의 동사들이 같은 시제대를 공유하는지 한 번 더 확인하는 습관을 들여보세요 💪"
+"시제 일관성을 지켜주시면 더 자연스러워요 ⏰ ❌ Yesterday I go to the cafe → ✅ Yesterday I went to the cafe"
+"관사 'the'를 빠뜨리지 마세요 📝 ❌ I went to park → ✅ I went to the park"
 
-나쁜 예시 (이렇게 쓰면 안 됨):
-"시제를 더 신경 쓰세요 ⏰" (너무 짧고 추상적, 예시 없음)
+금지:
+- 3문장 이상의 긴 설명, 응용 팁, 추가 패턴 설명
+- 예시 없는 추상적 조언
 
-반드시 존댓말("~요", "~보세요", "~면 좋아요")만 사용하고 반말은 절대 쓰지 마세요.`;
+반드시 정중한 존댓말("~요", "~보세요")만 사용하세요.`;
       userPrompt = `Review this student's English homework: "${text}"`;
     } else if (mode === "notes_correct") {
       systemPrompt = `You are an expert English language teacher. Correct grammar and expression errors in the student's text.
@@ -470,7 +467,7 @@ Respond in Korean for explanations and feedback.`;
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       };
-      apiModel = (mode === "homework_review" || mode === "notes_correct" || mode === "correct" || mode === "paraphrase")
+      apiModel = (mode === "notes_correct" || mode === "correct" || mode === "paraphrase")
         ? "google/gemini-2.5-pro"
         : "google/gemini-2.5-flash";
     }
@@ -513,8 +510,8 @@ Respond in Korean for explanations and feedback.`;
     // Extract result from tool call
     let toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
 
-    // Fallback: if Pro returned no tool call (e.g. finish_reason MAX_TOKENS or safety),
-    // retry once with Flash which is more reliable for structured tool output.
+    // Fallback: if no tool call (e.g. finish_reason MAX_TOKENS or safety),
+    // retry once with Flash + explicit max_tokens.
     if (!toolCall?.function?.arguments && !data.choices?.[0]?.message?.content) {
       const finishReason = data.choices?.[0]?.finish_reason;
       console.warn("AI returned no tool_call. finish_reason:", finishReason, "mode:", mode, "— retrying with flash");
@@ -532,6 +529,7 @@ Respond in Korean for explanations and feedback.`;
           ],
           tools,
           tool_choice,
+          max_tokens: 8192,
         }),
       });
       if (retryResponse.ok) {
@@ -539,6 +537,18 @@ Respond in Korean for explanations and feedback.`;
         toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
       } else {
         console.error("Retry AI gateway error:", retryResponse.status, await retryResponse.text());
+      }
+
+      // If still nothing, return a clear error to the client
+      if (!toolCall?.function?.arguments && !data.choices?.[0]?.message?.content) {
+        const fr = data.choices?.[0]?.finish_reason;
+        const msg = fr === "length" || fr === "MAX_TOKENS"
+          ? "AI 응답이 너무 길어 잘렸어요. 텍스트를 줄이거나 다시 시도해주세요."
+          : "AI가 응답을 생성하지 못했어요. 잠시 후 다시 시도해주세요.";
+        return new Response(JSON.stringify({ error: msg }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
     if (toolCall?.function?.arguments) {
