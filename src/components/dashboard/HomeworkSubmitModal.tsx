@@ -402,7 +402,7 @@ export default function HomeworkSubmitModal({
   const handleSaveDraft = () => saveOrSubmit(true);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={guardedClose}>
       <div className="w-full max-w-md bg-card rounded-xl shadow-2xl border border-border overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
