@@ -255,6 +255,42 @@ function buildToolsAndChoice(mode: string) {
   };
 }
 
+function parseModelJsonPayload(payload: unknown) {
+  if (!payload) throw new Error("AI 응답이 비어있어요.");
+  if (typeof payload === "object") return payload;
+  if (typeof payload !== "string") throw new Error("AI 응답 형식이 올바르지 않아요.");
+
+  let cleaned = payload
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+  const start = cleaned.search(/[\{\[]/);
+  const end = cleaned.lastIndexOf(start >= 0 && cleaned[start] === "[" ? "]" : "}");
+  if (start >= 0 && end >= start) cleaned = cleaned.slice(start, end + 1);
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return JSON.parse(cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, ""));
+  }
+}
+
+function findOriginalInText(text: string, candidate: string): string | null {
+  const raw = candidate.trim();
+  if (!raw) return null;
+  if (text.includes(raw)) return raw;
+
+  const ciIdx = text.toLowerCase().indexOf(raw.toLowerCase());
+  if (ciIdx >= 0) return text.slice(ciIdx, ciIdx + raw.length);
+
+  const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const words = raw.replace(/[.,!?;:'"()\-—–]/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return null;
+  const flexiblePattern = words.map(escapeRegExp).join("[\\s.,!?;:'\\\"()\\-—–]+");
+  const match = text.match(new RegExp(flexiblePattern, "i"));
+  return match?.[0] ?? null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
