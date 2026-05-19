@@ -64,6 +64,10 @@ export default function TeachingMaterials() {
   const [accessCategory, setAccessCategory] = useState<{ slug: string; name: string } | null>(null);
   const [categoryAccessCounts, setCategoryAccessCounts] = useState<Record<string, number>>({});
 
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   const fetchCategories = useCallback(async () => {
     const { data } = await supabase
       .from("teaching_material_categories")
