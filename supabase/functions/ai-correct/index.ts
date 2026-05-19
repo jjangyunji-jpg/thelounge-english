@@ -484,7 +484,7 @@ Respond in Korean for explanations and feedback.`;
 
     const apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
     const apiHeaders: Record<string, string> = {
-      "Lovable-API-Key": LOVABLE_API_KEY,
+      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     };
     const apiModel = "google/gemini-2.5-flash";
@@ -538,7 +538,7 @@ Respond in Korean for explanations and feedback.`;
       const retryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Lovable-API-Key": LOVABLE_API_KEY,
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -580,7 +580,7 @@ Respond in Korean for explanations and feedback.`;
         const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
-            "Lovable-API-Key": LOVABLE_API_KEY,
+            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -613,7 +613,7 @@ Respond in Korean for explanations and feedback.`;
         const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
-            "Lovable-API-Key": LOVABLE_API_KEY,
+            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
