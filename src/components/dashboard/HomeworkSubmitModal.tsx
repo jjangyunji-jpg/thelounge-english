@@ -207,58 +207,89 @@ export default function HomeworkSubmitModal({
 
   const isDraft = submission?.status === "draft";
 
-  // Auto-save draft every 30 seconds if text changed
+  // Auto-save draft: 5s interval + 1.5s debounce on text change
   const lastSavedTextRef = useRef(submission?.text_content ?? "");
   const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submissionRef = useRef(submission);
   submissionRef.current = submission;
   const textRef = useRef(text);
   textRef.current = text;
+  const autoSaveFailedRef = useRef(false);
+  const onSubmittedRef = useRef(onSubmitted);
+  onSubmittedRef.current = onSubmitted;
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
-  useEffect(() => {
-    autoSaveTimerRef.current = setInterval(async () => {
-      const currentText = textRef.current;
-      if (!currentText.trim() || currentText === lastSavedTextRef.current) return;
-      // Don't auto-save if already submitted and reviewed
-      if (submissionRef.current?.status === "reviewed") return;
+  const performAutoSave = useCallback(async () => {
+    const currentText = textRef.current;
+    if (!currentText.trim() || currentText === lastSavedTextRef.current) return;
+    if (submissionRef.current?.status === "reviewed") return;
 
-      try {
-        const status = submissionRef.current?.status === "submitted" ? "submitted" : "draft";
-        if (submissionRef.current) {
-          const { data, error } = await supabase
-            .from("homework_submissions")
-            .update({ text_content: currentText.trim(), status })
-            .eq("id", submissionRef.current.id)
-            .select()
-            .single();
-          if (!error && data) {
-            lastSavedTextRef.current = currentText;
-            onSubmitted(data);
-          }
-        } else {
-          const { data, error } = await supabase
-            .from("homework_submissions")
-            .insert({
-              assignment_id: assignment.id,
-              student_name: studentName,
-              text_content: currentText.trim(),
-              status: "draft",
-            })
-            .select()
-            .single();
-          if (!error && data) {
-            lastSavedTextRef.current = currentText;
-            submissionRef.current = data;
-            onSubmitted(data);
-          }
+    try {
+      const status = submissionRef.current?.status === "submitted" ? "submitted" : "draft";
+      if (submissionRef.current) {
+        const { data, error } = await supabase
+          .from("homework_submissions")
+          .update({ text_content: currentText.trim(), status })
+          .eq("id", submissionRef.current.id)
+          .select()
+          .single();
+        if (error) throw error;
+        if (data) {
+          lastSavedTextRef.current = currentText;
+          autoSaveFailedRef.current = false;
+          onSubmittedRef.current(data);
         }
-      } catch {}
-    }, 30000);
+      } else {
+        const { data, error } = await supabase
+          .from("homework_submissions")
+          .insert({
+            assignment_id: assignment.id,
+            student_name: studentName,
+            text_content: currentText.trim(),
+            status: "draft",
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        if (data) {
+          lastSavedTextRef.current = currentText;
+          submissionRef.current = data;
+          autoSaveFailedRef.current = false;
+          onSubmittedRef.current(data);
+        }
+      }
+    } catch (e) {
+      // Notify only once per failure burst so we don't spam toasts.
+      if (!autoSaveFailedRef.current) {
+        autoSaveFailedRef.current = true;
+        toastRef.current({
+          title: "자동저장 실패 ⚠️",
+          description: "네트워크가 불안정해 자동저장이 안 됐어요. 내용을 복사해 두시거나 '임시저장' 버튼을 눌러주세요.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [assignment.id, studentName]);
 
+  // 5초 주기 자동저장
+  useEffect(() => {
+    autoSaveTimerRef.current = setInterval(performAutoSave, 5000);
     return () => {
       if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
     };
-  }, [assignment.id, studentName, onSubmitted]);
+  }, [performAutoSave]);
+
+  // 1.5초 입력 멈춤 debounce 저장 (5초 기다리지 않고 즉시)
+  useEffect(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    if (!text.trim() || text === lastSavedTextRef.current) return;
+    debounceTimerRef.current = setTimeout(performAutoSave, 1500);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [text, performAutoSave]);
 
   const isReadingType = assignment.type === "reading" || assignment.type === "watching";
   const showTextArea = meta.requiresText || assignment.type === "memorizing" || isReadingType;
@@ -354,11 +385,24 @@ export default function HomeworkSubmitModal({
     }
   };
 
+  const hasUnsavedText = text.trim().length > 0 && text !== lastSavedTextRef.current;
+  const hasUnsavedAttachments = recorder.audioBlob !== null || fileObj !== null;
+  const guardedClose = useCallback(() => {
+    if (hasUnsavedText || hasUnsavedAttachments) {
+      const msg = hasUnsavedText
+        ? "아직 저장되지 않은 작성 내용이 있어요.\n정말 닫으시겠어요? 작성 중인 내용이 사라질 수 있습니다."
+        : "첨부된 녹음/파일이 아직 제출되지 않았어요.\n정말 닫으시겠어요?";
+      if (!window.confirm(msg)) return;
+    }
+    stopSpeaking();
+    onClose();
+  }, [hasUnsavedText, hasUnsavedAttachments, stopSpeaking, onClose]);
+
   const handleSubmit = () => saveOrSubmit(false);
   const handleSaveDraft = () => saveOrSubmit(true);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={guardedClose}>
       <div className="w-full max-w-md bg-card rounded-xl shadow-2xl border border-border overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
@@ -387,7 +431,7 @@ export default function HomeworkSubmitModal({
                     : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
               </button>
             )}
-            <button onClick={() => { stopSpeaking(); onClose(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+            <button onClick={guardedClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -504,7 +548,7 @@ export default function HomeworkSubmitModal({
         {/* Footer */}
         <div className="px-4 py-3 border-t border-border bg-muted/20 space-y-2">
           <p className="text-[10px] text-muted-foreground text-center">
-            {isDraft ? "📝 임시저장된 내용입니다" : "💾 30초마다 자동 임시저장됩니다"}
+            {isDraft ? "📝 임시저장된 내용입니다" : "💾 입력을 멈추면 자동 임시저장됩니다 (5초 이내)"}
           </p>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={handleSaveDraft}
