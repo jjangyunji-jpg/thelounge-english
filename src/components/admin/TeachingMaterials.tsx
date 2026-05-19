@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff, Loader2, BookOpen, FolderPlus, FolderOpen, Check, X, Copy, Users, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff, Loader2, BookOpen, FolderPlus, FolderOpen, Check, X, Copy, Users, Archive, ArchiveRestore, CheckSquare, Square } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import NotesEditor from "@/components/classroom/NotesEditor";
 import CategoryAccessModal from "./CategoryAccessModal";
@@ -63,6 +64,10 @@ export default function TeachingMaterials() {
   const [accessCategory, setAccessCategory] = useState<{ slug: string; name: string } | null>(null);
   const [categoryAccessCounts, setCategoryAccessCounts] = useState<Record<string, number>>({});
 
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   const fetchCategories = useCallback(async () => {
     const { data } = await supabase
       .from("teaching_material_categories")
@@ -105,6 +110,7 @@ export default function TeachingMaterials() {
 
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
   useEffect(() => { fetchMaterials(); }, [fetchMaterials]);
+  useEffect(() => { setSelectedIds(new Set()); }, [category]);
 
   // ── Category CRUD ──
   const handleAddCategory = async () => {
@@ -254,19 +260,86 @@ export default function TeachingMaterials() {
     fetchMaterials();
   };
 
-  const handleCopy = async (m: Material) => {
+  // Copy items and insert as a contiguous block right after the last selected original.
+  // For a single copy this means right below the original.
+  const copyMaterials = async (items: Material[]) => {
+    if (items.length === 0) return;
     setSaving(true);
-    const maxOrder = materials.length > 0 ? Math.max(...materials.map(x => x.sort_order)) + 1 : 0;
-    const { error } = await supabase.from("teaching_materials").insert({
-      category: m.category,
-      title: `${m.title} (복사)`,
-      content: m.content,
-      sort_order: maxOrder,
-      is_active: m.is_active,
+    setBulkBusy(true);
+    try {
+      const lastIdx = Math.max(...items.map(it => materials.findIndex(x => x.id === it.id)));
+      const insertAt = lastIdx + 1;
+
+      // 1) Insert copies with temporary high sort_order to avoid unique conflicts
+      const baseTemp = (materials.length > 0 ? Math.max(...materials.map(m => m.sort_order)) : 0) + 1000;
+      const rowsToInsert = items.map((m, i) => ({
+        category: m.category,
+        title: `${m.title} (복사)`,
+        content: m.content,
+        sort_order: baseTemp + i,
+        is_active: m.is_active,
+      }));
+      const { data: inserted, error } = await supabase
+        .from("teaching_materials")
+        .insert(rowsToInsert)
+        .select("*");
+      if (error || !inserted) throw error || new Error("insert failed");
+
+      // 2) Rebuild final ordering: insert copies right after the last original
+      const finalList: Material[] = [...materials];
+      (inserted as Material[]).forEach((row, i) => {
+        finalList.splice(insertAt + i, 0, row);
+      });
+
+      // 3) Persist sequential sort_order
+      await Promise.all(
+        finalList.map((m, i) =>
+          supabase.from("teaching_materials").update({ sort_order: i }).eq("id", m.id)
+        )
+      );
+
+      toast({ title: `${items.length}개 자료가 복사되었습니다 ✓` });
+      setSelectedIds(new Set());
+      await fetchMaterials();
+    } catch (e: any) {
+      toast({ title: "복사 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+      setBulkBusy(false);
+    }
+  };
+
+  const handleCopy = (m: Material) => copyMaterials([m]);
+
+  const handleBulkCopy = () => {
+    const items = materials.filter(m => selectedIds.has(m.id));
+    copyMaterials(items);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`선택한 ${ids.length}개 자료를 삭제하시겠습니까?`)) return;
+    setBulkBusy(true);
+    const { error } = await supabase.from("teaching_materials").delete().in("id", ids);
+    setBulkBusy(false);
+    if (error) { toast({ title: "삭제 실패", description: error.message, variant: "destructive" }); return; }
+    toast({ title: `${ids.length}개 자료가 삭제되었습니다` });
+    setSelectedIds(new Set());
+    fetchMaterials();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
     });
-    if (error) { toast({ title: "복사 실패", description: error.message, variant: "destructive" }); }
-    else { toast({ title: "자료가 복사되었습니다 ✓" }); fetchMaterials(); }
-    setSaving(false);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === materials.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(materials.map(m => m.id)));
   };
 
   const startEdit = (m: Material) => {
@@ -484,7 +557,31 @@ export default function TeachingMaterials() {
         <div className="py-12 text-center text-muted-foreground text-sm">폴더를 선택하세요</div>
       ) : (
         <>
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              {materials.length > 0 && (
+                <button
+                  onClick={toggleSelectAll}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted"
+                  title="전체 선택/해제"
+                >
+                  {selectedIds.size === materials.length ? <CheckSquare className="w-3.5 h-3.5 text-gold" /> : <Square className="w-3.5 h-3.5" />}
+                  전체 선택
+                </button>
+              )}
+              {selectedIds.size > 0 && (
+                <>
+                  <span className="text-xs text-muted-foreground">{selectedIds.size}개 선택됨</span>
+                  <Button size="sm" variant="outline" onClick={handleBulkCopy} disabled={bulkBusy} className="h-8 gap-1 text-xs">
+                    {bulkBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />} 복사
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleBulkDelete} disabled={bulkBusy} className="h-8 gap-1 text-xs text-destructive border-destructive/40 hover:bg-destructive/10">
+                    <Trash2 className="w-3.5 h-3.5" /> 삭제
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="h-8 text-xs">취소</Button>
+                </>
+              )}
+            </div>
             <Button size="sm" onClick={() => setAdding(true)} className="gap-1.5 bg-navy hover:bg-navy-light text-primary-foreground">
               <Plus className="w-4 h-4" /> 자료 추가
             </Button>
@@ -534,7 +631,8 @@ export default function TeachingMaterials() {
                     "rounded-lg border bg-card p-4 transition-all",
                     !m.is_active && "opacity-50",
                     dragIndex === idx && "opacity-30",
-                    dragOverIndex === idx && dragIndex !== idx && "border-primary border-dashed"
+                    dragOverIndex === idx && dragIndex !== idx && "border-primary border-dashed",
+                    selectedIds.has(m.id) && "border-gold bg-gold/5"
                   )}
                 >
                   {editing === m.id ? (
@@ -561,6 +659,12 @@ export default function TeachingMaterials() {
                     </div>
                   ) : (
                     <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={selectedIds.has(m.id)}
+                        onCheckedChange={() => toggleSelect(m.id)}
+                        className="mt-1 flex-shrink-0"
+                        aria-label="선택"
+                      />
                       <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0 cursor-grab active:cursor-grabbing" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
