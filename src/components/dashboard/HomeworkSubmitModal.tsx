@@ -385,6 +385,19 @@ export default function HomeworkSubmitModal({
     }
   };
 
+  const hasUnsavedText = text.trim().length > 0 && text !== lastSavedTextRef.current;
+  const hasUnsavedAttachments = recorder.audioBlob !== null || fileObj !== null;
+  const guardedClose = useCallback(() => {
+    if (hasUnsavedText || hasUnsavedAttachments) {
+      const msg = hasUnsavedText
+        ? "아직 저장되지 않은 작성 내용이 있어요.\n정말 닫으시겠어요? 작성 중인 내용이 사라질 수 있습니다."
+        : "첨부된 녹음/파일이 아직 제출되지 않았어요.\n정말 닫으시겠어요?";
+      if (!window.confirm(msg)) return;
+    }
+    stopSpeaking();
+    onClose();
+  }, [hasUnsavedText, hasUnsavedAttachments, stopSpeaking, onClose]);
+
   const handleSubmit = () => saveOrSubmit(false);
   const handleSaveDraft = () => saveOrSubmit(true);
 
