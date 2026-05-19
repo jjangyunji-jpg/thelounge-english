@@ -58,25 +58,29 @@ export default function ClassNote() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled || !session) { setAuthLoading(false); return; }
+
         const { data: profile } = await supabase
           .from("student_profiles")
           .select("student_name, nickname")
           .eq("user_id", session.user.id)
           .maybeSingle();
+        if (cancelled) return;
         if (profile?.student_name) setAuthStudent(profile.student_name);
         if (profile?.nickname) setDisplayName(profile.nickname);
 
-        // Fetch instructor display_name via instructor_students → instructors → user_roles
         const studentName = profile?.student_name;
         if (studentName) {
-          // Fetch english_name from instructor_students
           const { data: isData } = await supabase
             .from("instructor_students")
             .select("instructor_id, english_name")
             .eq("student_name", studentName)
             .maybeSingle();
+          if (cancelled) return;
           if (isData?.english_name) setEnglishName(isData.english_name);
           if (isData?.instructor_id) {
             const { data: insData } = await supabase
@@ -84,6 +88,7 @@ export default function ClassNote() {
               .select("user_id")
               .eq("id", isData.instructor_id)
               .maybeSingle();
+            if (cancelled) return;
             if (insData?.user_id) {
               const { data: roleData } = await supabase
                 .from("user_roles")
@@ -91,13 +96,19 @@ export default function ClassNote() {
                 .eq("user_id", insData.user_id)
                 .eq("role", "instructor")
                 .maybeSingle();
+              if (cancelled) return;
               if (roleData?.display_name) setInstructorDisplayName(roleData.display_name);
             }
           }
         }
+      } catch (err) {
+        console.warn("[ClassNote] auth load failed:", err);
+      } finally {
+        if (!cancelled) setAuthLoading(false);
       }
-      setAuthLoading(false);
-    });
+    };
+    run();
+    return () => { cancelled = true; };
   }, []);
 
   const student = authStudent || urlStudent;

@@ -30,62 +30,79 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
   useEffect(() => {
     let cancelled = false;
 
-    const check = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        if (!cancelled) setStatus("unauthenticated");
-        return;
-      }
+    const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`[ProtectedRoute] ${label} timeout`)), ms),
+        ),
+      ]);
 
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role, approved")
-        .eq("user_id", session.user.id);
+    const check = async (attempt = 0): Promise<void> => {
+      try {
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          5000,
+          "getSession",
+        );
+        if (cancelled) return;
+        if (!session) {
+          setStatus("unauthenticated");
+          return;
+        }
 
-      if (cancelled) return;
+        const { data: roles } = await withTimeout(
+          Promise.resolve(
+            supabase
+              .from("user_roles")
+              .select("role, approved")
+              .eq("user_id", session.user.id),
+          ),
+          8000,
+          "user_roles",
+        );
 
-      if (!roles || roles.length === 0) {
-        setStatus("unauthorized");
-        return;
-      }
+        if (cancelled) return;
 
-      // Check if unapproved student → redirect to waitlist
-      const studentRole = roles.find((r) => r.role === "student");
-      if (studentRole && !studentRole.approved && allowedRoles.includes("student")) {
-        setStatus("waitlist");
-        return;
-      }
+        if (!roles || roles.length === 0) {
+          setStatus("unauthorized");
+          return;
+        }
 
-      // Check if unapproved student has active waitlist entry → redirect to waitlist
-      if (studentRole && !studentRole.approved && allowedRoles.includes("student")) {
-        const { data: waitlistEntry } = await supabase
-          .from("waitlist_entries")
-          .select("id")
-          .eq("user_id", session.user.id)
-          .eq("status", "waiting")
-          .maybeSingle();
-        if (waitlistEntry) {
+        // Check if unapproved student → redirect to waitlist
+        const studentRole = roles.find((r) => r.role === "student");
+        if (studentRole && !studentRole.approved && allowedRoles.includes("student")) {
           setStatus("waitlist");
           return;
         }
+
+        // Check if user has any of the allowed roles (must be approved)
+        // Manager/staff can access admin routes
+        const expandedAllowed = [...allowedRoles];
+        if (expandedAllowed.includes("admin") || expandedAllowed.includes("manager") || expandedAllowed.includes("staff")) {
+          if (!expandedAllowed.includes("manager")) expandedAllowed.push("manager");
+          if (!expandedAllowed.includes("staff")) expandedAllowed.push("staff");
+        }
+
+        const hasAccess = roles.some(
+          (r) => r.approved && expandedAllowed.includes(r.role as AppRole)
+        );
+
+        // Special case: manager role can access everything (like old admin)
+        const isManagerOrAbove = roles.some((r) => r.approved && (r.role === "admin" || r.role === "manager"));
+
+        setStatus(hasAccess || isManagerOrAbove ? "authorized" : "unauthorized");
+      } catch (err) {
+        console.warn("[ProtectedRoute] check failed:", err);
+        if (cancelled) return;
+        if (attempt < 1) {
+          // One retry after short delay
+          setTimeout(() => { if (!cancelled) check(attempt + 1); }, 800);
+        } else {
+          // Final fallback: treat as unauthenticated so user can re-login instead of staring at blank screen
+          setStatus("unauthenticated");
+        }
       }
-
-      // Check if user has any of the allowed roles (must be approved)
-      // Manager/staff can access admin routes
-      const expandedAllowed = [...allowedRoles];
-      if (expandedAllowed.includes("admin") || expandedAllowed.includes("manager") || expandedAllowed.includes("staff")) {
-        if (!expandedAllowed.includes("manager")) expandedAllowed.push("manager");
-        if (!expandedAllowed.includes("staff")) expandedAllowed.push("staff");
-      }
-
-      const hasAccess = roles.some(
-        (r) => r.approved && expandedAllowed.includes(r.role as AppRole)
-      );
-
-      // Special case: manager role can access everything (like old admin)
-      const isManagerOrAbove = roles.some((r) => r.approved && (r.role === "admin" || r.role === "manager"));
-
-      setStatus(hasAccess || isManagerOrAbove ? "authorized" : "unauthorized");
     };
 
     check();
