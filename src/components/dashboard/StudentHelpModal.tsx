@@ -23,6 +23,29 @@ const FAQS = [
   "결제 / 현금영수증은 어떻게 하나요?",
 ];
 
+/** Render simple markdown: **bold**, *italic*, and line breaks. */
+function renderMarkdown(text: string) {
+  if (!text) return null;
+  const lines = text.split("\n");
+  return lines.map((line, li) => {
+    const parts = line.split(/(\*\*[^*\n]+\*\*|\*[^*\n]+\*)/g);
+    return (
+      <span key={li}>
+        {parts.map((p, i) => {
+          if (p.startsWith("**") && p.endsWith("**") && p.length > 4) {
+            return <strong key={i} className="font-bold">{p.slice(2, -2)}</strong>;
+          }
+          if (p.startsWith("*") && p.endsWith("*") && p.length > 2) {
+            return <em key={i}>{p.slice(1, -1)}</em>;
+          }
+          return <span key={i}>{p}</span>;
+        })}
+        {li < lines.length - 1 && <br />}
+      </span>
+    );
+  });
+}
+
 const WELCOME: Msg = {
   role: "assistant",
   content:
@@ -96,7 +119,7 @@ export default function StudentHelpModal({ open, onClose, onOpenReport }: Props)
                     : "bg-card border border-border text-foreground"
                 )}
               >
-                {m.content}
+                {renderMarkdown(m.content)}
               </div>
             </div>
           ))}
@@ -108,11 +131,12 @@ export default function StudentHelpModal({ open, onClose, onOpenReport }: Props)
             </div>
           )}
 
-          {/* FAQ chips — show only on welcome state */}
-          {messages.length === 1 && !loading && (
+          {/* FAQ chips — show on welcome and after each assistant reply */}
+          {!loading && messages.length > 0 && messages[messages.length - 1].role === "assistant" && (
             <div className="pt-2 space-y-1.5">
               <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                <MessageSquare className="w-3 h-3" /> 자주 묻는 질문
+                <MessageSquare className="w-3 h-3" />
+                {messages.length === 1 ? "자주 묻는 질문" : "또 궁금한 점이 있으신가요?"}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {FAQS.map((q) => (
