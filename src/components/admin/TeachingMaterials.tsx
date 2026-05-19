@@ -110,6 +110,7 @@ export default function TeachingMaterials() {
 
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
   useEffect(() => { fetchMaterials(); }, [fetchMaterials]);
+  useEffect(() => { setSelectedIds(new Set()); }, [category]);
 
   // ── Category CRUD ──
   const handleAddCategory = async () => {
