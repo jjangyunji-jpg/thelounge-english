@@ -52,10 +52,12 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
         }
 
         const { data: roles } = await withTimeout(
-          supabase
-            .from("user_roles")
-            .select("role, approved")
-            .eq("user_id", session.user.id),
+          Promise.resolve(
+            supabase
+              .from("user_roles")
+              .select("role, approved")
+              .eq("user_id", session.user.id),
+          ),
           8000,
           "user_roles",
         );
