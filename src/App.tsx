@@ -110,7 +110,9 @@ const App = () => (
           } />
           <Route path="/my/classnote" element={
             <ProtectedRoute allowedRoles={["student", "instructor", "admin", "manager", "staff"]}>
-              <ClassNote />
+              <DashboardErrorBoundary>
+                <ClassNote />
+              </DashboardErrorBoundary>
             </ProtectedRoute>
           } />
           <Route path="/my/dashboard" element={
