@@ -583,6 +583,46 @@ Respond in Korean for explanations and feedback.`;
         result = JSON.parse(retryArgs);
       }
 
+      // Retry if homework_review came back effectively empty (no errors AND no feedback)
+      const isEmptyReview = (r: any) => mode === "homework_review" && (
+        (!Array.isArray(r?.errors) || r.errors.length === 0) &&
+        (!r?.feedback || (!r.feedback.praise && (!Array.isArray(r.feedback.priorities) || r.feedback.priorities.length === 0)))
+      );
+      if (isEmptyReview(result)) {
+        console.warn("Empty homework_review result, retrying with Gemini Flash");
+        const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            tools,
+            tool_choice,
+            max_tokens: 8192,
+          }),
+        });
+        if (retry.ok) {
+          const retryData = await retry.json();
+          const retryArgs = retryData.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+          if (retryArgs) {
+            try {
+              const retryResult = JSON.parse(retryArgs);
+              if (!isEmptyReview(retryResult)) result = retryResult;
+            } catch (e) {
+              console.warn("Empty-retry JSON parse failed:", e);
+            }
+          }
+        } else {
+          console.error("Empty-retry failed:", retry.status, await retry.text());
+        }
+      }
+
       // Post-process: trim errors but keep 1 context word when lengths differ
       if (result.errors && Array.isArray(result.errors)) {
         result.errors = result.errors
