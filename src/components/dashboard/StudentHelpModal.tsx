@@ -23,6 +23,29 @@ const FAQS = [
   "결제 / 현금영수증은 어떻게 하나요?",
 ];
 
+/** Render simple markdown: **bold**, *italic*, and line breaks. */
+function renderMarkdown(text: string) {
+  if (!text) return null;
+  const lines = text.split("\n");
+  return lines.map((line, li) => {
+    const parts = line.split(/(\*\*[^*\n]+\*\*|\*[^*\n]+\*)/g);
+    return (
+      <span key={li}>
+        {parts.map((p, i) => {
+          if (p.startsWith("**") && p.endsWith("**") && p.length > 4) {
+            return <strong key={i} className="font-bold">{p.slice(2, -2)}</strong>;
+          }
+          if (p.startsWith("*") && p.endsWith("*") && p.length > 2) {
+            return <em key={i}>{p.slice(1, -1)}</em>;
+          }
+          return <span key={i}>{p}</span>;
+        })}
+        {li < lines.length - 1 && <br />}
+      </span>
+    );
+  });
+}
+
 const WELCOME: Msg = {
   role: "assistant",
   content:
