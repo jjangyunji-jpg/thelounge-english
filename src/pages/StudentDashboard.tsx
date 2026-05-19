@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import BugReportModal from "@/components/dashboard/BugReportModal";
+import StudentHelpModal from "@/components/dashboard/StudentHelpModal";
 import MakeupRequestModal from "@/components/dashboard/MakeupRequestModal";
 import ManagerDashboard from "@/components/dashboard/ManagerDashboard";
 import NotificationInbox from "@/components/dashboard/NotificationInbox";
@@ -500,6 +501,7 @@ export default function StudentDashboard() {
   const [vocabListOpen, setVocabListOpen] = useState(false);
   const [expressionListOpen, setExpressionListOpen] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [showMakeup, setShowMakeup] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPaymentReminder, setShowPaymentReminder] = useState(false);
@@ -1674,6 +1676,25 @@ export default function StudentDashboard() {
         userName={student}
         role="student"
       />
+
+      {/* Help Chatbot Modal */}
+      <StudentHelpModal
+        open={showHelp}
+        onClose={() => setShowHelp(false)}
+        onOpenReport={() => setShowBugReport(true)}
+      />
+
+      {/* Floating Help Button */}
+      {student && (
+        <button
+          onClick={() => setShowHelp(true)}
+          className="fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full bg-gold text-background shadow-xl hover:scale-105 active:scale-95 transition-transform flex items-center justify-center"
+          title="도움말 / 문의"
+          aria-label="도움말 챗봇 열기"
+        >
+          <HelpCircle className="w-6 h-6" />
+        </button>
+      )}
 
       {/* Makeup Request Modal */}
       {showMakeup && studentRecord?.instructor_name && (
