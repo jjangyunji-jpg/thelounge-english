@@ -1696,7 +1696,7 @@ export default function StudentDashboard() {
               }}
               className="relative max-w-[220px] rounded-2xl rounded-br-sm bg-card border border-gold/40 px-3 py-2 text-xs text-foreground shadow-lg animate-fade-in text-left hover:bg-muted transition-colors"
             >
-              궁금하거나 사용에 어려움이 있으신가요?
+              궁금한 점이 있거나 프로그램 사용에 어려움이 있으신가요?
               <span
                 role="button"
                 aria-label="닫기"
