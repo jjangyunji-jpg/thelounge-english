@@ -652,18 +652,24 @@ Respond in Korean for explanations and feedback.`;
         // 🛡️ VALIDATION LAYER: Filter out hallucinated/unsafe corrections
         const originalText = text as string;
         const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+        // Strip punctuation + collapse whitespace + lowercase for forgiving substring match.
+        // Many AI outputs swap punctuation (e.g. ", " vs ". ") which would otherwise fail exact match.
+        const stripPunct = (s: string) => s.replace(/[.,!?;:'"()\-—–]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
         const normText = normalize(originalText);
         const normTextLower = normText.toLowerCase();
+        const punctlessText = stripPunct(originalText);
 
         result.errors = result.errors.filter((err: { original: string; corrected: string; explanation?: string }) => {
           const orig = normalize(err.original);
           const corr = normalize(err.corrected);
           if (!orig || !corr) return false;
 
-          // Rule 1: original MUST appear in student text (case-insensitive fallback for safety)
+          // Rule 1: original MUST appear in student text — try exact, case-insensitive,
+          // then punctuation-insensitive before declaring a hallucination.
           const existsExact = normText.includes(orig);
           const existsCi = normTextLower.includes(orig.toLowerCase());
-          if (!existsExact && !existsCi) {
+          const existsPunctless = punctlessText.includes(stripPunct(orig));
+          if (!existsExact && !existsCi && !existsPunctless) {
             console.log(`🚫 Filtered hallucinated error: "${orig}" not in student text`);
             return false;
           }

@@ -249,6 +249,9 @@ export default function HomeworkReviewModal({
         });
         return;
       }
+      if (!hasErrors && hasFeedback) {
+        toast({ title: "교정할 오류를 찾지 못했어요", description: "피드백만 표시됩니다." });
+      }
       setAiResult(data);
       // Auto-populate instructor note with AI feedback
       const feedbackText = [
