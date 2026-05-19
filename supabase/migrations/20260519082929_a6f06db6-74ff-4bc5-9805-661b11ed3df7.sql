@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anyone can read homework files" ON storage.objects;
