@@ -502,6 +502,7 @@ export default function StudentDashboard() {
   const [expressionListOpen, setExpressionListOpen] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showHelpBubble, setShowHelpBubble] = useState(true);
   const [showMakeup, setShowMakeup] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPaymentReminder, setShowPaymentReminder] = useState(false);
