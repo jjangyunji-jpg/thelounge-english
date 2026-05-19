@@ -259,19 +259,86 @@ export default function TeachingMaterials() {
     fetchMaterials();
   };
 
-  const handleCopy = async (m: Material) => {
+  // Copy items and insert as a contiguous block right after the last selected original.
+  // For a single copy this means right below the original.
+  const copyMaterials = async (items: Material[]) => {
+    if (items.length === 0) return;
     setSaving(true);
-    const maxOrder = materials.length > 0 ? Math.max(...materials.map(x => x.sort_order)) + 1 : 0;
-    const { error } = await supabase.from("teaching_materials").insert({
-      category: m.category,
-      title: `${m.title} (복사)`,
-      content: m.content,
-      sort_order: maxOrder,
-      is_active: m.is_active,
+    setBulkBusy(true);
+    try {
+      const lastIdx = Math.max(...items.map(it => materials.findIndex(x => x.id === it.id)));
+      const insertAt = lastIdx + 1;
+
+      // 1) Insert copies with temporary high sort_order to avoid unique conflicts
+      const baseTemp = (materials.length > 0 ? Math.max(...materials.map(m => m.sort_order)) : 0) + 1000;
+      const rowsToInsert = items.map((m, i) => ({
+        category: m.category,
+        title: `${m.title} (복사)`,
+        content: m.content,
+        sort_order: baseTemp + i,
+        is_active: m.is_active,
+      }));
+      const { data: inserted, error } = await supabase
+        .from("teaching_materials")
+        .insert(rowsToInsert)
+        .select("*");
+      if (error || !inserted) throw error || new Error("insert failed");
+
+      // 2) Rebuild final ordering: insert copies right after the last original
+      const finalList: Material[] = [...materials];
+      (inserted as Material[]).forEach((row, i) => {
+        finalList.splice(insertAt + i, 0, row);
+      });
+
+      // 3) Persist sequential sort_order
+      await Promise.all(
+        finalList.map((m, i) =>
+          supabase.from("teaching_materials").update({ sort_order: i }).eq("id", m.id)
+        )
+      );
+
+      toast({ title: `${items.length}개 자료가 복사되었습니다 ✓` });
+      setSelectedIds(new Set());
+      await fetchMaterials();
+    } catch (e: any) {
+      toast({ title: "복사 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+      setBulkBusy(false);
+    }
+  };
+
+  const handleCopy = (m: Material) => copyMaterials([m]);
+
+  const handleBulkCopy = () => {
+    const items = materials.filter(m => selectedIds.has(m.id));
+    copyMaterials(items);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`선택한 ${ids.length}개 자료를 삭제하시겠습니까?`)) return;
+    setBulkBusy(true);
+    const { error } = await supabase.from("teaching_materials").delete().in("id", ids);
+    setBulkBusy(false);
+    if (error) { toast({ title: "삭제 실패", description: error.message, variant: "destructive" }); return; }
+    toast({ title: `${ids.length}개 자료가 삭제되었습니다` });
+    setSelectedIds(new Set());
+    fetchMaterials();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
     });
-    if (error) { toast({ title: "복사 실패", description: error.message, variant: "destructive" }); }
-    else { toast({ title: "자료가 복사되었습니다 ✓" }); fetchMaterials(); }
-    setSaving(false);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === materials.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(materials.map(m => m.id)));
   };
 
   const startEdit = (m: Material) => {
