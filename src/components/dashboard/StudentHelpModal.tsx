@@ -96,7 +96,7 @@ export default function StudentHelpModal({ open, onClose, onOpenReport }: Props)
                     : "bg-card border border-border text-foreground"
                 )}
               >
-                {m.content}
+                {renderMarkdown(m.content)}
               </div>
             </div>
           ))}
@@ -108,11 +108,12 @@ export default function StudentHelpModal({ open, onClose, onOpenReport }: Props)
             </div>
           )}
 
-          {/* FAQ chips — show only on welcome state */}
-          {messages.length === 1 && !loading && (
+          {/* FAQ chips — show on welcome and after each assistant reply */}
+          {!loading && messages.length > 0 && messages[messages.length - 1].role === "assistant" && (
             <div className="pt-2 space-y-1.5">
               <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                <MessageSquare className="w-3 h-3" /> 자주 묻는 질문
+                <MessageSquare className="w-3 h-3" />
+                {messages.length === 1 ? "자주 묻는 질문" : "또 궁금한 점이 있으신가요?"}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {FAQS.map((q) => (
