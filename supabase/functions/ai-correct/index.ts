@@ -574,7 +574,7 @@ Respond in Korean for explanations and feedback.`;
     if (toolCall?.function?.arguments) {
       let result: any;
       try {
-        result = JSON.parse(toolCall.function.arguments);
+        result = parseModelJsonPayload(toolCall.function.arguments);
       } catch (parseErr) {
         console.warn("Tool args JSON parse failed, retrying with flash:", parseErr);
         const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -600,7 +600,7 @@ Respond in Korean for explanations and feedback.`;
         const retryData = await retry.json();
         const retryArgs = retryData.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
         if (!retryArgs) throw new Error("Retry returned no tool call");
-        result = JSON.parse(retryArgs);
+        result = parseModelJsonPayload(retryArgs);
       }
 
       // Retry if homework_review came back effectively empty (no errors AND no feedback)
@@ -632,7 +632,7 @@ Respond in Korean for explanations and feedback.`;
           const retryArgs = retryData.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
           if (retryArgs) {
             try {
-              const retryResult = JSON.parse(retryArgs);
+              const retryResult = parseModelJsonPayload(retryArgs);
               if (!isEmptyReview(retryResult)) result = retryResult;
             } catch (e) {
               console.warn("Empty-retry JSON parse failed:", e);
@@ -756,7 +756,7 @@ Respond in Korean for explanations and feedback.`;
     // Fallback: try content field (shouldn't happen with tool_choice)
     const content = data.choices?.[0]?.message?.content;
     if (content) {
-      const result = JSON.parse(content);
+      const result = parseModelJsonPayload(content);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
