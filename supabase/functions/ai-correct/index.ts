@@ -446,31 +446,12 @@ Respond in Korean for explanations and feedback.`;
 
     const { tools, tool_choice } = buildToolsAndChoice(mode);
 
-    // Use direct OpenAI API for homework_review and paraphrase (instructor controls cost via own API key)
-    const useOpenAIDirect = (mode === "homework_review" || mode === "paraphrase");
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-
-    let apiUrl: string;
-    let apiHeaders: Record<string, string>;
-    let apiModel: string;
-
-    if (useOpenAIDirect && OPENAI_API_KEY) {
-      apiUrl = "https://api.openai.com/v1/chat/completions";
-      apiHeaders = {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      };
-      apiModel = "gpt-4o-mini";
-    } else {
-      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-      apiHeaders = {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      };
-      apiModel = (mode === "notes_correct" || mode === "correct" || mode === "paraphrase")
-        ? "google/gemini-2.5-pro"
-        : "google/gemini-2.5-flash";
-    }
+    const apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const apiHeaders: Record<string, string> = {
+      "Lovable-API-Key": LOVABLE_API_KEY,
+      "Content-Type": "application/json",
+    };
+    const apiModel = "google/gemini-2.5-flash";
 
     const response = await fetch(apiUrl, {
       method: "POST",
