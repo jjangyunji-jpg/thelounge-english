@@ -175,6 +175,19 @@ function InlineCorrectedText({
   return <p className="text-sm leading-relaxed whitespace-pre-wrap">{parts}</p>;
 }
 
+async function getFunctionErrorMessage(error: any, fallback: string) {
+  const response = error?.context instanceof Response ? error.context : null;
+  if (response) {
+    try {
+      const body = await response.clone().json();
+      if (body?.error) return String(body.error);
+    } catch {
+      // Fall through to the generic message below.
+    }
+  }
+  return error?.message || fallback;
+}
+
 export default function HomeworkReviewModal({
   assignmentTitle,
   assignmentType,
@@ -261,7 +274,7 @@ export default function HomeworkReviewModal({
       ].join("\n").trim();
       setInstructorNote(feedbackText);
     } catch (e: any) {
-      toast({ title: "AI 교정 실패", description: e.message, variant: "destructive" });
+      toast({ title: "AI 교정 실패", description: await getFunctionErrorMessage(e, "잠시 후 다시 시도해주세요."), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -283,7 +296,7 @@ export default function HomeworkReviewModal({
       // Note: key_improvements are shown separately in the model essay card on the student view,
       // so we intentionally do NOT append them to the instructor feedback to avoid duplication.
     } catch (e: any) {
-      toast({ title: "Paraphrase 실패", description: e.message, variant: "destructive" });
+      toast({ title: "Paraphrase 실패", description: await getFunctionErrorMessage(e, "잠시 후 다시 시도해주세요."), variant: "destructive" });
     } finally {
       setParaphraseLoading(false);
     }

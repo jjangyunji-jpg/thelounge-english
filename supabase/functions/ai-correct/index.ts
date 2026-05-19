@@ -255,6 +255,42 @@ function buildToolsAndChoice(mode: string) {
   };
 }
 
+function parseModelJsonPayload(payload: unknown) {
+  if (!payload) throw new Error("AI 응답이 비어있어요.");
+  if (typeof payload === "object") return payload;
+  if (typeof payload !== "string") throw new Error("AI 응답 형식이 올바르지 않아요.");
+
+  let cleaned = payload
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+  const start = cleaned.search(/[\{\[]/);
+  const end = cleaned.lastIndexOf(start >= 0 && cleaned[start] === "[" ? "]" : "}");
+  if (start >= 0 && end >= start) cleaned = cleaned.slice(start, end + 1);
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return JSON.parse(cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, ""));
+  }
+}
+
+function findOriginalInText(text: string, candidate: string): string | null {
+  const raw = candidate.trim();
+  if (!raw) return null;
+  if (text.includes(raw)) return raw;
+
+  const ciIdx = text.toLowerCase().indexOf(raw.toLowerCase());
+  if (ciIdx >= 0) return text.slice(ciIdx, ciIdx + raw.length);
+
+  const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const words = raw.replace(/[.,!?;:'"()\-—–]/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return null;
+  const flexiblePattern = words.map(escapeRegExp).join("[\\s.,!?;:'\\\"()\\-—–]+");
+  const match = text.match(new RegExp(flexiblePattern, "i"));
+  return match?.[0] ?? null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -446,31 +482,12 @@ Respond in Korean for explanations and feedback.`;
 
     const { tools, tool_choice } = buildToolsAndChoice(mode);
 
-    // Use direct OpenAI API for homework_review and paraphrase (instructor controls cost via own API key)
-    const useOpenAIDirect = (mode === "homework_review" || mode === "paraphrase");
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-
-    let apiUrl: string;
-    let apiHeaders: Record<string, string>;
-    let apiModel: string;
-
-    if (useOpenAIDirect && OPENAI_API_KEY) {
-      apiUrl = "https://api.openai.com/v1/chat/completions";
-      apiHeaders = {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      };
-      apiModel = "gpt-4o-mini";
-    } else {
-      apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-      apiHeaders = {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      };
-      apiModel = (mode === "notes_correct" || mode === "correct" || mode === "paraphrase")
-        ? "google/gemini-2.5-pro"
-        : "google/gemini-2.5-flash";
-    }
+    const apiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const apiHeaders: Record<string, string> = {
+      "Lovable-API-Key": LOVABLE_API_KEY,
+      "Content-Type": "application/json",
+    };
+    const apiModel = "google/gemini-2.5-flash";
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -502,7 +519,10 @@ Respond in Korean for explanations and feedback.`;
       }
       const errText = await response.text();
       console.error("AI gateway error:", response.status, errText);
-      throw new Error("AI gateway error");
+      return new Response(JSON.stringify({ error: `AI 요청 실패 (${response.status}). 잠시 후 다시 시도해주세요.` }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let data = await response.json();
@@ -518,7 +538,7 @@ Respond in Korean for explanations and feedback.`;
       const retryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Lovable-API-Key": LOVABLE_API_KEY,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -554,13 +574,13 @@ Respond in Korean for explanations and feedback.`;
     if (toolCall?.function?.arguments) {
       let result: any;
       try {
-        result = JSON.parse(toolCall.function.arguments);
+        result = parseModelJsonPayload(toolCall.function.arguments);
       } catch (parseErr) {
         console.warn("Tool args JSON parse failed, retrying with flash:", parseErr);
         const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Lovable-API-Key": LOVABLE_API_KEY,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -580,7 +600,7 @@ Respond in Korean for explanations and feedback.`;
         const retryData = await retry.json();
         const retryArgs = retryData.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
         if (!retryArgs) throw new Error("Retry returned no tool call");
-        result = JSON.parse(retryArgs);
+        result = parseModelJsonPayload(retryArgs);
       }
 
       // Retry if homework_review came back effectively empty (no errors AND no feedback)
@@ -593,7 +613,7 @@ Respond in Korean for explanations and feedback.`;
         const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Lovable-API-Key": LOVABLE_API_KEY,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -612,7 +632,7 @@ Respond in Korean for explanations and feedback.`;
           const retryArgs = retryData.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
           if (retryArgs) {
             try {
-              const retryResult = JSON.parse(retryArgs);
+              const retryResult = parseModelJsonPayload(retryArgs);
               if (!isEmptyReview(retryResult)) result = retryResult;
             } catch (e) {
               console.warn("Empty-retry JSON parse failed:", e);
@@ -660,6 +680,8 @@ Respond in Korean for explanations and feedback.`;
         const punctlessText = stripPunct(originalText);
 
         result.errors = result.errors.filter((err: { original: string; corrected: string; explanation?: string }) => {
+          const matchedOriginal = findOriginalInText(originalText, err.original);
+          if (matchedOriginal) err.original = matchedOriginal;
           const orig = normalize(err.original);
           const corr = normalize(err.corrected);
           if (!orig || !corr) return false;
@@ -736,7 +758,7 @@ Respond in Korean for explanations and feedback.`;
     // Fallback: try content field (shouldn't happen with tool_choice)
     const content = data.choices?.[0]?.message?.content;
     if (content) {
-      const result = JSON.parse(content);
+      const result = parseModelJsonPayload(content);
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -745,8 +767,11 @@ Respond in Korean for explanations and feedback.`;
     throw new Error("No result from AI");
   } catch (error) {
     console.error("Error in ai-correct:", error);
+    const message = error instanceof Error && error.message
+      ? error.message
+      : "요청을 처리할 수 없습니다. 나중에 다시 시도해주세요.";
     return new Response(
-      JSON.stringify({ error: "요청을 처리할 수 없습니다. 나중에 다시 시도해주세요." }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
