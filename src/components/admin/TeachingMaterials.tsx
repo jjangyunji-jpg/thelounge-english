@@ -658,6 +658,12 @@ export default function TeachingMaterials() {
                     </div>
                   ) : (
                     <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={selectedIds.has(m.id)}
+                        onCheckedChange={() => toggleSelect(m.id)}
+                        className="mt-1 flex-shrink-0"
+                        aria-label="선택"
+                      />
                       <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0 cursor-grab active:cursor-grabbing" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
