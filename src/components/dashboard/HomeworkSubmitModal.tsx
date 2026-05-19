@@ -431,7 +431,7 @@ export default function HomeworkSubmitModal({
                     : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
               </button>
             )}
-            <button onClick={() => { stopSpeaking(); onClose(); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+            <button onClick={guardedClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
               <X className="w-4 h-4" />
             </button>
           </div>
