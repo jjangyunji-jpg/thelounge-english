@@ -1686,14 +1686,41 @@ export default function StudentDashboard() {
 
       {/* Floating Help Button */}
       {student && (
-        <button
-          onClick={() => setShowHelp(true)}
-          className="fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full bg-gold text-background shadow-xl hover:scale-105 active:scale-95 transition-transform flex items-center justify-center"
-          title="도움말 / 문의"
-          aria-label="도움말 챗봇 열기"
-        >
-          <HelpCircle className="w-6 h-6" />
-        </button>
+        <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2">
+          {showHelpBubble && !showHelp && (
+            <button
+              onClick={() => {
+                setShowHelpBubble(false);
+                setShowHelp(true);
+              }}
+              className="relative max-w-[220px] rounded-2xl rounded-br-sm bg-card border border-gold/40 px-3 py-2 text-xs text-foreground shadow-lg animate-fade-in text-left hover:bg-muted transition-colors"
+            >
+              궁금하거나 사용에 어려움이 있으신가요?
+              <span
+                role="button"
+                aria-label="닫기"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowHelpBubble(false);
+                }}
+                className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-background border border-border text-muted-foreground text-[10px] flex items-center justify-center hover:bg-muted"
+              >
+                ✕
+              </span>
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setShowHelpBubble(false);
+              setShowHelp(true);
+            }}
+            className="h-12 w-12 rounded-full bg-gold text-background shadow-xl hover:scale-105 active:scale-95 transition-transform flex items-center justify-center"
+            title="도움말 / 문의"
+            aria-label="도움말 챗봇 열기"
+          >
+            <HelpCircle className="w-6 h-6" />
+          </button>
+        </div>
       )}
 
       {/* Makeup Request Modal */}
