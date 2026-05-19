@@ -483,7 +483,10 @@ Respond in Korean for explanations and feedback.`;
       }
       const errText = await response.text();
       console.error("AI gateway error:", response.status, errText);
-      throw new Error("AI gateway error");
+      return new Response(JSON.stringify({ error: `AI 요청 실패 (${response.status}). 잠시 후 다시 시도해주세요.` }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let data = await response.json();
@@ -726,8 +729,11 @@ Respond in Korean for explanations and feedback.`;
     throw new Error("No result from AI");
   } catch (error) {
     console.error("Error in ai-correct:", error);
+    const message = error instanceof Error && error.message
+      ? error.message
+      : "요청을 처리할 수 없습니다. 나중에 다시 시도해주세요.";
     return new Response(
-      JSON.stringify({ error: "요청을 처리할 수 없습니다. 나중에 다시 시도해주세요." }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
