@@ -514,6 +514,25 @@ export default function HomeworkSubmitModal({
                 ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />저장 중...</>
                 : <><Save className="w-3.5 h-3.5" />임시저장</>}
             </Button>
+            {canListen && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={toggleSpeak}
+                disabled={loadingTts || submitting || recorder.recording}
+                title={speaking ? "듣기 중지" : "지문 듣기"}
+                className={cn(
+                  "h-9 text-sm gap-2 flex-shrink-0",
+                  speaking && "bg-[hsl(var(--gold-dark)/0.15)] text-[hsl(var(--gold-dark))] border-[hsl(var(--gold-dark)/0.3)] hover:bg-[hsl(var(--gold-dark)/0.25)]"
+                )}
+              >
+                {loadingTts
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />생성중</>
+                  : speaking
+                    ? <><VolumeX className="w-3.5 h-3.5" />중지</>
+                    : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
+              </Button>
+            )}
             <Button size="sm" onClick={handleSubmit}
               disabled={!canSubmit || submitting || recorder.recording}
               className="flex-1 h-9 text-sm gap-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground">
