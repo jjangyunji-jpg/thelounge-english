@@ -680,6 +680,8 @@ Respond in Korean for explanations and feedback.`;
         const punctlessText = stripPunct(originalText);
 
         result.errors = result.errors.filter((err: { original: string; corrected: string; explanation?: string }) => {
+          const matchedOriginal = findOriginalInText(originalText, err.original);
+          if (matchedOriginal) err.original = matchedOriginal;
           const orig = normalize(err.original);
           const corr = normalize(err.corrected);
           if (!orig || !corr) return false;
