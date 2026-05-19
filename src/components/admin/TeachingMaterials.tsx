@@ -631,7 +631,8 @@ export default function TeachingMaterials() {
                     "rounded-lg border bg-card p-4 transition-all",
                     !m.is_active && "opacity-50",
                     dragIndex === idx && "opacity-30",
-                    dragOverIndex === idx && dragIndex !== idx && "border-primary border-dashed"
+                    dragOverIndex === idx && dragIndex !== idx && "border-primary border-dashed",
+                    selectedIds.has(m.id) && "border-gold bg-gold/5"
                   )}
                 >
                   {editing === m.id ? (
