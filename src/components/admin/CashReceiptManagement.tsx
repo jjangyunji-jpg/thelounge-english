@@ -1747,23 +1747,26 @@ export default function CashReceiptManagement() {
                     {budgetStoreRows.length === 0 ? (
                       <tr><td colSpan={3} className="px-3 py-6 text-center text-xs text-muted-foreground">스토어 결제 학생이 없습니다.</td></tr>
                     ) : budgetStoreRows.map(r => {
-                      const net = r.isPrepaidDeducted ? 0 : Math.round(r.fee * (1 - STORE_FEE_RATE));
+                      const net = r.isPrepaidIdle ? 0 : Math.round(r.fee * (1 - STORE_FEE_RATE));
                       return (
-                        <tr key={r.name} className={cn("border-b border-border last:border-0 hover:bg-muted/30", r.isPrepaidDeducted && "opacity-70")}>
+                        <tr key={r.name} className={cn("border-b border-border last:border-0 hover:bg-muted/30", r.isPrepaidIdle && "opacity-60")}>
                           <td className="px-3 py-2 text-foreground">
                             {r.name}
-                            {r.isPrepaid && (
-                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30">선결제</span>
+                            {r.isPrepaidStore && (
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30" title={`이번 달 차감 ${r.deductedCount}회 × 50,000원 (선결제 등록 달)`}>스토어 (선결제 {r.deductedCount}회)</span>
                             )}
                             {r.isPrepaidDeducted && (
-                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">선결제 (차감)</span>
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30" title={`이번 달 차감 ${r.deductedCount}회 × 50,000원`}>차감 {r.deductedCount}회</span>
+                            )}
+                            {r.isPrepaidIdle && (
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted text-muted-foreground border border-border" title="선결제 잔액 있음 / 이번 달 차감 안 함">선결제 (미차감)</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right text-muted-foreground text-xs">
-                            {r.isPrepaidDeducted ? <span>—</span> : <>₩{r.fee.toLocaleString()}</>}
+                            {r.isPrepaidIdle ? <span>—</span> : <>₩{r.fee.toLocaleString()}</>}
                           </td>
                           <td className="px-3 py-2 text-right font-medium text-foreground">
-                            {r.isPrepaidDeducted ? <span className="text-muted-foreground">—</span> : <>₩{net.toLocaleString()}</>}
+                            {r.isPrepaidIdle ? <span className="text-muted-foreground">—</span> : <>₩{net.toLocaleString()}</>}
                           </td>
                         </tr>
                       );
