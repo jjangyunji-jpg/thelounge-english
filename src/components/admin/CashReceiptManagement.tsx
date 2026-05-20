@@ -1178,12 +1178,12 @@ export default function CashReceiptManagement() {
   };
 
   // ========== Budget calculations (정규 only, 환불 제외) ==========
-  // 선결제 처리 규칙 (회계 인식 기준 — 매월 실제 차감 회수만큼 매출 인식):
-  //  - 선결제 등록 달 + 차감 있음: 차감 회수 × LESSON_PRICE 매출 (스토어 분류, "스토어 (선결제)" 뱃지)
-  //  - 선결제 이후 달 + 차감 있음: 차감 회수 × LESSON_PRICE 매출 ("차감" 뱃지, 이미 입금된 돈에서 인식)
-  //  - 선결제 있고 이번 달 차감 없음: 0 ("선결제 (미차감)" 뱃지)
+  // 선결제 처리 규칙 (현금흐름 기준):
+  //  - 선결제 등록 달: total_sessions × LESSON_PRICE 전액을 해당 월 매출로 산입
+  //  - 선결제 이후 달 + 차감 있음: 0원 ("차감" 뱃지로만 표시)
+  //  - 선결제 이후 달 + 차감 없음: 0원 ("선결제 (미차감)" 뱃지)
   //  - 선결제 없음: 기존 getFee (billable × LESSON_PRICE)
-  // 스토어 수수료(4.95%)는 인식된 매출 기준 비례 적용 — 총액은 종전과 동일하되 월별 분산
+  // 스토어 수수료(4.95%)는 결제월 전액에만 적용되고 이후 차감월에는 추가 반영하지 않음
   type BudgetRow = { name: string; fee: number; isPrepaidStore?: boolean; isPrepaidDeducted?: boolean; isPrepaidIdle?: boolean; deductedCount?: number };
   const budgetRows: BudgetRow[] = [];
   const budgetEligible = regularStudents.filter(s => !refundFlags.has(s.student_name));
@@ -1194,16 +1194,15 @@ export default function CashReceiptManagement() {
       const isRegisteredThisPeriod = createdDate >= pStartDate && createdDate <= pEndDate;
       const ded = dedMap.get(s.student_name);
       const deductedCount = ded?.deducted_sessions || 0;
-      const fee = deductedCount * LESSON_PRICE;
-      if (deductedCount === 0) {
+      if (isRegisteredThisPeriod) {
+        // 등록 달은 선결제 총액을 한 번에 반영
+        budgetRows.push({ name: s.student_name, fee: credit.total_sessions * LESSON_PRICE, isPrepaidStore: true, deductedCount: credit.total_sessions });
+      } else if (deductedCount > 0) {
+        // 이후 달의 차감은 이미 결제월에 잡힌 금액이므로 예산 반영 0원
+        budgetRows.push({ name: s.student_name, fee: 0, isPrepaidDeducted: true, deductedCount });
+      } else {
         // 차감 없는 달 — 매출 0, 뱃지만 표시
         budgetRows.push({ name: s.student_name, fee: 0, isPrepaidIdle: true, deductedCount: 0 });
-      } else if (isRegisteredThisPeriod) {
-        // 등록 달의 차감분 → 스토어 매출로 분류
-        budgetRows.push({ name: s.student_name, fee, isPrepaidStore: true, deductedCount });
-      } else {
-        // 이후 달의 차감분 → 차감 매출로 분류
-        budgetRows.push({ name: s.student_name, fee, isPrepaidDeducted: true, deductedCount });
       }
       continue;
     }
@@ -1617,7 +1616,7 @@ export default function CashReceiptManagement() {
           <p className="text-xs text-muted-foreground">
             정규 수강생 기준 · 환불 표시된 학생은 제외 · 결제대상 회수 × 50,000원으로 자동 산출
             <br />
-            <span className="text-purple-700 dark:text-purple-400">선결제 학생은 매월 차감한 회수만큼 매출로 인식 (등록 달 = 스토어 / 이후 달 = 차감)</span>
+            <span className="text-purple-700 dark:text-purple-400">선결제 학생은 결제월에 총액 반영, 이후 차감월은 0원으로 표시</span>
             {prepaidIdleCount > 0 && (
               <span className="ml-1 text-muted-foreground">· 이번 달 미차감 선결제 학생 {prepaidIdleCount}명</span>
             )}
@@ -1702,10 +1701,10 @@ export default function CashReceiptManagement() {
                         <td className="px-3 py-2 text-foreground">
                           {r.name}
                           {r.isPrepaidStore && (
-                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30" title={`이번 달 차감 ${r.deductedCount}회 × 50,000원 (선결제 등록 달)`}>스토어 (선결제 {r.deductedCount}회)</span>
+                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30" title={`선결제 ${r.deductedCount}회 × 50,000원 전액 반영`}>스토어 (선결제 {r.deductedCount}회)</span>
                           )}
                           {r.isPrepaidDeducted && (
-                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30" title={`이번 달 차감 ${r.deductedCount}회 × 50,000원`}>차감 {r.deductedCount}회</span>
+                            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30" title={`이번 달 ${r.deductedCount}회 차감 / 결제월에 이미 반영되어 예산 0원`}>차감 {r.deductedCount}회</span>
                           )}
                           {r.isPrepaidIdle && (
                             <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted text-muted-foreground border border-border" title="선결제 잔액 있음 / 이번 달 차감 안 함">선결제 (미차감)</span>
@@ -1753,10 +1752,10 @@ export default function CashReceiptManagement() {
                           <td className="px-3 py-2 text-foreground">
                             {r.name}
                             {r.isPrepaidStore && (
-                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30" title={`이번 달 차감 ${r.deductedCount}회 × 50,000원 (선결제 등록 달)`}>스토어 (선결제 {r.deductedCount}회)</span>
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30" title={`선결제 ${r.deductedCount}회 × 50,000원 전액 반영`}>스토어 (선결제 {r.deductedCount}회)</span>
                             )}
                             {r.isPrepaidDeducted && (
-                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30" title={`이번 달 차감 ${r.deductedCount}회 × 50,000원`}>차감 {r.deductedCount}회</span>
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30" title={`이번 달 ${r.deductedCount}회 차감 / 결제월에 이미 반영되어 예산 0원`}>차감 {r.deductedCount}회</span>
                             )}
                             {r.isPrepaidIdle && (
                               <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted text-muted-foreground border border-border" title="선결제 잔액 있음 / 이번 달 차감 안 함">선결제 (미차감)</span>
