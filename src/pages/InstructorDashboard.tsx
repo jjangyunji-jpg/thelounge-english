@@ -1402,6 +1402,7 @@ export default function InstructorDashboard() {
   const [allPeriods, setAllPeriods] = useState<SchedulePeriod[]>([]);
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pendingMakeupCount, setPendingMakeupCount] = useState(0);
   const [approvedMakeups, setApprovedMakeups] = useState<{ student_name: string; original_scheduled_at: string | null; urgent_reason: string | null; created_at: string }[]>([]);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
