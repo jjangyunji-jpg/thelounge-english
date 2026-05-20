@@ -1507,16 +1507,21 @@ export default function InstructorDashboard() {
   useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { navigate("/login"); return; }
-    setUser({ email: user.email ?? "" });
-    setAuthUserId(user.id);
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const { data: { session } } = await withTimeout(supabase.auth.getSession(), 8000, "로그인 세션 확인");
+      const user = session?.user;
+      if (!user) { navigate("/login"); return; }
+      setUser({ email: user.email ?? "" });
+      setAuthUserId(user.id);
 
-    // Check admin/manager/staff role
-    const { data: adminRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
+      // Check admin/manager/staff role
+      const { data: adminRole } = await withTimeout(
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
+        10000,
+        "권한 확인",
+      );
     const adminRoles = (adminRole || []).map(r => r.role);
     // Admin page is strictly restricted to the owner account
     const OWNER_EMAIL = "reinainbiz@gmail.com";
