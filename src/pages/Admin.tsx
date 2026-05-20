@@ -23,10 +23,25 @@ import { Menu, X, Loader2, ArrowLeft } from "lucide-react";
 
 export type AdminLevel = "manager" | "staff";
 
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} 응답이 지연되고 있습니다.`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [adminLevel, setAdminLevel] = useState<AdminLevel>("staff");
   const navigate = useNavigate();
 
