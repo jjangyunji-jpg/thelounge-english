@@ -1522,7 +1522,7 @@ export default function InstructorDashboard() {
         10000,
         "권한 확인",
       );
-    const adminRoles = (adminRole || []).map(r => r.role);
+      const adminRoles = (adminRole || []).map(r => r.role);
     // Admin page is strictly restricted to the owner account
     const OWNER_EMAIL = "reinainbiz@gmail.com";
     const hasAdminAccess = (adminRoles.includes("admin") || adminRoles.includes("manager") || adminRoles.includes("staff"))
@@ -1531,8 +1531,11 @@ export default function InstructorDashboard() {
 
     // If admin is viewing a specific instructor via query param
     if (viewingInstructorId && hasAdminAccess) {
-      const { data: ins } = await supabase
-        .from("instructors").select("*").eq("id", viewingInstructorId).maybeSingle();
+      const { data: ins } = await withTimeout(
+        supabase.from("instructors").select("*").eq("id", viewingInstructorId).maybeSingle(),
+        10000,
+        "강사 정보 확인",
+      );
       if (!ins) {
         toast({ title: "강사를 찾을 수 없습니다", variant: "destructive" });
         setLoading(false);
@@ -1547,11 +1550,17 @@ export default function InstructorDashboard() {
     }
 
     // Try user_id first, fallback to email
-    let { data: ins } = await supabase
-      .from("instructors").select("*").eq("user_id", user.id).maybeSingle();
+    let { data: ins } = await withTimeout(
+      supabase.from("instructors").select("*").eq("user_id", user.id).maybeSingle(),
+      10000,
+      "강사 정보 확인",
+    );
     if (!ins) {
-      const res = await supabase
-        .from("instructors").select("*").eq("email", user.email!).maybeSingle();
+      const res = await withTimeout(
+        supabase.from("instructors").select("*").eq("email", user.email!).maybeSingle(),
+        10000,
+        "강사 이메일 확인",
+      );
       ins = res.data;
     }
 
@@ -1563,14 +1572,23 @@ export default function InstructorDashboard() {
     setInstructor(ins);
     setProfileName(ins.name);
     // Load display_name from user_roles
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("display_name")
-      .eq("user_id", user.id)
-      .eq("role", "instructor")
-      .maybeSingle();
+    const { data: roleData } = await withTimeout(
+      supabase
+        .from("user_roles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .eq("role", "instructor")
+        .maybeSingle(),
+      10000,
+      "프로필명 확인",
+    );
     setProfileNickname(roleData?.display_name || "");
     await loadData(ins);
+    } catch (error) {
+      console.error("[InstructorDashboard] init failed", error);
+      setLoadError(error instanceof Error ? error.message : "대시보드를 불러오지 못했습니다.");
+      setLoading(false);
+    }
   };
 
   const loadData = useCallback(async (ins: Instructor) => {
