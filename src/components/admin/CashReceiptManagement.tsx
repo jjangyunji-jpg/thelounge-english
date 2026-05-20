@@ -1752,10 +1752,10 @@ export default function CashReceiptManagement() {
                           <td className="px-3 py-2 text-foreground">
                             {r.name}
                             {r.isPrepaidStore && (
-                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30" title={`이번 달 차감 ${r.deductedCount}회 × 50,000원 (선결제 등록 달)`}>스토어 (선결제 {r.deductedCount}회)</span>
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30" title={`선결제 ${r.deductedCount}회 × 50,000원 전액 반영`}>스토어 (선결제 {r.deductedCount}회)</span>
                             )}
                             {r.isPrepaidDeducted && (
-                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30" title={`이번 달 차감 ${r.deductedCount}회 × 50,000원`}>차감 {r.deductedCount}회</span>
+                              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-500/30" title={`이번 달 ${r.deductedCount}회 차감 / 결제월에 이미 반영되어 예산 0원`}>차감 {r.deductedCount}회</span>
                             )}
                             {r.isPrepaidIdle && (
                               <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted text-muted-foreground border border-border" title="선결제 잔액 있음 / 이번 달 차감 안 함">선결제 (미차감)</span>
