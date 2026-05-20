@@ -24,8 +24,13 @@ const clearStoredAuthTokens = () => {
 };
 
 export const resetLocalAuthSession = async () => {
+  clearStoredAuthTokens();
+
   try {
-    await supabase.auth.signOut({ scope: "local" });
+    await Promise.race([
+      supabase.auth.signOut({ scope: "local" }),
+      new Promise((resolve) => window.setTimeout(resolve, 800)),
+    ]);
   } catch {
     // If auth is already in a broken refresh state, still clear persisted tokens manually.
   } finally {
