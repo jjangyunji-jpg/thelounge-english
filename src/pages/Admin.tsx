@@ -47,25 +47,34 @@ export default function Admin() {
 
   useEffect(() => {
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/login"); return; }
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const { data: { session } } = await withTimeout(supabase.auth.getSession(), 8000, "로그인 세션 확인");
+        if (!session) { navigate("/login"); return; }
 
-      // Only the owner account can access admin dashboard
-      const OWNER_EMAIL = "reinainbiz@gmail.com";
-      if (session.user.email !== OWNER_EMAIL) { navigate("/login"); return; }
+        // Only the owner account can access admin dashboard
+        const OWNER_EMAIL = "reinainbiz@gmail.com";
+        if (session.user.email !== OWNER_EMAIL) { navigate("/login"); return; }
 
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
-      const roles = (data || []).map((r) => r.role);
-      const isManagerOrAbove = roles.includes("admin") || roles.includes("manager");
-      const isStaff = roles.includes("staff");
-      if (!isManagerOrAbove && !isStaff) { navigate("/login"); return; }
-      const level = isManagerOrAbove ? "manager" : "staff";
-      setAdminLevel(level);
-      setActiveTab(level === "staff" ? "materials" : "dashboard");
-      setLoading(false);
+        const { data } = await withTimeout(
+          supabase.from("user_roles").select("role").eq("user_id", session.user.id),
+          10000,
+          "관리자 권한 확인",
+        );
+        const roles = (data || []).map((r) => r.role);
+        const isManagerOrAbove = roles.includes("admin") || roles.includes("manager");
+        const isStaff = roles.includes("staff");
+        if (!isManagerOrAbove && !isStaff) { navigate("/login"); return; }
+        const level = isManagerOrAbove ? "manager" : "staff";
+        setAdminLevel(level);
+        setActiveTab(level === "staff" ? "materials" : "dashboard");
+        setLoading(false);
+      } catch (error) {
+        console.error("[Admin] init failed", error);
+        setLoadError(error instanceof Error ? error.message : "관리자 화면을 불러오지 못했습니다.");
+        setLoading(false);
+      }
     })();
   }, [navigate]);
 
