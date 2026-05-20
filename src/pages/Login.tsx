@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
+import { resetLocalAuthSession } from "@/lib/authStorage";
 
 const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -33,6 +34,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
+      await resetLocalAuthSession();
       const { data, error } = await withTimeout(
         supabase.auth.signInWithPassword({ email, password }),
         12000,
