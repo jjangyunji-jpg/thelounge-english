@@ -91,6 +91,20 @@ const CANCELLATION_META: Record<CancellationType, { label: string; color: string
   late_cancel: { label: "학생취소", color: "text-destructive", bgColor: "bg-destructive/10" },
 };
 
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} 응답이 지연되고 있습니다.`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 interface ClassSession {
   id: string;
   scheduled_at: string;
