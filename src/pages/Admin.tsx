@@ -23,34 +23,58 @@ import { Menu, X, Loader2, ArrowLeft } from "lucide-react";
 
 export type AdminLevel = "manager" | "staff";
 
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} 응답이 지연되고 있습니다.`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [adminLevel, setAdminLevel] = useState<AdminLevel>("staff");
   const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/login"); return; }
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const { data: { session } } = await withTimeout(supabase.auth.getSession(), 8000, "로그인 세션 확인");
+        if (!session) { navigate("/login"); return; }
 
-      // Only the owner account can access admin dashboard
-      const OWNER_EMAIL = "reinainbiz@gmail.com";
-      if (session.user.email !== OWNER_EMAIL) { navigate("/login"); return; }
+        // Only the owner account can access admin dashboard
+        const OWNER_EMAIL = "reinainbiz@gmail.com";
+        if (session.user.email !== OWNER_EMAIL) { navigate("/login"); return; }
 
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id);
-      const roles = (data || []).map((r) => r.role);
-      const isManagerOrAbove = roles.includes("admin") || roles.includes("manager");
-      const isStaff = roles.includes("staff");
-      if (!isManagerOrAbove && !isStaff) { navigate("/login"); return; }
-      const level = isManagerOrAbove ? "manager" : "staff";
-      setAdminLevel(level);
-      setActiveTab(level === "staff" ? "materials" : "dashboard");
-      setLoading(false);
+        const { data } = await withTimeout(
+          supabase.from("user_roles").select("role").eq("user_id", session.user.id),
+          10000,
+          "관리자 권한 확인",
+        );
+        const roles = (data || []).map((r) => r.role);
+        const isManagerOrAbove = roles.includes("admin") || roles.includes("manager");
+        const isStaff = roles.includes("staff");
+        if (!isManagerOrAbove && !isStaff) { navigate("/login"); return; }
+        const level = isManagerOrAbove ? "manager" : "staff";
+        setAdminLevel(level);
+        setActiveTab(level === "staff" ? "materials" : "dashboard");
+        setLoading(false);
+      } catch (error) {
+        console.error("[Admin] init failed", error);
+        setLoadError(error instanceof Error ? error.message : "관리자 화면을 불러오지 못했습니다.");
+        setLoading(false);
+      }
     })();
   }, [navigate]);
 
@@ -58,6 +82,23 @@ export default function Admin() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-6">
+        <div className="max-w-sm text-center space-y-4">
+          <p className="font-semibold text-foreground">관리자 화면 로딩이 지연되고 있습니다</p>
+          <p className="text-sm text-muted-foreground">{loadError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors"
+          >
+            다시 시도
+          </button>
+        </div>
       </div>
     );
   }

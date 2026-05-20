@@ -7,6 +7,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} 응답이 지연되고 있습니다.`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 export default function InstructorLogin() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -17,13 +31,18 @@ export default function InstructorLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast({ title: "로그인 실패", description: error.message, variant: "destructive" });
-    } else {
-      navigate("/t/dashboard");
+    try {
+      const { error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }), 12000, "로그인");
+      if (error) {
+        toast({ title: "로그인 실패", description: error.message, variant: "destructive" });
+      } else {
+        navigate("/t/dashboard");
+      }
+    } catch (error) {
+      toast({ title: "로그인 실패", description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

@@ -91,6 +91,20 @@ const CANCELLATION_META: Record<CancellationType, { label: string; color: string
   late_cancel: { label: "학생취소", color: "text-destructive", bgColor: "bg-destructive/10" },
 };
 
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} 응답이 지연되고 있습니다.`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 interface ClassSession {
   id: string;
   scheduled_at: string;
@@ -1388,6 +1402,7 @@ export default function InstructorDashboard() {
   const [allPeriods, setAllPeriods] = useState<SchedulePeriod[]>([]);
   const [holidays, setHolidays] = useState<{ date_start: string; date_end: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pendingMakeupCount, setPendingMakeupCount] = useState(0);
   const [approvedMakeups, setApprovedMakeups] = useState<{ student_name: string; original_scheduled_at: string | null; urgent_reason: string | null; created_at: string }[]>([]);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
@@ -1492,17 +1507,22 @@ export default function InstructorDashboard() {
   useEffect(() => { init(); }, [viewingInstructorId]);
 
   const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { navigate("/login"); return; }
-    setUser({ email: user.email ?? "" });
-    setAuthUserId(user.id);
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const { data: { session } } = await withTimeout(supabase.auth.getSession(), 8000, "로그인 세션 확인");
+      const user = session?.user;
+      if (!user) { navigate("/login"); return; }
+      setUser({ email: user.email ?? "" });
+      setAuthUserId(user.id);
 
-    // Check admin/manager/staff role
-    const { data: adminRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-    const adminRoles = (adminRole || []).map(r => r.role);
+      // Check admin/manager/staff role
+      const { data: adminRole } = await withTimeout(
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
+        10000,
+        "권한 확인",
+      );
+      const adminRoles = (adminRole || []).map(r => r.role);
     // Admin page is strictly restricted to the owner account
     const OWNER_EMAIL = "reinainbiz@gmail.com";
     const hasAdminAccess = (adminRoles.includes("admin") || adminRoles.includes("manager") || adminRoles.includes("staff"))
@@ -1511,8 +1531,11 @@ export default function InstructorDashboard() {
 
     // If admin is viewing a specific instructor via query param
     if (viewingInstructorId && hasAdminAccess) {
-      const { data: ins } = await supabase
-        .from("instructors").select("*").eq("id", viewingInstructorId).maybeSingle();
+      const { data: ins } = await withTimeout(
+        supabase.from("instructors").select("*").eq("id", viewingInstructorId).maybeSingle(),
+        10000,
+        "강사 정보 확인",
+      );
       if (!ins) {
         toast({ title: "강사를 찾을 수 없습니다", variant: "destructive" });
         setLoading(false);
@@ -1527,11 +1550,17 @@ export default function InstructorDashboard() {
     }
 
     // Try user_id first, fallback to email
-    let { data: ins } = await supabase
-      .from("instructors").select("*").eq("user_id", user.id).maybeSingle();
+    let { data: ins } = await withTimeout(
+      supabase.from("instructors").select("*").eq("user_id", user.id).maybeSingle(),
+      10000,
+      "강사 정보 확인",
+    );
     if (!ins) {
-      const res = await supabase
-        .from("instructors").select("*").eq("email", user.email!).maybeSingle();
+      const res = await withTimeout(
+        supabase.from("instructors").select("*").eq("email", user.email!).maybeSingle(),
+        10000,
+        "강사 이메일 확인",
+      );
       ins = res.data;
     }
 
@@ -1543,21 +1572,36 @@ export default function InstructorDashboard() {
     setInstructor(ins);
     setProfileName(ins.name);
     // Load display_name from user_roles
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("display_name")
-      .eq("user_id", user.id)
-      .eq("role", "instructor")
-      .maybeSingle();
+    const { data: roleData } = await withTimeout(
+      supabase
+        .from("user_roles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .eq("role", "instructor")
+        .maybeSingle(),
+      10000,
+      "프로필명 확인",
+    );
     setProfileNickname(roleData?.display_name || "");
     await loadData(ins);
+    } catch (error) {
+      console.error("[InstructorDashboard] init failed", error);
+      setLoadError(error instanceof Error ? error.message : "대시보드를 불러오지 못했습니다.");
+      setLoading(false);
+    }
   };
 
   const loadData = useCallback(async (ins: Instructor) => {
     setLoading(true);
+    setLoadError(null);
+    try {
 
     // First fetch students to collect all instructor_name variants
-    const studRes = await supabase.from("instructor_students").select("*").eq("instructor_id", ins.id);
+    const studRes = await withTimeout(
+      supabase.from("instructor_students").select("*").eq("instructor_id", ins.id),
+      12000,
+      "학생 목록 불러오기",
+    );
     const loadedStudents = studRes.data || [];
 
     // Collect unique instructor names (ins.name + any instructor_name from students)
@@ -1583,7 +1627,7 @@ export default function InstructorDashboard() {
     // Also collect student names to catch sessions that might have a stale instructor_name
     const studentNames = loadedStudents.map((s: any) => s.student_name).filter(Boolean);
 
-    const [sessRes, sessRes2, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
+    const [sessRes, sessRes2, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await withTimeout(Promise.all([
       supabase.from("class_sessions").select("*").in("instructor_name", instructorNames).order("scheduled_at", { ascending: false }),
       studentNames.length > 0
         ? supabase.from("class_sessions").select("*").in("student_name", studentNames).order("scheduled_at", { ascending: false })
@@ -1600,7 +1644,7 @@ export default function InstructorDashboard() {
       supabase.from("holiday_notices").select("date_start,date_end"),
       supabase.from("instructors").select("id,name").eq("active", true),
       supabase.from("business_meeting_attendees").select("meeting_id,instructor_id").eq("instructor_id", ins.id) as any,
-    ]);
+    ]), 18000, "대시보드 자료 불러오기");
 
     const studentsByName = new Map<string, StudentFull[]>();
     studentsWithPauses.forEach((s) => {
@@ -1739,6 +1783,11 @@ export default function InstructorDashboard() {
         }
       }
     }
+    } catch (error) {
+      console.error("[InstructorDashboard] loadData failed", error);
+      setLoadError(error instanceof Error ? error.message : "대시보드 자료를 불러오지 못했습니다.");
+      setLoading(false);
+    }
   }, []);
 
 
@@ -1753,6 +1802,24 @@ export default function InstructorDashboard() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-sm text-center space-y-4">
+          <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
+          <div className="space-y-1">
+            <p className="font-semibold text-foreground">대시보드 로딩이 지연되고 있습니다</p>
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" onClick={() => init()}>다시 시도</Button>
+            <Button variant="outline" onClick={handleLogout}>로그아웃</Button>
+          </div>
+        </div>
       </div>
     );
   }
