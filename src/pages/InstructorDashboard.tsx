@@ -1806,6 +1806,24 @@ export default function InstructorDashboard() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-sm text-center space-y-4">
+          <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
+          <div className="space-y-1">
+            <p className="font-semibold text-foreground">대시보드 로딩이 지연되고 있습니다</p>
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" onClick={() => init()}>다시 시도</Button>
+            <Button variant="outline" onClick={handleLogout}>로그아웃</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!instructor) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
