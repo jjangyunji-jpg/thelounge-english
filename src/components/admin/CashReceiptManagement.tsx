@@ -1178,11 +1178,13 @@ export default function CashReceiptManagement() {
   };
 
   // ========== Budget calculations (정규 only, 환불 제외) ==========
-  // 선결제 처리 규칙:
-  //  - 선결제 등록 달(creditMap.created_at이 현재 period 안): fee 대신 total_sessions × LESSON_PRICE를 1회 입금으로 반영 (스토어 분류, 선결제 뱃지)
-  //  - 선결제 등록 이후 달(created_at < period_start): 리스트에는 표시하되 금액 0 + "선결제(차감)" 뱃지 (합계에 반영 안 됨)
-  //  - 선결제 없음: 기존 getFee 사용
-  type BudgetRow = { name: string; fee: number; isPrepaid?: boolean; isPrepaidDeducted?: boolean };
+  // 선결제 처리 규칙 (회계 인식 기준 — 매월 실제 차감 회수만큼 매출 인식):
+  //  - 선결제 등록 달 + 차감 있음: 차감 회수 × LESSON_PRICE 매출 (스토어 분류, "스토어 (선결제)" 뱃지)
+  //  - 선결제 이후 달 + 차감 있음: 차감 회수 × LESSON_PRICE 매출 ("차감" 뱃지, 이미 입금된 돈에서 인식)
+  //  - 선결제 있고 이번 달 차감 없음: 0 ("선결제 (미차감)" 뱃지)
+  //  - 선결제 없음: 기존 getFee (billable × LESSON_PRICE)
+  // 스토어 수수료(4.95%)는 인식된 매출 기준 비례 적용 — 총액은 종전과 동일하되 월별 분산
+  type BudgetRow = { name: string; fee: number; isPrepaidStore?: boolean; isPrepaidDeducted?: boolean; isPrepaidIdle?: boolean; deductedCount?: number };
   const budgetRows: BudgetRow[] = [];
   const budgetEligible = regularStudents.filter(s => !refundFlags.has(s.student_name));
   for (const s of budgetEligible) {
@@ -1190,12 +1192,18 @@ export default function CashReceiptManagement() {
     if (credit) {
       const createdDate = (credit.created_at || "").slice(0, 10);
       const isRegisteredThisPeriod = createdDate >= pStartDate && createdDate <= pEndDate;
-      if (isRegisteredThisPeriod) {
-        // 선결제 등록 달: 총액 일시 반영
-        budgetRows.push({ name: s.student_name, fee: credit.total_sessions * LESSON_PRICE, isPrepaid: true });
+      const ded = dedMap.get(s.student_name);
+      const deductedCount = ded?.deducted_sessions || 0;
+      const fee = deductedCount * LESSON_PRICE;
+      if (deductedCount === 0) {
+        // 차감 없는 달 — 매출 0, 뱃지만 표시
+        budgetRows.push({ name: s.student_name, fee: 0, isPrepaidIdle: true, deductedCount: 0 });
+      } else if (isRegisteredThisPeriod) {
+        // 등록 달의 차감분 → 스토어 매출로 분류
+        budgetRows.push({ name: s.student_name, fee, isPrepaidStore: true, deductedCount });
       } else {
-        // 이후 달: 리스트에 표시하되 금액 0 (합계에 미반영)
-        budgetRows.push({ name: s.student_name, fee: 0, isPrepaidDeducted: true });
+        // 이후 달의 차감분 → 차감 매출로 분류
+        budgetRows.push({ name: s.student_name, fee, isPrepaidDeducted: true, deductedCount });
       }
       continue;
     }
@@ -1215,8 +1223,8 @@ export default function CashReceiptManagement() {
   const budgetStoreFee = budgetStoreTotal - budgetStoreNet;
   const budgetGrossTotal = budgetCashTotal + budgetStoreTotal;
   const budgetNetTotal = budgetCashTotal + budgetStoreNet;
-  // 선결제 차감(=금액 미반영)된 학생 수 — UI 안내용
-  const prepaidExcludedCount = budgetRows.filter(r => r.isPrepaidDeducted).length;
+  // 선결제 잔액 있는데 이번 달 차감 안 한 학생 수 — UI 안내용
+  const prepaidIdleCount = budgetRows.filter(r => r.isPrepaidIdle).length;
 
   // ===== 기업 수강생 예산 (당월 수업 회수 × 학생별 단가, 후불 가정 — 결제 시점은 다음 달이지만 발생액 기준으로 표시) =====
   type CorpBudgetRow = { name: string; sessions: number; rate: number; gross: number; net: number; isInvoice: boolean };
