@@ -1617,9 +1617,9 @@ export default function CashReceiptManagement() {
           <p className="text-xs text-muted-foreground">
             정규 수강생 기준 · 환불 표시된 학생은 제외 · 결제대상 회수 × 50,000원으로 자동 산출
             <br />
-            <span className="text-purple-700 dark:text-purple-400">선결제 학생은 등록 달에 총액 일시 반영(스토어), 이후 달은 리스트에는 표시되나 금액은 반영되지 않음</span>
-            {prepaidExcludedCount > 0 && (
-              <span className="ml-1 text-muted-foreground">· 이번 달 선결제 차감 학생 {prepaidExcludedCount}명</span>
+            <span className="text-purple-700 dark:text-purple-400">선결제 학생은 매월 차감한 회수만큼 매출로 인식 (등록 달 = 스토어 / 이후 달 = 차감)</span>
+            {prepaidIdleCount > 0 && (
+              <span className="ml-1 text-muted-foreground">· 이번 달 미차감 선결제 학생 {prepaidIdleCount}명</span>
             )}
           </p>
 
