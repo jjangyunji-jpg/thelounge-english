@@ -86,6 +86,23 @@ export default function Admin() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-6">
+        <div className="max-w-sm text-center space-y-4">
+          <p className="font-semibold text-foreground">관리자 화면 로딩이 지연되고 있습니다</p>
+          <p className="text-sm text-muted-foreground">{loadError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
