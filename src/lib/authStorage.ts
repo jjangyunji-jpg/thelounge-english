@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 const getProjectRef = () => {
   try {
     const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -24,16 +22,9 @@ const clearStoredAuthTokens = () => {
 };
 
 export const resetLocalAuthSession = async () => {
+  // Do not call supabase.auth.signOut() here.
+  // In the preview environment that request can lag behind signInWithPassword,
+  // then clear the freshly restored session after the app has already navigated
+  // to a protected dashboard route.
   clearStoredAuthTokens();
-
-  try {
-    await Promise.race([
-      supabase.auth.signOut({ scope: "local" }),
-      new Promise((resolve) => window.setTimeout(resolve, 800)),
-    ]);
-  } catch {
-    // If auth is already in a broken refresh state, still clear persisted tokens manually.
-  } finally {
-    clearStoredAuthTokens();
-  }
 };
