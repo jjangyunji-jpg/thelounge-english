@@ -7,6 +7,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, Link } from "react-router-dom";
 
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} 응답이 지연되고 있습니다.`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
 export default function Login() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -19,16 +33,21 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({ email, password }),
+        12000,
+        "로그인",
+      );
       if (error) throw error;
 
       const userId = data.user.id;
 
       // Check role and approval (user may have multiple roles, pick highest priority)
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role, approved")
-        .eq("user_id", userId);
+      const { data: roles } = await withTimeout(
+        supabase.from("user_roles").select("role, approved").eq("user_id", userId),
+        10000,
+        "계정 권한 확인",
+      );
 
       // Instructor role takes priority for redirect
       const priorityOrder = ["instructor", "admin", "manager", "staff", "student"];
