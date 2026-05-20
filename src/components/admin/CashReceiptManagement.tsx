@@ -1178,12 +1178,12 @@ export default function CashReceiptManagement() {
   };
 
   // ========== Budget calculations (정규 only, 환불 제외) ==========
-  // 선결제 처리 규칙 (회계 인식 기준 — 매월 실제 차감 회수만큼 매출 인식):
-  //  - 선결제 등록 달 + 차감 있음: 차감 회수 × LESSON_PRICE 매출 (스토어 분류, "스토어 (선결제)" 뱃지)
-  //  - 선결제 이후 달 + 차감 있음: 차감 회수 × LESSON_PRICE 매출 ("차감" 뱃지, 이미 입금된 돈에서 인식)
-  //  - 선결제 있고 이번 달 차감 없음: 0 ("선결제 (미차감)" 뱃지)
+  // 선결제 처리 규칙 (현금흐름 기준):
+  //  - 선결제 등록 달: total_sessions × LESSON_PRICE 전액을 해당 월 매출로 산입
+  //  - 선결제 이후 달 + 차감 있음: 0원 ("차감" 뱃지로만 표시)
+  //  - 선결제 이후 달 + 차감 없음: 0원 ("선결제 (미차감)" 뱃지)
   //  - 선결제 없음: 기존 getFee (billable × LESSON_PRICE)
-  // 스토어 수수료(4.95%)는 인식된 매출 기준 비례 적용 — 총액은 종전과 동일하되 월별 분산
+  // 스토어 수수료(4.95%)는 결제월 전액에만 적용되고 이후 차감월에는 추가 반영하지 않음
   type BudgetRow = { name: string; fee: number; isPrepaidStore?: boolean; isPrepaidDeducted?: boolean; isPrepaidIdle?: boolean; deductedCount?: number };
   const budgetRows: BudgetRow[] = [];
   const budgetEligible = regularStudents.filter(s => !refundFlags.has(s.student_name));
@@ -1194,16 +1194,15 @@ export default function CashReceiptManagement() {
       const isRegisteredThisPeriod = createdDate >= pStartDate && createdDate <= pEndDate;
       const ded = dedMap.get(s.student_name);
       const deductedCount = ded?.deducted_sessions || 0;
-      const fee = deductedCount * LESSON_PRICE;
-      if (deductedCount === 0) {
+      if (isRegisteredThisPeriod) {
+        // 등록 달은 선결제 총액을 한 번에 반영
+        budgetRows.push({ name: s.student_name, fee: credit.total_sessions * LESSON_PRICE, isPrepaidStore: true, deductedCount: credit.total_sessions });
+      } else if (deductedCount > 0) {
+        // 이후 달의 차감은 이미 결제월에 잡힌 금액이므로 예산 반영 0원
+        budgetRows.push({ name: s.student_name, fee: 0, isPrepaidDeducted: true, deductedCount });
+      } else {
         // 차감 없는 달 — 매출 0, 뱃지만 표시
         budgetRows.push({ name: s.student_name, fee: 0, isPrepaidIdle: true, deductedCount: 0 });
-      } else if (isRegisteredThisPeriod) {
-        // 등록 달의 차감분 → 스토어 매출로 분류
-        budgetRows.push({ name: s.student_name, fee, isPrepaidStore: true, deductedCount });
-      } else {
-        // 이후 달의 차감분 → 차감 매출로 분류
-        budgetRows.push({ name: s.student_name, fee, isPrepaidDeducted: true, deductedCount });
       }
       continue;
     }
