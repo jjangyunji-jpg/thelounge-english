@@ -1783,6 +1783,11 @@ export default function InstructorDashboard() {
         }
       }
     }
+    } catch (error) {
+      console.error("[InstructorDashboard] loadData failed", error);
+      setLoadError(error instanceof Error ? error.message : "대시보드 자료를 불러오지 못했습니다.");
+      setLoading(false);
+    }
   }, []);
 
 
