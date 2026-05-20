@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { resetLocalAuthSession } from "@/lib/authStorage";
 
 const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -32,6 +33,7 @@ export default function InstructorLogin() {
     e.preventDefault();
     setLoading(true);
     try {
+      await resetLocalAuthSession();
       const { error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }), 12000, "로그인");
       if (error) {
         toast({ title: "로그인 실패", description: error.message, variant: "destructive" });
