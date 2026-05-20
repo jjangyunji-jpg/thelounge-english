@@ -1593,9 +1593,15 @@ export default function InstructorDashboard() {
 
   const loadData = useCallback(async (ins: Instructor) => {
     setLoading(true);
+    setLoadError(null);
+    try {
 
     // First fetch students to collect all instructor_name variants
-    const studRes = await supabase.from("instructor_students").select("*").eq("instructor_id", ins.id);
+    const studRes = await withTimeout(
+      supabase.from("instructor_students").select("*").eq("instructor_id", ins.id),
+      12000,
+      "학생 목록 불러오기",
+    );
     const loadedStudents = studRes.data || [];
 
     // Collect unique instructor names (ins.name + any instructor_name from students)
@@ -1621,7 +1627,7 @@ export default function InstructorDashboard() {
     // Also collect student names to catch sessions that might have a stale instructor_name
     const studentNames = loadedStudents.map((s: any) => s.student_name).filter(Boolean);
 
-    const [sessRes, sessRes2, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await Promise.all([
+    const [sessRes, sessRes2, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await withTimeout(Promise.all([
       supabase.from("class_sessions").select("*").in("instructor_name", instructorNames).order("scheduled_at", { ascending: false }),
       studentNames.length > 0
         ? supabase.from("class_sessions").select("*").in("student_name", studentNames).order("scheduled_at", { ascending: false })
@@ -1638,7 +1644,7 @@ export default function InstructorDashboard() {
       supabase.from("holiday_notices").select("date_start,date_end"),
       supabase.from("instructors").select("id,name").eq("active", true),
       supabase.from("business_meeting_attendees").select("meeting_id,instructor_id").eq("instructor_id", ins.id) as any,
-    ]);
+    ]), 18000, "대시보드 자료 불러오기");
 
     const studentsByName = new Map<string, StudentFull[]>();
     studentsWithPauses.forEach((s) => {
