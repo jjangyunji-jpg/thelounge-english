@@ -6,6 +6,21 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { resetLocalAuthSession } from "@/lib/authStorage";
+
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`${label} 응답이 지연되고 있습니다.`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
 
 export default function StudentLogin() {
   const { toast } = useToast();
@@ -19,15 +34,24 @@ export default function StudentLogin() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      await resetLocalAuthSession();
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({ email, password }),
+        12000,
+        "로그인",
+      );
       if (error) throw error;
 
       // student_profiles 확인 (학생 계정인지 체크)
-      const { data: profile } = await supabase
-        .from("student_profiles")
-        .select("student_name")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
+      const { data: profile } = await withTimeout(
+        supabase
+          .from("student_profiles")
+          .select("student_name")
+          .eq("user_id", data.user.id)
+          .maybeSingle(),
+        10000,
+        "학생 계정 확인",
+      );
 
       if (!profile) {
         await supabase.auth.signOut();
