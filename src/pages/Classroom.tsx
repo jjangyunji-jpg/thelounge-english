@@ -139,168 +139,177 @@ export default function Classroom() {
   // Load session from DB if sessionId provided
   useEffect(() => {
     const loadSession = async () => {
-      // Mark transition to prevent localStorage backup from writing stale notes with new sessionId
-      isTransitioningRef.current = true;
-      // Flush current notes before switching sessions
-      if (autoSaveTimer.current) {
-        clearTimeout(autoSaveTimer.current);
-        autoSaveTimer.current = null;
-      }
-      const prevSessionId = sessionIdRef.current;
-      const prevNotes = notesRef.current;
-      if (prevSessionId && prevNotes.trim()) {
-        const stripped = prevNotes.replace(/<[^>]*>/g, "").trim();
-        if (stripped && stripped !== "Homework Feedback /Small Talk /") {
-          await supabase.from("class_sessions").update({ notes: prevNotes.trim() }).eq("id", prevSessionId);
+      try {
+        // Mark transition to prevent localStorage backup from writing stale notes with new sessionId
+        isTransitioningRef.current = true;
+        // Flush current notes before switching sessions
+        if (autoSaveTimer.current) {
+          clearTimeout(autoSaveTimer.current);
+          autoSaveTimer.current = null;
         }
-      }
-      // Clear localStorage backup to prevent cross-session contamination
-      localStorage.removeItem(LOCAL_BACKUP_KEY);
-      setSessionLoading(true);
-      setNotes("");
-      setHwList([]);
-      setObjectives([]);
-      setSessionTopic("");
-      setExtracted(false);
-      let sessionData: any = null;
-      // Try to get student_name from auth session for filtering
-      let studentNameFilter: string | null = null;
-      let nicknameValue: string | null = null;
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      if (authSession) {
-        const { data: profile } = await supabase
-          .from("student_profiles")
-          .select("student_name, nickname")
-          .eq("user_id", authSession.user.id)
-          .maybeSingle();
-        if (profile?.student_name) studentNameFilter = profile.student_name;
-        nicknameValue = profile?.nickname || null;
-      }
-
-      if (!urlSessionId) {
-        // If student name provided via URL, use it as filter
-        const nameFilter = urlStudentName || studentNameFilter;
-        let query = supabase
-          .from("class_sessions")
-          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic,group_students")
-          .order("scheduled_at", { ascending: false })
-          .limit(1);
-        if (nameFilter) {
-          query = query.eq("student_name", nameFilter);
-        }
-        const { data } = await query.maybeSingle();
-        sessionData = data;
-
-        // If no session found but we have a student name from URL, load their info
-        if (!sessionData && urlStudentName) {
-          const { data: isData } = await supabase
-            .from("instructor_students")
-            .select("level, instructor_name, meet_link")
-            .eq("student_name", urlStudentName)
-            .eq("status", "active")
-            .maybeSingle();
-          // Get instructor name from auth session
-          let instrName = isData?.instructor_name || "";
-          if (!instrName && authSession) {
-            const { data: instrData } = await supabase
-              .from("instructors")
-              .select("name")
-              .eq("user_id", authSession.user.id)
-              .maybeSingle();
-            instrName = instrData?.name || "";
+        const prevSessionId = sessionIdRef.current;
+        const prevNotes = notesRef.current;
+        if (prevSessionId && prevNotes.trim()) {
+          const stripped = prevNotes.replace(/<[^>]*>/g, "").trim();
+          if (stripped && stripped !== "Homework Feedback /Small Talk /") {
+            await supabase.from("class_sessions").update({ notes: prevNotes.trim() }).eq("id", prevSessionId);
           }
-          setSession(prev => ({
-            ...prev,
-            studentName: urlStudentName,
-            dbStudentName: urlStudentName,
-            level: isData?.level ?? prev.level,
-            instructorName: instrName || prev.instructorName,
-            meetLink: isData?.meet_link ?? "",
-          }));
-          setSessionLoading(false);
-          isTransitioningRef.current = false;
-          return;
         }
-      } else {
-        const { data } = await supabase
-          .from("class_sessions")
-          .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic,group_students")
-          .eq("id", urlSessionId)
-          .single();
-        sessionData = data;
-        if (data) setGroupStudents(Array.isArray((data as any).group_students) ? (data as any).group_students : []);
-      }
-      if (sessionData) {
-        // Meet 링크는 이관일 기준 instructor_students의 유효 레코드를 source of truth로 사용
-        const meetInfo = await loadEffectiveStudentMeetInfo(
-          supabase,
-          sessionData.student_name,
-          sessionData.scheduled_at,
-          sessionData.meet_link || "",
-        );
-        setSession({
-          sessionId: sessionData.id,
-          studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
-          dbStudentName: sessionData.student_name,
-          englishName: meetInfo.englishName,
-          instructorName: sessionData.instructor_name,
-          level: sessionData.level,
-          scheduledAt: new Date(sessionData.scheduled_at),
-          meetLink: meetInfo.meetLink,
-          topic: sessionData.topic || "",
-        });
-        // Calculate session number within the period that contains this session's date
-        const sessionDateStr = sessionData.scheduled_at.slice(0, 10);
-        const { data: matchingPeriod } = await supabase
-          .from("schedule_periods")
-          .select("start_date, end_date")
-          .eq("is_active", true)
-          .lte("start_date", sessionDateStr)
-          .gte("end_date", sessionDateStr)
-          .maybeSingle();
-
-        let periodFilter = supabase
-          .from("class_sessions")
-          .select("id,scheduled_at")
-          .eq("student_name", sessionData.student_name)
-          .eq("instructor_name", sessionData.instructor_name)
-          .order("scheduled_at", { ascending: true });
-
-        if (matchingPeriod) {
-          periodFilter = periodFilter
-            .gte("scheduled_at", matchingPeriod.start_date + "T00:00:00+09:00")
-            .lte("scheduled_at", matchingPeriod.end_date + "T23:59:59+09:00");
-        }
-
-        const { data: allSessions } = await periodFilter;
-        if (allSessions) {
-          const idx = allSessions.findIndex(s => s.id === sessionData!.id);
-          setSessionNumber(`${idx + 1}회차`);
-        } else {
-          setSessionNumber("1회차");
-        }
-      } else {
-        // No session found — fill in student info from instructor_students
-        const studentName = studentNameFilter ?? "";
-        if (studentName) {
-          const { data: isData } = await supabase
-            .from("instructor_students")
-            .select("level, instructor_name, meet_link")
-            .eq("student_name", studentName)
-            .eq("status", "active")
+        // Clear localStorage backup to prevent cross-session contamination
+        localStorage.removeItem(LOCAL_BACKUP_KEY);
+        setSessionLoading(true);
+        setNotes("");
+        setHwList([]);
+        setObjectives([]);
+        setSessionTopic("");
+        setExtracted(false);
+        let sessionData: any = null;
+        // Try to get student_name from auth session for filtering
+        let studentNameFilter: string | null = null;
+        let nicknameValue: string | null = null;
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession) {
+          const { data: profile } = await supabase
+            .from("student_profiles")
+            .select("student_name, nickname")
+            .eq("user_id", authSession.user.id)
             .maybeSingle();
-          setSession(prev => ({
-            ...prev,
-            studentName: nicknameValue || studentName,
-            dbStudentName: studentName,
-            level: isData?.level ?? prev.level,
-            instructorName: isData?.instructor_name ?? prev.instructorName,
-            meetLink: isData?.meet_link ?? "",
-          }));
+          if (profile?.student_name) studentNameFilter = profile.student_name;
+          nicknameValue = profile?.nickname || null;
         }
+
+        if (!urlSessionId) {
+          // If student name provided via URL, use it as filter
+          const nameFilter = urlStudentName || studentNameFilter;
+          let query = supabase
+            .from("class_sessions")
+            .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic,group_students")
+            .order("scheduled_at", { ascending: false })
+            .limit(1);
+          if (nameFilter) {
+            query = query.eq("student_name", nameFilter);
+          }
+          const { data } = await query.maybeSingle();
+          sessionData = data;
+
+          // If no session found but we have a student name from URL, load their info
+          if (!sessionData && urlStudentName) {
+            const { data: isData } = await supabase
+              .from("instructor_students")
+              .select("level, instructor_name, meet_link")
+              .eq("student_name", urlStudentName)
+              .eq("status", "active")
+              .maybeSingle();
+            // Get instructor name from auth session
+            let instrName = isData?.instructor_name || "";
+            if (!instrName && authSession) {
+              const { data: instrData } = await supabase
+                .from("instructors")
+                .select("name")
+                .eq("user_id", authSession.user.id)
+                .maybeSingle();
+              instrName = instrData?.name || "";
+            }
+            setSession(prev => ({
+              ...prev,
+              studentName: urlStudentName,
+              dbStudentName: urlStudentName,
+              level: isData?.level ?? prev.level,
+              instructorName: instrName || prev.instructorName,
+              meetLink: isData?.meet_link ?? "",
+            }));
+            return;
+          }
+        } else {
+          const { data, error: sessErr } = await supabase
+            .from("class_sessions")
+            .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic,group_students")
+            .eq("id", urlSessionId)
+            .single();
+          if (sessErr) throw sessErr;
+          sessionData = data;
+          if (data) setGroupStudents(Array.isArray((data as any).group_students) ? (data as any).group_students : []);
+        }
+        if (sessionData) {
+          // Meet 링크는 이관일 기준 instructor_students의 유효 레코드를 source of truth로 사용
+          const meetInfo = await loadEffectiveStudentMeetInfo(
+            supabase,
+            sessionData.student_name,
+            sessionData.scheduled_at,
+            sessionData.meet_link || "",
+          );
+          setSession({
+            sessionId: sessionData.id,
+            studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
+            dbStudentName: sessionData.student_name,
+            englishName: meetInfo.englishName,
+            instructorName: sessionData.instructor_name,
+            level: sessionData.level,
+            scheduledAt: new Date(sessionData.scheduled_at),
+            meetLink: meetInfo.meetLink,
+            topic: sessionData.topic || "",
+          });
+          // Calculate session number within the period that contains this session's date
+          const sessionDateStr = sessionData.scheduled_at.slice(0, 10);
+          const { data: matchingPeriod } = await supabase
+            .from("schedule_periods")
+            .select("start_date, end_date")
+            .eq("is_active", true)
+            .lte("start_date", sessionDateStr)
+            .gte("end_date", sessionDateStr)
+            .maybeSingle();
+
+          let periodFilter = supabase
+            .from("class_sessions")
+            .select("id,scheduled_at")
+            .eq("student_name", sessionData.student_name)
+            .eq("instructor_name", sessionData.instructor_name)
+            .order("scheduled_at", { ascending: true });
+
+          if (matchingPeriod) {
+            periodFilter = periodFilter
+              .gte("scheduled_at", matchingPeriod.start_date + "T00:00:00+09:00")
+              .lte("scheduled_at", matchingPeriod.end_date + "T23:59:59+09:00");
+          }
+
+          const { data: allSessions } = await periodFilter;
+          if (allSessions) {
+            const idx = allSessions.findIndex(s => s.id === sessionData!.id);
+            setSessionNumber(`${idx + 1}회차`);
+          } else {
+            setSessionNumber("1회차");
+          }
+        } else {
+          // No session found — fill in student info from instructor_students
+          const studentName = studentNameFilter ?? "";
+          if (studentName) {
+            const { data: isData } = await supabase
+              .from("instructor_students")
+              .select("level, instructor_name, meet_link")
+              .eq("student_name", studentName)
+              .eq("status", "active")
+              .maybeSingle();
+            setSession(prev => ({
+              ...prev,
+              studentName: nicknameValue || studentName,
+              dbStudentName: studentName,
+              level: isData?.level ?? prev.level,
+              instructorName: isData?.instructor_name ?? prev.instructorName,
+              meetLink: isData?.meet_link ?? "",
+            }));
+          }
+        }
+      } catch (err: any) {
+        console.error("[Classroom.loadSession] failed:", err);
+        toast({
+          title: "클래스룸 로딩 실패",
+          description: err?.message || "세션 데이터를 불러올 수 없어요. 새로고침해주세요.",
+          variant: "destructive",
+        });
+      } finally {
+        setSessionLoading(false);
+        isTransitioningRef.current = false;
       }
-      setSessionLoading(false);
-      isTransitioningRef.current = false;
     };
     loadSession();
   }, [urlSessionId, urlStudentName]);
