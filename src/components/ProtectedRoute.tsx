@@ -24,7 +24,8 @@ interface ProtectedRouteProps {
  * Never rely on this component alone to gate access to sensitive data.
  */
 export default function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) {
-  const [status, setStatus] = useState<"loading" | "authorized" | "unauthorized" | "unauthenticated" | "waitlist">("loading");
+  const [status, setStatus] = useState<"loading" | "authorized" | "unauthorized" | "unauthenticated" | "waitlist" | "error">("loading");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
           return;
         }
 
-        const { data: roles } = await withTimeout(
+        const { data: roles, error: rolesErr } = await withTimeout(
           Promise.resolve(
             supabase
               .from("user_roles")
@@ -63,6 +64,7 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
         );
 
         if (cancelled) return;
+        if (rolesErr) throw rolesErr;
 
         if (!roles || roles.length === 0) {
           setStatus("unauthorized");
@@ -99,8 +101,10 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
           // One retry after short delay
           setTimeout(() => { if (!cancelled) check(attempt + 1); }, 800);
         } else {
-          // Final fallback: treat as unauthenticated so user can re-login instead of staring at blank screen
-          setStatus("unauthenticated");
+          // 명시적 에러 화면 — 사용자가 무한 로딩에 갇히지 않도록 원인을 보여준다
+          const message = err instanceof Error ? err.message : String(err);
+          setErrorMsg(message);
+          setStatus("error");
         }
       }
     };
@@ -114,6 +118,47 @@ export default function ProtectedRoute({ allowedRoles, children }: ProtectedRout
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm text-center space-y-5">
+          <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-foreground">접속 확인에 실패했어요</h1>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              네트워크 또는 서버 응답에 문제가 있습니다.<br />
+              잠시 후 새로고침하거나 로그아웃 후 다시 로그인해주세요.
+            </p>
+          </div>
+          {errorMsg && (
+            <p className="text-[11px] text-muted-foreground/70 break-all bg-muted/40 p-2 rounded">
+              {errorMsg}
+            </p>
+          )}
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full py-2.5 rounded-lg bg-navy text-primary-foreground font-bold text-sm hover:bg-navy-light transition-colors"
+            >
+              새로고침
+            </button>
+            <button
+              onClick={async () => {
+                try { await supabase.auth.signOut(); } catch {}
+                window.location.href = "/login";
+              }}
+              className="w-full py-2.5 rounded-lg border border-border text-foreground text-sm hover:bg-muted transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
