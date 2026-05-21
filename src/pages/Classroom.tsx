@@ -2268,7 +2268,7 @@ export default function Classroom() {
         </div>
       </div>
     )}
-    {role === "student" && session.dbStudentName && (
+    {urlRole === "student" && session.dbStudentName && (
       <RenewalDecisionModal
         studentName={session.dbStudentName}
         triggerKey={session.sessionId}
