@@ -487,7 +487,9 @@ Respond in Korean for explanations and feedback.`;
       "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     };
-    const apiModel = "google/gemini-2.5-flash";
+    // NOTE: gemini-2.5-flash had intermittent 500/empty responses on the gateway
+    // (same issue we hit in word-lookup). Reverted to the stable gpt-5-mini path.
+    const apiModel = "openai/gpt-5-mini";
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -542,7 +544,7 @@ Respond in Korean for explanations and feedback.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "openai/gpt-5-mini",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
@@ -584,7 +586,7 @@ Respond in Korean for explanations and feedback.`;
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "openai/gpt-5-mini",
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt },
@@ -617,7 +619,7 @@ Respond in Korean for explanations and feedback.`;
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "openai/gpt-5-mini",
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt },
