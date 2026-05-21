@@ -487,9 +487,9 @@ Respond in Korean for explanations and feedback.`;
       "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     };
-    // NOTE: gemini-2.5-flash had intermittent 500/empty responses on the gateway
-    // (same issue we hit in word-lookup). Reverted to the stable gpt-5-mini path.
-    const apiModel = "openai/gpt-5-mini";
+    // Keep the original Gemini tool-calling path as the primary correction model.
+    // OpenAI is used only as a fallback, and requires max_completion_tokens.
+    const apiModel = "google/gemini-2.5-flash";
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -533,10 +533,10 @@ Respond in Korean for explanations and feedback.`;
     let toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
 
     // Fallback: if no tool call (e.g. finish_reason MAX_TOKENS or safety),
-    // retry once with Flash + explicit max_tokens.
+    // retry once with OpenAI using the model-specific token parameter.
     if (!toolCall?.function?.arguments && !data.choices?.[0]?.message?.content) {
       const finishReason = data.choices?.[0]?.finish_reason;
-      console.warn("AI returned no tool_call. finish_reason:", finishReason, "mode:", mode, "— retrying with flash");
+      console.warn("AI returned no tool_call. finish_reason:", finishReason, "mode:", mode, "— retrying with gpt-5-mini");
       const retryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -551,7 +551,7 @@ Respond in Korean for explanations and feedback.`;
           ],
           tools,
           tool_choice,
-          max_tokens: 8192,
+          max_completion_tokens: 8192,
         }),
       });
       if (retryResponse.ok) {
@@ -578,7 +578,7 @@ Respond in Korean for explanations and feedback.`;
       try {
         result = parseModelJsonPayload(toolCall.function.arguments);
       } catch (parseErr) {
-        console.warn("Tool args JSON parse failed, retrying with flash:", parseErr);
+        console.warn("Tool args JSON parse failed, retrying with gpt-5-mini:", parseErr);
         const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -611,7 +611,7 @@ Respond in Korean for explanations and feedback.`;
         (!r?.feedback || (!r.feedback.praise && (!Array.isArray(r.feedback.priorities) || r.feedback.priorities.length === 0)))
       );
       if (isEmptyReview(result)) {
-        console.warn("Empty homework_review result, retrying with Gemini Flash");
+        console.warn("Empty homework_review result, retrying with gpt-5-mini");
         const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -626,7 +626,7 @@ Respond in Korean for explanations and feedback.`;
             ],
             tools,
             tool_choice,
-            max_tokens: 8192,
+            max_completion_tokens: 8192,
           }),
         });
         if (retry.ok) {
