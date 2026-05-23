@@ -851,6 +851,8 @@ export default function CashReceiptManagement() {
     return s.group_students?.length > 0 ? GROUP_LESSON_PRICE : LESSON_PRICE;
   };
   const getCorpFee = (s: StudentRecord) => {
+    const override = feeOverrides.get(s.student_name);
+    if (override !== undefined) return override;
     const count = corpSessionCounts.get(s.student_name) || 0;
     return count * getCorpRate(s);
   };
@@ -921,8 +923,8 @@ export default function CashReceiptManagement() {
     const count = isCorporate
       ? (corpSessionCounts.get(s.student_name) || 0)
       : (billableCounts.has(s.student_name) ? (billableCounts.get(s.student_name) || 0) : (sessionCounts.get(s.student_name) || 0));
-    const fee = isCorporate ? null : getFee(s);
-    const isOverridden = !isCorporate && hasOverride(s.student_name);
+    const fee = isCorporate ? getCorpFee(s) : getFee(s);
+    const isOverridden = hasOverride(s.student_name);
     const credit = creditMap.get(s.student_name);
     const ded = dedMap.get(s.student_name);
     const hasPrepaid = !!credit && (credit.total_sessions - credit.used_sessions) > 0;
@@ -1034,11 +1036,7 @@ export default function CashReceiptManagement() {
           )}
         </td>
         <td className="px-4 py-3 text-right">
-          {isCorporate ? (
-            <div>
-              <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{getCorpFee(s).toLocaleString()}</span>
-            </div>
-          ) : editingFee === s.student_name ? (
+          {editingFee === s.student_name ? (
             <div className="flex items-center gap-1 justify-end">
               <input
                 type="number"
@@ -1071,7 +1069,7 @@ export default function CashReceiptManagement() {
           ) : (
             <div className="flex items-center gap-1.5 justify-end group/fee">
               <div className="flex items-center gap-1">
-                {fee !== 200000 && (
+                {!isCorporate && fee !== 200000 && (
                   <span className="relative group/feealert" title={`기준 수강료(₩200,000)와 다릅니다 — 현재 ₩${fee!.toLocaleString()}`}>
                     <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
                   </span>
@@ -1230,11 +1228,11 @@ export default function CashReceiptManagement() {
   const corpBudgetRows: CorpBudgetRow[] = corporateStudents.map(s => {
     const sessions = corpSessionCounts.get(s.student_name) || 0;
     const rate = getCorpRate(s);
-    const gross = sessions * rate;
+    const gross = getCorpFee(s);
     const isInvoice = isTaxInvoice(s);
     const net = isInvoice ? gross : Math.round(gross * (1 - BIZ_INCOME_TAX_RATE));
     return { name: s.student_name, sessions, rate, gross, net, isInvoice };
-  }).filter(r => r.sessions > 0); // 회수 0인 기업 학생은 예산에 노출 안 함
+  }).filter(r => r.sessions > 0 || feeOverrides.has(r.name)); // 회수 0인 기업 학생은 수동 수정 시에만 노출
 
   const corpInvoiceRows = corpBudgetRows.filter(r => r.isInvoice);
   const corpTaxRows = corpBudgetRows.filter(r => !r.isInvoice);
