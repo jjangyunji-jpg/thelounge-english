@@ -1036,11 +1036,7 @@ export default function CashReceiptManagement() {
           )}
         </td>
         <td className="px-4 py-3 text-right">
-          {isCorporate ? (
-            <div>
-              <span className={cn("font-semibold", isConfirmed ? "text-muted-foreground" : "text-foreground")}>₩{getCorpFee(s).toLocaleString()}</span>
-            </div>
-          ) : editingFee === s.student_name ? (
+          {editingFee === s.student_name ? (
             <div className="flex items-center gap-1 justify-end">
               <input
                 type="number"
