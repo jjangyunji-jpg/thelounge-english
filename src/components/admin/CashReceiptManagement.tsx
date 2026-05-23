@@ -923,8 +923,8 @@ export default function CashReceiptManagement() {
     const count = isCorporate
       ? (corpSessionCounts.get(s.student_name) || 0)
       : (billableCounts.has(s.student_name) ? (billableCounts.get(s.student_name) || 0) : (sessionCounts.get(s.student_name) || 0));
-    const fee = isCorporate ? null : getFee(s);
-    const isOverridden = !isCorporate && hasOverride(s.student_name);
+    const fee = isCorporate ? getCorpFee(s) : getFee(s);
+    const isOverridden = hasOverride(s.student_name);
     const credit = creditMap.get(s.student_name);
     const ded = dedMap.get(s.student_name);
     const hasPrepaid = !!credit && (credit.total_sessions - credit.used_sessions) > 0;
