@@ -1069,7 +1069,7 @@ export default function CashReceiptManagement() {
           ) : (
             <div className="flex items-center gap-1.5 justify-end group/fee">
               <div className="flex items-center gap-1">
-                {fee !== 200000 && (
+                {!isCorporate && fee !== 200000 && (
                   <span className="relative group/feealert" title={`기준 수강료(₩200,000)와 다릅니다 — 현재 ₩${fee!.toLocaleString()}`}>
                     <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
                   </span>
