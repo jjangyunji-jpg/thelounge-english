@@ -96,10 +96,18 @@ export default function EditTransferModal({
       // 4. Regenerate sessions for new instructor from new transfer date
       const { totalCreated } = await autoGenerateSessions(newDateStr, studentName);
 
-      toast({
-        title: `${studentName} 이관 일정 수정 완료 ✓`,
-        description: `이관일 ${newDateStr} (기존 세션 ${deleteIds.length}건 삭제, 신규 ${totalCreated}건 생성)`,
-      });
+      if (totalCreated === 0) {
+        toast({
+          title: `⚠️ ${studentName} 이관 일정 수정됨 — 신규 세션 0건`,
+          description: `이관일(${newDateStr}) 이후 ${toInstructor} 강사의 세션이 자동 생성되지 않았습니다. 활성 schedule_period와 일정을 확인 후 수동 재생성하세요.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: `${studentName} 이관 일정 수정 완료 ✓`,
+          description: `이관일 ${newDateStr} (기존 세션 ${deleteIds.length}건 삭제, 신규 ${totalCreated}건 생성)`,
+        });
+      }
       onUpdated();
       onOpenChange(false);
     } catch (e: unknown) {
