@@ -4112,13 +4112,26 @@ export default function InstructorDashboard() {
           />
         );
       })()}
-      {showBulkGoalModal && (
-        <BulkGoalModal
-          students={students.filter(s => s.status === "active" && s.student_type !== "corporate")}
-          onClose={() => setShowBulkGoalModal(false)}
-          onSaved={() => { setShowBulkGoalModal(false); if (instructor) loadData(instructor); }}
-        />
-      )}
+      {showBulkGoalModal && (() => {
+        const todayKst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+        const eligible = students.filter(s => {
+          if (s.status !== "active") return false;
+          if (s.student_type === "corporate") return false;
+          // 이관되어 종료일이 지난 옛 레코드 제외
+          if (s.end_date && s.end_date <= todayKst) return false;
+          // 현재 휴강 중인 학생 제외
+          const onPause = s.pauses?.some(p => p.pause_start <= todayKst && (!p.pause_end || p.pause_end >= todayKst)) ?? false;
+          if (onPause) return false;
+          return true;
+        });
+        return (
+          <BulkGoalModal
+            students={eligible}
+            onClose={() => setShowBulkGoalModal(false)}
+            onSaved={() => { setShowBulkGoalModal(false); if (instructor) loadData(instructor); }}
+          />
+        );
+      })()}
       {showAddSession && instructor && (
         <AddSessionModal
           students={students.filter(s => s.status === "active" && s.student_type !== "corporate").map(s => ({
