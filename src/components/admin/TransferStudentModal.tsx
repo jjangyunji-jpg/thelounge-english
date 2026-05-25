@@ -148,10 +148,18 @@ export default function TransferStudentModal({ open, onOpenChange, students, ins
       const { autoGenerateSessions } = await import("@/lib/autoGenerateSessions");
       const { totalCreated } = await autoGenerateSessions(transferDateStr, selectedStudent.name);
 
-      toast({
-        title: `${selectedStudent.name} → ${newInstructor} 이관 예약 완료 ✓`,
-        description: `${transferDateStr}부터 적용 (기존 세션 ${deleteIds.length}건 삭제, 신규 ${totalCreated}건 생성)`,
-      });
+      if (totalCreated === 0) {
+        toast({
+          title: `⚠️ ${selectedStudent.name} 이관 예약됨 — 신규 세션 0건 생성`,
+          description: `이관일(${transferDateStr}) 이후 ${newInstructor} 강사의 세션이 자동 생성되지 않았습니다. 활성 schedule_period가 있는지, 일정이 올바른지 확인 후 어드민 → 운영 → "세션 재생성"으로 수동 생성하세요.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: `${selectedStudent.name} → ${newInstructor} 이관 예약 완료 ✓`,
+          description: `${transferDateStr}부터 적용 (기존 세션 ${deleteIds.length}건 삭제, 신규 ${totalCreated}건 생성)`,
+        });
+      }
       onTransferred();
       onOpenChange(false);
     } catch (e: unknown) {
