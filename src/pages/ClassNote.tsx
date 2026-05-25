@@ -126,11 +126,14 @@ export default function ClassNote() {
       setLoadingSessions(true);
 
       // Fetch student's start_date, type, and group info
-      const { data: isData } = await supabase
+      // Transferred students have multiple rows — pick the most recent record
+      const { data: isRows } = await supabase
         .from("instructor_students")
         .select("start_date, student_type, group_students")
         .eq("student_name", student)
-        .maybeSingle();
+        .order("start_date", { ascending: false, nullsFirst: false })
+        .limit(1);
+      const isData = isRows?.[0] ?? null;
       const startDate = isData?.start_date;
       const studentType = (isData as any)?.student_type || "regular";
       const groupStudents: string[] = (isData as any)?.group_students || [];
