@@ -75,11 +75,14 @@ export default function ClassNote() {
 
         const studentName = profile?.student_name;
         if (studentName) {
-          const { data: isData } = await supabase
+          // Transferred students have multiple rows — pick most recent by start_date
+          const { data: isRows } = await supabase
             .from("instructor_students")
-            .select("instructor_id, english_name")
+            .select("instructor_id, english_name, start_date")
             .eq("student_name", studentName)
-            .maybeSingle();
+            .order("start_date", { ascending: false, nullsFirst: false })
+            .limit(1);
+          const isData = isRows?.[0] ?? null;
           if (cancelled) return;
           if (isData?.english_name) setEnglishName(isData.english_name);
           if (isData?.instructor_id) {
