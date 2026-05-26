@@ -99,8 +99,8 @@ export default function CashReceiptManagement() {
   const [corpSessionCounts, setCorpSessionCounts] = useState<Map<string, number>>(new Map());
   const [prepaidCredits, setPrepaidCredits] = useState<PrepaidCredit[]>([]);
   const [deductions, setDeductions] = useState<PrepaidDeduction[]>([]);
-  const [creditModal, setCreditModal] = useState<{ name: string; existing?: PrepaidCredit } | null>(null);
-  const [creditInput, setCreditInput] = useState({ sessions: "", note: "" });
+  const [creditModal, setCreditModal] = useState<{ name: string; mode: "add" } | null>(null);
+  const [creditInput, setCreditInput] = useState({ sessions: "", amount: "", note: "" });
   const [reportPreview, setReportPreview] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState<string | null>(null);
   const [attendanceRequests, setAttendanceRequests] = useState<AttendanceRequest[]>([]);
