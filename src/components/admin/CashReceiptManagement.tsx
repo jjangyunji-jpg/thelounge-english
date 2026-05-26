@@ -2019,11 +2019,12 @@ export default function CashReceiptManagement() {
             <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
           ) : (() => {
             const rewardAmount = storeReward?.amount || 0;
-            const totalIncome = budgetGrossTotal + corpGrossTotal + aiTotals.gross;
-            const cashTotal = budgetCashTotal + corpNetTotal;
-            const storeGrossAll = budgetStoreTotal + aiTotals.gross;
-            const storeNetAll = budgetStoreNet + aiTotals.net - rewardAmount;
-            const feeTotal = budgetStoreFee + aiTotals.fee;
+            // 결제완료(confirmed=true)된 정규 학생 + AI 결제완료 + 기업 발생액(후불이라 발생액 그대로)
+            const totalIncome = confirmedGrossTotal + corpGrossTotal + aiTotals.gross;
+            const cashTotal = confirmedCashTotal + corpNetTotal;
+            const storeGrossAll = confirmedStoreTotal + aiTotals.gross;
+            const storeNetAll = confirmedStoreNet + aiTotals.net - rewardAmount;
+            const feeTotal = confirmedStoreFee + aiTotals.fee;
             return (
               <>
                 {/* Period Navigation */}
@@ -2038,25 +2039,25 @@ export default function CashReceiptManagement() {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  정규 수업 + 기업 수업 + AI 프로그램의 모든 수입을 합산한 요약입니다. 기업 수업은 전월 수업 기준 후불, AI 프로그램은 당월 결제 기준입니다.
+                  <span className="font-semibold text-foreground">결제완료 기준</span> — 정규 수업은 결제확인 체크된 학생만, AI 프로그램은 결제완료 표시된 구독자만 합산합니다. 기업 수업은 후불(전월 발생액 기준)이라 발생액 그대로 표시됩니다.
                 </p>
 
-                {/* 1) 총 수입 (예상) */}
+                {/* 1) 총 수입 (결제완료 기준) */}
                 <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-5">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                      <Receipt className="w-4 h-4 text-primary" /> 총 수입 (예상)
+                      <Receipt className="w-4 h-4 text-primary" /> 총 수입 (결제완료 기준)
                     </p>
-                    <span className="text-[10px] text-muted-foreground">정규 + 기업 + AI 프로그램</span>
+                    <span className="text-[10px] text-muted-foreground">결제완료 {confirmedCount2} / 전체 {budgetRows.length}명 · + 기업 + AI</span>
                   </div>
                   <p className="text-3xl font-bold text-primary mt-2">₩{totalIncome.toLocaleString()}</p>
                   <div className="grid grid-cols-3 gap-2 mt-3 text-[11px]">
                     <div className="rounded-md bg-card border border-border p-2">
-                      <p className="text-muted-foreground">정규 수업</p>
-                      <p className="font-semibold text-foreground">₩{budgetGrossTotal.toLocaleString()}</p>
+                      <p className="text-muted-foreground">정규 (결제완료)</p>
+                      <p className="font-semibold text-foreground">₩{confirmedGrossTotal.toLocaleString()}</p>
                     </div>
                     <div className="rounded-md bg-card border border-border p-2">
-                      <p className="text-muted-foreground">기업 발생액</p>
+                      <p className="text-muted-foreground">기업 발생액(후불)</p>
                       <p className="font-semibold text-foreground">₩{corpGrossTotal.toLocaleString()}</p>
                     </div>
                     <div className="rounded-md bg-card border border-border p-2">
@@ -2065,6 +2066,7 @@ export default function CashReceiptManagement() {
                     </div>
                   </div>
                 </div>
+
 
                 {/* 2 ~ 5 grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
