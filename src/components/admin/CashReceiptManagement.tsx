@@ -2079,7 +2079,7 @@ export default function CashReceiptManagement() {
                     </div>
                     <p className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1">₩{cashTotal.toLocaleString()}</p>
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
-                      <p>· 정규 현금/이체 ₩{budgetCashTotal.toLocaleString()}</p>
+                      <p>· 정규 현금/이체 (결제완료) ₩{confirmedCashTotal.toLocaleString()}</p>
                       <p>· 기업 결제 실수령 ₩{corpNetTotal.toLocaleString()}</p>
                     </div>
                   </div>
@@ -2093,7 +2093,7 @@ export default function CashReceiptManagement() {
                     </div>
                     <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1">₩{storeGrossAll.toLocaleString()}</p>
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
-                      <p>· 정규 스토어 ₩{budgetStoreTotal.toLocaleString()}</p>
+                      <p>· 정규 스토어 (결제완료) ₩{confirmedStoreTotal.toLocaleString()}</p>
                       <p>· AI 프로그램 ₩{aiTotals.gross.toLocaleString()}</p>
                     </div>
                   </div>
@@ -2107,7 +2107,7 @@ export default function CashReceiptManagement() {
                     </div>
                     <p className="text-2xl font-bold text-success mt-1">₩{storeNetAll.toLocaleString()}</p>
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
-                      <p>· 정규 실수령 ₩{budgetStoreNet.toLocaleString()}</p>
+                      <p>· 정규 실수령 ₩{confirmedStoreNet.toLocaleString()}</p>
                       <p>· AI 실수령 ₩{aiTotals.net.toLocaleString()}</p>
                       {rewardAmount > 0 && <p>· 리워드 차감 -₩{rewardAmount.toLocaleString()}</p>}
                     </div>
@@ -2122,7 +2122,7 @@ export default function CashReceiptManagement() {
                     </div>
                     <p className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1">-₩{feeTotal.toLocaleString()}</p>
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
-                      <p>· 정규 스토어 수수료 ₩{budgetStoreFee.toLocaleString()}</p>
+                      <p>· 정규 스토어 수수료 ₩{confirmedStoreFee.toLocaleString()}</p>
                       <p>· AI 프로그램 수수료 ₩{aiTotals.fee.toLocaleString()}</p>
                     </div>
                   </div>
