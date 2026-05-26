@@ -1293,6 +1293,24 @@ export default function CashReceiptManagement() {
   const corpTaxFeeTotal = corpTaxGrossTotal - corpTaxNetTotal;
   const corpGrossTotal = corpInvoiceTotal + corpTaxGrossTotal;
   const corpNetTotal = corpInvoiceTotal + corpTaxNetTotal;
+
+  // ========== Confirmed-only totals (예산 요약 — 결제완료 기준) ==========
+  const isConfirmed = (name: string) => confMap.get(name)?.confirmed === true;
+  const confirmedBudgetRows = budgetRows.filter(r => isConfirmed(r.name));
+  const confirmedCashRows = confirmedBudgetRows.filter(r => {
+    const stu = budgetEligible.find(s => s.student_name === r.name);
+    return stu ? isCashPayment(stu) : false;
+  });
+  const confirmedStoreRows = confirmedBudgetRows.filter(r => {
+    const stu = budgetEligible.find(s => s.student_name === r.name);
+    return stu ? !isCashPayment(stu) : false;
+  });
+  const confirmedCashTotal = confirmedCashRows.reduce((s, r) => s + r.fee, 0);
+  const confirmedStoreTotal = confirmedStoreRows.reduce((s, r) => s + r.fee, 0);
+  const confirmedStoreNet = Math.round(confirmedStoreTotal * (1 - STORE_FEE_RATE));
+  const confirmedStoreFee = confirmedStoreTotal - confirmedStoreNet;
+  const confirmedGrossTotal = confirmedCashTotal + confirmedStoreTotal;
+  const confirmedCount2 = confirmedBudgetRows.length;
   return (
     <div className="space-y-4">
       {/* Header */}
