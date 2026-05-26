@@ -2180,8 +2180,7 @@ export default function CashReceiptManagement() {
 
       {/* Deduction Count Modal */}
       {deductModal && (() => {
-        const credit = creditMap.get(deductModal);
-        const remaining = credit ? credit.total_sessions - credit.used_sessions : 0;
+        const remaining = getStudentRemaining(deductModal);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDeductModal(null)}>
             <div className="bg-card rounded-xl shadow-xl border border-border w-[300px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -2190,7 +2189,7 @@ export default function CashReceiptManagement() {
                 <button onClick={() => setDeductModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
               </div>
               <div className="p-5 space-y-3">
-                <p className="text-xs text-muted-foreground">잔여 <span className="font-semibold text-foreground">{remaining}회</span> 중 차감할 횟수를 입력하세요.</p>
+                <p className="text-xs text-muted-foreground">잔여 <span className="font-semibold text-foreground">{remaining}회</span> 중 차감할 횟수를 입력하세요. (오래된 트랜치부터 차감)</p>
                 <input
                   type="number"
                   value={deductCount}
@@ -2225,67 +2224,84 @@ export default function CashReceiptManagement() {
         );
       })()}
 
-      {/* Prepaid Credit Modal */}
-      {creditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setCreditModal(null)}>
-          <div className="bg-card rounded-xl shadow-xl border border-border w-[340px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h3 className="text-sm font-bold text-foreground">
-                선결제 {creditModal.existing ? "추가 충전" : "등록"} — {creditModal.name}
-              </h3>
-              <button onClick={() => setCreditModal(null)} className="text-muted-foreground hover:text-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              {creditModal.existing && (
-                <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">기존 총 횟수</span>
-                    <span className="font-semibold text-foreground">{creditModal.existing.total_sessions}회</span>
+      {/* Prepaid Credit Modal (always adds a NEW tranche) */}
+      {creditModal && (() => {
+        const existingCredits = getStudentCredits(creditModal.name);
+        const autoAmount = (() => {
+          const n = parseInt(creditInput.sessions);
+          return isNaN(n) || n <= 0 ? "" : String(n * LESSON_PRICE);
+        })();
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setCreditModal(null)}>
+            <div className="bg-card rounded-xl shadow-xl border border-border w-[360px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <h3 className="text-sm font-bold text-foreground">
+                  선결제 추가 — {creditModal.name}
+                </h3>
+                <button onClick={() => setCreditModal(null)} className="text-muted-foreground hover:text-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                {existingCredits.length > 0 && (
+                  <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs space-y-1">
+                    <p className="text-muted-foreground font-semibold mb-1">기존 트랜치 ({existingCredits.length}건)</p>
+                    {existingCredits.map(c => (
+                      <div key={c.id} className="flex justify-between">
+                        <span className="text-muted-foreground">{c.payment_month || "—"} · {c.note || "메모 없음"}</span>
+                        <span className="font-semibold text-foreground">{c.total_sessions - c.used_sessions}/{c.total_sessions}회</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-muted-foreground">사용 횟수</span>
-                    <span className="font-semibold text-foreground">{creditModal.existing.used_sessions}회</span>
-                  </div>
-                  <div className="flex justify-between mt-1 pt-1 border-t border-border">
-                    <span className="text-muted-foreground">잔여 횟수</span>
-                    <span className="font-bold text-primary">{creditModal.existing.total_sessions - creditModal.existing.used_sessions}회</span>
-                  </div>
+                )}
+                <div className="rounded-md bg-primary/5 border border-primary/20 p-2 text-[11px] text-muted-foreground">
+                  💡 새 결제 트랜치로 추가됩니다. 결제월: <span className="font-semibold text-foreground">{periodLabel}</span>
                 </div>
-              )}
-              <div>
-                <label className="text-xs font-semibold text-foreground">{creditModal.existing ? "추가 충전 횟수" : "선결제 횟수"}</label>
-                <input
-                  type="number"
-                  value={creditInput.sessions}
-                  onChange={e => setCreditInput(prev => ({ ...prev, sessions: e.target.value }))}
-                  placeholder="예: 20"
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-foreground">메모 (선택)</label>
-                <input
-                  type="text"
-                  value={creditInput.note}
-                  onChange={e => setCreditInput(prev => ({ ...prev, note: e.target.value }))}
-                  placeholder="예: 3개월치 선결제"
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => setCreditModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
-                  취소
-                </button>
-                <button onClick={savePrepaidCredit} className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                  {creditModal.existing ? "추가 충전" : "등록"}
-                </button>
+                <div>
+                  <label className="text-xs font-semibold text-foreground">선결제 횟수</label>
+                  <input
+                    type="number"
+                    value={creditInput.sessions}
+                    onChange={e => setCreditInput(prev => ({ ...prev, sessions: e.target.value }))}
+                    placeholder="예: 12"
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground">결제 금액 (원) <span className="text-muted-foreground font-normal">— 비워두면 회수 × 50,000원</span></label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={creditInput.amount}
+                    onChange={e => setCreditInput(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder={autoAmount ? `자동 ₩${parseInt(autoAmount).toLocaleString()}` : "예: 600000"}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground">메모 (선택)</label>
+                  <input
+                    type="text"
+                    value={creditInput.note}
+                    onChange={e => setCreditInput(prev => ({ ...prev, note: e.target.value }))}
+                    placeholder="예: 6월 추가 12회"
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setCreditModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
+                    취소
+                  </button>
+                  <button onClick={savePrepaidCredit} className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                    등록
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
 
       {/* Corporate Report Preview Modal */}
       {reportPreview && (
