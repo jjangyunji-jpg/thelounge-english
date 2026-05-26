@@ -58,6 +58,8 @@ interface PrepaidCredit {
   used_sessions: number;
   note: string | null;
   created_at: string;
+  payment_month: string | null;
+  fee_total: number | null;
 }
 
 interface PrepaidDeduction {
@@ -97,8 +99,8 @@ export default function CashReceiptManagement() {
   const [corpSessionCounts, setCorpSessionCounts] = useState<Map<string, number>>(new Map());
   const [prepaidCredits, setPrepaidCredits] = useState<PrepaidCredit[]>([]);
   const [deductions, setDeductions] = useState<PrepaidDeduction[]>([]);
-  const [creditModal, setCreditModal] = useState<{ name: string; existing?: PrepaidCredit } | null>(null);
-  const [creditInput, setCreditInput] = useState({ sessions: "", note: "" });
+  const [creditModal, setCreditModal] = useState<{ name: string; mode: "add" } | null>(null);
+  const [creditInput, setCreditInput] = useState({ sessions: "", amount: "", note: "" });
   const [reportPreview, setReportPreview] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState<string | null>(null);
   const [attendanceRequests, setAttendanceRequests] = useState<AttendanceRequest[]>([]);
@@ -379,7 +381,19 @@ export default function CashReceiptManagement() {
 
 
   const confMap = new Map(confirmations.map(c => [c.student_name, c]));
-  const creditMap = new Map(prepaidCredits.map(c => [c.student_name, c]));
+  // Group prepaid credits by student (sorted oldest -> newest for FIFO)
+  const creditsByStudent = new Map<string, PrepaidCredit[]>();
+  for (const c of prepaidCredits) {
+    const list = creditsByStudent.get(c.student_name) || [];
+    list.push(c);
+    creditsByStudent.set(c.student_name, list);
+  }
+  for (const [, list] of creditsByStudent) {
+    list.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+  }
+  const getStudentCredits = (name: string): PrepaidCredit[] => creditsByStudent.get(name) || [];
+  const getStudentRemaining = (name: string): number =>
+    getStudentCredits(name).reduce((s, c) => s + (c.total_sessions - c.used_sessions), 0);
   const dedMap = new Map(deductions.map(d => [d.student_name, d]));
   const receiptMap = new Map(receipts.map(r => [r.student_name, r]));
 
@@ -522,11 +536,11 @@ export default function CashReceiptManagement() {
     }
   };
 
-  // Deduct specified sessions from prepaid balance
+  // Deduct specified sessions from prepaid balance (FIFO across tranches: oldest first)
   const deductMonth = async (studentName: string, customCount?: number) => {
-    const credit = creditMap.get(studentName);
-    if (!credit) return;
-    const remaining = credit.total_sessions - credit.used_sessions;
+    const credits = getStudentCredits(studentName);
+    if (credits.length === 0) return;
+    const remaining = credits.reduce((s, c) => s + (c.total_sessions - c.used_sessions), 0);
     const toDeduct = customCount ?? Math.min(calcBaseLessons(students.find(s => s.student_name === studentName)?.schedules || null), remaining);
     if (toDeduct <= 0) { toast({ title: "차감 불가", description: "잔여 횟수가 없습니다.", variant: "destructive" }); return; }
     if (toDeduct > remaining) { toast({ title: "차감 불가", description: `잔여 ${remaining}회보다 많습니다.`, variant: "destructive" }); return; }
@@ -535,26 +549,58 @@ export default function CashReceiptManagement() {
     if (existingDed) {
       toast({ title: "이미 차감됨", description: `${periodLabel} 이미 ${existingDed.deducted_sessions}회 차감됨` }); return;
     }
+
+    // FIFO allocation across tranches
+    let left = toDeduct;
+    const updates: { id: string; new_used: number }[] = [];
+    for (const c of credits) {
+      if (left <= 0) break;
+      const avail = c.total_sessions - c.used_sessions;
+      if (avail <= 0) continue;
+      const take = Math.min(avail, left);
+      updates.push({ id: c.id, new_used: c.used_sessions + take });
+      left -= take;
+    }
+
     const { data: newDed } = await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: periodKey, deducted_sessions: toDeduct } as any).select().single();
-    await supabase.from("prepaid_credits" as any).update({ used_sessions: credit.used_sessions + toDeduct, updated_at: new Date().toISOString() } as any).eq("id", credit.id);
-    // Optimistic local update
+    await Promise.all(updates.map(u =>
+      supabase.from("prepaid_credits" as any).update({ used_sessions: u.new_used, updated_at: new Date().toISOString() } as any).eq("id", u.id)
+    ));
     if (newDed) setDeductions(prev => [...prev, newDed as unknown as PrepaidDeduction]);
-    setPrepaidCredits(prev => prev.map(c => c.id === credit.id ? { ...c, used_sessions: c.used_sessions + toDeduct } : c));
+    setPrepaidCredits(prev => prev.map(c => {
+      const u = updates.find(x => x.id === c.id);
+      return u ? { ...c, used_sessions: u.new_used } : c;
+    }));
     toast({ title: `${toDeduct}회 차감 완료` });
     setDeductModal(null);
     setDeductCount("");
   };
 
-  // Undo deduction
+  // Undo deduction (LIFO restore — return sessions to youngest used tranche first)
   const undoDeduct = async (studentName: string) => {
     const ded = dedMap.get(studentName);
-    const credit = creditMap.get(studentName);
-    if (!ded || !credit) return;
+    const credits = getStudentCredits(studentName);
+    if (!ded || credits.length === 0) return;
+
+    let left = ded.deducted_sessions;
+    const updates: { id: string; new_used: number }[] = [];
+    for (const c of [...credits].reverse()) {
+      if (left <= 0) break;
+      if (c.used_sessions <= 0) continue;
+      const give = Math.min(c.used_sessions, left);
+      updates.push({ id: c.id, new_used: c.used_sessions - give });
+      left -= give;
+    }
+
     await supabase.from("prepaid_deductions" as any).delete().eq("student_name", studentName).eq("month", periodKey);
-    await supabase.from("prepaid_credits" as any).update({ used_sessions: Math.max(0, credit.used_sessions - ded.deducted_sessions), updated_at: new Date().toISOString() } as any).eq("id", credit.id);
-    // Optimistic local update
+    await Promise.all(updates.map(u =>
+      supabase.from("prepaid_credits" as any).update({ used_sessions: u.new_used, updated_at: new Date().toISOString() } as any).eq("id", u.id)
+    ));
     setDeductions(prev => prev.filter(d => !(d.student_name === studentName && d.month === periodKey)));
-    setPrepaidCredits(prev => prev.map(c => c.id === credit.id ? { ...c, used_sessions: Math.max(0, c.used_sessions - ded.deducted_sessions) } : c));
+    setPrepaidCredits(prev => prev.map(c => {
+      const u = updates.find(x => x.id === c.id);
+      return u ? { ...c, used_sessions: u.new_used } : c;
+    }));
     toast({ title: "차감 취소 완료" });
   };
 
@@ -562,27 +608,24 @@ export default function CashReceiptManagement() {
     if (!creditModal) return;
     const sessions = parseInt(creditInput.sessions);
     if (isNaN(sessions) || sessions <= 0) { toast({ title: "유효한 횟수를 입력하세요", variant: "destructive" }); return; }
-
-    if (creditModal.existing) {
-      // Add to existing
-      await supabase.from("prepaid_credits" as any).update({
-        total_sessions: creditModal.existing.total_sessions + sessions,
-        note: creditInput.note || creditModal.existing.note,
-        updated_at: new Date().toISOString(),
-      } as any).eq("id", creditModal.existing.id);
-    } else {
-      await supabase.from("prepaid_credits" as any).insert({
-        student_name: creditModal.name,
-        total_sessions: sessions,
-        used_sessions: 0,
-        note: creditInput.note || null,
-      } as any);
-    }
-    toast({ title: `선결제 ${sessions}회 등록 완료` });
+    const amountRaw = creditInput.amount.replace(/[^0-9]/g, "");
+    const feeTotal = amountRaw ? parseInt(amountRaw, 10) : sessions * LESSON_PRICE;
+    // Always create a new tranche (preserves history across payments)
+    await supabase.from("prepaid_credits" as any).insert({
+      student_name: creditModal.name,
+      total_sessions: sessions,
+      used_sessions: 0,
+      note: creditInput.note || null,
+      payment_month: periodKey,
+      fee_total: feeTotal,
+    } as any);
+    toast({ title: `선결제 ${sessions}회 (₩${feeTotal.toLocaleString()}) 등록 완료` });
     setCreditModal(null);
-    setCreditInput({ sessions: "", note: "" });
+    setCreditInput({ sessions: "", amount: "", note: "" });
     loadData();
   };
+
+
 
   const getFee = (s: StudentRecord) => {
     const override = feeOverrides.get(s.student_name);
@@ -925,9 +968,11 @@ export default function CashReceiptManagement() {
       : (billableCounts.has(s.student_name) ? (billableCounts.get(s.student_name) || 0) : (sessionCounts.get(s.student_name) || 0));
     const fee = isCorporate ? getCorpFee(s) : getFee(s);
     const isOverridden = hasOverride(s.student_name);
-    const credit = creditMap.get(s.student_name);
+    const credits = getStudentCredits(s.student_name);
+    const totalRemaining = credits.reduce((sum, c) => sum + (c.total_sessions - c.used_sessions), 0);
+    const totalCredits = credits.reduce((sum, c) => sum + c.total_sessions, 0);
     const ded = dedMap.get(s.student_name);
-    const hasPrepaid = !!credit && (credit.total_sessions - credit.used_sessions) > 0;
+    const hasPrepaid = totalRemaining > 0;
     const isRefund = !isCorporate && refundFlags.has(s.student_name);
     const isInactive = s.status === "inactive";
 
@@ -1097,40 +1142,44 @@ export default function CashReceiptManagement() {
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
-            {credit ? (
+            {credits.length > 0 ? (
               <>
-                <div className="text-xs group/credit relative cursor-default" title={credit.note || undefined}>
-                  <span className="font-semibold text-foreground">{credit.total_sessions - credit.used_sessions}</span>
-                  <span className="text-muted-foreground">/{credit.total_sessions}회</span>
-                  {credit.note && (
-                    <div className="absolute bottom-full left-0 mb-1 hidden group-hover/credit:block z-10 px-2 py-1 rounded bg-popover border border-border shadow-md text-[10px] text-popover-foreground whitespace-nowrap max-w-[200px] truncate">
-                      {credit.note}
-                    </div>
-                  )}
+                <div className="text-xs flex items-center gap-1 flex-wrap">
+                  {credits.map((c, i) => {
+                    const rem = c.total_sessions - c.used_sessions;
+                    const tip = `${c.payment_month ? `${c.payment_month} 결제 ` : ""}${c.fee_total ? `₩${c.fee_total.toLocaleString()} · ` : ""}${c.note || ""}`.trim();
+                    return (
+                      <span key={c.id} className="inline-flex items-center" title={tip || undefined}>
+                        {i > 0 && <span className="text-muted-foreground mx-0.5">·</span>}
+                        <span className="font-semibold text-foreground">{rem}</span>
+                        <span className="text-muted-foreground">/{c.total_sessions}회</span>
+                      </span>
+                    );
+                  })}
                 </div>
                 {ded ? (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium cursor-default" title={`${ded.deducted_sessions}회 차감됨 (클릭하여 취소)`} onClick={() => undoDeduct(s.student_name)}>
                     -{ded.deducted_sessions} 차감완료
                   </span>
-                ) : (
+                ) : hasPrepaid ? (
                   <button
                     onClick={() => { setDeductModal(s.student_name); setDeductCount(String(calcBaseLessons(s.schedules))); }}
                     className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                   >
                     차감
                   </button>
-                )}
+                ) : null}
                 <button
-                  onClick={() => { setCreditModal({ name: s.student_name, existing: credit }); setCreditInput({ sessions: "", note: credit.note || "" }); }}
+                  onClick={() => { setCreditModal({ name: s.student_name, mode: "add" }); setCreditInput({ sessions: "", amount: "", note: "" }); }}
                   className="text-muted-foreground hover:text-foreground"
-                  title="충전"
+                  title="새 선결제 추가"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </>
             ) : (
               <button
-                onClick={() => { setCreditModal({ name: s.student_name }); setCreditInput({ sessions: "", note: "" }); }}
+                onClick={() => { setCreditModal({ name: s.student_name, mode: "add" }); setCreditInput({ sessions: "", amount: "", note: "" }); }}
                 className="text-[10px] px-2 py-1 rounded border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
               >
                 선결제 등록
@@ -1176,30 +1225,32 @@ export default function CashReceiptManagement() {
   };
 
   // ========== Budget calculations (정규 only, 환불 제외) ==========
-  // 선결제 처리 규칙 (현금흐름 기준):
-  //  - 선결제 등록 달: total_sessions × LESSON_PRICE 전액을 해당 월 매출로 산입
-  //  - 선결제 이후 달 + 차감 있음: 0원 ("차감" 뱃지로만 표시)
-  //  - 선결제 이후 달 + 차감 없음: 0원 ("선결제 (미차감)" 뱃지)
-  //  - 선결제 없음: 기존 getFee (billable × LESSON_PRICE)
-  // 스토어 수수료(4.95%)는 결제월 전액에만 적용되고 이후 차감월에는 추가 반영하지 않음
-  type BudgetRow = { name: string; fee: number; isPrepaidStore?: boolean; isPrepaidDeducted?: boolean; isPrepaidIdle?: boolean; deductedCount?: number };
+  // 선결제 처리 규칙 (트랜치 단위, 현금흐름 기준):
+  //  - 학생 트랜치 중 payment_month === 현재 periodKey 인 트랜치: fee_total(없으면 total×50k) 합산 (스토어 매출)
+  //  - 이번 달 결제 트랜치가 없고 차감 있음: 0원 ("차감 N회" 뱃지)
+  //  - 이번 달 결제 트랜치가 없고 차감 없음 + 잔액 있음: 0원 ("선결제 미차감" 뱃지)
+  //  - 선결제 트랜치 자체가 없음: 기존 getFee (billable × LESSON_PRICE)
+  type BudgetRow = { name: string; fee: number; isPrepaidStore?: boolean; isPrepaidDeducted?: boolean; isPrepaidIdle?: boolean; deductedCount?: number; prepaidSessions?: number };
   const budgetRows: BudgetRow[] = [];
   const budgetEligible = regularStudents.filter(s => !refundFlags.has(s.student_name));
   for (const s of budgetEligible) {
-    const credit = creditMap.get(s.student_name);
-    if (credit) {
-      const createdDate = (credit.created_at || "").slice(0, 10);
-      const isRegisteredThisPeriod = createdDate >= pStartDate && createdDate <= pEndDate;
+    const credits = getStudentCredits(s.student_name);
+    if (credits.length > 0) {
+      // Tranches paid in this period (payment_month matches OR legacy: created_at in period when payment_month is null)
+      const paidThisPeriod = credits.filter(c => {
+        if (c.payment_month) return c.payment_month === periodKey;
+        const createdDate = (c.created_at || "").slice(0, 10);
+        return createdDate >= pStartDate && createdDate <= pEndDate;
+      });
       const ded = dedMap.get(s.student_name);
       const deductedCount = ded?.deducted_sessions || 0;
-      if (isRegisteredThisPeriod) {
-        // 등록 달은 선결제 총액을 한 번에 반영
-        budgetRows.push({ name: s.student_name, fee: credit.total_sessions * LESSON_PRICE, isPrepaidStore: true, deductedCount: credit.total_sessions });
+      if (paidThisPeriod.length > 0) {
+        const fee = paidThisPeriod.reduce((sum, c) => sum + (c.fee_total ?? c.total_sessions * LESSON_PRICE), 0);
+        const sessions = paidThisPeriod.reduce((sum, c) => sum + c.total_sessions, 0);
+        budgetRows.push({ name: s.student_name, fee, isPrepaidStore: true, deductedCount: sessions, prepaidSessions: sessions });
       } else if (deductedCount > 0) {
-        // 이후 달의 차감은 이미 결제월에 잡힌 금액이므로 예산 반영 0원
         budgetRows.push({ name: s.student_name, fee: 0, isPrepaidDeducted: true, deductedCount });
       } else {
-        // 차감 없는 달 — 매출 0, 뱃지만 표시
         budgetRows.push({ name: s.student_name, fee: 0, isPrepaidIdle: true, deductedCount: 0 });
       }
       continue;
@@ -1242,6 +1293,24 @@ export default function CashReceiptManagement() {
   const corpTaxFeeTotal = corpTaxGrossTotal - corpTaxNetTotal;
   const corpGrossTotal = corpInvoiceTotal + corpTaxGrossTotal;
   const corpNetTotal = corpInvoiceTotal + corpTaxNetTotal;
+
+  // ========== Confirmed-only totals (예산 요약 — 결제완료 기준) ==========
+  const isConfirmed = (name: string) => confMap.get(name)?.confirmed === true;
+  const confirmedBudgetRows = budgetRows.filter(r => isConfirmed(r.name));
+  const confirmedCashRows = confirmedBudgetRows.filter(r => {
+    const stu = budgetEligible.find(s => s.student_name === r.name);
+    return stu ? isCashPayment(stu) : false;
+  });
+  const confirmedStoreRows = confirmedBudgetRows.filter(r => {
+    const stu = budgetEligible.find(s => s.student_name === r.name);
+    return stu ? !isCashPayment(stu) : false;
+  });
+  const confirmedCashTotal = confirmedCashRows.reduce((s, r) => s + r.fee, 0);
+  const confirmedStoreTotal = confirmedStoreRows.reduce((s, r) => s + r.fee, 0);
+  const confirmedStoreNet = Math.round(confirmedStoreTotal * (1 - STORE_FEE_RATE));
+  const confirmedStoreFee = confirmedStoreTotal - confirmedStoreNet;
+  const confirmedGrossTotal = confirmedCashTotal + confirmedStoreTotal;
+  const confirmedCount2 = confirmedBudgetRows.length;
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -1950,11 +2019,12 @@ export default function CashReceiptManagement() {
             <div className="flex items-center justify-center py-20"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
           ) : (() => {
             const rewardAmount = storeReward?.amount || 0;
-            const totalIncome = budgetGrossTotal + corpGrossTotal + aiTotals.gross;
-            const cashTotal = budgetCashTotal + corpNetTotal;
-            const storeGrossAll = budgetStoreTotal + aiTotals.gross;
-            const storeNetAll = budgetStoreNet + aiTotals.net - rewardAmount;
-            const feeTotal = budgetStoreFee + aiTotals.fee;
+            // 결제완료(confirmed=true)된 정규 학생 + AI 결제완료 + 기업 발생액(후불이라 발생액 그대로)
+            const totalIncome = confirmedGrossTotal + corpGrossTotal + aiTotals.gross;
+            const cashTotal = confirmedCashTotal + corpNetTotal;
+            const storeGrossAll = confirmedStoreTotal + aiTotals.gross;
+            const storeNetAll = confirmedStoreNet + aiTotals.net - rewardAmount;
+            const feeTotal = confirmedStoreFee + aiTotals.fee;
             return (
               <>
                 {/* Period Navigation */}
@@ -1969,25 +2039,25 @@ export default function CashReceiptManagement() {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  정규 수업 + 기업 수업 + AI 프로그램의 모든 수입을 합산한 요약입니다. 기업 수업은 전월 수업 기준 후불, AI 프로그램은 당월 결제 기준입니다.
+                  <span className="font-semibold text-foreground">결제완료 기준</span> — 정규 수업은 결제확인 체크된 학생만, AI 프로그램은 결제완료 표시된 구독자만 합산합니다. 기업 수업은 후불(전월 발생액 기준)이라 발생액 그대로 표시됩니다.
                 </p>
 
-                {/* 1) 총 수입 (예상) */}
+                {/* 1) 총 수입 (결제완료 기준) */}
                 <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-5">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                      <Receipt className="w-4 h-4 text-primary" /> 총 수입 (예상)
+                      <Receipt className="w-4 h-4 text-primary" /> 총 수입 (결제완료 기준)
                     </p>
-                    <span className="text-[10px] text-muted-foreground">정규 + 기업 + AI 프로그램</span>
+                    <span className="text-[10px] text-muted-foreground">결제완료 {confirmedCount2} / 전체 {budgetRows.length}명 · + 기업 + AI</span>
                   </div>
                   <p className="text-3xl font-bold text-primary mt-2">₩{totalIncome.toLocaleString()}</p>
                   <div className="grid grid-cols-3 gap-2 mt-3 text-[11px]">
                     <div className="rounded-md bg-card border border-border p-2">
-                      <p className="text-muted-foreground">정규 수업</p>
-                      <p className="font-semibold text-foreground">₩{budgetGrossTotal.toLocaleString()}</p>
+                      <p className="text-muted-foreground">정규 (결제완료)</p>
+                      <p className="font-semibold text-foreground">₩{confirmedGrossTotal.toLocaleString()}</p>
                     </div>
                     <div className="rounded-md bg-card border border-border p-2">
-                      <p className="text-muted-foreground">기업 발생액</p>
+                      <p className="text-muted-foreground">기업 발생액(후불)</p>
                       <p className="font-semibold text-foreground">₩{corpGrossTotal.toLocaleString()}</p>
                     </div>
                     <div className="rounded-md bg-card border border-border p-2">
@@ -1996,6 +2066,7 @@ export default function CashReceiptManagement() {
                     </div>
                   </div>
                 </div>
+
 
                 {/* 2 ~ 5 grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2008,7 +2079,7 @@ export default function CashReceiptManagement() {
                     </div>
                     <p className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1">₩{cashTotal.toLocaleString()}</p>
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
-                      <p>· 정규 현금/이체 ₩{budgetCashTotal.toLocaleString()}</p>
+                      <p>· 정규 현금/이체 (결제완료) ₩{confirmedCashTotal.toLocaleString()}</p>
                       <p>· 기업 결제 실수령 ₩{corpNetTotal.toLocaleString()}</p>
                     </div>
                   </div>
@@ -2022,7 +2093,7 @@ export default function CashReceiptManagement() {
                     </div>
                     <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1">₩{storeGrossAll.toLocaleString()}</p>
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
-                      <p>· 정규 스토어 ₩{budgetStoreTotal.toLocaleString()}</p>
+                      <p>· 정규 스토어 (결제완료) ₩{confirmedStoreTotal.toLocaleString()}</p>
                       <p>· AI 프로그램 ₩{aiTotals.gross.toLocaleString()}</p>
                     </div>
                   </div>
@@ -2036,7 +2107,7 @@ export default function CashReceiptManagement() {
                     </div>
                     <p className="text-2xl font-bold text-success mt-1">₩{storeNetAll.toLocaleString()}</p>
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
-                      <p>· 정규 실수령 ₩{budgetStoreNet.toLocaleString()}</p>
+                      <p>· 정규 실수령 ₩{confirmedStoreNet.toLocaleString()}</p>
                       <p>· AI 실수령 ₩{aiTotals.net.toLocaleString()}</p>
                       {rewardAmount > 0 && <p>· 리워드 차감 -₩{rewardAmount.toLocaleString()}</p>}
                     </div>
@@ -2051,7 +2122,7 @@ export default function CashReceiptManagement() {
                     </div>
                     <p className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1">-₩{feeTotal.toLocaleString()}</p>
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
-                      <p>· 정규 스토어 수수료 ₩{budgetStoreFee.toLocaleString()}</p>
+                      <p>· 정규 스토어 수수료 ₩{confirmedStoreFee.toLocaleString()}</p>
                       <p>· AI 프로그램 수수료 ₩{aiTotals.fee.toLocaleString()}</p>
                     </div>
                   </div>
@@ -2129,8 +2200,7 @@ export default function CashReceiptManagement() {
 
       {/* Deduction Count Modal */}
       {deductModal && (() => {
-        const credit = creditMap.get(deductModal);
-        const remaining = credit ? credit.total_sessions - credit.used_sessions : 0;
+        const remaining = getStudentRemaining(deductModal);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDeductModal(null)}>
             <div className="bg-card rounded-xl shadow-xl border border-border w-[300px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -2139,7 +2209,7 @@ export default function CashReceiptManagement() {
                 <button onClick={() => setDeductModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
               </div>
               <div className="p-5 space-y-3">
-                <p className="text-xs text-muted-foreground">잔여 <span className="font-semibold text-foreground">{remaining}회</span> 중 차감할 횟수를 입력하세요.</p>
+                <p className="text-xs text-muted-foreground">잔여 <span className="font-semibold text-foreground">{remaining}회</span> 중 차감할 횟수를 입력하세요. (오래된 트랜치부터 차감)</p>
                 <input
                   type="number"
                   value={deductCount}
@@ -2174,67 +2244,84 @@ export default function CashReceiptManagement() {
         );
       })()}
 
-      {/* Prepaid Credit Modal */}
-      {creditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setCreditModal(null)}>
-          <div className="bg-card rounded-xl shadow-xl border border-border w-[340px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h3 className="text-sm font-bold text-foreground">
-                선결제 {creditModal.existing ? "추가 충전" : "등록"} — {creditModal.name}
-              </h3>
-              <button onClick={() => setCreditModal(null)} className="text-muted-foreground hover:text-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              {creditModal.existing && (
-                <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">기존 총 횟수</span>
-                    <span className="font-semibold text-foreground">{creditModal.existing.total_sessions}회</span>
+      {/* Prepaid Credit Modal (always adds a NEW tranche) */}
+      {creditModal && (() => {
+        const existingCredits = getStudentCredits(creditModal.name);
+        const autoAmount = (() => {
+          const n = parseInt(creditInput.sessions);
+          return isNaN(n) || n <= 0 ? "" : String(n * LESSON_PRICE);
+        })();
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setCreditModal(null)}>
+            <div className="bg-card rounded-xl shadow-xl border border-border w-[360px] mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                <h3 className="text-sm font-bold text-foreground">
+                  선결제 추가 — {creditModal.name}
+                </h3>
+                <button onClick={() => setCreditModal(null)} className="text-muted-foreground hover:text-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                {existingCredits.length > 0 && (
+                  <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs space-y-1">
+                    <p className="text-muted-foreground font-semibold mb-1">기존 트랜치 ({existingCredits.length}건)</p>
+                    {existingCredits.map(c => (
+                      <div key={c.id} className="flex justify-between">
+                        <span className="text-muted-foreground">{c.payment_month || "—"} · {c.note || "메모 없음"}</span>
+                        <span className="font-semibold text-foreground">{c.total_sessions - c.used_sessions}/{c.total_sessions}회</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-muted-foreground">사용 횟수</span>
-                    <span className="font-semibold text-foreground">{creditModal.existing.used_sessions}회</span>
-                  </div>
-                  <div className="flex justify-between mt-1 pt-1 border-t border-border">
-                    <span className="text-muted-foreground">잔여 횟수</span>
-                    <span className="font-bold text-primary">{creditModal.existing.total_sessions - creditModal.existing.used_sessions}회</span>
-                  </div>
+                )}
+                <div className="rounded-md bg-primary/5 border border-primary/20 p-2 text-[11px] text-muted-foreground">
+                  💡 새 결제 트랜치로 추가됩니다. 결제월: <span className="font-semibold text-foreground">{periodLabel}</span>
                 </div>
-              )}
-              <div>
-                <label className="text-xs font-semibold text-foreground">{creditModal.existing ? "추가 충전 횟수" : "선결제 횟수"}</label>
-                <input
-                  type="number"
-                  value={creditInput.sessions}
-                  onChange={e => setCreditInput(prev => ({ ...prev, sessions: e.target.value }))}
-                  placeholder="예: 20"
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-foreground">메모 (선택)</label>
-                <input
-                  type="text"
-                  value={creditInput.note}
-                  onChange={e => setCreditInput(prev => ({ ...prev, note: e.target.value }))}
-                  placeholder="예: 3개월치 선결제"
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => setCreditModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
-                  취소
-                </button>
-                <button onClick={savePrepaidCredit} className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                  {creditModal.existing ? "추가 충전" : "등록"}
-                </button>
+                <div>
+                  <label className="text-xs font-semibold text-foreground">선결제 횟수</label>
+                  <input
+                    type="number"
+                    value={creditInput.sessions}
+                    onChange={e => setCreditInput(prev => ({ ...prev, sessions: e.target.value }))}
+                    placeholder="예: 12"
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground">결제 금액 (원) <span className="text-muted-foreground font-normal">— 비워두면 회수 × 50,000원</span></label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={creditInput.amount}
+                    onChange={e => setCreditInput(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder={autoAmount ? `자동 ₩${parseInt(autoAmount).toLocaleString()}` : "예: 600000"}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground">메모 (선택)</label>
+                  <input
+                    type="text"
+                    value={creditInput.note}
+                    onChange={e => setCreditInput(prev => ({ ...prev, note: e.target.value }))}
+                    placeholder="예: 6월 추가 12회"
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setCreditModal(null)} className="flex-1 py-2.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
+                    취소
+                  </button>
+                  <button onClick={savePrepaidCredit} className="flex-1 py-2.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                    등록
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
 
       {/* Corporate Report Preview Modal */}
       {reportPreview && (

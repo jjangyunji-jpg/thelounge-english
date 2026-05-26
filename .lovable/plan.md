@@ -1,91 +1,46 @@
 
-## 목표
-기업 수강생의 "매니저(신청·결제 담당)"와 "학생(실제 수강)"을 데이터 모델에서 분리하고, 결제확인 화면을 **그룹 단위 청구**로 재구성한다.
+## 배경
+김춘호: 기존 12회 선결제(완전 차감됨) + 6월에 새 12회 추가 → 현재 한 행에 24/12로 합쳐져 있음.
+요구: 결제 단위(트랜치)별로 분리 표시, 새 12회는 600,000원으로 6월 예산에 반영, 예산 요약은 결제완료만, 예산 관리는 예상치 기준.
 
----
+## 변경 사항
 
-## 1. 스키마 변경 (마이그레이션)
+### 1) DB 스키마
+- `prepaid_credits.student_name` UNIQUE 제약 제거 (학생당 여러 트랜치 허용)
+- `prepaid_credits`에 `payment_month text` 컬럼 추가 (예: '2026-06') — 어느 달 결제분인지 추적
+- `prepaid_credits`에 `fee_total integer` 컬럼 추가 (선결제 등록 시 총액 직접 저장; NULL이면 `total_sessions × 50,000` 폴백)
+- `prepaid_deductions`는 학생+월 단위 그대로 유지 (트랜치 간 FIFO로 차감: 오래된 잔여부터 사용)
 
-`instructor_students`에 컬럼 추가:
-- `corporate_role` text default `'learner'` — `'learner'` | `'manager'` | `'learner_manager'`
-- `corporate_account` text nullable — 회사/매니저 그룹 식별자
+### 2) 데이터 정정 (김춘호)
+- 기존 24/12 행을 두 행으로 분리:
+  - 행 A: 12회 등록, 12회 사용, payment_month=NULL, note="기존 12회"
+  - 행 B: 12회 등록, 0회 사용, payment_month='2026-06', fee_total=600000, note="6월 추가 12회"
 
-인덱스: `corporate_account` 조회용.
+### 3) CashReceiptManagement.tsx 리팩토링
+- `creditMap: Map<string, PrepaidCredit>` → `creditsByStudent: Map<string, PrepaidCredit[]>` (정렬: created_at asc)
+- 학생별 표시: 트랜치별로 "X/Y회" 칩 여러 개 (예: `12/12 · 12/12`)
+- "선결제 등록/충전" 모달: 기존 행에 충전 대신 **새 트랜치 추가**로 전환, payment_month는 현재 period로 자동 설정, 금액(₩) 입력 필드 추가 (기본값 = 회수×50,000)
+- 차감 로직: FIFO로 잔여가 있는 트랜치에서 순차 차감
 
----
+### 4) 예산 관리 탭 (예상치 — 기존 동작)
+- 학생별 budgetRow 산출 시 트랜치들 합산:
+  - `payment_month === periodKey`인 트랜치: `fee_total ?? sessions×50000`을 가산 (스토어, "🔵 스토어 (선결제 N회)" 뱃지)
+  - 그 외 트랜치 + 차감 있음: 0원, "🟣 차감 N회" 뱃지
+  - 잔액 있고 차감 없음: 0원, "⚪ 선결제 (미차감)" 뱃지
+- 김춘호 6월 예산 관리에 자동으로 600,000원 반영됨
 
-## 2. 데이터 마이그레이션
+### 5) 예산 요약 탭 (결제완료 기준 — 신규)
+- 기준: `payment_confirmations.confirmed === true`인 학생만 매출 산입
+- 선결제 학생도 같은 기준 (해당 학생의 confirmation이 confirmed=true일 때만 포함)
+- AI 프로그램은 기존대로 `ai_program_payments.paid` 기준
+- 기업은 그대로 발생액 기반 (후불이라 별도 결제완료 토글 없음 → 기존 유지하되 카드에 "기업 발생액(후불)" 주석)
+- 상단에 "결제완료 N / 전체 M" 표시
 
-| student_name | corporate_role | corporate_account | group_students 변경 |
-|---|---|---|---|
-| 전현지 | manager | 전현지팀 | [] |
-| 도은, 지아나, 선혜, 연정, 지은 | learner | 전현지팀 | (현재 그대로 유지) |
-| 김동욱 | manager | 황재민팀 | [] |
-| 황재민 | learner | 황재민팀 | **[] (김동욱 제거)** |
-| 환웅, 오의식 | learner_manager | (본인명) | [] |
+### 6) UI 보조
+- 예산 관리 카드 라벨에 "(예상)" 명시, 예산 요약 카드 라벨에 "(결제완료 기준)" 명시
+- 예산 관리에서 김춘호 행 클릭 시 트랜치 내역 툴팁
 
-황재민의 group_students에서 김동욱 제거 → 자동 50k 적용.
-
----
-
-## 3. 코드 변경
-
-### A. 결제확인 (CashReceiptManagement) — 가장 큰 변경
-- `corporate_role='manager'` 행은 학생 목록에서 완전히 제외 (또는 매니저 섹션 분리)
-- 청구 행을 `corporate_account` 단위로 그룹화:
-  - learner_manager 단독 → 1행, 50k × 회수
-  - 그룹 (도은+지아나) → 1행 표시 "도은 + 지아나", 70k × 회수 (그룹 수업 횟수 = 한 명 기준)
-  - 개인 (지은, 황재민) → 1행, 50k × 회수
-- billable_count 계산: 그룹의 경우 멤버 1명의 수업 카운트 사용 (전원이 동일하다고 가정)
-- billable_overrides는 student_name 기준 유지 (그룹 대표자 = group_students 정렬 시 첫 이름)
-
-### B. SessionCountReport
-- manager 행 제외
-- 학생별 카운트는 그대로 유지 (개별 수업 출결 추적 목적)
-
-### C. 세션 자동 생성 (autoGenerateSessions)
-- `corporate_role='manager'` 행은 스킵
-
-### D. 보강 신청 (MakeupRequestModal)
-- 로그인 사용자가 manager면 → 첫 단계에 "어느 학생 대신 신청?" 학생 선택 추가
-- learner_manager는 본인 자동 선택
-- 일반 learner도 본인 자동 선택
-
-### E. 학생 대시보드 (StudentDashboard)
-- manager 로그인 시 → 관리하는 learner 목록 표시, 학생 전환 탭/드롭다운으로 각 학생의 일정·노트·보강 조회
-- learner_manager는 일반 학생 UI 그대로
-
-### F. 어드민 학생 관리 (StudentManagement)
-- 기업 탭 안에서 매니저 행은 별도 섹션 또는 "매니저" 뱃지로 표기
-- 학생 카드에 corporate_account 표시
-
-### G. 등록/수정 폼 (TransferStudentModal 등)
-- `corporate_role` 라디오 + `corporate_account` 텍스트 입력 추가 (기업 수강생 선택 시)
-
----
-
-## 4. 검증
-- 마이그레이션 후 황재민 단가가 50k로 표시되는지 확인
-- 도은+지아나 그룹이 결제확인에 1행으로 70k×N 표시되는지 확인
-- 전현지 로그인 시 학생 5명 목록이 보이는지 확인
-- manager 행이 세션 자동 생성에서 제외되는지 확인
-
----
-
-## 5. 영향 범위 (변경 파일)
-- `supabase/migrations/<new>.sql` (신규)
-- `src/components/admin/CashReceiptManagement.tsx`
-- `src/components/admin/SessionCountReport.tsx`
-- `src/components/admin/StudentManagement.tsx`
-- `src/components/admin/TransferStudentModal.tsx`
-- `src/components/admin/EditTransferModal.tsx`
-- `src/lib/autoGenerateSessions.ts`
-- `src/components/dashboard/MakeupRequestModal.tsx`
-- `src/pages/StudentDashboard.tsx`
-
----
-
-## 비고
-- `class_sessions`, `homework_assignments` 등은 student_name 기반이라 영향 없음
-- 보강 슬롯·기존 청구 데이터에 영향 없음
-- manager 행은 user_id로 로그인하지만 수업/결제에서는 invisible
+## 영향 범위
+- DB: 마이그레이션 1건 + 데이터 정정 INSERT/UPDATE 1건
+- 코드: `src/components/admin/CashReceiptManagement.tsx` 단일 파일 (creditMap → creditsByStudent 리팩토링)
+- 메모리: `mem://features/admin/payment-management.md` 업데이트
