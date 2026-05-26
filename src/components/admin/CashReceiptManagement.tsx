@@ -536,11 +536,11 @@ export default function CashReceiptManagement() {
     }
   };
 
-  // Deduct specified sessions from prepaid balance
+  // Deduct specified sessions from prepaid balance (FIFO across tranches: oldest first)
   const deductMonth = async (studentName: string, customCount?: number) => {
-    const credit = creditMap.get(studentName);
-    if (!credit) return;
-    const remaining = credit.total_sessions - credit.used_sessions;
+    const credits = getStudentCredits(studentName);
+    if (credits.length === 0) return;
+    const remaining = credits.reduce((s, c) => s + (c.total_sessions - c.used_sessions), 0);
     const toDeduct = customCount ?? Math.min(calcBaseLessons(students.find(s => s.student_name === studentName)?.schedules || null), remaining);
     if (toDeduct <= 0) { toast({ title: "차감 불가", description: "잔여 횟수가 없습니다.", variant: "destructive" }); return; }
     if (toDeduct > remaining) { toast({ title: "차감 불가", description: `잔여 ${remaining}회보다 많습니다.`, variant: "destructive" }); return; }
@@ -549,26 +549,58 @@ export default function CashReceiptManagement() {
     if (existingDed) {
       toast({ title: "이미 차감됨", description: `${periodLabel} 이미 ${existingDed.deducted_sessions}회 차감됨` }); return;
     }
+
+    // FIFO allocation across tranches
+    let left = toDeduct;
+    const updates: { id: string; new_used: number }[] = [];
+    for (const c of credits) {
+      if (left <= 0) break;
+      const avail = c.total_sessions - c.used_sessions;
+      if (avail <= 0) continue;
+      const take = Math.min(avail, left);
+      updates.push({ id: c.id, new_used: c.used_sessions + take });
+      left -= take;
+    }
+
     const { data: newDed } = await supabase.from("prepaid_deductions" as any).insert({ student_name: studentName, month: periodKey, deducted_sessions: toDeduct } as any).select().single();
-    await supabase.from("prepaid_credits" as any).update({ used_sessions: credit.used_sessions + toDeduct, updated_at: new Date().toISOString() } as any).eq("id", credit.id);
-    // Optimistic local update
+    await Promise.all(updates.map(u =>
+      supabase.from("prepaid_credits" as any).update({ used_sessions: u.new_used, updated_at: new Date().toISOString() } as any).eq("id", u.id)
+    ));
     if (newDed) setDeductions(prev => [...prev, newDed as unknown as PrepaidDeduction]);
-    setPrepaidCredits(prev => prev.map(c => c.id === credit.id ? { ...c, used_sessions: c.used_sessions + toDeduct } : c));
+    setPrepaidCredits(prev => prev.map(c => {
+      const u = updates.find(x => x.id === c.id);
+      return u ? { ...c, used_sessions: u.new_used } : c;
+    }));
     toast({ title: `${toDeduct}회 차감 완료` });
     setDeductModal(null);
     setDeductCount("");
   };
 
-  // Undo deduction
+  // Undo deduction (LIFO restore — return sessions to youngest used tranche first)
   const undoDeduct = async (studentName: string) => {
     const ded = dedMap.get(studentName);
-    const credit = creditMap.get(studentName);
-    if (!ded || !credit) return;
+    const credits = getStudentCredits(studentName);
+    if (!ded || credits.length === 0) return;
+
+    let left = ded.deducted_sessions;
+    const updates: { id: string; new_used: number }[] = [];
+    for (const c of [...credits].reverse()) {
+      if (left <= 0) break;
+      if (c.used_sessions <= 0) continue;
+      const give = Math.min(c.used_sessions, left);
+      updates.push({ id: c.id, new_used: c.used_sessions - give });
+      left -= give;
+    }
+
     await supabase.from("prepaid_deductions" as any).delete().eq("student_name", studentName).eq("month", periodKey);
-    await supabase.from("prepaid_credits" as any).update({ used_sessions: Math.max(0, credit.used_sessions - ded.deducted_sessions), updated_at: new Date().toISOString() } as any).eq("id", credit.id);
-    // Optimistic local update
+    await Promise.all(updates.map(u =>
+      supabase.from("prepaid_credits" as any).update({ used_sessions: u.new_used, updated_at: new Date().toISOString() } as any).eq("id", u.id)
+    ));
     setDeductions(prev => prev.filter(d => !(d.student_name === studentName && d.month === periodKey)));
-    setPrepaidCredits(prev => prev.map(c => c.id === credit.id ? { ...c, used_sessions: Math.max(0, c.used_sessions - ded.deducted_sessions) } : c));
+    setPrepaidCredits(prev => prev.map(c => {
+      const u = updates.find(x => x.id === c.id);
+      return u ? { ...c, used_sessions: u.new_used } : c;
+    }));
     toast({ title: "차감 취소 완료" });
   };
 
@@ -576,27 +608,24 @@ export default function CashReceiptManagement() {
     if (!creditModal) return;
     const sessions = parseInt(creditInput.sessions);
     if (isNaN(sessions) || sessions <= 0) { toast({ title: "유효한 횟수를 입력하세요", variant: "destructive" }); return; }
-
-    if (creditModal.existing) {
-      // Add to existing
-      await supabase.from("prepaid_credits" as any).update({
-        total_sessions: creditModal.existing.total_sessions + sessions,
-        note: creditInput.note || creditModal.existing.note,
-        updated_at: new Date().toISOString(),
-      } as any).eq("id", creditModal.existing.id);
-    } else {
-      await supabase.from("prepaid_credits" as any).insert({
-        student_name: creditModal.name,
-        total_sessions: sessions,
-        used_sessions: 0,
-        note: creditInput.note || null,
-      } as any);
-    }
-    toast({ title: `선결제 ${sessions}회 등록 완료` });
+    const amountRaw = creditInput.amount.replace(/[^0-9]/g, "");
+    const feeTotal = amountRaw ? parseInt(amountRaw, 10) : sessions * LESSON_PRICE;
+    // Always create a new tranche (preserves history across payments)
+    await supabase.from("prepaid_credits" as any).insert({
+      student_name: creditModal.name,
+      total_sessions: sessions,
+      used_sessions: 0,
+      note: creditInput.note || null,
+      payment_month: periodKey,
+      fee_total: feeTotal,
+    } as any);
+    toast({ title: `선결제 ${sessions}회 (₩${feeTotal.toLocaleString()}) 등록 완료` });
     setCreditModal(null);
-    setCreditInput({ sessions: "", note: "" });
+    setCreditInput({ sessions: "", amount: "", note: "" });
     loadData();
   };
+
+
 
   const getFee = (s: StudentRecord) => {
     const override = feeOverrides.get(s.student_name);
