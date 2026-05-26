@@ -58,6 +58,8 @@ interface PrepaidCredit {
   used_sessions: number;
   note: string | null;
   created_at: string;
+  payment_month: string | null;
+  fee_total: number | null;
 }
 
 interface PrepaidDeduction {
