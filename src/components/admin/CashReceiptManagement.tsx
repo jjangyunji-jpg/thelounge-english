@@ -381,7 +381,19 @@ export default function CashReceiptManagement() {
 
 
   const confMap = new Map(confirmations.map(c => [c.student_name, c]));
-  const creditMap = new Map(prepaidCredits.map(c => [c.student_name, c]));
+  // Group prepaid credits by student (sorted oldest -> newest for FIFO)
+  const creditsByStudent = new Map<string, PrepaidCredit[]>();
+  for (const c of prepaidCredits) {
+    const list = creditsByStudent.get(c.student_name) || [];
+    list.push(c);
+    creditsByStudent.set(c.student_name, list);
+  }
+  for (const [, list] of creditsByStudent) {
+    list.sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+  }
+  const getStudentCredits = (name: string): PrepaidCredit[] => creditsByStudent.get(name) || [];
+  const getStudentRemaining = (name: string): number =>
+    getStudentCredits(name).reduce((s, c) => s + (c.total_sessions - c.used_sessions), 0);
   const dedMap = new Map(deductions.map(d => [d.student_name, d]));
   const receiptMap = new Map(receipts.map(r => [r.student_name, r]));
 
