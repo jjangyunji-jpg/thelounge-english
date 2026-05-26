@@ -968,9 +968,11 @@ export default function CashReceiptManagement() {
       : (billableCounts.has(s.student_name) ? (billableCounts.get(s.student_name) || 0) : (sessionCounts.get(s.student_name) || 0));
     const fee = isCorporate ? getCorpFee(s) : getFee(s);
     const isOverridden = hasOverride(s.student_name);
-    const credit = creditMap.get(s.student_name);
+    const credits = getStudentCredits(s.student_name);
+    const totalRemaining = credits.reduce((sum, c) => sum + (c.total_sessions - c.used_sessions), 0);
+    const totalCredits = credits.reduce((sum, c) => sum + c.total_sessions, 0);
     const ded = dedMap.get(s.student_name);
-    const hasPrepaid = !!credit && (credit.total_sessions - credit.used_sessions) > 0;
+    const hasPrepaid = totalRemaining > 0;
     const isRefund = !isCorporate && refundFlags.has(s.student_name);
     const isInactive = s.status === "inactive";
 
