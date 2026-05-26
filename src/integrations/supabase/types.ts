@@ -1454,8 +1454,10 @@ export type Database = {
       prepaid_credits: {
         Row: {
           created_at: string
+          fee_total: number | null
           id: string
           note: string | null
+          payment_month: string | null
           student_name: string
           total_sessions: number
           updated_at: string
@@ -1463,8 +1465,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          fee_total?: number | null
           id?: string
           note?: string | null
+          payment_month?: string | null
           student_name: string
           total_sessions?: number
           updated_at?: string
@@ -1472,8 +1476,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          fee_total?: number | null
           id?: string
           note?: string | null
+          payment_month?: string | null
           student_name?: string
           total_sessions?: number
           updated_at?: string
