@@ -2370,12 +2370,24 @@ export default function StudentDashboard() {
               }
               return todayKst >= period.start_date && todayKst <= end;
             };
-            const makeupSessions = allSessions.filter(s =>
-              s.cancellation_resolution === 'makeup' &&
-              s.cancellation_type &&
-              s.cancellation_type !== 'no_show' &&
-              isMakeupEligible(s)
-            );
+            // 이미 보강이 완료된(또는 활성 보강 세션이 잡힌) 원본 날짜는 제외
+            const coveredOriginDates = new Set<string>();
+            for (const s of allSessions) {
+              if (!Array.isArray(s.reschedule_origin_dates) || s.reschedule_origin_dates.length === 0) continue;
+              if (s.cancellation_type) continue; // 보강 세션 자체가 취소됐으면 커버 안 됨
+              for (const od of s.reschedule_origin_dates) {
+                if (od) coveredOriginDates.add(od);
+              }
+            }
+            const makeupSessions = allSessions.filter(s => {
+              if (s.cancellation_resolution !== 'makeup') return false;
+              if (!s.cancellation_type) return false;
+              if (s.cancellation_type === 'no_show') return false;
+              if (!isMakeupEligible(s)) return false;
+              const kstDate = new Date(s.scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+              if (coveredOriginDates.has(kstDate)) return false;
+              return true;
+            });
             if (makeupSessions.length === 0) return null;
             return (
               <div className="rounded-lg border border-[hsl(var(--gold)/0.4)] bg-[hsl(var(--gold)/0.08)] px-3 py-2.5">
