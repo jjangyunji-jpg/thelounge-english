@@ -936,8 +936,15 @@ export default function StudentDashboard() {
         return p.start_date <= today && p.end_date >= today;
       });
       // 수강기간 시작일이 도래했으면 미결제 팝업 후보
-      if (activePeriod) {
-        const monthCandidates = [currentMonth, activePeriod.id];
+      // 단, 학생의 실제 수업 시작일이 활성 기간 이후라면 (= 다음 달부터 시작하는 신규 학생) 스킵
+      const studentStartsAfterActive =
+        !!earliestStartDate && !!activePeriod && earliestStartDate > activePeriod.end_date;
+      if (activePeriod && !studentStartsAfterActive) {
+        // 활성 기간 + 다가오는 모든 미래 기간을 함께 검사 (어드민이 다음 달 결제를 미리 확인한 경우 대응)
+        const futurePeriodIds = (periodsRes.data || [])
+          .filter((p: SchedulePeriod) => p.start_date >= activePeriod.start_date)
+          .map((p: SchedulePeriod) => p.id);
+        const monthCandidates = [currentMonth, ...futurePeriodIds];
 
         const { data: paymentConfs } = await supabase
           .from("payment_confirmations")
@@ -945,9 +952,9 @@ export default function StudentDashboard() {
           .eq("student_name", student)
           .in("month", monthCandidates);
 
-        const paymentConf = paymentConfs?.find(c => c.confirmed) || paymentConfs?.[0] || null;
+        const hasConfirmed = (paymentConfs || []).some(c => c.confirmed);
 
-        if (!paymentConf || !paymentConf.confirmed) {
+        if (!hasConfirmed) {
           // 오늘 하루만 dismiss (날짜 단위 키)
           const dismissedKey = `payment_reminder_dismissed_${student}_${today}`;
           if (!localStorage.getItem(dismissedKey)) {
@@ -955,6 +962,7 @@ export default function StudentDashboard() {
           }
         }
       }
+
     }
 
     // ── 피드백 설문조사 체크 ──
