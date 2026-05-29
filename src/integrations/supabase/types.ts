@@ -429,6 +429,7 @@ export type Database = {
           id: string
           instructor_name: string
           is_carryover: boolean
+          is_substitute: boolean
           is_urgent_makeup: boolean
           level: string
           meet_link: string | null
@@ -438,6 +439,9 @@ export type Database = {
           scheduled_at: string
           started_at: string | null
           student_name: string
+          substitute_direction: string | null
+          substitute_instructor: string | null
+          substitute_origin_session_id: string | null
           topic: string | null
           updated_at: string
         }
@@ -453,6 +457,7 @@ export type Database = {
           id?: string
           instructor_name: string
           is_carryover?: boolean
+          is_substitute?: boolean
           is_urgent_makeup?: boolean
           level?: string
           meet_link?: string | null
@@ -462,6 +467,9 @@ export type Database = {
           scheduled_at: string
           started_at?: string | null
           student_name: string
+          substitute_direction?: string | null
+          substitute_instructor?: string | null
+          substitute_origin_session_id?: string | null
           topic?: string | null
           updated_at?: string
         }
@@ -477,6 +485,7 @@ export type Database = {
           id?: string
           instructor_name?: string
           is_carryover?: boolean
+          is_substitute?: boolean
           is_urgent_makeup?: boolean
           level?: string
           meet_link?: string | null
@@ -486,6 +495,9 @@ export type Database = {
           scheduled_at?: string
           started_at?: string | null
           student_name?: string
+          substitute_direction?: string | null
+          substitute_instructor?: string | null
+          substitute_origin_session_id?: string | null
           topic?: string | null
           updated_at?: string
         }

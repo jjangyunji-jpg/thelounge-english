@@ -42,3 +42,41 @@ export function formatMovedFromText(originDates: string[] | null | undefined): s
   );
   return `${parts.join(", ")}에서 변경`;
 }
+
+interface SubstituteBadgeProps {
+  /** 'in' on the mirror session (substitute instructor's actual class), 'out' on the original cancelled row */
+  direction: "in" | "out" | null | undefined;
+  /** Original instructor name (for 'in' side) — shown as "원 담당: 김OO" */
+  originalInstructorName?: string | null;
+  /** Substitute instructor name (for 'out' side) — shown as "대체: 박OO" */
+  substituteInstructorName?: string | null;
+  className?: string;
+}
+
+/**
+ * 대체 수업 뱃지. 대체 강사의 캘린더·대시보드, 학생의 다음 수업 카드, 노트 사이드바에 노출.
+ */
+export function SubstituteBadge({
+  direction,
+  originalInstructorName,
+  substituteInstructorName,
+  className,
+}: SubstituteBadgeProps) {
+  if (!direction) return null;
+  const isIn = direction === "in";
+  const label = isIn
+    ? `대체 수업${originalInstructorName ? ` (원 담당: ${originalInstructorName})` : ""}`
+    : `대체 진행${substituteInstructorName ? ` → ${substituteInstructorName}` : ""}`;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center px-1.5 py-0 rounded text-[9px] font-semibold leading-relaxed",
+        isIn ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+        className,
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
