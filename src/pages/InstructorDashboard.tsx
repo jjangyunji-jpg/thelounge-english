@@ -646,6 +646,11 @@ function CollapsibleSessions({ sessions, onReschedule, onTopicChange }: { sessio
               <span>{s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경</span>
             </p>
           )}
+          {s.is_substitute && s.substitute_direction === "in" && (
+            <p className="ml-5 mt-0.5">
+              <SubstituteBadge direction="in" originalInstructorName={undefined} />
+            </p>
+          )}
           {/* Inline topic editing */}
           {editingId === s.id ? (
             <div className="flex items-center gap-1 ml-5">
