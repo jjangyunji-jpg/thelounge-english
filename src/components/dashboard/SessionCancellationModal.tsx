@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,13 +8,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
-  BanIcon, Clock, UserX, CalendarOff, CalendarClock, AlertCircle,
+  BanIcon, Clock, UserX, CalendarOff, CalendarClock, AlertCircle, UserCheck, AlertTriangle,
 } from "lucide-react";
 
 // DB 값: no_show / student_cancel / sick / instructor_cancel / advance_cancel / late_cancel
 export type CancellationType = "student_cancel" | "no_show" | "sick" | "instructor_cancel" | "advance_cancel" | "late_cancel";
-export type CancellationResolution = "makeup" | "carry_over" | "refund" | "cancel" | "scheduled_advance";
+export type CancellationResolution = "makeup" | "carry_over" | "refund" | "cancel" | "scheduled_advance" | "substitute";
 
 interface CancellationOption {
   type: CancellationType;
@@ -28,11 +29,6 @@ interface CancellationOption {
   payNote: string; // 강사 정산 안내
 }
 
-// 신규 규정 (공지 기반) — 4가지 카테고리
-// - 당일 노쇼/4h 이내: 수업료 50%
-// - 학생 취소(48h~4h): BASE 11,000
-// - 강사 취소(병결/직계가족 사고·질병): 보강/이월/환불 선택
-// - 사전 취소: 보강/이월/환불 선택
 const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
     type: "no_show",
@@ -57,22 +53,22 @@ const CANCELLATION_OPTIONS: CancellationOption[] = [
   {
     type: "sick",
     label: "강사 취소 (병결 / 직계가족 사고·질병)",
-    description: "병결, 직계가족 사고 및 질병 등 부득이한 사유로 강사가 취소한 경우. 보강 / 이월 / 환불 중 선택해주세요.",
+    description: "병결, 직계가족 사고 및 질병 등 부득이한 사유로 강사가 취소한 경우. 보강 / 이월 / 환불 / 대체 강사 중 선택해주세요.",
     icon: Clock,
     billable: false,
     makeupAvailable: true,
     needsResolution: true,
-    payNote: "보강 진행 시에만 정상 지급",
+    payNote: "보강·대체 진행 시에만 정상 지급",
   },
   {
     type: "advance_cancel",
     label: "사전 취소 (협의된 예외)",
-    description: "사전에 협의되어 처리되는 예외적인 취소. 보강 / 이월 / 환불 중 선택해주세요.",
+    description: "사전에 협의되어 처리되는 예외적인 취소. 보강 / 이월 / 환불 / 대체 강사 중 선택해주세요.",
     icon: CalendarOff,
     billable: false,
     makeupAvailable: true,
     needsResolution: true,
-    payNote: "보강 진행 시 정상 지급 / 그 외 무급",
+    payNote: "보강·대체 진행 시 정상 지급 / 그 외 무급",
   },
 ];
 
@@ -80,28 +76,80 @@ const RESOLUTION_OPTIONS_DEFAULT: { value: CancellationResolution; label: string
   { value: "makeup", label: "보강", description: "보강 수업을 진행합니다" },
   { value: "carry_over", label: "다음달 이월", description: "다음달로 수업을 이월합니다" },
   { value: "refund", label: "환불", description: "해당 수업료를 환불합니다" },
+  { value: "substitute", label: "대체 강사", description: "다른 강사가 같은 시간에 대체 진행합니다" },
 ];
+
+interface InstructorOption {
+  id: string;
+  name: string;
+}
 
 interface Props {
   sessionId: string;
   studentName: string;
   scheduledAt: string;
+  currentInstructorName: string;
+  allInstructors: InstructorOption[];
   open: boolean;
   onClose: () => void;
-  onConfirm: (type: CancellationType, resolution: CancellationResolution | null, remark: string | null) => void;
+  onConfirm: (
+    type: CancellationType,
+    resolution: CancellationResolution | null,
+    remark: string | null,
+    extra?: { substituteInstructorName?: string; substituteConflictAcknowledged?: boolean },
+  ) => void;
 }
 
 export default function SessionCancellationModal({
-  studentName, scheduledAt, open, onClose, onConfirm,
+  sessionId, studentName, scheduledAt, currentInstructorName, allInstructors, open, onClose, onConfirm,
 }: Props) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [resolution, setResolution] = useState<CancellationResolution | null>(null);
   const [remark, setRemark] = useState("");
   const [reasonTag, setReasonTag] = useState<string | null>(null);
   const [step, setStep] = useState<"type" | "resolution">("type");
+  const [substituteInstructor, setSubstituteInstructor] = useState<string>("");
+  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+  const [checkingConflict, setCheckingConflict] = useState(false);
 
   const selectedOption = selectedIndex !== null ? CANCELLATION_OPTIONS[selectedIndex] : null;
   const needsReasonTag = selectedOption?.type === "sick";
+  const isSubstitute = resolution === "substitute";
+
+  // 대체 강사 선택 시 같은 시각 충돌 검사 (warning only)
+  useEffect(() => {
+    if (!isSubstitute || !substituteInstructor) {
+      setConflictWarning(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setCheckingConflict(true);
+      try {
+        const { data, error } = await supabase
+          .from("class_sessions")
+          .select("id, scheduled_at, student_name")
+          .eq("instructor_name", substituteInstructor)
+          .eq("scheduled_at", scheduledAt)
+          .is("cancellation_type", null)
+          .limit(3);
+        if (cancelled) return;
+        if (error) {
+          setConflictWarning(null);
+          return;
+        }
+        if (data && data.length > 0) {
+          const names = data.map((r: any) => r.student_name).join(", ");
+          setConflictWarning(`⚠ 같은 시각에 ${substituteInstructor} 강사의 수업이 이미 있습니다 (${names}). 그래도 진행할 수 있지만 일정 중복이 발생합니다.`);
+        } else {
+          setConflictWarning(null);
+        }
+      } finally {
+        if (!cancelled) setCheckingConflict(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isSubstitute, substituteInstructor, scheduledAt]);
 
   const handleTypeSelect = (idx: number) => {
     const option = CANCELLATION_OPTIONS[idx];
@@ -125,10 +173,14 @@ export default function SessionCancellationModal({
     if (!selectedOption || !resolution) return;
     if (needsReasonTag && !reasonTag) return;
     if (needsOtherReason && !remark.trim()) return;
+    if (isSubstitute && !substituteInstructor) return;
     const finalRemark = needsReasonTag
       ? `[${reasonTag}]${remark.trim() ? ` ${remark.trim()}` : ""}`
       : (remark.trim() || null);
-    onConfirm(selectedOption.type, resolution, finalRemark);
+    onConfirm(selectedOption.type, resolution, finalRemark, isSubstitute ? {
+      substituteInstructorName: substituteInstructor,
+      substituteConflictAcknowledged: !!conflictWarning,
+    } : undefined);
     resetState();
   };
 
@@ -138,6 +190,8 @@ export default function SessionCancellationModal({
     setRemark("");
     setReasonTag(null);
     setStep("type");
+    setSubstituteInstructor("");
+    setConflictWarning(null);
   };
 
   const handleClose = () => {
@@ -153,6 +207,8 @@ export default function SessionCancellationModal({
     minute: "2-digit",
     timeZone: "Asia/Seoul",
   });
+
+  const otherInstructors = allInstructors.filter(i => i.name !== currentInstructorName);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
@@ -270,15 +326,50 @@ export default function SessionCancellationModal({
                   )}>
                     {resolution === opt.value && <div className="w-2 h-2 rounded-full bg-primary" />}
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-sm font-medium">{opt.label}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      {opt.value === "substitute" && <UserCheck className="w-3.5 h-3.5 text-primary" />}
+                      <span className="text-sm font-medium">{opt.label}</span>
+                    </div>
                     <p className="text-xs text-muted-foreground">{opt.description}</p>
                   </div>
                 </button>
               ))}
             </div>
 
-            {!needsOtherReason && (resolution === "carry_over" || resolution === "refund" || resolution === "cancel") && (
+            {isSubstitute && (
+              <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                <label className="text-xs font-medium text-foreground block">
+                  대체 진행할 강사 선택 <span className="text-destructive">*</span>
+                </label>
+                <select
+                  value={substituteInstructor}
+                  onChange={e => setSubstituteInstructor(e.target.value)}
+                  className="w-full text-sm h-9 rounded-md border border-input bg-background px-2"
+                >
+                  <option value="">강사를 선택하세요</option>
+                  {otherInstructors.map(i => (
+                    <option key={i.id} value={i.name}>{i.name}</option>
+                  ))}
+                </select>
+                {checkingConflict && (
+                  <p className="text-[11px] text-muted-foreground">일정 확인 중...</p>
+                )}
+                {conflictWarning && (
+                  <div className="flex items-start gap-1.5 text-[11px] text-[hsl(var(--warning))] bg-[hsl(var(--warning))]/10 border border-[hsl(var(--warning))]/30 rounded px-2 py-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{conflictWarning}</span>
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  · 대체 강사 캘린더에 새 일정이 생성되고, 학생에게는 알림이 전송됩니다.<br/>
+                  · 학생의 Google Meet 링크는 그대로 유지됩니다.<br/>
+                  · 정산은 대체 강사 본인의 단가·레벨 할증 기준으로 지급됩니다.
+                </p>
+              </div>
+            )}
+
+            {!needsOtherReason && !isSubstitute && (resolution === "carry_over" || resolution === "refund" || resolution === "cancel") && (
               <Textarea
                 placeholder="메모 (선택사항)"
                 value={remark}
@@ -289,12 +380,12 @@ export default function SessionCancellationModal({
             )}
 
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => { setStep("type"); setResolution(null); setRemark(""); setReasonTag(null); }}>
+              <Button variant="outline" className="flex-1" onClick={() => { setStep("type"); setResolution(null); setRemark(""); setReasonTag(null); setSubstituteInstructor(""); setConflictWarning(null); }}>
                 뒤로
               </Button>
               <Button
                 className="flex-1"
-                disabled={!resolution || (needsReasonTag && !reasonTag) || (needsOtherReason && !remark.trim())}
+                disabled={!resolution || (needsReasonTag && !reasonTag) || (needsOtherReason && !remark.trim()) || (isSubstitute && !substituteInstructor)}
                 onClick={handleConfirmResolution}
               >
                 확인
