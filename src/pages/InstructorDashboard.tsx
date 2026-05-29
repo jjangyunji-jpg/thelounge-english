@@ -4156,22 +4156,27 @@ export default function InstructorDashboard() {
           sessionId={cancellationModal.session.id}
           studentName={cancellationModal.session.student_name}
           scheduledAt={cancellationModal.session.scheduled_at}
+          currentInstructorName={cancellationModal.session.instructor_name}
+          allInstructors={allInstructors}
           open={!!cancellationModal}
           onClose={() => setCancellationModal(null)}
-          onConfirm={async (type, resolution, remark) => {
+          onConfirm={async (type, resolution, remark, extra) => {
             const sess = cancellationModal.session;
             const updates: any = { cancellation_type: type, cancellation_resolution: resolution };
             if (remark) updates.remarks = remark;
 
-            // Carry-over (이월): mark the original session in the current month
-            // as "next" (당월→다음달 이월) AND create a mirror session in the
-            // next month marked as "prev" so the count report shows:
-            //   • current month "이월(당월)" +1
-            //   • next month "이월(전월)" +1
+            // Carry-over (이월)
             if (resolution === "carry_over") {
               updates.is_carryover = true;
               updates.carryover_direction = "next";
               updates.carryover_reason = type;
+            }
+
+            // Substitute (대체 강사): mark original as 'out'
+            if (resolution === "substitute" && extra?.substituteInstructorName) {
+              updates.is_substitute = true;
+              updates.substitute_direction = "out";
+              updates.substitute_instructor = extra.substituteInstructorName;
             }
 
             const { error } = await supabase
@@ -4224,7 +4229,77 @@ export default function InstructorDashboard() {
               }
             }
 
-            // No-show: send a notification to the student's dashboard inbox
+            // Create mirror session under substitute instructor (same time slot)
+            if (resolution === "substitute" && extra?.substituteInstructorName) {
+              // Copy notes/topic so substitute starts with original's content
+              const { data: mirror, error: subErr } = await supabase
+                .from("class_sessions")
+                .insert({
+                  student_name: sess.student_name,
+                  instructor_name: extra.substituteInstructorName,
+                  scheduled_at: sess.scheduled_at,
+                  level: (sess as any).level || "B1",
+                  group_students: (sess as any).group_students || [],
+                  topic: (sess as any).topic ?? null,
+                  notes: (sess as any).notes ?? null,
+                  meet_link: sess.meet_link, // 학생 고정 Meet 링크 유지
+                  is_substitute: true,
+                  substitute_direction: "in",
+                  substitute_origin_session_id: sess.id,
+                })
+                .select("id")
+                .single();
+              if (subErr) {
+                console.error("[substitute mirror] failed", subErr);
+                toast({
+                  title: "대체 세션 생성 실패",
+                  description: subErr.message,
+                  variant: "destructive",
+                });
+              } else {
+                // Best-effort: create calendar event on substitute's calendar
+                try {
+                  await supabase.functions.invoke("sync-calendar-event", {
+                    body: {
+                      action: "create",
+                      session_id: (mirror as any)?.id,
+                      instructor_name: extra.substituteInstructorName,
+                      student_name: sess.student_name,
+                      scheduled_at: sess.scheduled_at,
+                      meet_link: sess.meet_link,
+                    },
+                  });
+                } catch (e) { console.warn("[gcal sub create] skipped", e); }
+
+                // Notify substitute instructor inbox
+                try {
+                  const dateLabel = new Date(sess.scheduled_at).toLocaleDateString("ko-KR", {
+                    month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul",
+                  });
+                  await supabase.from("admin_notifications").insert({
+                    target: `instructor:${extra.substituteInstructorName}`,
+                    subject: "대체 수업이 배정되었습니다",
+                    body: `${dateLabel}에 ${sess.student_name} 학생의 대체 수업이 배정되었습니다 (원 담당: ${sess.instructor_name}). 캘린더와 대시보드에서 확인해주세요.`,
+                    sent_at: new Date().toISOString(),
+                  } as any);
+                } catch (e) { console.warn("[sub notify] failed", e); }
+
+                // Notify student
+                try {
+                  const dateLabel = new Date(sess.scheduled_at).toLocaleDateString("ko-KR", {
+                    month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul",
+                  });
+                  await supabase.from("admin_notifications").insert({
+                    target: `student:${sess.student_name}`,
+                    subject: "수업 강사 변경 안내",
+                    body: `${dateLabel} 수업은 ${extra.substituteInstructorName} 강사님이 대체 진행합니다. Google Meet 링크는 기존과 동일합니다.`,
+                    sent_at: new Date().toISOString(),
+                  } as any);
+                } catch (e) { console.warn("[sub student notify] failed", e); }
+              }
+            }
+
+            // No-show notification
             if (type === "no_show") {
               try {
                 const dateLabel = new Date(sess.scheduled_at).toLocaleDateString("ko-KR", {
@@ -4244,13 +4319,11 @@ export default function InstructorDashboard() {
             toast({
               title: resolution === "carry_over"
                 ? "다음달로 이월 처리되었습니다"
+                : resolution === "substitute"
+                ? `${extra?.substituteInstructorName} 강사에게 대체 배정되었습니다`
                 : "수업이 취소 처리되었습니다",
             });
-            // Calendar sync per cancellation type:
-            //  • no_show: keep the event as-is (badge only on note)
-            //  • student_cancel (당일 취소): rename event to "(취) 강사_학생"
-            //  • sick / instructor_cancel / advance_cancel: delete event
-            //    (보강 승인 시 별도로 새 슬롯이 캘린더에 생성됨)
+            // Calendar sync for original session
             try {
               if (type === "student_cancel") {
                 await supabase.functions.invoke("sync-calendar-event", {
@@ -4275,7 +4348,6 @@ export default function InstructorDashboard() {
                   },
                 });
               }
-              // no_show: do nothing — event stays on calendar
             } catch (e) {
               console.warn("[gcal cancel sync] skipped", e);
             }
