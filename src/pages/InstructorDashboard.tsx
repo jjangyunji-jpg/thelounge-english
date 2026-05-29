@@ -124,6 +124,11 @@ interface ClassSession {
   carryover_direction?: "next" | "prev" | null;
   carryover_reason?: string | null;
   gcal_event_id?: string | null;
+  is_substitute?: boolean;
+  substitute_direction?: "out" | "in" | null;
+  substitute_instructor?: string | null;
+  substitute_origin_session_id?: string | null;
+  group_students?: string[];
 }
 
 interface HomeworkAssignment {
