@@ -1494,8 +1494,35 @@ export default function InstructorDashboard() {
       }
     }
 
+    // Auto-delete substitute mirror session (only if untouched)
+    if (wasSubstitute) {
+      const { data: subs } = await supabase
+        .from("class_sessions")
+        .select("id, scheduled_at, started_at, ended_at, notes, gcal_event_id, instructor_name")
+        .eq("substitute_origin_session_id", s.id)
+        .limit(1);
+      const sub = subs?.[0] as { id: string; scheduled_at: string; started_at: string | null; ended_at: string | null; notes: string | null; gcal_event_id: string | null; instructor_name: string } | undefined;
+      if (sub && !sub.started_at && !sub.ended_at && (!sub.notes || sub.notes.replace(/<[^>]*>/g, "").trim() === "")) {
+        await supabase.from("class_sessions").delete().eq("id", sub.id);
+        try {
+          await supabase.functions.invoke("sync-calendar-event", {
+            body: {
+              action: "delete",
+              session_id: sub.id,
+              instructor_name: sub.instructor_name,
+              student_name: s.student_name,
+              scheduled_at: sub.scheduled_at,
+              gcal_event_id: sub.gcal_event_id,
+            },
+          });
+        } catch (e) { console.warn("[gcal sub delete] skipped", e); }
+        setSessions(prev => prev.filter(sess => sess.id !== sub.id));
+        mirrorDeletedNote += " · 대체 세션도 삭제됨";
+      }
+    }
+
     toast({ title: `취소 상태가 복원되었습니다${mirrorDeletedNote}` });
-    setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null, is_carryover: false, carryover_direction: null, carryover_reason: null } : sess));
+    setSessions(prev => prev.map(sess => sess.id === s.id ? { ...sess, cancellation_type: null, cancellation_resolution: null, is_carryover: false, carryover_direction: null, carryover_reason: null, is_substitute: false, substitute_direction: null, substitute_instructor: null } : sess));
 
     // Best-effort: re-create the calendar event that was removed on cancel
     try {
