@@ -1704,14 +1704,25 @@ export default function InstructorDashboard() {
       return true;
     };
 
-    const sessionBelongsToThisInstructor = (session: { student_name: string; scheduled_at: string }) => {
+    const isInboundSubstituteForThisInstructor = (session: {
+      instructor_name?: string | null;
+      is_substitute?: boolean | null;
+      substitute_direction?: string | null;
+    }) =>
+      session.is_substitute === true &&
+      session.substitute_direction === "in" &&
+      session.instructor_name === ins.name;
+
+    const sessionBelongsToThisInstructor = (session: { student_name: string; scheduled_at: string; instructor_name?: string | null; is_substitute?: boolean | null; substitute_direction?: string | null }) => {
+      if (isInboundSubstituteForThisInstructor(session)) return true;
       const candidates = studentsByName.get(session.student_name) || [];
       if (candidates.length === 0) return false;
       const dateStr = getKSTDateString(session.scheduled_at);
       return candidates.some((st) => isWithinStudentWindow(st, dateStr));
     };
 
-    const shouldHideSession = (session: { student_name: string; scheduled_at: string }) => {
+    const shouldHideSession = (session: { student_name: string; scheduled_at: string; instructor_name?: string | null; is_substitute?: boolean | null; substitute_direction?: string | null }) => {
+      if (isInboundSubstituteForThisInstructor(session)) return false;
       const candidates = studentsByName.get(session.student_name) || [];
       const dateStr = getKSTDateString(session.scheduled_at);
       const matchingStudents = candidates.filter((st) => isWithinStudentWindow(st, dateStr));
