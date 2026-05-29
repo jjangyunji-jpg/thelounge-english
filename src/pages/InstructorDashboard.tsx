@@ -1444,6 +1444,7 @@ export default function InstructorDashboard() {
 
   const handleRestoreCancellation = async (s: ClassSession) => {
     const wasCarryOverNext = s.is_carryover && s.carryover_direction === "next";
+    const wasSubstitute = s.is_substitute && s.substitute_direction === "out";
 
     const { error } = await supabase.from("class_sessions").update({
       cancellation_type: null,
@@ -1451,6 +1452,9 @@ export default function InstructorDashboard() {
       is_carryover: false,
       carryover_direction: null,
       carryover_reason: null,
+      is_substitute: false,
+      substitute_direction: null,
+      substitute_instructor: null,
     } as any).eq("id", s.id);
 
     if (error) {
