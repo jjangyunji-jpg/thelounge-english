@@ -2796,6 +2796,7 @@ export default function InstructorDashboard() {
                                                 {s.cancellation_resolution === 'makeup' && ' · 보강'}
                                                 {s.cancellation_resolution === 'carry_over' && ' · 이월'}
                                                 {s.cancellation_resolution === 'refund' && ' · 환불'}
+                                                {s.cancellation_resolution === 'substitute' && ` · 대체(${s.substitute_instructor ?? '대체'})`}
                                               </span>
                                             )}
                                             {!isCancelled && (() => {
