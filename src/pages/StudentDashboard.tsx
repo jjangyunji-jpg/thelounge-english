@@ -2359,6 +2359,8 @@ export default function StudentDashboard() {
             const todayKst = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
             const isMakeupEligible = (s: typeof allSessions[number]) => {
               const originDate = new Date(s.scheduled_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+              // 미래 날짜 세션이 사전에 보강 처리된 경우 → 항상 표시 (학생이 미리 신청할 수 있도록)
+              if (originDate >= todayKst) return true;
               const period = schedulePeriods.find(p => originDate >= p.start_date && originDate <= p.end_date);
               if (!period) return originDate.slice(0, 7) === todayKst.slice(0, 7);
               const endDate = new Date(period.end_date + "T00:00:00Z");
@@ -2378,6 +2380,7 @@ export default function StudentDashboard() {
               }
               return todayKst >= period.start_date && todayKst <= end;
             };
+
             // 이미 보강이 완료된(또는 활성 보강 세션이 잡힌) 원본 날짜는 제외
             const coveredOriginDates = new Set<string>();
             for (const s of allSessions) {
