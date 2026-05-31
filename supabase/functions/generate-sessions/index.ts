@@ -383,9 +383,12 @@ serve(async (req) => {
     if (sessionsToInsert.length > 0) {
       for (let i = 0; i < sessionsToInsert.length; i += 100) {
         const batch = sessionsToInsert.slice(i, i + 100);
+        // Plain insert — existingSet + deletedDateSet already prevent dupes.
+        // (upsert with onConflict can't be used because the unique index on
+        // (student_name, scheduled_at) is partial: WHERE cancellation_type IS NULL.)
         const { data: inserted, error: insertErr } = await sb
           .from("class_sessions")
-          .upsert(batch, { onConflict: "student_name,scheduled_at", ignoreDuplicates: true })
+          .insert(batch)
           .select("id, student_name, instructor_name, scheduled_at, meet_link");
         if (insertErr) {
           console.error("Insert error:", insertErr);
