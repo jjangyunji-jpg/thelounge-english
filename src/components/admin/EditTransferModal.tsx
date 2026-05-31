@@ -93,8 +93,23 @@ export default function EditTransferModal({
         await supabase.from("class_sessions").delete().in("id", deleteIds);
       }
 
-      // 4. Regenerate sessions for new instructor from new transfer date
-      const { totalCreated } = await autoGenerateSessions(newDateStr, studentName);
+      // 3b. Clear deleted_session_dates from min(old,new) onward so both
+      // the old instructor's pre-transfer gap (e.g. 장리원 6/4) and the new
+      // instructor's post-transfer dates can be regenerated. The trigger
+      // records deletions keyed by (student, date) without instructor, so
+      // leaving these rows blocks regeneration for BOTH instructors.
+      await supabase
+        .from("deleted_session_dates")
+        .delete()
+        .eq("student_name", studentName)
+        .gte("deleted_date", minDateStr);
+
+      // 4. Regenerate sessions for BOTH instructors from min(old,new) so the
+      // old instructor's sessions in the gap (before new transfer date) are
+      // restored, and the new instructor's sessions are created from the
+      // new transfer date. generate-sessions respects each record's
+      // start_date/end_date to assign to the correct instructor.
+      const { totalCreated } = await autoGenerateSessions(minDateStr, studentName);
 
       if (totalCreated === 0) {
         toast({
