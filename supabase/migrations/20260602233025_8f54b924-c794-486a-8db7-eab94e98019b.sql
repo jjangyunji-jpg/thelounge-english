@@ -1,0 +1,1 @@
+DELETE FROM public.deleted_session_dates WHERE student_name = '김성주' AND deleted_date >= '2026-06-01' AND deleted_date <= '2026-06-30';
