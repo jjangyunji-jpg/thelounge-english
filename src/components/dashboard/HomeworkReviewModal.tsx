@@ -500,8 +500,16 @@ export default function HomeworkReviewModal({
 
             {/* Audio */}
             {audioUrl && (
-              <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
                 <audio controls src={audioUrl} className="w-full h-8" />
+                <a
+                  href={audioUrl}
+                  download
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--navy))] hover:underline"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  녹음 다운로드
+                </a>
               </div>
             )}
 
