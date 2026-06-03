@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink, Undo2, Plus, Trash2, HelpCircle, Pencil, Wand2, ArrowUp,
+  X, Loader2, Sparkles, Check, PenLine, Mic, Send, Paperclip, ExternalLink, Undo2, Plus, Trash2, HelpCircle, Pencil, Wand2, ArrowUp, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
