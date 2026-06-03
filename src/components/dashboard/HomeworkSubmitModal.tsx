@@ -293,7 +293,7 @@ export default function HomeworkSubmitModal({
 
   const isReadingType = assignment.type === "reading" || assignment.type === "watching";
   const showTextArea = meta.requiresText || assignment.type === "memorizing" || isReadingType;
-  const showAudio = meta.requiresAudio || assignment.type === "memorizing";
+  const showAudio = meta.requiresAudio || assignment.type === "memorizing" || assignment.type === "speaking";
   const showFile = !!meta.requiresFile;
 
   // Reading/watching: text is optional, no other requirements
