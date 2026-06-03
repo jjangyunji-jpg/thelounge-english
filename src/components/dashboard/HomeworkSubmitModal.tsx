@@ -153,7 +153,7 @@ export default function HomeworkSubmitModal({
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
   const ttsUrlCacheRef = useRef<string | null>(null);
   const canListen =
-    (assignment.type === "reading" || assignment.type === "memorizing") &&
+    (assignment.type === "reading" || assignment.type === "memorizing" || assignment.type === "speaking") &&
     !!assignment.description?.trim();
 
   const stopSpeaking = useCallback(() => {
