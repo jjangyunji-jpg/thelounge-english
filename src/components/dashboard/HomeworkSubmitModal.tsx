@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Mic, Square, Play, Pause, Send, RotateCcw, Loader2, X,
   PenLine, BookOpen, Brain, Paperclip, FileUp, Monitor, Save,
-  Volume2, VolumeX,
+  Volume2, VolumeX, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -153,7 +153,7 @@ export default function HomeworkSubmitModal({
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
   const ttsUrlCacheRef = useRef<string | null>(null);
   const canListen =
-    (assignment.type === "reading" || assignment.type === "memorizing") &&
+    (assignment.type === "reading" || assignment.type === "memorizing" || assignment.type === "speaking") &&
     !!assignment.description?.trim();
 
   const stopSpeaking = useCallback(() => {
@@ -164,22 +164,24 @@ export default function HomeworkSubmitModal({
     setSpeaking(false);
   }, []);
 
+  const ensureTtsUrl = useCallback(async () => {
+    if (ttsUrlCacheRef.current) return ttsUrlCacheRef.current;
+    const { data, error } = await supabase.functions.invoke("homework-tts", {
+      body: { text: assignment.description },
+    });
+    if (error) throw error;
+    if (!data?.audio_url) throw new Error("음성 URL을 받지 못했습니다.");
+    ttsUrlCacheRef.current = data.audio_url as string;
+    return ttsUrlCacheRef.current;
+  }, [assignment.description]);
+
   const toggleSpeak = useCallback(async () => {
     if (!canListen || loadingTts) return;
     if (speaking) { stopSpeaking(); return; }
 
     try {
-      let url = ttsUrlCacheRef.current;
-      if (!url) {
-        setLoadingTts(true);
-        const { data, error } = await supabase.functions.invoke("homework-tts", {
-          body: { text: assignment.description },
-        });
-        if (error) throw error;
-        if (!data?.audio_url) throw new Error("음성 URL을 받지 못했습니다.");
-        url = data.audio_url as string;
-        ttsUrlCacheRef.current = url;
-      }
+      setLoadingTts(true);
+      const url = await ensureTtsUrl();
       const audio = new Audio(url);
       ttsAudioRef.current = audio;
       audio.onended = () => setSpeaking(false);
@@ -195,7 +197,36 @@ export default function HomeworkSubmitModal({
     } finally {
       setLoadingTts(false);
     }
-  }, [canListen, speaking, loadingTts, assignment.description, stopSpeaking, toast]);
+  }, [canListen, speaking, loadingTts, ensureTtsUrl, stopSpeaking, toast]);
+
+  const [downloadingTts, setDownloadingTts] = useState(false);
+  const downloadTts = useCallback(async () => {
+    if (!canListen || downloadingTts) return;
+    try {
+      setDownloadingTts(true);
+      const url = await ensureTtsUrl();
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("다운로드 실패");
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeTitle = (assignment.title || "homework").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 60);
+      a.href = objUrl;
+      a.download = `${safeTitle}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+    } catch (e) {
+      toast({
+        title: "다운로드 실패",
+        description: e instanceof Error ? e.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingTts(false);
+    }
+  }, [canListen, downloadingTts, ensureTtsUrl, assignment.title, toast]);
 
   // Stop audio when modal closes / unmounts
   useEffect(() => () => {
@@ -429,6 +460,18 @@ export default function HomeworkSubmitModal({
                   : speaking
                     ? <><VolumeX className="w-3.5 h-3.5" />중지</>
                     : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
+              </button>
+            )}
+            {canListen && (
+              <button
+                onClick={downloadTts}
+                disabled={downloadingTts}
+                title="음성 파일 다운로드"
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors disabled:opacity-60 text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                {downloadingTts
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Download className="w-3.5 h-3.5" />}
               </button>
             )}
             <button onClick={guardedClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
