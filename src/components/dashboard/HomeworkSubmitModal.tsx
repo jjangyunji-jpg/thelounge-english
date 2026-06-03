@@ -490,9 +490,17 @@ export default function HomeworkSubmitModal({
 
           {/* Previous submission */}
           {submission?.audio_url && (
-            <div>
+            <div className="space-y-2">
               <p className="text-[10px] text-muted-foreground mb-1">이전 녹음</p>
               <audio controls src={submission.audio_url} className="w-full h-8" />
+              <a
+                href={submission.audio_url}
+                download
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--navy))] hover:underline"
+              >
+                <Download className="w-3.5 h-3.5" />
+                녹음 다운로드
+              </a>
             </div>
           )}
 

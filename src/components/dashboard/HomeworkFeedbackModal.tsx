@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2, Wand2, ArrowUp, Volume2, Square } from "lucide-react";
+import { X, PenLine, Mic, Paperclip, ExternalLink, MessageSquare, BookOpen, Brain, Monitor, HelpCircle, Undo2, Loader2, Wand2, ArrowUp, Volume2, Square, Download } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -346,8 +346,16 @@ export default function HomeworkFeedbackModal({
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">내 제출물</p>
 
             {audioUrl && (
-              <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
                 <audio controls src={audioUrl} className="w-full h-8" />
+                <a
+                  href={audioUrl}
+                  download
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--navy))] hover:underline"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  녹음 다운로드
+                </a>
               </div>
             )}
 
