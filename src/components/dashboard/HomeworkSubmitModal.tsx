@@ -462,6 +462,18 @@ export default function HomeworkSubmitModal({
                     : <><Volume2 className="w-3.5 h-3.5" />듣기</>}
               </button>
             )}
+            {canListen && (
+              <button
+                onClick={downloadTts}
+                disabled={downloadingTts}
+                title="음성 파일 다운로드"
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors disabled:opacity-60 text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                {downloadingTts
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Download className="w-3.5 h-3.5" />}
+              </button>
+            )}
             <button onClick={guardedClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
               <X className="w-4 h-4" />
             </button>
