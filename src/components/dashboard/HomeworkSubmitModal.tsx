@@ -18,7 +18,7 @@ const HW_META: Record<HwType, {
 }> = {
   writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]",      requiresText: true,  requiresAudio: false },
   reading:    { label: "읽기",       icon: BookOpen,   color: "text-[hsl(var(--gold-dark))]", requiresText: false, requiresAudio: false },
-  speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]",   requiresText: false, requiresAudio: true },
+  speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]",   requiresText: false, requiresAudio: false },
   memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500",              requiresText: false, requiresAudio: false },
   file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500",                requiresText: false, requiresAudio: false, requiresFile: true },
   watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500",                requiresText: false, requiresAudio: false },
@@ -293,7 +293,7 @@ export default function HomeworkSubmitModal({
 
   const isReadingType = assignment.type === "reading" || assignment.type === "watching";
   const showTextArea = meta.requiresText || assignment.type === "memorizing" || isReadingType;
-  const showAudio = meta.requiresAudio || assignment.type === "memorizing";
+  const showAudio = meta.requiresAudio || assignment.type === "memorizing" || assignment.type === "speaking";
   const showFile = !!meta.requiresFile;
 
   // Reading/watching: text is optional, no other requirements
