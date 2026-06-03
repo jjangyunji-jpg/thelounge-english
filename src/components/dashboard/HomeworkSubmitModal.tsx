@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Mic, Square, Play, Pause, Send, RotateCcw, Loader2, X,
   PenLine, BookOpen, Brain, Paperclip, FileUp, Monitor, Save,
-  Volume2, VolumeX,
+  Volume2, VolumeX, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
