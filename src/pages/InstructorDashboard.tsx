@@ -1808,8 +1808,13 @@ export default function InstructorDashboard() {
       const sortedPast = [...pastPeriods].sort((a, b) => b.end_date.localeCompare(a.end_date));
       for (const pp of sortedPast) {
         // Find students who had completed sessions in this period
+        // Only count sessions actually taught by THIS instructor — otherwise
+        // post-transfer sessions taught by the new instructor (which still
+        // appear in filteredSessions for the pre-transfer window) would
+        // trigger a feedback prompt on the old instructor's dashboard.
         const periodSessions = filteredSessions.filter(s =>
           s.ended_at &&
+          s.instructor_name === ins.name &&
           s.scheduled_at >= pp.start_date &&
           s.scheduled_at <= pp.end_date + "T23:59:59"
         );
