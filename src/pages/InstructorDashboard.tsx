@@ -3131,7 +3131,8 @@ export default function InstructorDashboard() {
                         const hwType = a.type as HwType;
                         const meta = HW_TYPE_META[hwType];
                         const Icon = meta?.icon || FileText;
-                        const isQuickCheck = hwType === "reading" || hwType === "memorizing";
+                        const hasContent = !!(sub?.audio_url || sub?.file_url || (sub?.text_content && sub.text_content.trim()));
+                        const isQuickCheck = (hwType === "reading" || hwType === "memorizing") && !hasContent;
                         const nextSess = nextSessionByStudent.get(a.student_name);
 
                         return (
