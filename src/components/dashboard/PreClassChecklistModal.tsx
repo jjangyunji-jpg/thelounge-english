@@ -223,7 +223,8 @@ export default function PreClassChecklistModal({
                     const sub = hwSubmissionMap.get(a.id);
                     const isSubmitted = sub && (sub.status === "submitted" || sub.status === "reviewed");
                     const isReviewed = sub?.status === "reviewed";
-                    const isQuickCheck = a.type === "reading" || a.type === "memorizing" || a.type === "watching";
+                    const hasContent = !!(sub?.audio_url || sub?.file_url || (sub?.text_content && sub.text_content.trim()));
+                    const isQuickCheck = (a.type === "reading" || a.type === "memorizing" || a.type === "watching") && !hasContent;
 
                     return (
                       <div key={a.id} className={cn(

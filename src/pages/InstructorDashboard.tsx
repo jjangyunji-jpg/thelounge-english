@@ -3005,7 +3005,8 @@ export default function InstructorDashboard() {
                                             const Icon = meta?.icon || FileText;
                                             const isSubmitted = sub && (sub.status === "submitted" || sub.status === "reviewed");
                                             const isReviewed = sub && sub.status === "reviewed";
-                                            const isQuickCheck = hwType === "reading" || hwType === "memorizing" || hwType === "watching";
+                                             const hasContent = !!(sub?.audio_url || sub?.file_url || (sub?.text_content && sub.text_content.trim()));
+                                             const isQuickCheck = (hwType === "reading" || hwType === "memorizing" || hwType === "watching") && !hasContent;
                                             return (
                                               <div
                                                 key={a.id}
@@ -3130,7 +3131,8 @@ export default function InstructorDashboard() {
                         const hwType = a.type as HwType;
                         const meta = HW_TYPE_META[hwType];
                         const Icon = meta?.icon || FileText;
-                        const isQuickCheck = hwType === "reading" || hwType === "memorizing";
+                        const hasContent = !!(sub?.audio_url || sub?.file_url || (sub?.text_content && sub.text_content.trim()));
+                        const isQuickCheck = (hwType === "reading" || hwType === "memorizing") && !hasContent;
                         const nextSess = nextSessionByStudent.get(a.student_name);
 
                         return (
@@ -3206,7 +3208,8 @@ export default function InstructorDashboard() {
                         const hwType = a.type as HwType;
                         const meta = HW_TYPE_META[hwType];
                         const Icon = meta?.icon || FileText;
-                        const isQuickCheck = hwType === "reading" || hwType === "memorizing";
+                        const hasContent = !!(sub?.audio_url || sub?.file_url || (sub?.text_content && sub.text_content.trim()));
+                        const isQuickCheck = (hwType === "reading" || hwType === "memorizing") && !hasContent;
                         const assignmentSession = a.session_id ? sessions.find(s => s.id === a.session_id) : null;
 
                         return (
@@ -3415,7 +3418,8 @@ export default function InstructorDashboard() {
                                   const Icon = meta?.icon || FileText;
                                   const isSubmitted = sub && (sub.status === "submitted" || sub.status === "reviewed");
                                   const isReviewed = sub && sub.status === "reviewed";
-                                  const isQuickCheck = hwType === "reading" || hwType === "memorizing" || hwType === "watching";
+                                   const hasContent = !!(sub?.audio_url || sub?.file_url || (sub?.text_content && sub.text_content.trim()));
+                                   const isQuickCheck = (hwType === "reading" || hwType === "memorizing" || hwType === "watching") && !hasContent;
                                   return (
                                     <div
                                       key={a.id}
