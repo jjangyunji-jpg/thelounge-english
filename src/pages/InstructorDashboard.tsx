@@ -3005,7 +3005,8 @@ export default function InstructorDashboard() {
                                             const Icon = meta?.icon || FileText;
                                             const isSubmitted = sub && (sub.status === "submitted" || sub.status === "reviewed");
                                             const isReviewed = sub && sub.status === "reviewed";
-                                            const isQuickCheck = hwType === "reading" || hwType === "memorizing" || hwType === "watching";
+                                             const hasContent = !!(sub?.audio_url || sub?.file_url || (sub?.text_content && sub.text_content.trim()));
+                                             const isQuickCheck = (hwType === "reading" || hwType === "memorizing" || hwType === "watching") && !hasContent;
                                             return (
                                               <div
                                                 key={a.id}
