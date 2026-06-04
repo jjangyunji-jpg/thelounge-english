@@ -3325,10 +3325,13 @@ export default function InstructorDashboard() {
                       const activeStudents = students.filter(s => s.status === "active" && s.student_type !== "corporate");
                       const studentHwData = activeStudents.map(st => {
                         const sSessions = sessions.filter(s => s.student_name === st.student_name);
-                        const pastSessions = sSessions.filter(s => new Date(s.scheduled_at) <= nowTs).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-                        const latestPast = pastSessions[0] || null;
                         const futureSessions = sSessions.filter(s => new Date(s.scheduled_at) > nowTs).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
                         const nextSession = futureSessions[0] || null;
+                        // latestPast = session BEFORE nextSession (so submissions from the prior class show even after the
+                        // next class clock has started). Falls back to the most recent past session when there is no next.
+                        const cutoffTs = nextSession ? new Date(nextSession.scheduled_at).getTime() : nowTs.getTime();
+                        const pastSessions = sSessions.filter(s => new Date(s.scheduled_at).getTime() < cutoffTs).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+                        const latestPast = pastSessions[0] || null;
                          const sessionAssignments = assignments.filter(a => {
                            if (a.student_name !== st.student_name) return false;
                            if (a.is_preset) {
