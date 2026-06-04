@@ -2770,7 +2770,10 @@ export default function InstructorDashboard() {
                                 {(() => {
                                   const nowTs = new Date();
                                   const sSessions = sessions.filter(ss => ss.student_name === s.student_name);
-                                  const pastSess = sSessions.filter(ss => new Date(ss.scheduled_at) <= nowTs).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+                                  // latestPast = session BEFORE this rendered session (not based on clock).
+                                  // Using <= now would make today's session pick itself once it starts, hiding
+                                  // submissions that were filed against the previous session's assignment copies.
+                                  const pastSess = sSessions.filter(ss => new Date(ss.scheduled_at) < new Date(s.scheduled_at)).sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
                                   const latestPast = pastSess[0] || null;
                                    const studentAssignments = assignments.filter(a => {
                                      if (a.student_name !== s.student_name) return false;
