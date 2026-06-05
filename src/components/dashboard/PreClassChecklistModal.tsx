@@ -134,9 +134,17 @@ export default function PreClassChecklistModal({
   });
 
   const hwSubmissionMap = new Map<string, HomeworkSubmission>();
+  // Use sibling-aware lookup so submissions made against a cancelled/previous
+  // session's auto-copy still surface on the upcoming session's checklist.
   studentAssignments.forEach(a => {
-    const sub = submissions.find(sb => sb.assignment_id === a.id);
-    if (sub) hwSubmissionMap.set(a.id, sub);
+    const sub = findSubmissionForAssignment(
+      a,
+      assignments,
+      submissions,
+      0,
+      currentSessionTimeForWindow,
+    );
+    if (sub) hwSubmissionMap.set(a.id, sub as HomeworkSubmission);
   });
 
   const submittedCount = studentAssignments.filter(a => {
