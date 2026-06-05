@@ -156,6 +156,35 @@ interface HomeworkSubmission {
   ai_correction: any | null;
 }
 
+// Find the most recent submission for an assignment, including sibling assignments
+// that share the same preset_origin_id (e.g., when a student submits against a
+// previous (possibly cancelled) session's auto-copy before the current session's
+// copy receives a submission).
+function findSubmissionForAssignment(
+  a: HomeworkAssignment,
+  allAssignments: HomeworkAssignment[],
+  submissions: HomeworkSubmission[],
+  windowStartTs: number,
+  windowEndTs: number,
+): HomeworkSubmission | undefined {
+  const direct = submissions.find(s => s.assignment_id === a.id);
+  if (direct) return direct;
+  if (!a.preset_origin_id) return undefined;
+  const siblingIds = new Set<string>([a.preset_origin_id]);
+  for (const x of allAssignments) {
+    if (x.id !== a.id && x.student_name === a.student_name && x.preset_origin_id === a.preset_origin_id) {
+      siblingIds.add(x.id);
+    }
+  }
+  return submissions
+    .filter(s => s.assignment_id && siblingIds.has(s.assignment_id) && s.submitted_at)
+    .filter(s => {
+      const t = new Date(s.submitted_at).getTime();
+      return t >= windowStartTs && t < windowEndTs;
+    })
+    .sort((x, y) => new Date(y.submitted_at).getTime() - new Date(x.submitted_at).getTime())[0];
+}
+
 interface BusinessMeeting {
   id: string;
   instructor_id: string;
