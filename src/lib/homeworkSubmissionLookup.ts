@@ -14,7 +14,7 @@ export interface HwAssignmentLite {
 export interface HwSubmissionLite {
   id: string;
   assignment_id: string | null;
-  submitted_at: string | null;
+  submitted_at?: string | null;
   status?: string | null;
 }
 
