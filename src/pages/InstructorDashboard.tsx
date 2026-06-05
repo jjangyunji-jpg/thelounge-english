@@ -3451,7 +3451,7 @@ export default function InstructorDashboard() {
                             {isExpanded && (
                               <div className="ml-8 mt-1.5 space-y-1 mb-1">
                                 {sessionAssignments.length > 0 ? sessionAssignments.map(a => {
-                                  const sub = submissions.find(s => s.assignment_id === a.id);
+                                  const sub = findSubmissionForAssignment(a, assignments, submissions, winStart, winEnd);
                                   const hwType = a.type as HwType;
                                   const meta = HW_TYPE_META[hwType];
                                   const Icon = meta?.icon || FileText;
