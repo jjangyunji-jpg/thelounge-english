@@ -156,6 +156,35 @@ interface HomeworkSubmission {
   ai_correction: any | null;
 }
 
+// Find the most recent submission for an assignment, including sibling assignments
+// that share the same preset_origin_id (e.g., when a student submits against a
+// previous (possibly cancelled) session's auto-copy before the current session's
+// copy receives a submission).
+function findSubmissionForAssignment(
+  a: HomeworkAssignment,
+  allAssignments: HomeworkAssignment[],
+  submissions: HomeworkSubmission[],
+  windowStartTs: number,
+  windowEndTs: number,
+): HomeworkSubmission | undefined {
+  const direct = submissions.find(s => s.assignment_id === a.id);
+  if (direct) return direct;
+  if (!a.preset_origin_id) return undefined;
+  const siblingIds = new Set<string>([a.preset_origin_id]);
+  for (const x of allAssignments) {
+    if (x.id !== a.id && x.student_name === a.student_name && x.preset_origin_id === a.preset_origin_id) {
+      siblingIds.add(x.id);
+    }
+  }
+  return submissions
+    .filter(s => s.assignment_id && siblingIds.has(s.assignment_id) && s.submitted_at)
+    .filter(s => {
+      const t = new Date(s.submitted_at).getTime();
+      return t >= windowStartTs && t < windowEndTs;
+    })
+    .sort((x, y) => new Date(y.submitted_at).getTime() - new Date(x.submitted_at).getTime())[0];
+}
+
 interface BusinessMeeting {
   id: string;
   instructor_id: string;
@@ -2798,11 +2827,13 @@ export default function InstructorDashboard() {
                                    });
                                    const hasVocab = stVocabAll.length > 0;
                                    const vocabDone = stVocabScoped.some(v => v.completed_at);
-                                  const totalHw = studentAssignments.length + (hasVocab ? 1 : 0);
-                                  const submittedCount = studentAssignments.filter(a => {
-                                    const sub = submissions.find(sb => sb.assignment_id === a.id);
-                                    return sub && (sub.status === "submitted" || sub.status === "reviewed");
-                                  }).length + (vocabDone ? 1 : 0);
+                                   const winStart = pastSess[1] ? new Date(pastSess[1].scheduled_at).getTime() : 0;
+                                   const winEnd = new Date(s.scheduled_at).getTime() + 24 * 3600 * 1000;
+                                   const totalHw = studentAssignments.length + (hasVocab ? 1 : 0);
+                                   const submittedCount = studentAssignments.filter(a => {
+                                     const sub = findSubmissionForAssignment(a, assignments, submissions, winStart, winEnd);
+                                     return sub && (sub.status === "submitted" || sub.status === "reviewed");
+                                   }).length + (vocabDone ? 1 : 0);
                                   const allDone = totalHw > 0 && submittedCount === totalHw;
                                   const noneSubmitted = submittedCount === 0 && totalHw > 0;
                                   const isTodayExpanded = expandedTodayHwSession === s.id;
@@ -3002,7 +3033,7 @@ export default function InstructorDashboard() {
                                       {isTodayExpanded && totalHw > 0 && (
                                         <div className="mt-1.5 ml-[60px] space-y-1">
                                           {studentAssignments.map(a => {
-                                            const sub = submissions.find(sb => sb.assignment_id === a.id);
+                                            const sub = findSubmissionForAssignment(a, assignments, submissions, winStart, winEnd);
                                             const hwType = a.type as HwType;
                                             const meta = HW_TYPE_META[hwType];
                                             const Icon = meta?.icon || FileText;
@@ -3357,16 +3388,18 @@ export default function InstructorDashboard() {
                          });
                          const hasVocab = stVocabAll.length > 0;
                          const vocabDone = stVocabScoped.some(v => v.completed_at);
-                        const totalHw = sessionAssignments.length + (hasVocab ? 1 : 0);
-                        const submittedCount = sessionAssignments.filter(a => {
-                          const sub = submissions.find(s => s.assignment_id === a.id);
-                          return sub && (sub.status === "submitted" || sub.status === "reviewed");
-                        }).length + (vocabDone ? 1 : 0);
-                        const reviewedCount = sessionAssignments.filter(a => {
-                          const sub = submissions.find(s => s.assignment_id === a.id);
-                          return sub && sub.status === "reviewed";
-                        }).length;
-                        return { student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount, hasVocab, vocabDone };
+                         const winStart = pastSessions[1] ? new Date(pastSessions[1].scheduled_at).getTime() : 0;
+                         const winEnd = cutoffTs;
+                         const totalHw = sessionAssignments.length + (hasVocab ? 1 : 0);
+                         const submittedCount = sessionAssignments.filter(a => {
+                           const sub = findSubmissionForAssignment(a, assignments, submissions, winStart, winEnd);
+                           return sub && (sub.status === "submitted" || sub.status === "reviewed");
+                         }).length + (vocabDone ? 1 : 0);
+                         const reviewedCount = sessionAssignments.filter(a => {
+                           const sub = findSubmissionForAssignment(a, assignments, submissions, winStart, winEnd);
+                           return sub && sub.status === "reviewed";
+                         }).length;
+                         return { student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount, hasVocab, vocabDone, winStart, winEnd };
                       }).filter(d => d.totalHw > 0 || d.latestPast).sort((a, b) => {
                         const aTime = a.nextSession ? new Date(a.nextSession.scheduled_at).getTime() : Infinity;
                         const bTime = b.nextSession ? new Date(b.nextSession.scheduled_at).getTime() : Infinity;
@@ -3377,7 +3410,7 @@ export default function InstructorDashboard() {
                         return <p className="text-xs text-muted-foreground py-2">과제 데이터가 없습니다</p>;
                       }
 
-                      return studentHwData.map(({ student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount, hasVocab, vocabDone }) => {
+                      return studentHwData.map(({ student: st, latestPast, nextSession, sessionAssignments, totalHw, submittedCount, reviewedCount, hasVocab, vocabDone, winStart, winEnd }) => {
                         const allDone = totalHw > 0 && submittedCount === totalHw;
                         const noneSubmitted = submittedCount === 0 && totalHw > 0;
                         const isExpanded = expandedHwStudent === st.id;
@@ -3418,7 +3451,7 @@ export default function InstructorDashboard() {
                             {isExpanded && (
                               <div className="ml-8 mt-1.5 space-y-1 mb-1">
                                 {sessionAssignments.length > 0 ? sessionAssignments.map(a => {
-                                  const sub = submissions.find(s => s.assignment_id === a.id);
+                                  const sub = findSubmissionForAssignment(a, assignments, submissions, winStart, winEnd);
                                   const hwType = a.type as HwType;
                                   const meta = HW_TYPE_META[hwType];
                                   const Icon = meta?.icon || FileText;
