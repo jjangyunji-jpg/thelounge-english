@@ -151,18 +151,24 @@ export default function WeeklyTasksSection({
 
     // For session-specific assignments (including auto-copies), check all sibling
     // copies (cancelled sessions' copies, master preset) sharing preset_origin_id.
-    // Window: from latestSession backward we still want to allow the previous
-    // homework cycle's submission to count, so use 0..(latestSession + buffer).
+    // Window: only the current homework cycle — from the previous past session
+    // (exclusive) up to latestSession + 24h. This prevents months-old master
+    // preset submissions from being matched as "this week's submission".
     const cutoffTime = latestSession
       ? new Date(latestSession.scheduled_at).getTime() + 24 * 60 * 60 * 1000
       : Number.POSITIVE_INFINITY;
-    // Inject student_name (all entries here are for this student) for the helper
+    const windowStart = prevSession
+      ? new Date(prevSession.scheduled_at).getTime()
+      : 0;
+    // Inject student_name (all entries here are for this student) for the helper.
+    // Pass the full `assignments` list (not just weekAssignments) so sibling
+    // copies on other sessions are discoverable.
     const withName = (x: Assignment) => ({ ...x, student_name: studentName, preset_origin_id: x.preset_origin_id ?? null });
     return findSubmissionForAssignment(
       withName(assignment),
-      weekAssignments.map(withName),
+      assignments.map(withName),
       submissions as Submission[],
-      0,
+      windowStart,
       cutoffTime,
     ) as Submission | undefined;
   };
