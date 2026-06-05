@@ -92,15 +92,26 @@ export default function WeeklyTasksSection({
   const [feedbackAssignment, setFeedbackAssignment] = useState<{ assignment: Assignment; submission: Submission } | null>(null);
   const [expandedHwId, setExpandedHwId] = useState<string | null>(null);
 
-  // Find the most recent past session (latest completed/past session)
+  // Display the "current homework cycle": after a class ends, the next
+  // upcoming session's homework becomes due. So prefer the nearest upcoming
+  // (non-cancelled) session; fall back to the latest past session when there's
+  // no upcoming class scheduled.
   const now = new Date();
-  const pastSessions = sessions
+  const sortedAsc = [...sessions].sort(
+    (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime(),
+  );
+  const upcomingSession = sortedAsc.find(s => new Date(s.scheduled_at) > now) ?? null;
+  const pastSessions = sortedAsc
     .filter(s => new Date(s.scheduled_at) <= now)
-    .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-  const latestSession = pastSessions[0] ?? null;
+    .reverse(); // most recent first
+  // The "target" session whose homework cycle we display.
+  const latestSession = upcomingSession ?? pastSessions[0] ?? null;
   const latestSessionId = latestSession?.id ?? null;
-  // Second-most-recent session (used to filter preset submissions)
-  const prevSession = pastSessions[1] ?? null;
+  // Previous past session relative to the target session — used as the
+  // submission window start so months-old preset submissions don't leak in.
+  const prevSession = upcomingSession
+    ? (pastSessions[0] ?? null)
+    : (pastSessions[1] ?? null);
 
   // Calculate week number relative to period start
   const weekNumber = latestSession && periodStart
