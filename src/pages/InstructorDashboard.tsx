@@ -2313,7 +2313,8 @@ export default function InstructorDashboard() {
     const latestSessionId = latestPastSession?.id;
     for (const a of sAssignments) {
       if (a.is_preset && a.type === "memorizing") continue; // vocab test handles this
-      const sub = sSubmissions.find(s => s.assignment_id === a.id);
+      // Sibling-aware lookup so submissions on cancelled prior copies still count
+      const sub = findSubmissionForAssignment(a, sAssignments, sSubmissions, 0, now.getTime());
       if (!sub || (sub.status !== "submitted" && sub.status !== "reviewed")) continue;
       if (a.is_preset) {
         if (latestPastSession && sub.submitted_at && new Date(sub.submitted_at).getTime() >= latestSessionTime) {
