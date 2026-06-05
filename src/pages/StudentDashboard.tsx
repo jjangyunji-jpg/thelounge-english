@@ -1089,7 +1089,7 @@ export default function StudentDashboard() {
   };
 
   // ── 반복 일정에서 가상 세션 날짜 생성 ──
-  const recurringDates = studentRecord
+  const recurringDatesRaw = studentRecord
     ? generateRecurringDates(studentRecord.schedules, studentRecord.start_date || "", 3)
     : [];
 
@@ -1127,6 +1127,44 @@ export default function StudentDashboard() {
       holidayDateStringsEarly.add(cur.toDateString());
       cur.setDate(cur.getDate() + 1);
     }
+  });
+
+  const isDateInPauseLocal = (dateStr: string) => {
+    if (!studentRecord?.pauses || studentRecord.pauses.length === 0) return false;
+    const d = dateStr.slice(0, 10);
+    return studentRecord.pauses.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end));
+  };
+
+  // 월별 가상 반복 일정 제한:
+  // 같은 달에 실제 세션 수(cancelled 포함)가 반복일정 쿼터 이상이면
+  // (예: 일정 변경으로 비반복 날짜로 이동된 케이스), 해당 월의 가상 세션을 추가하지 않는다.
+  // 이렇게 하면 학생 캘린더의 월 세션 수가 강사 노트의 실제 세션 수와 일치한다.
+  const monthKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}`;
+  const realCountByMonth = new Map<string, number>();
+  for (const s of allSessions) {
+    const d = new Date(s.scheduled_at);
+    const dateKey = s.scheduled_at.slice(0, 10);
+    if (s.cancellation_type === 'instructor_cancel') continue;
+    if (holidayDateStringsEarly.has(d.toDateString())) continue;
+    if (isDateInPauseLocal(dateKey)) continue;
+    realCountByMonth.set(monthKey(d), (realCountByMonth.get(monthKey(d)) || 0) + 1);
+  }
+  const recurringQuotaByMonth = new Map<string, number>();
+  for (const d of recurringDatesRaw) {
+    recurringQuotaByMonth.set(monthKey(d), (recurringQuotaByMonth.get(monthKey(d)) || 0) + 1);
+  }
+  const virtualSlotsRemaining = new Map<string, number>();
+  for (const [m, quota] of recurringQuotaByMonth.entries()) {
+    const real = realCountByMonth.get(m) || 0;
+    virtualSlotsRemaining.set(m, Math.max(0, quota - real));
+  }
+  const recurringDates = recurringDatesRaw.filter(d => {
+    if (existingSessionDates.has(d.toDateString())) return true;
+    const m = monthKey(d);
+    const left = virtualSlotsRemaining.get(m) ?? 0;
+    if (left <= 0) return false;
+    virtualSlotsRemaining.set(m, left - 1);
+    return true;
   });
 
   // 반복 일정 중 아직 class_session에 없는 것들 (가상 upcoming) — 휴원/일시정지 제외
