@@ -1629,11 +1629,16 @@ export default function Classroom() {
                               setReviewModalHw({ id: h.id, type: h.type, title: h.title, description: h.description });
                               setReviewLoading(true);
                               const lookupIds = [h.id];
-                              if (h.presetOriginId) lookupIds.push(h.presetOriginId);
+                              if (h.presetOriginId) {
+                                lookupIds.push(h.presetOriginId);
+                                prevHwList
+                                  .filter(x => x.id !== h.id && x.presetOriginId === h.presetOriginId)
+                                  .forEach(x => lookupIds.push(x.id));
+                              }
                               const { data: subs } = await supabase
                                 .from("homework_submissions")
                                 .select("*")
-                                .in("assignment_id", lookupIds)
+                                .in("assignment_id", Array.from(new Set(lookupIds)))
                                 .order("submitted_at", { ascending: false })
                                 .limit(1);
                               const sub = subs?.[0] ?? null;
