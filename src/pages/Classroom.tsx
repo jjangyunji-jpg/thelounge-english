@@ -766,14 +766,14 @@ export default function Classroom() {
       }
 
       // Load previous session's homework status
-      // Fetch recent non-cancelled sessions before current to determine time window
-      // Use higher limit to skip cancelled sessions
+      // Fetch recent sessions before current to determine homework window.
+      // Do not skip cancelled sessions here: students may submit homework against
+      // a cancelled session's assignment copies, and the next class must show it.
       const { data: prevSessArr } = await supabase
         .from("class_sessions")
         .select("id, scheduled_at, cancellation_type")
         .eq("student_name", session.dbStudentName)
         .lt("scheduled_at", session.scheduledAt.toISOString())
-        .is("cancellation_type", null)
         .order("scheduled_at", { ascending: false })
         .limit(2);
 
@@ -816,7 +816,11 @@ export default function Classroom() {
           const presetOriginIds = filteredPrev
             .filter(h => h.preset_origin_id)
             .map(h => h.preset_origin_id as string);
-          const allLookupIds = [...hwIds, ...presetOriginIds];
+          const originIdSet = new Set(presetOriginIds);
+          const siblingCopyIds = prevHwData
+            .filter(h => h.preset_origin_id && originIdSet.has(h.preset_origin_id))
+            .map(h => h.id);
+          const allLookupIds = Array.from(new Set([...hwIds, ...presetOriginIds, ...siblingCopyIds]));
 
           // Time-window filter: only count submissions after the session before prevSession
           // Use generous upper bound — students may submit late (after current session started)
@@ -831,13 +835,18 @@ export default function Classroom() {
             .gte("submitted_at", cutoffTime);
 
           const subMap = new Map((subData || []).map(s => [s.assignment_id, s.status]));
+          const subByOrigin = new Map<string, string>();
+          (subData || []).forEach(s => {
+            const originId = prevHwData.find(h => h.id === s.assignment_id)?.preset_origin_id;
+            if (originId && !subByOrigin.has(originId)) subByOrigin.set(originId, s.status);
+          });
           setPrevHwList(filteredPrev.map(h => ({
             id: h.id,
             type: h.type as HwType,
             title: h.title,
             description: h.description,
             presetOriginId: h.preset_origin_id,
-            status: subMap.get(h.id) || (h.preset_origin_id ? subMap.get(h.preset_origin_id) : undefined) || "not_submitted",
+            status: subMap.get(h.id) || (h.preset_origin_id ? subByOrigin.get(h.preset_origin_id) || subMap.get(h.preset_origin_id) : undefined) || "not_submitted",
           })));
         } else {
           setPrevHwList([]);
@@ -1620,11 +1629,16 @@ export default function Classroom() {
                               setReviewModalHw({ id: h.id, type: h.type, title: h.title, description: h.description });
                               setReviewLoading(true);
                               const lookupIds = [h.id];
-                              if (h.presetOriginId) lookupIds.push(h.presetOriginId);
+                              if (h.presetOriginId) {
+                                lookupIds.push(h.presetOriginId);
+                                prevHwList
+                                  .filter(x => x.id !== h.id && x.presetOriginId === h.presetOriginId)
+                                  .forEach(x => lookupIds.push(x.id));
+                              }
                               const { data: subs } = await supabase
                                 .from("homework_submissions")
                                 .select("*")
-                                .in("assignment_id", lookupIds)
+                                .in("assignment_id", Array.from(new Set(lookupIds)))
                                 .order("submitted_at", { ascending: false })
                                 .limit(1);
                               const sub = subs?.[0] ?? null;
