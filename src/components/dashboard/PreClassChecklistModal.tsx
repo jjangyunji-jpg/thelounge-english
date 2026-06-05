@@ -6,6 +6,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { findSubmissionForAssignment } from "@/lib/homeworkSubmissionLookup";
 
 interface HomeworkAssignment {
   id: string;
