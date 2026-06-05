@@ -2827,11 +2827,13 @@ export default function InstructorDashboard() {
                                    });
                                    const hasVocab = stVocabAll.length > 0;
                                    const vocabDone = stVocabScoped.some(v => v.completed_at);
-                                  const totalHw = studentAssignments.length + (hasVocab ? 1 : 0);
-                                  const submittedCount = studentAssignments.filter(a => {
-                                    const sub = submissions.find(sb => sb.assignment_id === a.id);
-                                    return sub && (sub.status === "submitted" || sub.status === "reviewed");
-                                  }).length + (vocabDone ? 1 : 0);
+                                   const winStart = pastSess[1] ? new Date(pastSess[1].scheduled_at).getTime() : 0;
+                                   const winEnd = new Date(s.scheduled_at).getTime() + 24 * 3600 * 1000;
+                                   const totalHw = studentAssignments.length + (hasVocab ? 1 : 0);
+                                   const submittedCount = studentAssignments.filter(a => {
+                                     const sub = findSubmissionForAssignment(a, assignments, submissions, winStart, winEnd);
+                                     return sub && (sub.status === "submitted" || sub.status === "reviewed");
+                                   }).length + (vocabDone ? 1 : 0);
                                   const allDone = totalHw > 0 && submittedCount === totalHw;
                                   const noneSubmitted = submittedCount === 0 && totalHw > 0;
                                   const isTodayExpanded = expandedTodayHwSession === s.id;
