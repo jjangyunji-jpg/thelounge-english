@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import HomeworkSubmitModal from "./HomeworkSubmitModal";
 import HomeworkFeedbackModal from "./HomeworkFeedbackModal";
+import { findSubmissionForAssignment } from "@/lib/homeworkSubmissionLookup";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
@@ -148,18 +149,22 @@ export default function WeeklyTasksSection({
         .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())[0];
     }
 
-    // For session-specific assignments (including auto-copies), check both IDs
-    // Students may have submitted against the preset template before the copy was created
-    const directSub = submissions.find(s => s.assignment_id === aId);
-    if (directSub) return directSub;
-    if (assignment.preset_origin_id) {
-      const cutoffTime = new Date(latestSession!.scheduled_at).getTime();
-      return submissions
-        .filter(s => s.assignment_id === assignment.preset_origin_id && s.submitted_at)
-        .filter(s => new Date(s.submitted_at!).getTime() >= cutoffTime)
-        .sort((a, b) => new Date(b.submitted_at!).getTime() - new Date(a.submitted_at!).getTime())[0];
-    }
-    return undefined;
+    // For session-specific assignments (including auto-copies), check all sibling
+    // copies (cancelled sessions' copies, master preset) sharing preset_origin_id.
+    // Window: from latestSession backward we still want to allow the previous
+    // homework cycle's submission to count, so use 0..(latestSession + buffer).
+    const cutoffTime = latestSession
+      ? new Date(latestSession.scheduled_at).getTime() + 24 * 60 * 60 * 1000
+      : Number.POSITIVE_INFINITY;
+    // Inject student_name (all entries here are for this student) for the helper
+    const withName = (x: Assignment) => ({ ...x, student_name: studentName, preset_origin_id: x.preset_origin_id ?? null });
+    return findSubmissionForAssignment(
+      withName(assignment),
+      weekAssignments.map(withName),
+      submissions as Submission[],
+      0,
+      cutoffTime,
+    ) as Submission | undefined;
   };
 
   // Vocab test: compute week_label from the latest session date

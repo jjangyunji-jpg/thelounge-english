@@ -6,6 +6,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { findSubmissionForAssignment } from "@/lib/homeworkSubmissionLookup";
 
 interface HomeworkAssignment {
   id: string;
@@ -116,6 +117,7 @@ export default function PreClassChecklistModal({
 
   // Find the session immediately before the clicked session for this student
   const clickedTime = new Date(session.scheduled_at).getTime();
+  const currentSessionTimeForWindow = clickedTime;
   const studentSessions = allSessions
     .filter(ss => ss.student_name === session.student_name && new Date(ss.scheduled_at).getTime() < clickedTime)
     .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
@@ -133,9 +135,17 @@ export default function PreClassChecklistModal({
   });
 
   const hwSubmissionMap = new Map<string, HomeworkSubmission>();
+  // Use sibling-aware lookup so submissions made against a cancelled/previous
+  // session's auto-copy still surface on the upcoming session's checklist.
   studentAssignments.forEach(a => {
-    const sub = submissions.find(sb => sb.assignment_id === a.id);
-    if (sub) hwSubmissionMap.set(a.id, sub);
+    const sub = findSubmissionForAssignment(
+      a,
+      assignments,
+      submissions,
+      0,
+      currentSessionTimeForWindow,
+    );
+    if (sub) hwSubmissionMap.set(a.id, sub as HomeworkSubmission);
   });
 
   const submittedCount = studentAssignments.filter(a => {
