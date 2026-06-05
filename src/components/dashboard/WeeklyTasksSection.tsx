@@ -157,12 +157,12 @@ export default function WeeklyTasksSection({
       ? new Date(latestSession.scheduled_at).getTime() + 24 * 60 * 60 * 1000
       : Number.POSITIVE_INFINITY;
     return findSubmissionForAssignment(
-      assignment as any,
-      weekAssignments as any,
-      submissions as any,
+      assignment,
+      weekAssignments,
+      submissions,
       0,
       cutoffTime,
-    );
+    ) as typeof submissions[number] | undefined;
   };
 
   // Vocab test: compute week_label from the latest session date
