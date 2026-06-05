@@ -117,6 +117,7 @@ export default function PreClassChecklistModal({
 
   // Find the session immediately before the clicked session for this student
   const clickedTime = new Date(session.scheduled_at).getTime();
+  const currentSessionTimeForWindow = clickedTime;
   const studentSessions = allSessions
     .filter(ss => ss.student_name === session.student_name && new Date(ss.scheduled_at).getTime() < clickedTime)
     .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
