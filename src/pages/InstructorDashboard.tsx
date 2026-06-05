@@ -3033,7 +3033,7 @@ export default function InstructorDashboard() {
                                       {isTodayExpanded && totalHw > 0 && (
                                         <div className="mt-1.5 ml-[60px] space-y-1">
                                           {studentAssignments.map(a => {
-                                            const sub = submissions.find(sb => sb.assignment_id === a.id);
+                                            const sub = findSubmissionForAssignment(a, assignments, submissions, winStart, winEnd);
                                             const hwType = a.type as HwType;
                                             const meta = HW_TYPE_META[hwType];
                                             const Icon = meta?.icon || FileText;
