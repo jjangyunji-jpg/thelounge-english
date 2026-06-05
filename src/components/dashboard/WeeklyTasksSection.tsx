@@ -156,13 +156,15 @@ export default function WeeklyTasksSection({
     const cutoffTime = latestSession
       ? new Date(latestSession.scheduled_at).getTime() + 24 * 60 * 60 * 1000
       : Number.POSITIVE_INFINITY;
+    // Inject student_name (all entries here are for this student) for the helper
+    const withName = (x: Assignment) => ({ ...x, student_name: studentName, preset_origin_id: x.preset_origin_id ?? null });
     return findSubmissionForAssignment(
-      assignment,
-      weekAssignments,
-      submissions,
+      withName(assignment),
+      weekAssignments.map(withName),
+      submissions as Submission[],
       0,
       cutoffTime,
-    ) as typeof submissions[number] | undefined;
+    ) as Submission | undefined;
   };
 
   // Vocab test: compute week_label from the latest session date
