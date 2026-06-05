@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import HomeworkSubmitModal from "./HomeworkSubmitModal";
 import HomeworkFeedbackModal from "./HomeworkFeedbackModal";
+import { findSubmissionForAssignment } from "@/lib/homeworkSubmissionLookup";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
