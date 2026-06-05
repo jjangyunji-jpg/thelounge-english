@@ -142,6 +142,17 @@ export default function WeeklyTasksSection({
     // Fallback: show preset templates without copies (instructor hasn't opened classroom yet)
     if (a.is_preset) return true;
     return false;
+  }).map(a => {
+    // If this is a session copy that hasn't been submitted to yet, prefer the
+    // master preset's current description so instructor edits made after the
+    // copy was auto-created are reflected. Once a submission exists, keep the
+    // snapshot to preserve feedback context.
+    if (!a.preset_origin_id || a.is_preset) return a;
+    const hasSubmission = submissions.some(s => s.assignment_id === a.id && s.submitted_at);
+    if (hasSubmission) return a;
+    const master = assignments.find(x => x.id === a.preset_origin_id && x.is_preset);
+    if (!master) return a;
+    return { ...a, description: master.description, title: master.title };
   });
 
   // Submission lookup — session copies check both copy ID and preset_origin_id
