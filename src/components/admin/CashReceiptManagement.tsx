@@ -428,6 +428,9 @@ export default function CashReceiptManagement() {
   const isWithinPeriod = (s: StudentRecord) => {
     // Exclude students who haven't started yet by the end of this period (e.g. enrolled May → not in April list)
     if (s.start_date && pEndDate && s.start_date > pEndDate) return false;
+    // Exclude students whose registration ended before the period start
+    // (handles dedup keeping a stale "active" row whose end_date is set in the past)
+    if (s.end_date && pStartDate && s.end_date < pStartDate) return false;
     // Exclude students whose pause fully covers the period — check inline pause fields…
     if (s.pause_start && isPauseCoveringPeriod(s.pause_start, s.pause_end)) return false;
     // …and also any pause range stored in student_pauses table
