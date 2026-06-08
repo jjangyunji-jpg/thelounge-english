@@ -126,15 +126,19 @@ export default function ClassNote() {
       setLoadingSessions(true);
 
       // Fetch student's start_date, type, and group info
-      // Transferred students have multiple rows — pick the most recent record
+      // Transferred students have multiple rows — use EARLIEST start_date so
+      // pre-transfer notes (from previous instructor) are still visible.
+      // Use most-recent row for student_type/group_students (current setup).
       const { data: isRows } = await supabase
         .from("instructor_students")
         .select("start_date, student_type, group_students")
         .eq("student_name", student)
-        .order("start_date", { ascending: false, nullsFirst: false })
-        .limit(1);
+        .order("start_date", { ascending: false, nullsFirst: false });
       const isData = isRows?.[0] ?? null;
-      const startDate = isData?.start_date;
+      const startDate = (isRows ?? [])
+        .map(r => r.start_date)
+        .filter(Boolean)
+        .sort()[0]; // earliest start_date across all (transfer-aware)
       const studentType = (isData as any)?.student_type || "regular";
       const groupStudents: string[] = (isData as any)?.group_students || [];
 
