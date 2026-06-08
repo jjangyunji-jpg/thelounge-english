@@ -674,7 +674,8 @@ export default function Classroom() {
       const { data: sessionData } = await supabase
         .from("class_sessions").select("notes, remarks, group_students").eq("id", targetSessionId).single();
       if (isStale()) return;
-
+      const notesRaw = sessionData?.notes || "";
+      const isEmptyNotes = !notesRaw || notesRaw.replace(/<p><\/p>/g, "").replace(/<br\s*\/?>/g, "").trim() === "";
       if (!isEmptyNotes) {
         setNotes(notesRaw);
       } else {
@@ -689,8 +690,9 @@ export default function Classroom() {
         setRemarks(cleanRemarks);
         // If HTML was stripped, save the cleaned version back
         if (cleanRemarks !== sessionData.remarks) {
-          await supabase.from("class_sessions").update({ remarks: cleanRemarks }).eq("id", session.sessionId);
+          await supabase.from("class_sessions").update({ remarks: cleanRemarks }).eq("id", targetSessionId);
         }
+
       } else {
         // Fetch previous session's remarks for carry-forward
         const { data: prevSession } = await supabase
