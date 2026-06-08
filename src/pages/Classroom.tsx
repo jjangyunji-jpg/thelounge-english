@@ -704,15 +704,17 @@ export default function Classroom() {
           .order("scheduled_at", { ascending: false })
           .limit(1)
           .single();
+        if (isStale()) return;
         if (prevSession?.remarks) {
           const cleanPrev = stripHtml(prevSession.remarks);
           setRemarks(cleanPrev);
-          await supabase.from("class_sessions").update({ remarks: cleanPrev }).eq("id", session.sessionId);
+          await supabase.from("class_sessions").update({ remarks: cleanPrev }).eq("id", targetSessionId);
         } else {
           setRemarks("");
         }
       }
 
+      if (isStale()) return;
       // Load homework for primary student AND group members
       const gsArr = Array.isArray((sessionData as any)?.group_students) ? (sessionData as any).group_students as string[] : [];
       const allHwStudents = [session.dbStudentName, ...gsArr.filter(s => s !== session.dbStudentName)];
@@ -720,18 +722,19 @@ export default function Classroom() {
       const { data } = await supabase
         .from("homework_assignments").select("*")
         .in("student_name", allHwStudents)
-        .or(`session_id.eq.${session.sessionId},is_preset.eq.true`)
+        .or(`session_id.eq.${targetSessionId},is_preset.eq.true`)
         .order("created_at", { ascending: true });
+      if (isStale()) return;
 
       if (data && data.length > 0) {
         // Auto-create session copies for preset templates that don't have one yet
         // But skip if a manual assignment with the same title already exists for this session
         const existingCopyOriginIds = new Set(
-          data.filter(d => d.preset_origin_id && d.session_id === session.sessionId)
+          data.filter(d => d.preset_origin_id && d.session_id === targetSessionId)
             .map(d => `${d.preset_origin_id}__${d.student_name}`)
         );
         const existingManualTitles = new Set(
-          data.filter(d => !d.is_preset && !d.preset_origin_id && d.session_id === session.sessionId)
+          data.filter(d => !d.is_preset && !d.preset_origin_id && d.session_id === targetSessionId)
             .map(d => `${d.title.trim()}__${d.student_name}`)
         );
         // Only copy presets that were created BEFORE this session — new presets must not
@@ -752,34 +755,36 @@ export default function Classroom() {
             description: p.description,
             type: p.type,
             is_preset: false,
-            session_id: session.sessionId,
+            session_id: targetSessionId,
             preset_origin_id: p.id,
           }));
           const { data: inserted } = await supabase
             .from("homework_assignments").insert(inserts).select();
+          if (isStale()) return;
           newCopies = inserted || [];
         }
 
         // Combine original data with new copies, then filter out preset templates
         const allData = [...data, ...newCopies];
         const sessionCopyOriginIds = new Set(
-          allData.filter(d => d.preset_origin_id && d.session_id === session.sessionId)
+          allData.filter(d => d.preset_origin_id && d.session_id === targetSessionId)
             .map(d => d.preset_origin_id)
         );
         // Collect copy titles for deduplication of manual assignments
         const copyTitleSet = new Set(
-          allData.filter(d => d.preset_origin_id && d.session_id === session.sessionId)
+          allData.filter(d => d.preset_origin_id && d.session_id === targetSessionId)
             .map(d => `${d.title.trim()}__${d.student_name}`)
         );
         const filtered = allData.filter(d => {
           // Hide preset templates
           if (d.is_preset) return false;
           // Hide manual assignments that duplicate a session copy (same title)
-          if (d.session_id === session.sessionId && !d.preset_origin_id) {
+          if (d.session_id === targetSessionId && !d.preset_origin_id) {
             if (copyTitleSet.has(`${d.title.trim()}__${d.student_name}`)) return false;
           }
           return true;
         });
+        if (isStale()) return;
         setHwList(filtered.map((d) => ({
           id: d.id, type: d.type as HwType, title: d.title,
           description: d.description || "", isPreset: d.is_preset, saved: true,
@@ -799,6 +804,7 @@ export default function Classroom() {
         .lt("scheduled_at", session.scheduledAt.toISOString())
         .order("scheduled_at", { ascending: false })
         .limit(2);
+      if (isStale()) return;
 
       const prevSessData = prevSessArr?.[0] ?? null;
       const prevPrevSess = prevSessArr?.[1] ?? null;
@@ -810,6 +816,7 @@ export default function Classroom() {
           .eq("student_name", session.dbStudentName)
           .or(`session_id.eq.${prevSessData.id},is_preset.eq.true`)
           .order("created_at", { ascending: true });
+        if (isStale()) return;
 
         if (prevHwData && prevHwData.length > 0) {
           // Filter: show session copies for prev session, hide templates with copies
@@ -856,6 +863,7 @@ export default function Classroom() {
             .select("assignment_id, status, submitted_at")
             .in("assignment_id", allLookupIds)
             .gte("submitted_at", cutoffTime);
+          if (isStale()) return;
 
           const subMap = new Map((subData || []).map(s => [s.assignment_id, s.status]));
           const subByOrigin = new Map<string, string>();
@@ -890,16 +898,26 @@ export default function Classroom() {
           .lt("completed_at", session.scheduledAt.toISOString());
 
         const { data: vocabData } = await vocabQuery.order("completed_at", { ascending: false });
+        if (isStale()) return;
         setPrevVocabTests(vocabData || []);
       } else {
         setPrevHwList([]);
         setPrevVocabTests([]);
       }
 
+      if (isStale()) return;
       setSessionTopic(session.topic);
     };
     loadData();
+    return () => {
+      cancelled = true;
+      // Reset so the next mount/run for this session will re-fetch
+      if (dataLoadedForRef.current === targetSessionId) {
+        dataLoadedForRef.current = null;
+      }
+    };
   }, [session.sessionId, sessionLoading]);
+
 
   // Load sidebar sessions list — only when student changes, not on every sessionLoading toggle
   const sidebarLoadedForRef = useRef<string | null>(null);
