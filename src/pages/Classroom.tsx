@@ -667,11 +667,14 @@ export default function Classroom() {
     // Prevent re-loading data for the same session (e.g. when sessionLoading toggles)
     if (dataLoadedForRef.current === session.sessionId) return;
     dataLoadedForRef.current = session.sessionId;
+    const targetSessionId = session.sessionId;
+    let cancelled = false;
+    const isStale = () => cancelled || sessionIdRef.current !== targetSessionId;
     const loadData = async () => {
       const { data: sessionData } = await supabase
-        .from("class_sessions").select("notes, remarks, group_students").eq("id", session.sessionId).single();
-      const notesRaw = sessionData?.notes || "";
-      const isEmptyNotes = !notesRaw || notesRaw.replace(/<p><\/p>/g, "").replace(/<br\s*\/?>/g, "").trim() === "";
+        .from("class_sessions").select("notes, remarks, group_students").eq("id", targetSessionId).single();
+      if (isStale()) return;
+
       if (!isEmptyNotes) {
         setNotes(notesRaw);
       } else {
