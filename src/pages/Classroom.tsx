@@ -138,6 +138,7 @@ export default function Classroom() {
 
   // Load session from DB if sessionId provided
   useEffect(() => {
+    let cancelled = false;
     const loadSession = async () => {
       try {
         // Mark transition to prevent localStorage backup from writing stale notes with new sessionId
@@ -155,6 +156,7 @@ export default function Classroom() {
             await supabase.from("class_sessions").update({ notes: prevNotes.trim() }).eq("id", prevSessionId);
           }
         }
+        if (cancelled) return;
         // Clear localStorage backup to prevent cross-session contamination
         localStorage.removeItem(LOCAL_BACKUP_KEY);
         setSessionLoading(true);
@@ -168,12 +170,14 @@ export default function Classroom() {
         let studentNameFilter: string | null = null;
         let nicknameValue: string | null = null;
         const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (cancelled) return;
         if (authSession) {
           const { data: profile } = await supabase
             .from("student_profiles")
             .select("student_name, nickname")
             .eq("user_id", authSession.user.id)
             .maybeSingle();
+          if (cancelled) return;
           if (profile?.student_name) studentNameFilter = profile.student_name;
           nicknameValue = profile?.nickname || null;
         }
@@ -190,6 +194,7 @@ export default function Classroom() {
             query = query.eq("student_name", nameFilter);
           }
           const { data } = await query.maybeSingle();
+          if (cancelled) return;
           sessionData = data;
 
           // If no session found but we have a student name from URL, load their info
@@ -200,6 +205,7 @@ export default function Classroom() {
               .eq("student_name", urlStudentName)
               .eq("status", "active")
               .maybeSingle();
+            if (cancelled) return;
             // Get instructor name from auth session
             let instrName = isData?.instructor_name || "";
             if (!instrName && authSession) {
@@ -208,8 +214,10 @@ export default function Classroom() {
                 .select("name")
                 .eq("user_id", authSession.user.id)
                 .maybeSingle();
+              if (cancelled) return;
               instrName = instrData?.name || "";
             }
+            if (cancelled) return;
             setSession(prev => ({
               ...prev,
               studentName: urlStudentName,
@@ -226,6 +234,7 @@ export default function Classroom() {
             .select("id,student_name,instructor_name,level,scheduled_at,meet_link,topic,group_students")
             .eq("id", urlSessionId)
             .single();
+          if (cancelled) return;
           if (sessErr) throw sessErr;
           sessionData = data;
           if (data) setGroupStudents(Array.isArray((data as any).group_students) ? (data as any).group_students : []);
@@ -238,6 +247,7 @@ export default function Classroom() {
             sessionData.scheduled_at,
             sessionData.meet_link || "",
           );
+          if (cancelled) return;
           setSession({
             sessionId: sessionData.id,
             studentName: (urlRole === "student" && nicknameValue) ? nicknameValue : sessionData.student_name,
@@ -258,6 +268,7 @@ export default function Classroom() {
             .lte("start_date", sessionDateStr)
             .gte("end_date", sessionDateStr)
             .maybeSingle();
+          if (cancelled) return;
 
           let periodFilter = supabase
             .from("class_sessions")
@@ -273,6 +284,7 @@ export default function Classroom() {
           }
 
           const { data: allSessions } = await periodFilter;
+          if (cancelled) return;
           if (allSessions) {
             const idx = allSessions.findIndex(s => s.id === sessionData!.id);
             setSessionNumber(`${idx + 1}회차`);
@@ -289,6 +301,7 @@ export default function Classroom() {
               .eq("student_name", studentName)
               .eq("status", "active")
               .maybeSingle();
+            if (cancelled) return;
             setSession(prev => ({
               ...prev,
               studentName: nicknameValue || studentName,
@@ -300,6 +313,7 @@ export default function Classroom() {
           }
         }
       } catch (err: any) {
+        if (cancelled) return;
         console.error("[Classroom.loadSession] failed:", err);
         toast({
           title: "클래스룸 로딩 실패",
@@ -307,12 +321,16 @@ export default function Classroom() {
           variant: "destructive",
         });
       } finally {
-        setSessionLoading(false);
-        isTransitioningRef.current = false;
+        if (!cancelled) {
+          setSessionLoading(false);
+          isTransitioningRef.current = false;
+        }
       }
     };
     loadSession();
+    return () => { cancelled = true; };
   }, [urlSessionId, urlStudentName]);
+
 
   const urlRole = searchParams.get("role") as Role | null;
   const [role, setRole] = useState<Role>(urlRole === "student" ? "student" : "instructor");
