@@ -251,11 +251,14 @@ export default function HomeworkSubmitModal({
   onSubmittedRef.current = onSubmitted;
   const toastRef = useRef(toast);
   toastRef.current = toast;
+  const inflightRef = useRef(false);
 
   const performAutoSave = useCallback(async () => {
     const currentText = textRef.current;
     if (!currentText.trim() || currentText === lastSavedTextRef.current) return;
     if (submissionRef.current?.status === "reviewed") return;
+    if (inflightRef.current) return; // prevent parallel runs creating duplicates
+    inflightRef.current = true;
 
     try {
       const status = submissionRef.current?.status === "submitted" ? "submitted" : "draft";
@@ -273,22 +276,48 @@ export default function HomeworkSubmitModal({
           onSubmittedRef.current(data);
         }
       } else {
-        const { data, error } = await supabase
+        // Check DB for an existing submission for this assignment+student before inserting
+        const { data: existing } = await supabase
           .from("homework_submissions")
-          .insert({
-            assignment_id: assignment.id,
-            student_name: studentName,
-            text_content: currentText.trim(),
-            status: "draft",
-          })
-          .select()
-          .single();
-        if (error) throw error;
-        if (data) {
-          lastSavedTextRef.current = currentText;
-          submissionRef.current = data;
-          autoSaveFailedRef.current = false;
-          onSubmittedRef.current(data);
+          .select("*")
+          .eq("assignment_id", assignment.id)
+          .eq("student_name", studentName)
+          .order("submitted_at", { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          const { data, error } = await supabase
+            .from("homework_submissions")
+            .update({ text_content: currentText.trim(), status: existing.status === "reviewed" ? "reviewed" : existing.status })
+            .eq("id", existing.id)
+            .select()
+            .single();
+          if (error) throw error;
+          if (data) {
+            lastSavedTextRef.current = currentText;
+            submissionRef.current = data;
+            autoSaveFailedRef.current = false;
+            onSubmittedRef.current(data);
+          }
+        } else {
+          const { data, error } = await supabase
+            .from("homework_submissions")
+            .insert({
+              assignment_id: assignment.id,
+              student_name: studentName,
+              text_content: currentText.trim(),
+              status: "draft",
+            })
+            .select()
+            .single();
+          if (error) throw error;
+          if (data) {
+            lastSavedTextRef.current = currentText;
+            submissionRef.current = data;
+            autoSaveFailedRef.current = false;
+            onSubmittedRef.current(data);
+          }
         }
       }
     } catch (e) {
@@ -301,8 +330,11 @@ export default function HomeworkSubmitModal({
           variant: "destructive",
         });
       }
+    } finally {
+      inflightRef.current = false;
     }
   }, [assignment.id, studentName]);
+
 
   // 5초 주기 자동저장
   useEffect(() => {
@@ -367,22 +399,41 @@ export default function HomeworkSubmitModal({
       const status = asDraft ? "draft" : "submitted";
       let resultSub: Submission | null = null;
 
-      if (submission) {
+      // Resolve target submission id: prop > ref (created by autoSave) > DB lookup
+      let targetId: string | null = submission?.id ?? submissionRef.current?.id ?? null;
+      let existingForUpdate: Submission | null = submission ?? submissionRef.current ?? null;
+      if (!targetId) {
+        const { data: existing } = await supabase
+          .from("homework_submissions")
+          .select("*")
+          .eq("assignment_id", assignment.id)
+          .eq("student_name", studentName)
+          .order("submitted_at", { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+        if (existing) {
+          targetId = existing.id;
+          existingForUpdate = existing as Submission;
+        }
+      }
+
+      if (targetId) {
         const { data, error } = await supabase
           .from("homework_submissions")
           .update({
             text_content: text.trim() || null,
-            audio_url: audioStorageUrl ?? submission.audio_url,
-            file_url: fileStorageUrl ?? (submission as any).file_url,
+            audio_url: audioStorageUrl ?? existingForUpdate?.audio_url ?? null,
+            file_url: fileStorageUrl ?? (existingForUpdate as any)?.file_url ?? null,
             status,
-            submitted_at: asDraft ? submission.submitted_at ?? new Date().toISOString() : new Date().toISOString(),
+            submitted_at: asDraft ? (existingForUpdate?.submitted_at ?? new Date().toISOString()) : new Date().toISOString(),
           })
-          .eq("id", submission.id)
+          .eq("id", targetId)
           .select()
           .single();
         if (error) throw error;
         resultSub = data;
       } else {
+
         const { data, error } = await supabase
           .from("homework_submissions")
           .insert({
