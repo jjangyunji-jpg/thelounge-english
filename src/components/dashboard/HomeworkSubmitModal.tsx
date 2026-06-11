@@ -399,22 +399,41 @@ export default function HomeworkSubmitModal({
       const status = asDraft ? "draft" : "submitted";
       let resultSub: Submission | null = null;
 
-      if (submission) {
+      // Resolve target submission id: prop > ref (created by autoSave) > DB lookup
+      let targetId: string | null = submission?.id ?? submissionRef.current?.id ?? null;
+      let existingForUpdate: Submission | null = submission ?? submissionRef.current ?? null;
+      if (!targetId) {
+        const { data: existing } = await supabase
+          .from("homework_submissions")
+          .select("*")
+          .eq("assignment_id", assignment.id)
+          .eq("student_name", studentName)
+          .order("submitted_at", { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+        if (existing) {
+          targetId = existing.id;
+          existingForUpdate = existing as Submission;
+        }
+      }
+
+      if (targetId) {
         const { data, error } = await supabase
           .from("homework_submissions")
           .update({
             text_content: text.trim() || null,
-            audio_url: audioStorageUrl ?? submission.audio_url,
-            file_url: fileStorageUrl ?? (submission as any).file_url,
+            audio_url: audioStorageUrl ?? existingForUpdate?.audio_url ?? null,
+            file_url: fileStorageUrl ?? (existingForUpdate as any)?.file_url ?? null,
             status,
-            submitted_at: asDraft ? submission.submitted_at ?? new Date().toISOString() : new Date().toISOString(),
+            submitted_at: asDraft ? (existingForUpdate?.submitted_at ?? new Date().toISOString()) : new Date().toISOString(),
           })
-          .eq("id", submission.id)
+          .eq("id", targetId)
           .select()
           .single();
         if (error) throw error;
         resultSub = data;
       } else {
+
         const { data, error } = await supabase
           .from("homework_submissions")
           .insert({
