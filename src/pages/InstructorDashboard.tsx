@@ -1697,24 +1697,42 @@ export default function InstructorDashboard() {
     // Also collect student names to catch sessions that might have a stale instructor_name
     const studentNames = loadedStudents.map((s: any) => s.student_name).filter(Boolean);
 
+    // Paginated fetch helper — Supabase/PostgREST returns at most 1000 rows per request by default.
+    // Without this, instructors with many assignments/submissions silently lose data
+    // (e.g. recent homework submissions wouldn't appear in 미확인 숙제).
+    const fetchAllByStudentNames = async (
+      table: "homework_assignments" | "homework_submissions" | "class_sessions" | "vocabulary_tests",
+      columns: string,
+    ): Promise<{ data: any[] }> => {
+      if (studentNames.length === 0) return { data: [] };
+      const PAGE = 1000;
+      const out: any[] = [];
+      for (let offset = 0; ; offset += PAGE) {
+        const { data, error } = await (supabase as any)
+          .from(table)
+          .select(columns)
+          .in("student_name", studentNames)
+          .range(offset, offset + PAGE - 1);
+        if (error) throw error;
+        const rows = data || [];
+        out.push(...rows);
+        if (rows.length < PAGE) break;
+      }
+      return { data: out };
+    };
+
     const [sessRes, sessRes2, hwRes, subRes, meetRes, periodRes, vocabRes, holRes, allInsRes, attendedRes] = await withTimeout(Promise.all([
-      supabase.from("class_sessions").select("*").in("instructor_name", instructorNames).order("scheduled_at", { ascending: false }),
-      studentNames.length > 0
-        ? supabase.from("class_sessions").select("*").in("student_name", studentNames).order("scheduled_at", { ascending: false })
-        : Promise.resolve({ data: [] }),
-      studentNames.length > 0
-        ? supabase.from("homework_assignments").select("id,title,type,description,student_name,session_id,is_preset,preset_origin_id").in("student_name", studentNames)
-        : Promise.resolve({ data: [] }),
-      studentNames.length > 0
-        ? supabase.from("homework_submissions").select("id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction").in("student_name", studentNames)
-        : Promise.resolve({ data: [] }),
+      supabase.from("class_sessions").select("*").in("instructor_name", instructorNames).order("scheduled_at", { ascending: false }).range(0, 9999),
+      fetchAllByStudentNames("class_sessions", "*"),
+      fetchAllByStudentNames("homework_assignments", "id,title,type,description,student_name,session_id,is_preset,preset_origin_id"),
+      fetchAllByStudentNames("homework_submissions", "id,assignment_id,status,student_name,submitted_at,text_content,audio_url,file_url,instructor_note,reviewed_at,ai_correction"),
       supabase.from("business_meetings").select("*").eq("instructor_id", ins.id).order("scheduled_at", { ascending: false }),
       supabase.from("schedule_periods").select("*").eq("is_active", true).order("start_date", { ascending: true }),
-      supabase.from("vocabulary_tests").select("id,student_name,started_at,completed_at,score,total"),
+      supabase.from("vocabulary_tests").select("id,student_name,started_at,completed_at,score,total").range(0, 9999),
       supabase.from("holiday_notices").select("date_start,date_end"),
       supabase.from("instructors").select("id,name").eq("active", true),
       supabase.from("business_meeting_attendees").select("meeting_id,instructor_id").eq("instructor_id", ins.id) as any,
-    ]), 18000, "대시보드 자료 불러오기");
+    ]), 30000, "대시보드 자료 불러오기");
 
     const studentsByName = new Map<string, StudentFull[]>();
     studentsWithPauses.forEach((s) => {
