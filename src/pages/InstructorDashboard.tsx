@@ -167,7 +167,12 @@ function findSubmissionForAssignment(
   windowStartTs: number,
   windowEndTs: number,
 ): HomeworkSubmission | undefined {
-  const direct = submissions.find(s => s.assignment_id === a.id);
+  const pickBest = (items: HomeworkSubmission[]) => [...items].sort((x, y) => {
+    const statusDiff = Number(y.status === "submitted" || y.status === "reviewed") - Number(x.status === "submitted" || x.status === "reviewed");
+    if (statusDiff !== 0) return statusDiff;
+    return new Date(y.submitted_at).getTime() - new Date(x.submitted_at).getTime();
+  })[0];
+  const direct = pickBest(submissions.filter(s => s.assignment_id === a.id));
   if (direct) return direct;
   if (!a.preset_origin_id) return undefined;
   const siblingIds = new Set<string>([a.preset_origin_id]);
@@ -176,13 +181,12 @@ function findSubmissionForAssignment(
       siblingIds.add(x.id);
     }
   }
-  return submissions
+  return pickBest(submissions
     .filter(s => s.assignment_id && siblingIds.has(s.assignment_id) && s.submitted_at)
     .filter(s => {
       const t = new Date(s.submitted_at).getTime();
       return t >= windowStartTs && t < windowEndTs;
-    })
-    .sort((x, y) => new Date(y.submitted_at).getTime() - new Date(x.submitted_at).getTime())[0];
+    }));
 }
 
 interface BusinessMeeting {
