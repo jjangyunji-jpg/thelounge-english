@@ -2522,7 +2522,7 @@ export default function StudentDashboard() {
                   });
                   return sortedWeeks.map(wk => {
                     const entries = weekGroups.get(wk)!;
-                    const allDone = entries.every(e => e.submission && (e.submission.status === "submitted" || e.submission.status === "reviewed"));
+                    const allDone = entries.every(e => isHomeworkSubmitted(e.submission?.status));
                     return (
                       <div key={wk ?? "none"}>
                         <div className="px-3 py-1.5 bg-muted/20 border-b border-border/50 flex items-center justify-between">
@@ -2543,7 +2543,8 @@ export default function StudentDashboard() {
                             const meta = HW_META[a.type as HwType];
                             const Icon = meta?.icon ?? Brain;
                             const isQuickType = a.type === "speaking";
-                            const isPending = status === "pending";
+                            const isDraft = status === "draft";
+                            const isPending = !isHomeworkSubmitted(status);
                             return (
                               <div key={sub?.id ?? `${a.id}-${idx}`} className="flex items-center gap-2.5 px-3 py-2.5">
                                 <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0",
@@ -2581,7 +2582,7 @@ export default function StudentDashboard() {
                                     onClick={() => setHwModalAssignment(a)}
                                     className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 flex-shrink-0"
                                   >
-                                    제출하기
+                                    {isDraft ? "이어쓰기" : "제출하기"}
                                   </button>
                                 )}
                               </div>
