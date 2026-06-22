@@ -83,7 +83,18 @@ export async function resolveCanonicalSubmissionTarget(
   studentName: string,
 ): Promise<{ canonicalId: string; existingSubmission: any | null }> {
   try {
-    const presetKey = assignment.preset_origin_id ?? assignment.id;
+    // If caller didn't supply preset_origin_id, fetch it so we can compute the
+    // sibling pool correctly even when called with a session-copy id only.
+    let presetOriginId: string | null | undefined = assignment.preset_origin_id;
+    if (presetOriginId === undefined) {
+      const { data: selfRow } = await supabase
+        .from("homework_assignments")
+        .select("preset_origin_id")
+        .eq("id", assignment.id)
+        .maybeSingle();
+      presetOriginId = (selfRow as { preset_origin_id: string | null } | null)?.preset_origin_id ?? null;
+    }
+    const presetKey = presetOriginId ?? assignment.id;
     // 1) Fetch sibling assignment ids: self + preset + all copies sharing preset_origin_id
     const { data: siblings } = await supabase
       .from("homework_assignments")
