@@ -23,6 +23,8 @@ const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: s
   watching:   { label: "시청하기",   icon: Monitor, color: "text-rose-500" },
 };
 
+const isHomeworkSubmitted = (status?: string | null) => status === "submitted" || status === "reviewed";
+
 const URL_REGEX = /https?:\/\/[^\s<>"']+/g;
 function extractUrls(text: string | null): string[] {
   if (!text) return [];
@@ -206,7 +208,7 @@ export default function WeeklyTasksSection({
 
   const completedCount = weekAssignments.filter(a => {
     const sub = getSub(a.id);
-    return sub && (sub.status === "submitted" || sub.status === "reviewed");
+    return isHomeworkSubmitted(sub?.status);
   }).length;
 
   const totalTasks = weekAssignments.length + (weekVocabCount > 0 ? 1 : 0);
@@ -273,7 +275,7 @@ export default function WeeklyTasksSection({
           {/* Homework items */}
           {weekAssignments.map(a => {
             const sub = getSub(a.id);
-            const done = sub && (sub.status === "submitted" || sub.status === "reviewed");
+            const done = isHomeworkSubmitted(sub?.status);
             const isDraft = sub && sub.status === "draft";
             const meta = HW_META[a.type as HwType] ?? HW_META.writing;
             const Icon = meta.icon;
