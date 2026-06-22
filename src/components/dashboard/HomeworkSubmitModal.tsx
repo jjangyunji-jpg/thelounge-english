@@ -277,15 +277,10 @@ export default function HomeworkSubmitModal({
           onSubmittedRef.current(data);
         }
       } else {
-        // Check DB for an existing submission for this assignment+student before inserting
-        const { data: existing } = await supabase
-          .from("homework_submissions")
-          .select("*")
-          .eq("assignment_id", assignment.id)
-          .eq("student_name", studentName)
-          .order("submitted_at", { ascending: false, nullsFirst: false })
-          .limit(1)
-          .maybeSingle();
+        // Sibling-aware lookup: resolve canonical target across all preset
+        // siblings so concurrent paths don't fragment into separate rows.
+        const { canonicalId, existingSubmission: existing } =
+          await resolveCanonicalSubmissionTarget(supabase, assignment, studentName);
 
         if (existing) {
           const { data, error } = await supabase
@@ -305,7 +300,7 @@ export default function HomeworkSubmitModal({
           const { data, error } = await supabase
             .from("homework_submissions")
             .insert({
-              assignment_id: assignment.id,
+              assignment_id: canonicalId,
               student_name: studentName,
               text_content: currentText.trim(),
               status: "draft",
