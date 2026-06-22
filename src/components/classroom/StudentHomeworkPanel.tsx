@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
+import { resolveCanonicalSubmissionTarget } from "@/lib/homeworkSubmissionLookup";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
@@ -228,20 +229,43 @@ function SubmissionCard({
         if (error) throw error;
         resultSub = data;
       } else {
-        const { data, error } = await supabase
-          .from("homework_submissions")
-          .insert({
-            assignment_id: assignment.id,
-            student_name: studentName,
-            text_content: text.trim() || null,
-            audio_url: audioStorageUrl,
-            file_url: fileStorageUrl,
-            status: "submitted",
-          })
-          .select()
-          .single();
-        if (error) throw error;
-        resultSub = data;
+        // Sibling-aware canonical resolution: if another preset-sibling already
+        // has a submission for this student, append to that row instead of
+        // creating a new fragmented one. Otherwise insert against current id.
+        const { canonicalId, existingSubmission } =
+          await resolveCanonicalSubmissionTarget(supabase, assignment, studentName);
+
+        if (existingSubmission) {
+          const { data, error } = await supabase
+            .from("homework_submissions")
+            .update({
+              text_content: text.trim() || null,
+              audio_url: audioStorageUrl ?? existingSubmission.audio_url,
+              file_url: fileStorageUrl ?? existingSubmission.file_url,
+              status: "submitted",
+              submitted_at: new Date().toISOString(),
+            })
+            .eq("id", existingSubmission.id)
+            .select()
+            .single();
+          if (error) throw error;
+          resultSub = data;
+        } else {
+          const { data, error } = await supabase
+            .from("homework_submissions")
+            .insert({
+              assignment_id: canonicalId,
+              student_name: studentName,
+              text_content: text.trim() || null,
+              audio_url: audioStorageUrl,
+              file_url: fileStorageUrl,
+              status: "submitted",
+            })
+            .select()
+            .single();
+          if (error) throw error;
+          resultSub = data;
+        }
       }
 
       toast({ title: "숙제가 제출됐습니다 ✓" });

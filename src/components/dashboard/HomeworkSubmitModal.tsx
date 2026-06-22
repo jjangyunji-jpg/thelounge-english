@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { resolveCanonicalSubmissionTarget } from "@/lib/homeworkSubmissionLookup";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
@@ -276,15 +277,10 @@ export default function HomeworkSubmitModal({
           onSubmittedRef.current(data);
         }
       } else {
-        // Check DB for an existing submission for this assignment+student before inserting
-        const { data: existing } = await supabase
-          .from("homework_submissions")
-          .select("*")
-          .eq("assignment_id", assignment.id)
-          .eq("student_name", studentName)
-          .order("submitted_at", { ascending: false, nullsFirst: false })
-          .limit(1)
-          .maybeSingle();
+        // Sibling-aware lookup: resolve canonical target across all preset
+        // siblings so concurrent paths don't fragment into separate rows.
+        const { canonicalId, existingSubmission: existing } =
+          await resolveCanonicalSubmissionTarget(supabase, assignment, studentName);
 
         if (existing) {
           const { data, error } = await supabase
@@ -304,7 +300,7 @@ export default function HomeworkSubmitModal({
           const { data, error } = await supabase
             .from("homework_submissions")
             .insert({
-              assignment_id: assignment.id,
+              assignment_id: canonicalId,
               student_name: studentName,
               text_content: currentText.trim(),
               status: "draft",
@@ -399,21 +395,17 @@ export default function HomeworkSubmitModal({
       const status = asDraft ? "draft" : "submitted";
       let resultSub: Submission | null = null;
 
-      // Resolve target submission id: prop > ref (created by autoSave) > DB lookup
+      // Resolve target submission id: prop > ref (created by autoSave) > sibling-aware lookup
       let targetId: string | null = submission?.id ?? submissionRef.current?.id ?? null;
       let existingForUpdate: Submission | null = submission ?? submissionRef.current ?? null;
+      let canonicalAssignmentId: string = assignment.id;
       if (!targetId) {
-        const { data: existing } = await supabase
-          .from("homework_submissions")
-          .select("*")
-          .eq("assignment_id", assignment.id)
-          .eq("student_name", studentName)
-          .order("submitted_at", { ascending: false, nullsFirst: false })
-          .limit(1)
-          .maybeSingle();
-        if (existing) {
-          targetId = existing.id;
-          existingForUpdate = existing as Submission;
+        const { canonicalId, existingSubmission } =
+          await resolveCanonicalSubmissionTarget(supabase, assignment, studentName);
+        canonicalAssignmentId = canonicalId;
+        if (existingSubmission) {
+          targetId = existingSubmission.id;
+          existingForUpdate = existingSubmission as Submission;
         }
       }
 
@@ -437,7 +429,7 @@ export default function HomeworkSubmitModal({
         const { data, error } = await supabase
           .from("homework_submissions")
           .insert({
-            assignment_id: assignment.id,
+            assignment_id: canonicalAssignmentId,
             student_name: studentName,
             text_content: text.trim() || null,
             audio_url: audioStorageUrl,
