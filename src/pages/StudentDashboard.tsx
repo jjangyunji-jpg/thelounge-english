@@ -168,6 +168,8 @@ const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: s
   watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500" },
 };
 
+const isHomeworkSubmitted = (status?: string | null) => status === "submitted" || status === "reviewed";
+
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
 }
@@ -1488,9 +1490,9 @@ export default function StudentDashboard() {
   const latestSessionAssignments = latestPastSession
     ? periodAssignments.filter(a => a.session_id === latestPastSession.id)
     : [];
-  const latestSessionPendingHw = latestSessionAssignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
-  const pendingHw = periodHwEntries.filter(e => !e.submission || e.submission.status === "pending");
-  const submittedHw = periodHwEntries.filter(e => e.submission && e.submission.status !== "pending");
+  const latestSessionPendingHw = latestSessionAssignments.filter(a => { const sub = getSubmission(a.id); return !isHomeworkSubmitted(sub?.status); });
+  const pendingHw = periodHwEntries.filter(e => !isHomeworkSubmitted(e.submission?.status));
+  const submittedHw = periodHwEntries.filter(e => isHomeworkSubmitted(e.submission?.status));
   const latestTest = periodTestHistory[0];
   const avgScore = periodTestHistory.length > 0
     ? Math.round(periodTestHistory.reduce((acc, t) => acc + (t.total ? (t.score ?? 0) / t.total : 0), 0) / periodTestHistory.length * 100)
@@ -1536,7 +1538,7 @@ export default function StudentDashboard() {
     const sessionHw = assignments.filter(a => (a.session_id === latestSession.id || a.is_preset) && !(a.is_preset && a.type === "memorizing"));
     const submitted = sessionHw.filter(a => {
       const sub = getSubmission(a.id);
-      return sub && sub.status !== "pending";
+      return isHomeworkSubmitted(sub?.status);
     }).length;
     return { submitted, total: sessionHw.length, pending: sessionHw.length - submitted };
   })();
@@ -2520,7 +2522,7 @@ export default function StudentDashboard() {
                   });
                   return sortedWeeks.map(wk => {
                     const entries = weekGroups.get(wk)!;
-                    const allDone = entries.every(e => e.submission && (e.submission.status === "submitted" || e.submission.status === "reviewed"));
+                    const allDone = entries.every(e => isHomeworkSubmitted(e.submission?.status));
                     return (
                       <div key={wk ?? "none"}>
                         <div className="px-3 py-1.5 bg-muted/20 border-b border-border/50 flex items-center justify-between">
@@ -2541,7 +2543,8 @@ export default function StudentDashboard() {
                             const meta = HW_META[a.type as HwType];
                             const Icon = meta?.icon ?? Brain;
                             const isQuickType = a.type === "speaking";
-                            const isPending = status === "pending";
+                            const isDraft = status === "draft";
+                            const isPending = !isHomeworkSubmitted(status);
                             return (
                               <div key={sub?.id ?? `${a.id}-${idx}`} className="flex items-center gap-2.5 px-3 py-2.5">
                                 <div className={cn("w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0",
@@ -2579,7 +2582,7 @@ export default function StudentDashboard() {
                                     onClick={() => setHwModalAssignment(a)}
                                     className="text-[10px] font-bold text-navy hover:text-navy-light transition-colors px-2 py-1 rounded-md bg-navy/5 hover:bg-navy/10 flex-shrink-0"
                                   >
-                                    제출하기
+                                    {isDraft ? "이어쓰기" : "제출하기"}
                                   </button>
                                 )}
                               </div>
@@ -2779,7 +2782,7 @@ export default function StudentDashboard() {
             if (idx >= 0) { const next = [...prev]; next[idx] = sub; return next; }
             return [...prev, sub];
           });
-          setHwModalAssignment(null);
+          if (isHomeworkSubmitted(sub.status)) setHwModalAssignment(null);
         }}
       />
     )}

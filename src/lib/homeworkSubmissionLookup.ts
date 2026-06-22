@@ -18,6 +18,18 @@ export interface HwSubmissionLite {
   status?: string | null;
 }
 
+function isSubmittedLike(status?: string | null) {
+  return status === "submitted" || status === "reviewed";
+}
+
+function pickBestSubmission<S extends HwSubmissionLite>(items: S[]): S | undefined {
+  return [...items].sort((x, y) => {
+    const statusDiff = Number(isSubmittedLike(y.status)) - Number(isSubmittedLike(x.status));
+    if (statusDiff !== 0) return statusDiff;
+    return new Date(y.submitted_at || 0).getTime() - new Date(x.submitted_at || 0).getTime();
+  })[0];
+}
+
 export function findSubmissionForAssignment<
   A extends HwAssignmentLite,
   S extends HwSubmissionLite,
@@ -28,7 +40,7 @@ export function findSubmissionForAssignment<
   windowStartTs: number = 0,
   windowEndTs: number = Number.POSITIVE_INFINITY,
 ): S | undefined {
-  const direct = submissions.find((s) => s.assignment_id === a.id);
+  const direct = pickBestSubmission(submissions.filter((s) => s.assignment_id === a.id));
   if (direct) return direct;
   if (!a.preset_origin_id) return undefined;
   const siblingIds = new Set<string>([a.preset_origin_id]);
@@ -41,15 +53,10 @@ export function findSubmissionForAssignment<
       siblingIds.add(x.id);
     }
   }
-  return submissions
+  return pickBestSubmission(submissions
     .filter((s) => s.assignment_id && siblingIds.has(s.assignment_id) && s.submitted_at)
     .filter((s) => {
       const t = new Date(s.submitted_at as string).getTime();
       return t >= windowStartTs && t < windowEndTs;
-    })
-    .sort(
-      (x, y) =>
-        new Date(y.submitted_at as string).getTime() -
-        new Date(x.submitted_at as string).getTime(),
-    )[0];
+    }));
 }
