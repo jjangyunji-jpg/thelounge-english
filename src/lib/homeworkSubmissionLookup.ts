@@ -40,23 +40,29 @@ export function findSubmissionForAssignment<
   windowStartTs: number = 0,
   windowEndTs: number = Number.POSITIVE_INFINITY,
 ): S | undefined {
-  const direct = pickBestSubmission(submissions.filter((s) => s.assignment_id === a.id));
-  if (direct) return direct;
-  if (!a.preset_origin_id) return undefined;
-  const siblingIds = new Set<string>([a.preset_origin_id]);
+  // Build full sibling pool — self + all assignments sharing the same preset
+  // (either as the preset itself, or as a copy with preset_origin_id matching).
+  // We pool ALL siblings (not just fallback) so that if the student saved a
+  // draft against one sibling and a stronger submission exists on another,
+  // we surface the strongest one consistently. This prevents the "submitted
+  // content disappeared" UX when the same logical task exists as multiple
+  // assignment rows (preset + per-session copies).
+  const siblingIds = new Set<string>([a.id]);
+  const presetKey = a.preset_origin_id ?? a.id;
+  siblingIds.add(presetKey);
   for (const x of allAssignments) {
-    if (
-      x.id !== a.id &&
-      x.student_name === a.student_name &&
-      x.preset_origin_id === a.preset_origin_id
-    ) {
-      siblingIds.add(x.id);
-    }
+    if (x.student_name !== a.student_name) continue;
+    if (x.id === presetKey) siblingIds.add(x.id);
+    if (x.preset_origin_id && x.preset_origin_id === presetKey) siblingIds.add(x.id);
   }
   return pickBestSubmission(submissions
-    .filter((s) => s.assignment_id && siblingIds.has(s.assignment_id) && s.submitted_at)
+    .filter((s) => s.assignment_id && siblingIds.has(s.assignment_id))
     .filter((s) => {
-      const t = new Date(s.submitted_at as string).getTime();
+      // Direct (same assignment_id) matches always pass the window filter so
+      // in-progress drafts on the exact row are never hidden by a window.
+      if (s.assignment_id === a.id) return true;
+      if (!s.submitted_at) return false;
+      const t = new Date(s.submitted_at).getTime();
       return t >= windowStartTs && t < windowEndTs;
     }));
 }
