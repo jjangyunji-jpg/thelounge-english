@@ -2782,7 +2782,7 @@ export default function StudentDashboard() {
             if (idx >= 0) { const next = [...prev]; next[idx] = sub; return next; }
             return [...prev, sub];
           });
-          setHwModalAssignment(null);
+          if (isHomeworkSubmitted(sub.status)) setHwModalAssignment(null);
         }}
       />
     )}
