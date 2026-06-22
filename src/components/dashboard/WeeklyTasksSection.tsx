@@ -449,7 +449,10 @@ export default function WeeklyTasksSection({
           submission={getSub(modalAssignment.id) ?? null}
           studentName={studentName}
           onClose={() => setModalAssignment(null)}
-          onSubmitted={(sub) => onSubmissionUpdate(sub)}
+          onSubmitted={(sub) => {
+            onSubmissionUpdate(sub);
+            if (isHomeworkSubmitted(sub.status)) setModalAssignment(null);
+          }}
         />
       )}
 
