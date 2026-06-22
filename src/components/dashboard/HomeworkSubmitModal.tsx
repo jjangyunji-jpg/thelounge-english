@@ -395,21 +395,17 @@ export default function HomeworkSubmitModal({
       const status = asDraft ? "draft" : "submitted";
       let resultSub: Submission | null = null;
 
-      // Resolve target submission id: prop > ref (created by autoSave) > DB lookup
+      // Resolve target submission id: prop > ref (created by autoSave) > sibling-aware lookup
       let targetId: string | null = submission?.id ?? submissionRef.current?.id ?? null;
       let existingForUpdate: Submission | null = submission ?? submissionRef.current ?? null;
+      let canonicalAssignmentId: string = assignment.id;
       if (!targetId) {
-        const { data: existing } = await supabase
-          .from("homework_submissions")
-          .select("*")
-          .eq("assignment_id", assignment.id)
-          .eq("student_name", studentName)
-          .order("submitted_at", { ascending: false, nullsFirst: false })
-          .limit(1)
-          .maybeSingle();
-        if (existing) {
-          targetId = existing.id;
-          existingForUpdate = existing as Submission;
+        const { canonicalId, existingSubmission } =
+          await resolveCanonicalSubmissionTarget(supabase, assignment, studentName);
+        canonicalAssignmentId = canonicalId;
+        if (existingSubmission) {
+          targetId = existingSubmission.id;
+          existingForUpdate = existingSubmission as Submission;
         }
       }
 
@@ -433,7 +429,7 @@ export default function HomeworkSubmitModal({
         const { data, error } = await supabase
           .from("homework_submissions")
           .insert({
-            assignment_id: assignment.id,
+            assignment_id: canonicalAssignmentId,
             student_name: studentName,
             text_content: text.trim() || null,
             audio_url: audioStorageUrl,
