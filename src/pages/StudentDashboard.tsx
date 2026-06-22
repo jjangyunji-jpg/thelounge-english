@@ -168,6 +168,8 @@ const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: s
   watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500" },
 };
 
+const isHomeworkSubmitted = (status?: string | null) => status === "submitted" || status === "reviewed";
+
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" });
 }
@@ -1488,9 +1490,9 @@ export default function StudentDashboard() {
   const latestSessionAssignments = latestPastSession
     ? periodAssignments.filter(a => a.session_id === latestPastSession.id)
     : [];
-  const latestSessionPendingHw = latestSessionAssignments.filter(a => { const sub = getSubmission(a.id); return !sub || sub.status === "pending"; });
-  const pendingHw = periodHwEntries.filter(e => !e.submission || e.submission.status === "pending");
-  const submittedHw = periodHwEntries.filter(e => e.submission && e.submission.status !== "pending");
+  const latestSessionPendingHw = latestSessionAssignments.filter(a => { const sub = getSubmission(a.id); return !isHomeworkSubmitted(sub?.status); });
+  const pendingHw = periodHwEntries.filter(e => !isHomeworkSubmitted(e.submission?.status));
+  const submittedHw = periodHwEntries.filter(e => isHomeworkSubmitted(e.submission?.status));
   const latestTest = periodTestHistory[0];
   const avgScore = periodTestHistory.length > 0
     ? Math.round(periodTestHistory.reduce((acc, t) => acc + (t.total ? (t.score ?? 0) / t.total : 0), 0) / periodTestHistory.length * 100)
@@ -1536,7 +1538,7 @@ export default function StudentDashboard() {
     const sessionHw = assignments.filter(a => (a.session_id === latestSession.id || a.is_preset) && !(a.is_preset && a.type === "memorizing"));
     const submitted = sessionHw.filter(a => {
       const sub = getSubmission(a.id);
-      return sub && sub.status !== "pending";
+      return isHomeworkSubmitted(sub?.status);
     }).length;
     return { submitted, total: sessionHw.length, pending: sessionHw.length - submitted };
   })();
