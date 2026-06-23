@@ -345,7 +345,7 @@ export default function Classroom() {
   useEffect(() => { sessionIdRef.current = session.sessionId; }, [session.sessionId]);
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
-  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; description?: string | null; status: string; presetOriginId?: string | null }[]>([]);
+  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; description?: string | null; status: string; presetOriginId?: string | null; submissionId?: string | null }[]>([]);
   const [prevVocabTests, setPrevVocabTests] = useState<{ id: string; score: number | null; total: number | null; started_at: string; completed_at: string | null }[]>([]);
   const [prevHwOpen, setPrevHwOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
@@ -852,33 +852,46 @@ export default function Classroom() {
             .map(h => h.id);
           const allLookupIds = Array.from(new Set([...hwIds, ...presetOriginIds, ...siblingCopyIds]));
 
-          // Time-window filter: only count submissions after the session before prevSession
-          // Use generous upper bound — students may submit late (after current session started)
-          const cutoffTime = prevPrevSess
-            ? new Date(prevPrevSess.scheduled_at).toISOString()
-            : new Date(prevSessData.scheduled_at).toISOString();
+          // Time-window filter: homework for the previous class should only
+          // count submissions made AFTER that previous class started. Anything
+          // submitted before then belongs to an older cycle and must not make
+          // the current class's previous-homework list look submitted.
+          const cutoffTime = new Date(prevSessData.scheduled_at).toISOString();
 
           const { data: subData } = await supabase
             .from("homework_submissions")
-            .select("assignment_id, status, submitted_at")
+            .select("id, assignment_id, status, submitted_at")
             .in("assignment_id", allLookupIds)
-            .gte("submitted_at", cutoffTime);
+            .gte("submitted_at", cutoffTime)
+            .order("submitted_at", { ascending: false });
           if (isStale()) return;
 
-          const subMap = new Map((subData || []).map(s => [s.assignment_id, s.status]));
-          const subByOrigin = new Map<string, string>();
+          const subMap = new Map<string, { id: string; status: string }>();
+          (subData || []).forEach(s => {
+            if (s.assignment_id && !subMap.has(s.assignment_id)) {
+              subMap.set(s.assignment_id, { id: s.id, status: s.status });
+            }
+          });
+          const subByOrigin = new Map<string, { id: string; status: string }>();
           (subData || []).forEach(s => {
             const originId = prevHwData.find(h => h.id === s.assignment_id)?.preset_origin_id;
-            if (originId && !subByOrigin.has(originId)) subByOrigin.set(originId, s.status);
+            if (originId && !subByOrigin.has(originId)) {
+              subByOrigin.set(originId, { id: s.id, status: s.status });
+            }
           });
-          setPrevHwList(filteredPrev.map(h => ({
-            id: h.id,
-            type: h.type as HwType,
-            title: h.title,
-            description: h.description,
-            presetOriginId: h.preset_origin_id,
-            status: subMap.get(h.id) || (h.preset_origin_id ? subByOrigin.get(h.preset_origin_id) || subMap.get(h.preset_origin_id) : undefined) || "not_submitted",
-          })));
+          setPrevHwList(filteredPrev.map(h => {
+            const matchedSub = subMap.get(h.id)
+              || (h.preset_origin_id ? subByOrigin.get(h.preset_origin_id) || subMap.get(h.preset_origin_id) : undefined);
+            return {
+              id: h.id,
+              type: h.type as HwType,
+              title: h.title,
+              description: h.description,
+              presetOriginId: h.preset_origin_id,
+              status: matchedSub?.status || "not_submitted",
+              submissionId: matchedSub?.id ?? null,
+            };
+          }));
         } else {
           setPrevHwList([]);
         }
@@ -1669,20 +1682,17 @@ export default function Classroom() {
                             onClick={async () => {
                               setReviewModalHw({ id: h.id, type: h.type, title: h.title, description: h.description });
                               setReviewLoading(true);
-                              const lookupIds = [h.id];
-                              if (h.presetOriginId) {
-                                lookupIds.push(h.presetOriginId);
-                                prevHwList
-                                  .filter(x => x.id !== h.id && x.presetOriginId === h.presetOriginId)
-                                  .forEach(x => lookupIds.push(x.id));
+                              if (!h.submissionId) {
+                                setReviewSubmission(null);
+                                setReviewLoading(false);
+                                return;
                               }
                               const { data: subs } = await supabase
                                 .from("homework_submissions")
                                 .select("*")
-                                .in("assignment_id", Array.from(new Set(lookupIds)))
-                                .order("submitted_at", { ascending: false })
-                                .limit(1);
-                              const sub = subs?.[0] ?? null;
+                                .eq("id", h.submissionId)
+                                .maybeSingle();
+                              const sub = subs ?? null;
                               setReviewSubmission(sub);
                               setReviewLoading(false);
                             }}
