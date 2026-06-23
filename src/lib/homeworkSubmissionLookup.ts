@@ -70,56 +70,146 @@ export function findSubmissionForAssignment<
 // ─────────────────────────────────────────────────────────────────────────────
 // Canonical write-target resolution
 //
-// Same-회차 숙제는 preset row + per-session copy로 쪼개져 있어, 학생이 진입
-// 경로에 따라 서로 다른 assignment_id에 draft/submission이 쌓이는 문제가 있다.
-// 이 헬퍼는 write 직전에 호출되어, 형제(sibling) row들 중 이미 제출본이 존재
-// 한다면 그 row의 assignment_id를 "canonical"로 반환한다. 없으면 prop으로
-// 들어온 assignment.id를 그대로 사용한다. 기존 데이터를 이동시키지 않으므로
-// CASCADE 삭제 위험은 추가되지 않는다.
+// 학생이 숙제를 제출할 때, 어떤 assignment_id에 기록할지 결정한다.
+// 같은 preset에서 파생된 sibling row(preset master + per-session 카피)들 중
+// "지금 학생이 준비하고 있는 회차"의 세션 카피를 canonical target으로 삼는다.
+//
+// 규칙:
+//   1) 이미 제출본이 있다면 그 row를 그대로 사용한다 (데이터 분산 방지).
+//   2) 없다면 학생의 다음 예정 세션(취소 제외)을 target session으로 잡는다.
+//      - 다음 예정 세션이 없으면 가장 최근 과거 세션을 target으로.
+//   3) target session의 sibling 카피(session_id = target.id)가 존재하면 그것이 canonical.
+//   4) 없으면 preset master에서 즉석으로 새 session 카피를 생성하고 그 id를 canonical로 한다.
+//   5) preset master(is_preset=true)는 절대 학생 제출 타겟이 될 수 없다.
+//   6) 모든 단계에서 실패하면 호출자가 넘긴 assignment.id로 fallback (단, preset이면 안 됨).
 // ─────────────────────────────────────────────────────────────────────────────
+
+interface AssignmentRow {
+  id: string;
+  session_id: string | null;
+  preset_origin_id: string | null;
+  is_preset: boolean;
+  type: string;
+  title: string;
+  description: string | null;
+  student_name: string;
+  due_at: string | null;
+}
+
+interface SessionRow {
+  id: string;
+  scheduled_at: string;
+  cancellation_type: string | null;
+}
+
 export async function resolveCanonicalSubmissionTarget(
   supabase: any,
-  assignment: { id: string; preset_origin_id?: string | null },
+  assignment: { id: string; preset_origin_id?: string | null; is_preset?: boolean },
   studentName: string,
 ): Promise<{ canonicalId: string; existingSubmission: any | null }> {
-  try {
-    // If caller didn't supply preset_origin_id, fetch it so we can compute the
-    // sibling pool correctly even when called with a session-copy id only.
-    let presetOriginId: string | null | undefined = assignment.preset_origin_id;
-    if (presetOriginId === undefined) {
-      const { data: selfRow } = await supabase
+  const safeFallback = async (): Promise<string> => {
+    // Never write to a preset master. If the prop's id IS the preset, look up
+    // any non-preset sibling to use instead; otherwise return prop's id.
+    if (assignment.is_preset === true) {
+      const { data: anyCopy } = await supabase
         .from("homework_assignments")
-        .select("preset_origin_id")
+        .select("id")
+        .eq("preset_origin_id", assignment.id)
+        .eq("student_name", studentName)
+        .limit(1)
+        .maybeSingle();
+      if (anyCopy?.id) return anyCopy.id as string;
+    }
+    return assignment.id;
+  };
+
+  try {
+    // Load the assignment row in full so we know preset key, type/title, etc.
+    let selfRow: AssignmentRow | null = null;
+    {
+      const { data } = await supabase
+        .from("homework_assignments")
+        .select("id, session_id, preset_origin_id, is_preset, type, title, description, student_name, due_at")
         .eq("id", assignment.id)
         .maybeSingle();
-      presetOriginId = (selfRow as { preset_origin_id: string | null } | null)?.preset_origin_id ?? null;
+      selfRow = (data as AssignmentRow | null) ?? null;
     }
-    const presetKey = presetOriginId ?? assignment.id;
-    // 1) Fetch sibling assignment ids: self + preset + all copies sharing preset_origin_id
-    const { data: siblings } = await supabase
+    const presetKey =
+      (selfRow?.is_preset ? selfRow.id : selfRow?.preset_origin_id) ??
+      assignment.preset_origin_id ??
+      assignment.id;
+
+    // Sibling assignments: preset master + all per-session copies for this student
+    const { data: siblingsData } = await supabase
       .from("homework_assignments")
-      .select("id, preset_origin_id")
+      .select("id, session_id, preset_origin_id, is_preset, type, title, description, student_name, due_at")
       .or(`id.eq.${presetKey},preset_origin_id.eq.${presetKey}`);
+    const siblings = ((siblingsData || []) as AssignmentRow[])
+      .filter((s) => s.student_name === studentName || s.is_preset);
+    const siblingIds = new Set<string>(siblings.map((s) => s.id));
+    siblingIds.add(assignment.id);
 
-    const siblingIds = new Set<string>([assignment.id, presetKey]);
-    for (const s of (siblings || []) as Array<{ id: string; preset_origin_id: string | null }>) {
-      siblingIds.add(s.id);
-    }
-
-    // 2) Find existing submissions across all siblings for this student
-    const { data: subs } = await supabase
+    // 1) Existing submission — keep using the same row
+    const { data: subsData } = await supabase
       .from("homework_submissions")
       .select("*")
       .in("assignment_id", Array.from(siblingIds))
       .eq("student_name", studentName);
-
-    const best = pickBestSubmission((subs || []) as HwSubmissionLite[]);
+    const best = pickBestSubmission((subsData || []) as HwSubmissionLite[]);
     if (best && best.assignment_id) {
       return { canonicalId: best.assignment_id, existingSubmission: best };
     }
-    return { canonicalId: assignment.id, existingSubmission: null };
+
+    // 2) Determine target session = next upcoming (non-cancelled), else latest past
+    const nowIso = new Date().toISOString();
+    const { data: sessionsData } = await supabase
+      .from("class_sessions")
+      .select("id, scheduled_at, cancellation_type")
+      .eq("student_name", studentName)
+      .is("cancellation_type", null)
+      .order("scheduled_at", { ascending: true });
+    const sessions = (sessionsData || []) as SessionRow[];
+    const upcoming = sessions.find((s) => s.scheduled_at > nowIso) || null;
+    const latestPast =
+      [...sessions].reverse().find((s) => s.scheduled_at <= nowIso) || null;
+    const targetSession = upcoming || latestPast;
+
+    if (targetSession) {
+      // 3) Find sibling whose session_id matches target session
+      const match = siblings.find(
+        (s) => !s.is_preset && s.session_id === targetSession.id,
+      );
+      if (match) {
+        return { canonicalId: match.id, existingSubmission: null };
+      }
+
+      // 4) No session-copy yet — create one from preset
+      const preset = siblings.find((s) => s.is_preset) || selfRow;
+      if (preset && targetSession) {
+        const { data: created, error: createErr } = await supabase
+          .from("homework_assignments")
+          .insert({
+            session_id: targetSession.id,
+            student_name: studentName,
+            type: preset.type,
+            title: preset.title,
+            description: preset.description,
+            is_preset: false,
+            preset_origin_id: presetKey,
+            due_at: preset.due_at,
+          })
+          .select("id")
+          .single();
+        if (!createErr && created?.id) {
+          return { canonicalId: created.id as string, existingSubmission: null };
+        }
+      }
+    }
+
+    // 5) Fallback
+    return { canonicalId: await safeFallback(), existingSubmission: null };
   } catch {
-    // On any error, fall back to the prop's id — never block the write
-    return { canonicalId: assignment.id, existingSubmission: null };
+    return { canonicalId: await safeFallback(), existingSubmission: null };
   }
 }
+
