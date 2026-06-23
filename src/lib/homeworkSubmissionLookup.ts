@@ -35,37 +35,19 @@ export function findSubmissionForAssignment<
   S extends HwSubmissionLite,
 >(
   a: A,
-  allAssignments: A[],
+  _allAssignments: A[],
   submissions: S[],
-  windowStartTs: number = 0,
-  windowEndTs: number = Number.POSITIVE_INFINITY,
+  _windowStartTs: number = 0,
+  _windowEndTs: number = Number.POSITIVE_INFINITY,
 ): S | undefined {
-  // Build full sibling pool — self + all assignments sharing the same preset
-  // (either as the preset itself, or as a copy with preset_origin_id matching).
-  // We pool ALL siblings (not just fallback) so that if the student saved a
-  // draft against one sibling and a stronger submission exists on another,
-  // we surface the strongest one consistently. This prevents the "submitted
-  // content disappeared" UX when the same logical task exists as multiple
-  // assignment rows (preset + per-session copies).
-  const siblingIds = new Set<string>([a.id]);
-  const presetKey = a.preset_origin_id ?? a.id;
-  siblingIds.add(presetKey);
-  for (const x of allAssignments) {
-    if (x.student_name !== a.student_name) continue;
-    if (x.id === presetKey) siblingIds.add(x.id);
-    if (x.preset_origin_id && x.preset_origin_id === presetKey) siblingIds.add(x.id);
-  }
-  return pickBestSubmission(submissions
-    .filter((s) => s.assignment_id && siblingIds.has(s.assignment_id))
-    .filter((s) => {
-      // Direct (same assignment_id) matches always pass the window filter so
-      // in-progress drafts on the exact row are never hidden by a window.
-      if (s.assignment_id === a.id) return true;
-      if (!s.submitted_at) return false;
-      const t = new Date(s.submitted_at).getTime();
-      return t >= windowStartTs && t < windowEndTs;
-    }));
+  // Writes are now routed to the correct session-copy via
+  // resolveCanonicalSubmissionTarget, so each session card only owns the
+  // submissions made on its own assignment row. Cross-sibling pooling would
+  // make a 4회차 card incorrectly show a 3회차 submission as "submitted",
+  // so we match strictly on assignment_id.
+  return pickBestSubmission(submissions.filter((s) => s.assignment_id === a.id));
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Canonical write-target resolution
