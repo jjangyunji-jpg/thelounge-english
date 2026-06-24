@@ -345,14 +345,14 @@ serve(async (req) => {
           const freq: Frequency = sched.frequency || "weekly";
           if (!isMatchingWeek(dateStr, period.start_date, freq)) continue;
 
-          if (existingSet.has(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`)) continue;
+          if (existingSet.has(`${student.student_name}|${dateStr}`)) continue;
 
           // Skip dates that were explicitly removed (makeup reschedule, etc.)
           if (deletedDateSet.has(`${student.student_name}|${dateStr}`)) continue;
 
           // Weekly cap check: don't exceed expected sessions per week
           const wk = weekKey(dateStr);
-          const countKey = `${student.student_name}|${student.instructor_name || ""}|${wk}`;
+          const countKey = `${student.student_name}|${wk}`;
           const currentWeekCount = weeklySessionCount.get(countKey) || 0;
           if (currentWeekCount >= expectedPerWeek) continue;
 
@@ -373,7 +373,7 @@ serve(async (req) => {
             group_students: groupStudents,
           });
 
-          existingSet.add(`${student.student_name}|${student.instructor_name || ""}|${dateStr}`);
+          existingSet.add(`${student.student_name}|${dateStr}`);
           weeklySessionCount.set(countKey, currentWeekCount + 1);
         }
       }
