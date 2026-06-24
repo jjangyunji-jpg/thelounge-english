@@ -203,12 +203,14 @@ serve(async (req) => {
 
     for (const s of existingSessions || []) {
       const dateStr = toKstDateStr(s.scheduled_at);
-      const instructorKey = s.instructor_name || "";
-      existingSet.add(`${s.student_name}|${instructorKey}|${dateStr}`);
+      // Dedup key intentionally excludes instructor_name because the DB unique
+      // index is (student_name, scheduled_at) only. Including instructor here
+      // would miss collisions after an instructor transition.
+      existingSet.add(`${s.student_name}|${dateStr}`);
 
-      // Count sessions per student per week
+      // Count sessions per student per week (also instructor-agnostic)
       const wk = weekKey(dateStr);
-      const countKey = `${s.student_name}|${instructorKey}|${wk}`;
+      const countKey = `${s.student_name}|${wk}`;
       weeklySessionCount.set(countKey, (weeklySessionCount.get(countKey) || 0) + 1);
 
       const originDates = Array.isArray(s.reschedule_origin_dates)
@@ -216,7 +218,7 @@ serve(async (req) => {
         : [];
       for (const originDate of originDates) {
         if (originDate) {
-          existingSet.add(`${s.student_name}|${instructorKey}|${originDate}`);
+          existingSet.add(`${s.student_name}|${originDate}`);
         }
       }
     }
