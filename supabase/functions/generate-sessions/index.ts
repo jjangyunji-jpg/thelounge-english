@@ -289,10 +289,10 @@ serve(async (req) => {
           for (const sess of periodSessions || []) {
             if (idsToDelete.includes(sess.id)) {
               const dateStr = toKstDateStr(sess.scheduled_at);
-              const key = `${student.student_name}|${student.instructor_name || ""}|${dateStr}`;
+              const key = `${student.student_name}|${dateStr}`;
               existingSet.delete(key);
               const wk = weekKey(dateStr);
-              const countKey = `${student.student_name}|${student.instructor_name || ""}|${wk}`;
+              const countKey = `${student.student_name}|${wk}`;
               const current = weeklySessionCount.get(countKey) || 0;
               if (current > 0) weeklySessionCount.set(countKey, current - 1);
             }
