@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { resolveCanonicalSubmissionTarget } from "@/lib/homeworkSubmissionLookup";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
@@ -322,14 +323,14 @@ export default function HomeworkSubmitModal({
         autoSaveFailedRef.current = true;
         toastRef.current({
           title: "자동저장 실패 ⚠️",
-          description: "네트워크가 불안정해 자동저장이 안 됐어요. 내용을 복사해 두시거나 '임시저장' 버튼을 눌러주세요.",
+          description: `${getErrorMessage(e, "자동저장에 실패했어요.")} — 내용을 복사해 두시거나 '임시저장' 버튼을 눌러주세요.`,
           variant: "destructive",
         });
       }
     } finally {
       inflightRef.current = false;
     }
-  }, [assignment.id, studentName]);
+  }, [assignment, studentName]);
 
 
   // 5초 주기 자동저장
@@ -452,7 +453,7 @@ export default function HomeworkSubmitModal({
         onClose();
       }
     } catch (e: unknown) {
-      toast({ title: asDraft ? "임시저장 실패" : "제출 실패", description: e instanceof Error ? e.message : "오류 발생", variant: "destructive" });
+      toast({ title: asDraft ? "임시저장 실패" : "제출 실패", description: getErrorMessage(e), variant: "destructive" });
     } finally {
       setSubmitting(false);
       setSavingDraft(false);
