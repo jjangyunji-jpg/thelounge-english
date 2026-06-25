@@ -45,12 +45,27 @@ export function getMovedAwayKeys(
 ): Set<string> {
   const { scoped = true } = opts;
   const moved = new Set<string>();
+
+  // Build a set of (student, date) keys where a real, non-cancelled session
+  // currently exists. If a session lives on that date, the slot is NOT empty,
+  // even if some other session lists it as an origin (e.g. a later shuffle
+  // moved a different class into that slot).
+  const occupiedKeys = new Set<string>();
+  for (const s of sessions) {
+    if (s.cancellation_type) continue;
+    const k = kstDateKey(s.scheduled_at);
+    const composite = scoped && s.student_name ? `${s.student_name}__${k}` : k;
+    occupiedKeys.add(composite);
+  }
+
   for (const s of sessions) {
     const selfKey = kstDateKey(s.scheduled_at);
     for (const orig of s.reschedule_origin_dates ?? []) {
       const key = typeof orig === "string" ? orig.slice(0, 10) : String(orig);
       if (key === selfKey) continue;
       const composite = scoped && s.student_name ? `${s.student_name}__${key}` : key;
+      // Skip: another active session already occupies this date — slot is not empty.
+      if (occupiedKeys.has(composite)) continue;
       moved.add(composite);
     }
   }
