@@ -1259,11 +1259,15 @@ export default function Classroom() {
       <header className="sidebar-gradient text-sidebar-foreground px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-4 shadow-lg">
         <button
           onClick={() => {
-            // 이전 페이지가 있으면 뒤로 가기, 없으면 기본 대시보드로
-            if (window.history.length > 1) {
-              navigate(-1);
+            // 강사는 항상 강사 대시보드로, 학생은 이전 페이지 또는 학생 대시보드로
+            if (urlRole === "student") {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/my/dashboard");
+              }
             } else {
-              navigate(urlRole === "student" ? "/my/dashboard" : "/t/dashboard");
+              navigate("/t/dashboard");
             }
           }}
           className="flex items-center gap-1 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors text-sm flex-shrink-0"
