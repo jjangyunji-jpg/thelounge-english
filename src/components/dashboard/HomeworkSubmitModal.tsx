@@ -253,7 +253,38 @@ export default function HomeworkSubmitModal({
   onSubmittedRef.current = onSubmitted;
   const toastRef = useRef(toast);
   toastRef.current = toast;
+  // Shared between autoSave and manual submit so the two paths can't race
+  // and end up inserting parallel rows for the same assignment.
   const inflightRef = useRef(false);
+  // Block all auto-save activity once the user has initiated a manual submit.
+  const submittingRef = useRef(false);
+
+  // ── Sibling-draft prefill ──
+  // If the strict-match getSub returned no submission but a legacy draft
+  // exists on a sibling row (preset master / different session copy), pull
+  // its contents into the editor so the student doesn't overwrite work.
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (prefilledRef.current) return;
+    if (submission) { prefilledRef.current = true; return; }
+    if (text.trim().length > 0) { prefilledRef.current = true; return; }
+    let cancelled = false;
+    (async () => {
+      const draft = await findLatestSiblingDraft(supabase, assignment, studentName);
+      if (cancelled || !draft) { prefilledRef.current = true; return; }
+      if (textRef.current.trim().length > 0) { prefilledRef.current = true; return; }
+      if (draft.text_content) {
+        setText(draft.text_content);
+        lastSavedTextRef.current = draft.text_content;
+      }
+      submissionRef.current = draft;
+      onSubmittedRef.current(draft);
+      prefilledRef.current = true;
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignment.id, studentName]);
+
 
   const performAutoSave = useCallback(async () => {
     const currentText = textRef.current;
