@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { resolveCanonicalSubmissionTarget } from "@/lib/homeworkSubmissionLookup";
+import { resolveCanonicalSubmissionTarget, findLatestSiblingDraft } from "@/lib/homeworkSubmissionLookup";
 import { getErrorMessage } from "@/lib/errorMessage";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
