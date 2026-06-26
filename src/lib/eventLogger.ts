@@ -55,9 +55,21 @@ function extractErrorFields(err: unknown): {
   };
 }
 
+/** Noise filters: synthetic probes, harmless browser warnings, headless bots. */
+function isNoiseEvent(input: LogEventInput, errorMessage: string | null): boolean {
+  const msg = (errorMessage ?? "").toLowerCase();
+  if (msg.includes("lovable_event_logger_probe")) return true;
+  if (msg.includes("resizeobserver loop")) return true;
+  if (typeof navigator !== "undefined" && /headlesschrome/i.test(navigator.userAgent ?? "")) {
+    return true;
+  }
+  return false;
+}
+
 export function logEvent(input: LogEventInput): void {
   try {
     const { message, code, details, hint, stack } = extractErrorFields(input.error);
+    if (isNoiseEvent(input, message)) return;
     const payload = {
       category: input.category,
       source_type: input.source_type ?? "client",
