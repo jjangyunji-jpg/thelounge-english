@@ -443,8 +443,29 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (e) {
+  } catch (e: any) {
     console.error("generate-sessions error:", e);
+    try {
+      const sbLog = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } },
+      );
+      await sbLog.from("homework_event_logs").insert({
+        category: "scheduling",
+        source_type: "edge_function",
+        function_name: "generate-sessions",
+        event_type: "invoke",
+        stage: "error",
+        error_message: (e?.message ?? String(e))?.slice(0, 2000) ?? null,
+        error_code: e?.code?.toString() ?? null,
+        pg_details: e?.details ?? null,
+        pg_hint: e?.hint ?? null,
+        stack: e?.stack?.slice(0, 4000) ?? null,
+        http_status: 500,
+        source: "generate-sessions",
+      });
+    } catch (_) { /* swallow */ }
     return new Response(
       JSON.stringify({ error: "요청을 처리할 수 없습니다. 나중에 다시 시도해주세요." }),
       {
