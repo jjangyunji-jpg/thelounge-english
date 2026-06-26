@@ -136,6 +136,8 @@ export default function Admin() {
         return <ApiKeysManagement />;
       case "level-tests":
         return <LevelTestManagement />;
+      case "homework-errors":
+        return <HomeworkErrorsManagement />;
       case "settings":
         return <SystemSettings />;
       default:
