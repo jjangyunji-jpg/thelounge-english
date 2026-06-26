@@ -738,13 +738,20 @@ export type Database = {
         Row: {
           assignment_id: string | null
           assignment_type: string | null
+          category: string
           context: Json
           created_at: string
           error_code: string | null
           error_message: string | null
           event_type: string
+          function_name: string | null
+          http_status: number | null
           id: string
+          pg_details: string | null
+          pg_hint: string | null
           source: string | null
+          source_type: string
+          stack: string | null
           stage: string
           student_name: string | null
           submission_id: string | null
@@ -753,13 +760,20 @@ export type Database = {
         Insert: {
           assignment_id?: string | null
           assignment_type?: string | null
+          category?: string
           context?: Json
           created_at?: string
           error_code?: string | null
           error_message?: string | null
           event_type: string
+          function_name?: string | null
+          http_status?: number | null
           id?: string
+          pg_details?: string | null
+          pg_hint?: string | null
           source?: string | null
+          source_type?: string
+          stack?: string | null
           stage: string
           student_name?: string | null
           submission_id?: string | null
@@ -768,13 +782,20 @@ export type Database = {
         Update: {
           assignment_id?: string | null
           assignment_type?: string | null
+          category?: string
           context?: Json
           created_at?: string
           error_code?: string | null
           error_message?: string | null
           event_type?: string
+          function_name?: string | null
+          http_status?: number | null
           id?: string
+          pg_details?: string | null
+          pg_hint?: string | null
           source?: string | null
+          source_type?: string
+          stack?: string | null
           stage?: string
           student_name?: string | null
           submission_id?: string | null
