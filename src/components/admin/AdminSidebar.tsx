@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, ArrowLeft, Library, FileQuestion, Target, MapIcon, MessageSquareHeart, Receipt, LifeBuoy, ChevronDown, KeyRound, ClipboardCheck } from "lucide-react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, ArrowLeft, Library, FileQuestion, Target, MapIcon, MessageSquareHeart, Receipt, LifeBuoy, ChevronDown, KeyRound, ClipboardCheck, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import type { AdminLevel } from "@/pages/Admin";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "level-tests" | "class-feedback" | "student-feedback" | "cash-receipts" | "support" | "guide" | "messages" | "settings" | "api-keys";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "level-tests" | "class-feedback" | "student-feedback" | "cash-receipts" | "support" | "guide" | "messages" | "settings" | "api-keys" | "homework-errors";
 
 // Tabs staff can access (read-only / limited)
 const staffAllowedTabs: AdminTab[] = ["materials"];
@@ -62,6 +62,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "operations", label: "운영 대시보드", icon: BarChart2 },
       { id: "support", label: "버그/개선 관리", icon: LifeBuoy },
+      { id: "homework-errors", label: "숙제 오류 추적", icon: AlertCircle },
       { id: "messages", label: "메시지 관리", icon: MessageSquare },
       { id: "api-keys", label: "외부 API 키", icon: KeyRound },
       { id: "settings", label: "기본 설정", icon: Settings },

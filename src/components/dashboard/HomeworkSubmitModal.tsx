@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { resolveCanonicalSubmissionTarget, findLatestSiblingDraft } from "@/lib/homeworkSubmissionLookup";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { logHomeworkEvent } from "@/lib/homeworkEventLogger";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
@@ -294,6 +295,13 @@ export default function HomeworkSubmitModal({
     if (inflightRef.current) return; // prevent parallel runs creating duplicates
     inflightRef.current = true;
 
+    const logBase = {
+      source: "HomeworkSubmitModal",
+      student_name: studentName,
+      assignment_id: assignment.id,
+      assignment_type: assignment.type,
+    } as const;
+    logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "attempt", context: { text_len: currentText.length } });
 
     try {
       const status = submissionRef.current?.status === "submitted" ? "submitted" : "draft";
@@ -309,6 +317,7 @@ export default function HomeworkSubmitModal({
           lastSavedTextRef.current = currentText;
           autoSaveFailedRef.current = false;
           onSubmittedRef.current(data);
+          logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "success", submission_id: data.id, context: { path: "update_existing" } });
         }
       } else {
         // Sibling-aware lookup: resolve canonical target across all preset
@@ -329,6 +338,7 @@ export default function HomeworkSubmitModal({
             submissionRef.current = data;
             autoSaveFailedRef.current = false;
             onSubmittedRef.current(data);
+            logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "success", submission_id: data.id, context: { path: "update_sibling" } });
           }
         } else {
           const { data, error } = await supabase
@@ -347,10 +357,12 @@ export default function HomeworkSubmitModal({
             submissionRef.current = data;
             autoSaveFailedRef.current = false;
             onSubmittedRef.current(data);
+            logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "success", submission_id: data.id, context: { path: "insert_new", canonical_id: canonicalId } });
           }
         }
       }
     } catch (e) {
+      logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "error", error: e });
       // Notify only once per failure burst so we don't spam toasts.
       if (!autoSaveFailedRef.current) {
         autoSaveFailedRef.current = true;
@@ -416,27 +428,50 @@ export default function HomeworkSubmitModal({
 
     let audioStorageUrl: string | null = null;
     let fileStorageUrl: string | null = null;
+    const eventType = asDraft ? "draft_save" : "submit";
+    const logBase = {
+      source: "HomeworkSubmitModal",
+      student_name: studentName,
+      assignment_id: assignment.id,
+      assignment_type: assignment.type,
+    } as const;
+    logHomeworkEvent({
+      ...logBase,
+      event_type: eventType,
+      stage: "attempt",
+      context: { text_len: text.length, has_audio: !!recorder.audioBlob, has_file: !!fileObj },
+    });
     try {
 
       if (recorder.audioBlob) {
+        logHomeworkEvent({ ...logBase, event_type: "storage_audio_upload", stage: "attempt" });
         const path = `${assignment.id}/${Date.now()}.webm`;
         const { error: upErr } = await supabase.storage
           .from("homework-audio")
           .upload(path, recorder.audioBlob, { contentType: "audio/webm", upsert: true });
-        if (upErr) throw upErr;
+        if (upErr) {
+          logHomeworkEvent({ ...logBase, event_type: "storage_audio_upload", stage: "error", error: upErr });
+          throw upErr;
+        }
         const { data: pub } = supabase.storage.from("homework-audio").getPublicUrl(path);
         audioStorageUrl = pub.publicUrl;
+        logHomeworkEvent({ ...logBase, event_type: "storage_audio_upload", stage: "success", context: { path } });
       }
 
       if (fileObj) {
+        logHomeworkEvent({ ...logBase, event_type: "storage_file_upload", stage: "attempt", context: { size: fileObj.size, mime: fileObj.type } });
         const ext = fileObj.name.split(".").pop() || "file";
         const path = `${assignment.id}/${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("homework-files")
           .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
-        if (upErr) throw upErr;
+        if (upErr) {
+          logHomeworkEvent({ ...logBase, event_type: "storage_file_upload", stage: "error", error: upErr });
+          throw upErr;
+        }
         // Store bare path; signed URL is generated on demand at view time
         fileStorageUrl = path;
+        logHomeworkEvent({ ...logBase, event_type: "storage_file_upload", stage: "success", context: { path } });
       }
 
       const status = asDraft ? "draft" : "submitted";
@@ -489,6 +524,13 @@ export default function HomeworkSubmitModal({
         resultSub = data;
       }
 
+      logHomeworkEvent({
+        ...logBase,
+        event_type: eventType,
+        stage: "success",
+        submission_id: resultSub?.id ?? null,
+      });
+
       if (asDraft) {
         lastSavedTextRef.current = text;
         toast({ title: "임시저장 완료 ✓" });
@@ -499,6 +541,7 @@ export default function HomeworkSubmitModal({
         onClose();
       }
     } catch (e: unknown) {
+      logHomeworkEvent({ ...logBase, event_type: eventType, stage: "error", error: e });
       toast({ title: asDraft ? "임시저장 실패" : "제출 실패", description: getErrorMessage(e), variant: "destructive" });
       // Re-enable auto-save so the user can keep trying
       submittingRef.current = false;

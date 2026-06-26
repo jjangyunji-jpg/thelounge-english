@@ -734,6 +734,54 @@ export type Database = {
           },
         ]
       }
+      homework_event_logs: {
+        Row: {
+          assignment_id: string | null
+          assignment_type: string | null
+          context: Json
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          source: string | null
+          stage: string
+          student_name: string | null
+          submission_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          assignment_type?: string | null
+          context?: Json
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          source?: string | null
+          stage: string
+          student_name?: string | null
+          submission_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assignment_id?: string | null
+          assignment_type?: string | null
+          context?: Json
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          source?: string | null
+          stage?: string
+          student_name?: string | null
+          submission_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       homework_submissions: {
         Row: {
           ai_correction: Json | null
