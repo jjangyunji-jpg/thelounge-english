@@ -239,8 +239,7 @@ export default function HomeworkErrorsManagement() {
                 <tr>
                   <th className="text-left p-2 font-medium">시각</th>
                   <th className="text-left p-2 font-medium">단계</th>
-                  <th className="text-left p-2 font-medium">분류</th>
-                  <th className="text-left p-2 font-medium">출처</th>
+                  <th className="text-left p-2 font-medium">분류 / 출처</th>
                   <th className="text-left p-2 font-medium">이벤트</th>
                   <th className="text-left p-2 font-medium">학생</th>
                   <th className="text-left p-2 font-medium">오류 메시지</th>
@@ -251,10 +250,11 @@ export default function HomeworkErrorsManagement() {
                   const stage = STAGE_BADGE[l.stage] ?? STAGE_BADGE.attempt;
                   const SIcon = stage.Icon;
                   const isOpen = expanded === l.id;
+                  const friendly = buildFriendlyLabel(l);
+                  const report = buildCopyReport(l, friendly);
                   return (
-                    <>
+                    <Fragment key={l.id}>
                       <tr
-                        key={l.id}
                         onClick={() => setExpanded(isOpen ? null : l.id)}
                         className={cn("border-t border-border hover:bg-muted/30 cursor-pointer", l.stage === "error" && "bg-destructive/5")}
                       >
@@ -265,12 +265,8 @@ export default function HomeworkErrorsManagement() {
                             {stage.label}
                           </Badge>
                         </td>
-                        <td className="p-2">{CATEGORY_LABEL[l.category] ?? l.category}</td>
-                        <td className="p-2 text-muted-foreground">
-                          {SOURCE_TYPE_LABEL[l.source_type] ?? l.source_type}
-                          {l.function_name ? <span className="ml-1 text-[10px]">({l.function_name})</span> : null}
-                        </td>
-                        <td className="p-2">{l.event_type}</td>
+                        <td className="p-2 font-medium">{friendly}</td>
+                        <td className="p-2 text-muted-foreground">{l.event_type}</td>
                         <td className="p-2 font-medium">{l.student_name ?? "—"}</td>
                         <td className="p-2 max-w-[360px]">
                           {l.error_message ? (
@@ -284,12 +280,37 @@ export default function HomeworkErrorsManagement() {
                       </tr>
                       {isOpen && (
                         <tr className="border-t border-border bg-muted/20">
-                          <td colSpan={7} className="p-3">
+                          <td colSpan={6} className="p-3">
+                            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                              <p className="text-[11px] text-muted-foreground">
+                                💡 아래 버튼을 눌러 오류 내용을 복사한 뒤, Lovable 채팅창에 붙여넣고 "이 오류 원인을 파악해줘"라고 보내세요.
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="gap-1.5 h-8"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await navigator.clipboard.writeText(report);
+                                    setCopiedId(l.id);
+                                    toast.success("복사 완료! Lovable 채팅에 붙여넣기 하세요");
+                                    setTimeout(() => setCopiedId((cur) => (cur === l.id ? null : cur)), 2000);
+                                  } catch {
+                                    toast.error("복사 실패 - 브라우저 권한을 확인하세요");
+                                  }
+                                }}
+                              >
+                                {copiedId === l.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                {copiedId === l.id ? "복사됨" : "Lovable에 보낼 내용 복사"}
+                              </Button>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
                               {l.pg_details && <div><span className="font-semibold">DB 상세:</span> <span className="font-mono break-words">{l.pg_details}</span></div>}
                               {l.pg_hint && <div><span className="font-semibold">DB 힌트:</span> <span className="font-mono break-words">{l.pg_hint}</span></div>}
                               {l.http_status != null && <div><span className="font-semibold">HTTP:</span> {l.http_status}</div>}
                               {l.source && <div><span className="font-semibold">소스:</span> {l.source}</div>}
+                              {l.function_name && <div><span className="font-semibold">함수명:</span> {l.function_name}</div>}
                               {l.assignment_type && <div><span className="font-semibold">숙제 타입:</span> {l.assignment_type}</div>}
                               {l.submission_id && <div><span className="font-semibold">제출 ID:</span> <span className="font-mono">{l.submission_id}</span></div>}
                               {l.context && Object.keys(l.context).length > 0 && (
@@ -308,7 +329,7 @@ export default function HomeworkErrorsManagement() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>
