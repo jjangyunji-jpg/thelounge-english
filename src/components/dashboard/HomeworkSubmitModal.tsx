@@ -500,11 +500,15 @@ export default function HomeworkSubmitModal({
       }
     } catch (e: unknown) {
       toast({ title: asDraft ? "임시저장 실패" : "제출 실패", description: getErrorMessage(e), variant: "destructive" });
+      // Re-enable auto-save so the user can keep trying
+      submittingRef.current = false;
     } finally {
+      inflightRef.current = false;
       setSubmitting(false);
       setSavingDraft(false);
     }
   };
+
 
   const hasUnsavedText = text.trim().length > 0 && text !== lastSavedTextRef.current;
   const hasUnsavedAttachments = recorder.audioBlob !== null || fileObj !== null;
