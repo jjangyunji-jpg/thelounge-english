@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { resolveCanonicalSubmissionTarget } from "@/lib/homeworkSubmissionLookup";
+import { resolveCanonicalSubmissionTarget, findLatestSiblingDraft } from "@/lib/homeworkSubmissionLookup";
 import { getErrorMessage } from "@/lib/errorMessage";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
@@ -253,14 +253,47 @@ export default function HomeworkSubmitModal({
   onSubmittedRef.current = onSubmitted;
   const toastRef = useRef(toast);
   toastRef.current = toast;
+  // Shared between autoSave and manual submit so the two paths can't race
+  // and end up inserting parallel rows for the same assignment.
   const inflightRef = useRef(false);
+  // Block all auto-save activity once the user has initiated a manual submit.
+  const submittingRef = useRef(false);
+
+  // ── Sibling-draft prefill ──
+  // If the strict-match getSub returned no submission but a legacy draft
+  // exists on a sibling row (preset master / different session copy), pull
+  // its contents into the editor so the student doesn't overwrite work.
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (prefilledRef.current) return;
+    if (submission) { prefilledRef.current = true; return; }
+    if (text.trim().length > 0) { prefilledRef.current = true; return; }
+    let cancelled = false;
+    (async () => {
+      const draft = await findLatestSiblingDraft(supabase, assignment, studentName);
+      if (cancelled || !draft) { prefilledRef.current = true; return; }
+      if (textRef.current.trim().length > 0) { prefilledRef.current = true; return; }
+      if (draft.text_content) {
+        setText(draft.text_content);
+        lastSavedTextRef.current = draft.text_content;
+      }
+      submissionRef.current = draft;
+      onSubmittedRef.current(draft);
+      prefilledRef.current = true;
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignment.id, studentName]);
+
 
   const performAutoSave = useCallback(async () => {
     const currentText = textRef.current;
     if (!currentText.trim() || currentText === lastSavedTextRef.current) return;
     if (submissionRef.current?.status === "reviewed") return;
+    if (submittingRef.current) return; // manual submit owns the writes
     if (inflightRef.current) return; // prevent parallel runs creating duplicates
     inflightRef.current = true;
+
 
     try {
       const status = submissionRef.current?.status === "submitted" ? "submitted" : "draft";
@@ -369,9 +402,22 @@ export default function HomeworkSubmitModal({
     if (asDraft) setSavingDraft(true);
     else setSubmitting(true);
 
+    // Block any further auto-save activity for the rest of this modal's life.
+    submittingRef.current = true;
+    if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
+    if (autoSaveTimerRef.current) { clearInterval(autoSaveTimerRef.current); autoSaveTimerRef.current = null; }
+    // Wait for any in-flight auto-save to settle so we don't race its insert.
+    let waited = 0;
+    while (inflightRef.current && waited < 5000) {
+      await new Promise((r) => setTimeout(r, 50));
+      waited += 50;
+    }
+    inflightRef.current = true;
+
     let audioStorageUrl: string | null = null;
     let fileStorageUrl: string | null = null;
     try {
+
       if (recorder.audioBlob) {
         const path = `${assignment.id}/${Date.now()}.webm`;
         const { error: upErr } = await supabase.storage
@@ -454,24 +500,36 @@ export default function HomeworkSubmitModal({
       }
     } catch (e: unknown) {
       toast({ title: asDraft ? "임시저장 실패" : "제출 실패", description: getErrorMessage(e), variant: "destructive" });
+      // Re-enable auto-save so the user can keep trying
+      submittingRef.current = false;
     } finally {
+      inflightRef.current = false;
       setSubmitting(false);
       setSavingDraft(false);
     }
   };
 
+
   const hasUnsavedText = text.trim().length > 0 && text !== lastSavedTextRef.current;
   const hasUnsavedAttachments = recorder.audioBlob !== null || fileObj !== null;
-  const guardedClose = useCallback(() => {
-    if (hasUnsavedText || hasUnsavedAttachments) {
-      const msg = hasUnsavedText
+  const guardedClose = useCallback(async () => {
+    // Cancel pending debounce; flush its content synchronously before close
+    // so the last burst of typing isn't lost when the modal unmounts.
+    if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
+    if (hasUnsavedText) {
+      try { await performAutoSave(); } catch { /* error already toasted */ }
+    }
+    const stillUnsaved = textRef.current.trim().length > 0 && textRef.current !== lastSavedTextRef.current;
+    if (stillUnsaved || hasUnsavedAttachments) {
+      const msg = stillUnsaved
         ? "아직 저장되지 않은 작성 내용이 있어요.\n정말 닫으시겠어요? 작성 중인 내용이 사라질 수 있습니다."
         : "첨부된 녹음/파일이 아직 제출되지 않았어요.\n정말 닫으시겠어요?";
       if (!window.confirm(msg)) return;
     }
     stopSpeaking();
     onClose();
-  }, [hasUnsavedText, hasUnsavedAttachments, stopSpeaking, onClose]);
+  }, [hasUnsavedText, hasUnsavedAttachments, stopSpeaking, onClose, performAutoSave]);
+
 
   const handleSubmit = () => saveOrSubmit(false);
   const handleSaveDraft = () => saveOrSubmit(true);

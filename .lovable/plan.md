@@ -1,92 +1,73 @@
-# 숙제 제출 Write 경로 통일
+# 일기 숙제 로직 종합 점검
 
-## 목표
-같은 회차 숙제(쌍둥이 assignment rows)에 대한 모든 draft/insert/update가 **항상 동일한 assignment_id**로 기록되도록 강제. 재발 차단.
+## 발견된 문제
 
-## 핵심 결정: "canonical assignment id" 산출 규칙
+### 1. 진입한 세션 카드와 다른 회차로 제출이 날아감 (가장 큰 원인)
+`resolveCanonicalSubmissionTarget`은 "학생의 다음 예정 세션"을 무조건 canonical target으로 잡는다.
+- 학생이 **이번 주 카드(3회차)** 를 눌러 일기를 쓰는데, 다음 예정 세션이 4회차로 잡혀 있으면 제출/임시저장이 **4회차 행**에 기록된다.
+- 그러면 3회차 카드에는 영영 "미제출"로 남고, 학생 본인은 "제출했는데 왜 안 뜨지?" 라고 보고하게 된다.
+- 박하얀 사례, 황지예/조민혜의 "사라진 제출" 보고가 모두 이 한 가지 원인에서 파생됨.
 
-다음 우선순위로 1개 row만 선택:
+**고침:** 진입한 assignment 자체가 이미 session_copy(`session_id != null` AND `is_preset = false`)면 그 row를 canonical로 쓴다. preset master로 진입한 경우에만 "다음 예정 세션"을 찾고, 그것도 없을 때만 최근 과거 세션으로 폴백.
 
-1. **이미 제출본이 존재하는 sibling이 있으면 그 row의 assignment_id 사용**
-   (가장 강한 status: submitted > draft, 동률이면 최신 submitted_at)
-2. 없으면 prop으로 받은 assignment row 그대로 사용
+### 2. 모달이 sibling 임시저장(draft) 내용을 보여주지 않음
+WeeklyTasksSection / StudentDashboard 의 `getSub`는 `assignment_id` 정확히 일치만 본다. 그래서:
+- preset_master에 저장된 draft가 있어도, 학생이 session_copy 카드를 누르면 **빈 textarea** 가 뜬다.
+- 학생이 새 내용을 타이핑하면 autoSave가 sibling을 찾아서 update → **기존 draft 덮어씀**.
+- "내용이 사라졌다" 민원의 직접 원인.
 
-이 규칙의 장점:
-- 기존 데이터를 **이동시키지 않음** → 마이그레이션 불필요
-- FK가 `ON DELETE CASCADE`라서, "다른 row로 옮기기"는 데이터 손실 위험이 있는데 이 방식은 그 위험을 회피
-- 진입 경로가 바뀌어도 첫 제출본이 있던 row로 항상 합류 → 분산 멈춤
+**고침:** 모달을 열 때만 sibling 풀에서 draft / 가장 최신 본을 끌어와 textarea 초기값으로 채운다. 카드 표시(미제출/완료/검토됨)는 지금처럼 strict-match 유지 (시각적 혼동 방지).
+
+### 3. autoSave ↔ 수동 제출 race condition
+- `performAutoSave`는 `inflightRef`로 자기 자신과의 동시실행만 막는다.
+- 사용자가 입력 중 곧장 "제출하기" 누르면 `saveOrSubmit`은 동일한 lock을 확인/획득하지 않는다.
+- 5초 인터벌 도중 클릭 시: autoSave가 insert 도중 → saveOrSubmit가 또 다른 canonical resolve → **draft + submitted 두 행 생성**.
+- DB에서 실제로 한 학생의 같은 preset에 `draft + reviewed` 또는 `draft + submitted` 조합이 다수 발견됨.
+
+**고침:**
+- `inflightRef`를 autoSave와 submit이 공유하게 만든다.
+- submit 시작 시 `inflightRef = true` 잡고, in-flight autoSave가 있다면 한번 더 await.
+- 잡힌 동안에는 새 autoSave 트리거 무시.
+- debounce timer / interval timer 도 submit 시작 시 즉시 clear.
+
+### 4. 모달 닫을 때 debounce-pending 변경이 손실됨
+1.5초 debounce 안에서 X 또는 바깥 클릭하면, 마지막 입력이 저장되기 전에 unmount되어 사라진다. "임시저장 안 됨" 보고의 일부 원인.
+
+**고침:** `guardedClose` 진입 시 pending debounce를 즉시 flush (await performAutoSave) 후 close.
+
+### 5. 두 개의 거의 동일한 제출 화면이 다른 로직으로 돌아감
+- `HomeworkSubmitModal` (대시보드용) — autoSave, sibling lookup, 에러 표시 모두 구현
+- `StudentHomeworkPanel`의 `SubmissionCard` (수업노트 인라인) — autoSave 없음, 임시저장 버튼 없음, sibling lookup만 부분 구현
+
+**고침:** `SubmissionCard`에서도 동일 모달 컴포넌트를 호출하도록 통일하거나, 최소한 동일한 sibling-draft 프리필 로직을 추가. 이번 단계에서는 동일 모달로 통일.
+
+### 6. `resolveCanonicalSubmissionTarget`이 새 session_copy 생성 시 제목·설명을 preset에서만 가져옴
+`weekAssignments` 표시 로직(WeeklyTasksSection)은 "제출 전이면 master의 현재 description을 우선" 으로 하는데, 이미 생성된 카피의 description은 옛 값이 박혀있다. 카드 화면(master 덮어쓰기)과 실제 모달이 받는 assignment(카피의 옛 description)이 달라 강사가 수정한 지문이 모달에 반영되지 않는 경우가 있다.
+
+**고침:** 모달 열 때 `assignment` prop 만들기 직전에도 동일하게 master description 머지 적용.
+
+---
 
 ## 변경 파일
 
-### 1. `src/lib/homeworkSubmissionLookup.ts`
-새 헬퍼 추가:
-```ts
-export function resolveCanonicalAssignmentId(
-  a: HwAssignmentLite,
-  allAssignments: HwAssignmentLite[],
-  submissions: HwSubmissionLite[]
-): string
-```
-- sibling pool 산출 (기존 findSubmissionForAssignment 와 동일 로직 재사용)
-- pool 안의 submissions 중 best 1건의 assignment_id 반환
-- 없으면 `a.id` 반환
+- `src/lib/homeworkSubmissionLookup.ts`
+  - `resolveCanonicalSubmissionTarget`: self-row가 이미 valid session_copy면 그것을 canonical로 사용. 그 외 경우만 upcoming/past 폴백.
+  - sibling pool에서 가장 최신 draft/submission을 반환하는 `findLatestSiblingDraft` 추가 (모달 프리필용).
+- `src/components/dashboard/HomeworkSubmitModal.tsx`
+  - 진입 시 prop submission이 null이면 비동기로 sibling draft를 끌어와 textarea/audio prefill.
+  - `inflightRef`를 submit·autoSave가 공유. submit 시 timer clear + pending flush.
+  - `guardedClose`에서 pending debounce flush.
+- `src/components/dashboard/WeeklyTasksSection.tsx`
+  - 모달에 넘기는 `assignment`에 master description 머지 (제출 전인 경우만, 기존 로직 일관성).
+- `src/components/classroom/StudentHomeworkPanel.tsx`
+  - 인라인 `SubmissionCard` 의 직접 submit 로직 제거하고 `HomeworkSubmitModal` 재사용.
 
-### 2. `src/components/dashboard/HomeworkSubmitModal.tsx`
-- 모달이 열릴 때 sibling assignments + 모든 submissions를 한 번 fetch
-- `resolveCanonicalAssignmentId`로 **canonicalId**를 계산하여 state로 고정
-- 이후 모든 write 지점(`performAutoSave`, `saveOrSubmit`의 insert/update, 기존 submission 조회)에서 `assignment.id` 대신 **canonicalId** 사용
-- Storage path도 canonicalId 기반(`${canonicalId}/...`)으로 변경
+## 검증 후 데이터 정리(별도 단계)
+지금 DB에 있는 sibling draft + reviewed 중복은 코드 수정만으로는 정리되지 않음. 코드 배포 후, 한 student × preset 당:
+- `reviewed` / `submitted` 가 있는 행이 있으면 → 나머지 동일 preset의 `draft` 행은 삭제
+- 위 작업은 사용자 확인 후 일괄 실행 (별도 supabase--insert 호출)
 
-### 3. `src/components/classroom/StudentHomeworkPanel.tsx`
-동일하게 canonicalId 결정 후 write 시 사용.
-
-### 4. (선택) `src/pages/Classroom.tsx` 강사 측 view
-write 경로 없음 (강사가 학생 제출은 안 함). 다만 새 sibling row를 만드는 로직 (line 1076)은 손대지 않음 — 그건 "이 회차에 이 숙제가 배정됐다"는 메타데이터라서 유지 필요.
-
----
-
-## 예상 부작용 및 사전 검토
-
-### ✅ 안전한 변화
-1. **기존 분산 데이터** — 그대로 남아도 read-side merger(이미 반영)가 best submission을 보여줌. 표시상 문제 없음.
-2. **동일 학생이 다른 경로로 진입** — 항상 같은 canonicalId 해석 → 같은 row 업데이트.
-3. **수업 회차마다 한 번씩 제출** — preset이 매 회차마다 새 session-copy row를 만드는 구조는 유지. 매 회차의 첫 제출은 그 회차의 row에 들어가고 그 이후엔 canonical 유지.
-
-### ⚠️ 주의 / 트레이드오프
-1. **FK ON DELETE CASCADE**
-   - canonical로 선택된 row(예: 과거 세션 복사본)가 어떤 사유로 삭제되면 submission도 cascade 삭제됨.
-   - **기존에도 동일한 위험이 존재**. 이번 변경으로 위험이 증가하지는 않음(어차피 submission은 1개 row에만 매달려 있었음).
-   - 별건이지만 권장: `ON DELETE SET NULL`로 완화하거나, session-copy 삭제 트리거 추가 검토. → **이번 작업 범위에는 포함하지 않음** (사용자 승인 시 별도 진행).
-
-2. **첫 제출의 race condition**
-   - 학생이 두 탭에서 동시에 첫 제출 → 두 row에 동시에 insert 가능. 매우 드물지만 가능.
-   - read-side merger가 best를 보여줘서 사용자 체감은 없음. 데이터만 1건 dead-weight.
-   - 추가 보호 원하면 DB unique constraint `(assignment_id, student_name)` + sibling 키 정규화 필요한데, 이번 범위에서는 생략.
-
-3. **기존에 잘못된 row에 제출본이 들어간 학생들(조민혜 4회 등)**
-   - 4회는 양쪽 모두 draft → canonical은 "best draft" 1개로 결정됨. 다른 draft는 read에서 무시되지만 DB엔 남음.
-   - 사용자가 새로 입력하면 canonical row 1개만 갱신됨 → 깨끗해짐.
-   - **다른 쪽 draft의 내용은 자동 마이그레이션 안 함** (덮어쓰기 위험). 필요하면 별도 SQL로 수동 통합.
-
-4. **강사 대시보드 미확인 카운트**
-   - read-side가 이미 sibling pool로 best를 보므로 영향 없음. 오히려 정확해짐.
-
-5. **임시저장 인디케이터**
-   - 모달이 canonical로 통일되므로 "임시저장됨" 표시가 일관됨. 변동 없음.
-
-### 🟢 회귀 검증 포인트
-- [ ] 일기쓰기 신규 제출 (대시보드 진입)
-- [ ] 일기쓰기 신규 제출 (수업방 진입)  
-- [ ] draft 자동저장 후 다른 경로 재진입 시 같은 내용 보임
-- [ ] 강사 대시보드 미확인 숙제 카운트
-- [ ] 강사 코멘트 후 reviewed 상태 표시
-- [ ] file/audio 업로드형 숙제 (writing 외)
-
----
-
-## 마이그레이션 없음
-- DB 스키마 변경 없음
-- 기존 데이터 이동 없음
-- 코드 변경만으로 완료
-
-승인하시면 위 3개 파일 수정으로 진행하겠습니다.
+## 비기능 영향
+- 강사 대시보드 미확인 카운트는 read 쪽 strict-match를 유지하므로 변동 없음.
+- 학생 카드 표시 상태도 strict-match 유지로 동일.
+- 변경의 본질은 "어디에 쓰느냐(write target)"를 학생이 보고 있는 카드와 맞추는 것 + race 차단 + draft 프리필.
