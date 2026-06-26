@@ -192,25 +192,43 @@ function SubmissionCard({
     let audioStorageUrl: string | null = null;
     let fileStorageUrl: string | null = null;
 
+    const logBase = {
+      source: "StudentHomeworkPanel",
+      student_name: studentName,
+      assignment_id: assignment.id,
+      assignment_type: assignment.type,
+    } as const;
+    logHomeworkEvent({ ...logBase, event_type: "submit", stage: "attempt", context: { text_len: text.length, has_audio: !!recorder.audioBlob, has_file: !!fileObj } });
+
     try {
       if (recorder.audioBlob) {
+        logHomeworkEvent({ ...logBase, event_type: "storage_audio_upload", stage: "attempt" });
         const path = `${assignment.id}/${Date.now()}.webm`;
         const { error: upErr } = await supabase.storage
           .from("homework-audio")
           .upload(path, recorder.audioBlob, { contentType: "audio/webm", upsert: true });
-        if (upErr) throw upErr;
+        if (upErr) {
+          logHomeworkEvent({ ...logBase, event_type: "storage_audio_upload", stage: "error", error: upErr });
+          throw upErr;
+        }
         const { data: pub } = supabase.storage.from("homework-audio").getPublicUrl(path);
         audioStorageUrl = pub.publicUrl;
+        logHomeworkEvent({ ...logBase, event_type: "storage_audio_upload", stage: "success" });
       }
 
       if (fileObj) {
+        logHomeworkEvent({ ...logBase, event_type: "storage_file_upload", stage: "attempt", context: { size: fileObj.size, mime: fileObj.type } });
         const ext = fileObj.name.split(".").pop() || "file";
         const path = `${assignment.id}/${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("homework-files")
           .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
-        if (upErr) throw upErr;
+        if (upErr) {
+          logHomeworkEvent({ ...logBase, event_type: "storage_file_upload", stage: "error", error: upErr });
+          throw upErr;
+        }
         fileStorageUrl = path;
+        logHomeworkEvent({ ...logBase, event_type: "storage_file_upload", stage: "success" });
       }
 
       let resultSub: Submission | null = null;
@@ -269,10 +287,12 @@ function SubmissionCard({
         }
       }
 
+      logHomeworkEvent({ ...logBase, event_type: "submit", stage: "success", submission_id: resultSub?.id ?? null });
       toast({ title: "숙제가 제출됐습니다 ✓" });
       if (resultSub) onSubmitted(resultSub);
       setOpen(false);
     } catch (e: unknown) {
+      logHomeworkEvent({ ...logBase, event_type: "submit", stage: "error", error: e });
       toast({ title: "제출 실패", description: e instanceof Error ? e.message : "오류가 발생했습니다", variant: "destructive" });
     } finally {
       setSubmitting(false);
