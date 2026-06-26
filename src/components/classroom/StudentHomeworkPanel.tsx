@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
 import { resolveCanonicalSubmissionTarget } from "@/lib/homeworkSubmissionLookup";
+import { logHomeworkEvent } from "@/lib/homeworkEventLogger";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
