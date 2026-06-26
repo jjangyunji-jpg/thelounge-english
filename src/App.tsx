@@ -25,6 +25,9 @@ import Waitlist from "./pages/Waitlist";
 import Vocabulary from "./pages/Vocabulary";
 import KeyExpressions from "./pages/KeyExpressions";
 import MyProfile from "./pages/MyProfile";
+import { installGlobalErrorLogging } from "@/lib/eventLogger";
+
+installGlobalErrorLogging();
 
 const queryClient = new QueryClient();
 
