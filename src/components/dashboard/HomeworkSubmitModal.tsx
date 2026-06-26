@@ -290,8 +290,10 @@ export default function HomeworkSubmitModal({
     const currentText = textRef.current;
     if (!currentText.trim() || currentText === lastSavedTextRef.current) return;
     if (submissionRef.current?.status === "reviewed") return;
+    if (submittingRef.current) return; // manual submit owns the writes
     if (inflightRef.current) return; // prevent parallel runs creating duplicates
     inflightRef.current = true;
+
 
     try {
       const status = submissionRef.current?.status === "submitted" ? "submitted" : "draft";
