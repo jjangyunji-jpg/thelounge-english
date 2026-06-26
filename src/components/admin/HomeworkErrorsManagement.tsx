@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, AlertCircle, CheckCircle2, Clock, Filter, Activity } from "lucide-react";
+import { Loader2, RefreshCw, AlertCircle, CheckCircle2, Clock, Filter, Activity, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface LogRow {
   id: string;
@@ -48,6 +49,24 @@ const SOURCE_TYPE_LABEL: Record<string, string> = {
   database: "데이터베이스",
 };
 
+// 코드 상의 source 식별자 → 비개발자가 이해할 수 있는 화면/위치 이름
+const SOURCE_LOCATION_LABEL: Record<string, string> = {
+  HomeworkSubmitModal: "학생 대시보드 - 숙제 제출",
+  StudentHomeworkPanel: "강사 수업노트 - 숙제 검토",
+  window: "브라우저(전역 오류)",
+};
+
+// 분류 + 출처(소스 코드 위치) 를 결합해서 비개발자가 한 줄로 이해할 수 있는 라벨 생성
+function buildFriendlyLabel(l: { category: string; source: string | null; function_name: string | null; source_type: string }) {
+  const cat = CATEGORY_LABEL[l.category] ?? l.category;
+  const where = l.source
+    ? (SOURCE_LOCATION_LABEL[l.source] ?? l.source)
+    : l.function_name
+      ? `엣지 함수: ${l.function_name}`
+      : SOURCE_TYPE_LABEL[l.source_type] ?? l.source_type;
+  return `${cat} 오류 / ${where}`;
+}
+
 const STAGE_BADGE: Record<string, { label: string; cls: string; Icon: typeof Clock }> = {
   attempt: { label: "시도", cls: "bg-muted text-muted-foreground", Icon: Clock },
   success: { label: "성공", cls: "bg-success/15 text-success", Icon: CheckCircle2 },
@@ -66,6 +85,37 @@ function fmtTime(iso: string) {
   return d.toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+function buildCopyReport(l: LogRow, friendly: string): string {
+  const lines = [
+    `🐛 Lovable 앱 오류 리포트`,
+    ``,
+    `**분류 / 출처**: ${friendly}`,
+    `**발생 시각**: ${new Date(l.created_at).toLocaleString("ko-KR")} (KST)`,
+    `**단계**: ${l.stage}`,
+    `**이벤트**: ${l.event_type}`,
+    l.student_name ? `**학생**: ${l.student_name}` : null,
+    l.assignment_type ? `**숙제 타입**: ${l.assignment_type}` : null,
+    l.assignment_id ? `**과제 ID**: ${l.assignment_id}` : null,
+    l.submission_id ? `**제출 ID**: ${l.submission_id}` : null,
+    l.source ? `**소스 코드 위치**: ${l.source}` : null,
+    l.function_name ? `**엣지 함수**: ${l.function_name}` : null,
+    l.http_status != null ? `**HTTP 상태**: ${l.http_status}` : null,
+    ``,
+    `**오류 메시지**: ${l.error_message ?? "(없음)"}`,
+    l.error_code ? `**오류 코드**: ${l.error_code}` : null,
+    l.pg_details ? `**DB 상세**: ${l.pg_details}` : null,
+    l.pg_hint ? `**DB 힌트**: ${l.pg_hint}` : null,
+  ].filter(Boolean);
+  if (l.context && Object.keys(l.context).length > 0) {
+    lines.push(``, `**컨텍스트**:`, "```json", JSON.stringify(l.context, null, 2), "```");
+  }
+  if (l.stack) {
+    lines.push(``, `**스택**:`, "```", l.stack, "```");
+  }
+  lines.push(``, `---`, `이 오류의 원인을 파악하고 수정해줘.`);
+  return lines.join("\n");
+}
+
 export default function HomeworkErrorsManagement() {
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +126,7 @@ export default function HomeworkErrorsManagement() {
   const [search, setSearch] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -220,8 +271,7 @@ export default function HomeworkErrorsManagement() {
                 <tr>
                   <th className="text-left p-2 font-medium">시각</th>
                   <th className="text-left p-2 font-medium">단계</th>
-                  <th className="text-left p-2 font-medium">분류</th>
-                  <th className="text-left p-2 font-medium">출처</th>
+                  <th className="text-left p-2 font-medium">분류 / 출처</th>
                   <th className="text-left p-2 font-medium">이벤트</th>
                   <th className="text-left p-2 font-medium">학생</th>
                   <th className="text-left p-2 font-medium">오류 메시지</th>
@@ -232,10 +282,11 @@ export default function HomeworkErrorsManagement() {
                   const stage = STAGE_BADGE[l.stage] ?? STAGE_BADGE.attempt;
                   const SIcon = stage.Icon;
                   const isOpen = expanded === l.id;
+                  const friendly = buildFriendlyLabel(l);
+                  const report = buildCopyReport(l, friendly);
                   return (
-                    <>
+                    <Fragment key={l.id}>
                       <tr
-                        key={l.id}
                         onClick={() => setExpanded(isOpen ? null : l.id)}
                         className={cn("border-t border-border hover:bg-muted/30 cursor-pointer", l.stage === "error" && "bg-destructive/5")}
                       >
@@ -246,12 +297,8 @@ export default function HomeworkErrorsManagement() {
                             {stage.label}
                           </Badge>
                         </td>
-                        <td className="p-2">{CATEGORY_LABEL[l.category] ?? l.category}</td>
-                        <td className="p-2 text-muted-foreground">
-                          {SOURCE_TYPE_LABEL[l.source_type] ?? l.source_type}
-                          {l.function_name ? <span className="ml-1 text-[10px]">({l.function_name})</span> : null}
-                        </td>
-                        <td className="p-2">{l.event_type}</td>
+                        <td className="p-2 font-medium">{friendly}</td>
+                        <td className="p-2 text-muted-foreground">{l.event_type}</td>
                         <td className="p-2 font-medium">{l.student_name ?? "—"}</td>
                         <td className="p-2 max-w-[360px]">
                           {l.error_message ? (
@@ -265,12 +312,37 @@ export default function HomeworkErrorsManagement() {
                       </tr>
                       {isOpen && (
                         <tr className="border-t border-border bg-muted/20">
-                          <td colSpan={7} className="p-3">
+                          <td colSpan={6} className="p-3">
+                            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                              <p className="text-[11px] text-muted-foreground">
+                                💡 아래 버튼을 눌러 오류 내용을 복사한 뒤, Lovable 채팅창에 붙여넣고 "이 오류 원인을 파악해줘"라고 보내세요.
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="gap-1.5 h-8"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await navigator.clipboard.writeText(report);
+                                    setCopiedId(l.id);
+                                    toast.success("복사 완료! Lovable 채팅에 붙여넣기 하세요");
+                                    setTimeout(() => setCopiedId((cur) => (cur === l.id ? null : cur)), 2000);
+                                  } catch {
+                                    toast.error("복사 실패 - 브라우저 권한을 확인하세요");
+                                  }
+                                }}
+                              >
+                                {copiedId === l.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                {copiedId === l.id ? "복사됨" : "Lovable에 보낼 내용 복사"}
+                              </Button>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
                               {l.pg_details && <div><span className="font-semibold">DB 상세:</span> <span className="font-mono break-words">{l.pg_details}</span></div>}
                               {l.pg_hint && <div><span className="font-semibold">DB 힌트:</span> <span className="font-mono break-words">{l.pg_hint}</span></div>}
                               {l.http_status != null && <div><span className="font-semibold">HTTP:</span> {l.http_status}</div>}
                               {l.source && <div><span className="font-semibold">소스:</span> {l.source}</div>}
+                              {l.function_name && <div><span className="font-semibold">함수명:</span> {l.function_name}</div>}
                               {l.assignment_type && <div><span className="font-semibold">숙제 타입:</span> {l.assignment_type}</div>}
                               {l.submission_id && <div><span className="font-semibold">제출 ID:</span> <span className="font-mono">{l.submission_id}</span></div>}
                               {l.context && Object.keys(l.context).length > 0 && (
@@ -289,7 +361,7 @@ export default function HomeworkErrorsManagement() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>
