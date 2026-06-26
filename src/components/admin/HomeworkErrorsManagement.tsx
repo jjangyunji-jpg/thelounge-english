@@ -49,6 +49,24 @@ const SOURCE_TYPE_LABEL: Record<string, string> = {
   database: "데이터베이스",
 };
 
+// 코드 상의 source 식별자 → 비개발자가 이해할 수 있는 화면/위치 이름
+const SOURCE_LOCATION_LABEL: Record<string, string> = {
+  HomeworkSubmitModal: "학생 대시보드 - 숙제 제출",
+  StudentHomeworkPanel: "강사 수업노트 - 숙제 검토",
+  window: "브라우저(전역 오류)",
+};
+
+// 분류 + 출처(소스 코드 위치) 를 결합해서 비개발자가 한 줄로 이해할 수 있는 라벨 생성
+function buildFriendlyLabel(l: { category: string; source: string | null; function_name: string | null; source_type: string }) {
+  const cat = CATEGORY_LABEL[l.category] ?? l.category;
+  const where = l.source
+    ? (SOURCE_LOCATION_LABEL[l.source] ?? l.source)
+    : l.function_name
+      ? `엣지 함수: ${l.function_name}`
+      : SOURCE_TYPE_LABEL[l.source_type] ?? l.source_type;
+  return `${cat} 오류 / ${where}`;
+}
+
 const STAGE_BADGE: Record<string, { label: string; cls: string; Icon: typeof Clock }> = {
   attempt: { label: "시도", cls: "bg-muted text-muted-foreground", Icon: Clock },
   success: { label: "성공", cls: "bg-success/15 text-success", Icon: CheckCircle2 },
