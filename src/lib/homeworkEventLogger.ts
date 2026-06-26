@@ -1,8 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
+import { logEvent } from "./eventLogger";
 
 /**
- * Fire-and-forget logger for homework submission events.
- * Never throws — logging failures must never break the user flow.
+ * Backwards-compatible homework logger. Delegates to the generalized eventLogger.
  */
 export type HomeworkEventType =
   | "autosave"
@@ -23,60 +22,21 @@ export interface HomeworkEventInput {
   submission_id?: string | null;
   error?: unknown;
   context?: Record<string, unknown>;
-  source?: string; // e.g. "HomeworkSubmitModal", "StudentHomeworkPanel"
-}
-
-function extractErrorFields(err: unknown): { message: string | null; code: string | null } {
-  if (!err) return { message: null, code: null };
-  if (err instanceof Error) {
-    const anyErr = err as any;
-    return { message: err.message?.slice(0, 1000) ?? null, code: anyErr.code ?? anyErr.status?.toString() ?? null };
-  }
-  if (typeof err === "object") {
-    const anyErr = err as any;
-    return {
-      message: (anyErr.message ?? JSON.stringify(anyErr)).toString().slice(0, 1000),
-      code: anyErr.code ?? anyErr.status?.toString() ?? null,
-    };
-  }
-  return { message: String(err).slice(0, 1000), code: null };
+  source?: string;
 }
 
 export function logHomeworkEvent(input: HomeworkEventInput): void {
-  try {
-    const { message, code } = extractErrorFields(input.error);
-    const payload = {
-      event_type: input.event_type,
-      stage: input.stage,
-      student_name: input.student_name ?? null,
-      assignment_id: input.assignment_id ?? null,
-      assignment_type: input.assignment_type ?? null,
-      submission_id: input.submission_id ?? null,
-      error_message: message,
-      error_code: code,
-      context: {
-        ...(input.context ?? {}),
-        ua: typeof navigator !== "undefined" ? navigator.userAgent?.slice(0, 200) : null,
-        url: typeof window !== "undefined" ? window.location.pathname : null,
-      },
-      source: input.source ?? null,
-    };
-
-    // Attach user id if available — but don't await
-    supabase.auth.getSession().then(({ data }) => {
-      const user_id = data.session?.user?.id ?? null;
-      supabase
-        .from("homework_event_logs")
-        .insert({ ...payload, user_id })
-        .then(({ error }) => {
-          if (error) {
-            // eslint-disable-next-line no-console
-            console.warn("[homeworkEventLogger] insert failed", error.message);
-          }
-        });
-    });
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn("[homeworkEventLogger] unexpected", e);
-  }
+  logEvent({
+    category: "homework",
+    event_type: input.event_type,
+    stage: input.stage,
+    source_type: "client",
+    source: input.source,
+    student_name: input.student_name,
+    assignment_id: input.assignment_id,
+    assignment_type: input.assignment_type,
+    submission_id: input.submission_id,
+    error: input.error,
+    context: input.context,
+  });
 }
