@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, ArrowLeft, Library, FileQuestion, Target, MapIcon, MessageSquareHeart, Receipt, LifeBuoy, ChevronDown, KeyRound, ClipboardCheck } from "lucide-react";
+import { Users, GraduationCap, MessageSquare, Settings, LayoutDashboard, BookOpen, BarChart2, UserCheck, LogOut, ArrowLeft, Library, FileQuestion, Target, MapIcon, MessageSquareHeart, Receipt, LifeBuoy, ChevronDown, KeyRound, ClipboardCheck, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import type { AdminLevel } from "@/pages/Admin";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "level-tests" | "class-feedback" | "student-feedback" | "cash-receipts" | "support" | "guide" | "messages" | "settings" | "api-keys";
+export type AdminTab = "dashboard" | "operations" | "instructors" | "students" | "approval" | "materials" | "curriculum" | "level-tests" | "class-feedback" | "student-feedback" | "cash-receipts" | "support" | "guide" | "messages" | "settings" | "api-keys" | "homework-errors";
 
 // Tabs staff can access (read-only / limited)
 const staffAllowedTabs: AdminTab[] = ["materials"];
