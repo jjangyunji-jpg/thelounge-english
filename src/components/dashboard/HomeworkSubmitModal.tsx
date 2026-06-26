@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { resolveCanonicalSubmissionTarget, findLatestSiblingDraft } from "@/lib/homeworkSubmissionLookup";
 import { getErrorMessage } from "@/lib/errorMessage";
+import { logHomeworkEvent } from "@/lib/homeworkEventLogger";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
