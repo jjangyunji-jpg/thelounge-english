@@ -85,6 +85,37 @@ function fmtTime(iso: string) {
   return d.toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+function buildCopyReport(l: LogRow, friendly: string): string {
+  const lines = [
+    `🐛 Lovable 앱 오류 리포트`,
+    ``,
+    `**분류 / 출처**: ${friendly}`,
+    `**발생 시각**: ${new Date(l.created_at).toLocaleString("ko-KR")} (KST)`,
+    `**단계**: ${l.stage}`,
+    `**이벤트**: ${l.event_type}`,
+    l.student_name ? `**학생**: ${l.student_name}` : null,
+    l.assignment_type ? `**숙제 타입**: ${l.assignment_type}` : null,
+    l.assignment_id ? `**과제 ID**: ${l.assignment_id}` : null,
+    l.submission_id ? `**제출 ID**: ${l.submission_id}` : null,
+    l.source ? `**소스 코드 위치**: ${l.source}` : null,
+    l.function_name ? `**엣지 함수**: ${l.function_name}` : null,
+    l.http_status != null ? `**HTTP 상태**: ${l.http_status}` : null,
+    ``,
+    `**오류 메시지**: ${l.error_message ?? "(없음)"}`,
+    l.error_code ? `**오류 코드**: ${l.error_code}` : null,
+    l.pg_details ? `**DB 상세**: ${l.pg_details}` : null,
+    l.pg_hint ? `**DB 힌트**: ${l.pg_hint}` : null,
+  ].filter(Boolean);
+  if (l.context && Object.keys(l.context).length > 0) {
+    lines.push(``, `**컨텍스트**:`, "```json", JSON.stringify(l.context, null, 2), "```");
+  }
+  if (l.stack) {
+    lines.push(``, `**스택**:`, "```", l.stack, "```");
+  }
+  lines.push(``, `---`, `이 오류의 원인을 파악하고 수정해줘.`);
+  return lines.join("\n");
+}
+
 export default function HomeworkErrorsManagement() {
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
