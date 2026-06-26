@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, AlertCircle, CheckCircle2, Clock, Filter, Activity } from "lucide-react";
+import { Loader2, RefreshCw, AlertCircle, CheckCircle2, Clock, Filter, Activity, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface LogRow {
   id: string;
