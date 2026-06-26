@@ -18,6 +18,7 @@ import CashReceiptManagement from "@/components/admin/CashReceiptManagement";
 import SupportRequestManagement from "@/components/admin/SupportRequestManagement";
 import ApiKeysManagement from "@/components/admin/ApiKeysManagement";
 import LevelTestManagement from "@/components/admin/LevelTestManagement";
+import HomeworkErrorsManagement from "@/components/admin/HomeworkErrorsManagement";
 
 import { Menu, X, Loader2, ArrowLeft } from "lucide-react";
 
