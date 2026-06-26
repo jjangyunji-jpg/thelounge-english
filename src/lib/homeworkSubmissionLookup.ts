@@ -86,7 +86,7 @@ interface SessionRow {
 
 export async function resolveCanonicalSubmissionTarget(
   supabase: any,
-  assignment: { id: string; preset_origin_id?: string | null; is_preset?: boolean },
+  assignment: { id: string; preset_origin_id?: string | null; is_preset?: boolean; session_id?: string | null },
   studentName: string,
 ): Promise<{ canonicalId: string; existingSubmission: any | null }> {
   const safeFallback = async (): Promise<string> => {
@@ -116,6 +116,25 @@ export async function resolveCanonicalSubmissionTarget(
         .maybeSingle();
       selfRow = (data as AssignmentRow | null) ?? null;
     }
+
+    // ── PRIMARY RULE ──
+    // If the student opened a real session-copy card (non-preset row with a
+    // session_id), that card IS the canonical target. Do NOT redirect their
+    // submission to a different session sibling — that's what caused
+    // "submitted but not visible on the card I clicked" reports.
+    const selfIsSessionCopy =
+      !!selfRow && selfRow.is_preset === false && !!selfRow.session_id;
+    if (selfIsSessionCopy && selfRow) {
+      const { data: ownSubs } = await supabase
+        .from("homework_submissions")
+        .select("*")
+        .eq("assignment_id", selfRow.id)
+        .eq("student_name", studentName);
+      const ownBest = pickBestSubmission((ownSubs || []) as HwSubmissionLite[]);
+      return { canonicalId: selfRow.id, existingSubmission: ownBest ?? null };
+    }
+
+    // ── FALLBACK (preset master entry, or orphan row without session_id) ──
     const presetKey =
       (selfRow?.is_preset ? selfRow.id : selfRow?.preset_origin_id) ??
       assignment.preset_origin_id ??
@@ -128,21 +147,8 @@ export async function resolveCanonicalSubmissionTarget(
       .or(`id.eq.${presetKey},preset_origin_id.eq.${presetKey}`);
     const siblings = ((siblingsData || []) as AssignmentRow[])
       .filter((s) => s.student_name === studentName || s.is_preset);
-    const siblingIds = new Set<string>(siblings.map((s) => s.id));
-    siblingIds.add(assignment.id);
 
-    // 1) Existing submission — keep using the same row
-    const { data: subsData } = await supabase
-      .from("homework_submissions")
-      .select("*")
-      .in("assignment_id", Array.from(siblingIds))
-      .eq("student_name", studentName);
-    const best = pickBestSubmission((subsData || []) as HwSubmissionLite[]);
-    if (best && best.assignment_id) {
-      return { canonicalId: best.assignment_id, existingSubmission: best };
-    }
-
-    // 2) Determine target session = next upcoming (non-cancelled), else latest past
+    // Determine target session = next upcoming (non-cancelled), else latest past
     const nowIso = new Date().toISOString();
     const { data: sessionsData } = await supabase
       .from("class_sessions")
@@ -157,15 +163,22 @@ export async function resolveCanonicalSubmissionTarget(
     const targetSession = upcoming || latestPast;
 
     if (targetSession) {
-      // 3) Find sibling whose session_id matches target session
+      // Find sibling whose session_id matches target session
       const match = siblings.find(
         (s) => !s.is_preset && s.session_id === targetSession.id,
       );
       if (match) {
-        return { canonicalId: match.id, existingSubmission: null };
+        // Return any existing submission for this canonical row
+        const { data: matchSubs } = await supabase
+          .from("homework_submissions")
+          .select("*")
+          .eq("assignment_id", match.id)
+          .eq("student_name", studentName);
+        const best = pickBestSubmission((matchSubs || []) as HwSubmissionLite[]);
+        return { canonicalId: match.id, existingSubmission: best ?? null };
       }
 
-      // 4) No session-copy yet — create one from preset
+      // No session-copy yet — create one from preset
       const preset = siblings.find((s) => s.is_preset) || selfRow;
       if (preset && targetSession) {
         const { data: created, error: createErr } = await supabase
@@ -188,10 +201,61 @@ export async function resolveCanonicalSubmissionTarget(
       }
     }
 
-    // 5) Fallback
     return { canonicalId: await safeFallback(), existingSubmission: null };
   } catch {
     return { canonicalId: await safeFallback(), existingSubmission: null };
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sibling draft recovery — used by the submit modal to prefill textarea/audio
+// when the student's strict-match card has no submission but a draft exists
+// on a sibling row (legacy data from before canonical write-routing was added).
+// Only returns drafts; submitted/reviewed rows are intentionally ignored so
+// they don't get accidentally edited from a different session's card.
+// ─────────────────────────────────────────────────────────────────────────────
+export async function findLatestSiblingDraft(
+  supabase: any,
+  assignment: { id: string; preset_origin_id?: string | null; is_preset?: boolean },
+  studentName: string,
+): Promise<any | null> {
+  try {
+    const { data: selfRow } = await supabase
+      .from("homework_assignments")
+      .select("id, preset_origin_id, is_preset")
+      .eq("id", assignment.id)
+      .maybeSingle();
+
+    const presetKey =
+      (selfRow?.is_preset ? selfRow.id : selfRow?.preset_origin_id) ??
+      assignment.preset_origin_id ??
+      assignment.id;
+
+    const { data: siblings } = await supabase
+      .from("homework_assignments")
+      .select("id")
+      .or(`id.eq.${presetKey},preset_origin_id.eq.${presetKey}`)
+      .eq("student_name", studentName);
+    const siblingIds = new Set<string>(((siblings || []) as { id: string }[]).map((s) => s.id));
+    siblingIds.add(assignment.id);
+
+    const { data: drafts } = await supabase
+      .from("homework_submissions")
+      .select("*")
+      .in("assignment_id", Array.from(siblingIds))
+      .eq("student_name", studentName)
+      .eq("status", "draft");
+
+    if (!drafts || drafts.length === 0) return null;
+    // Most recent draft wins
+    return [...drafts].sort(
+      (a: any, b: any) =>
+        new Date(b.submitted_at || b.updated_at || 0).getTime() -
+        new Date(a.submitted_at || a.updated_at || 0).getTime(),
+    )[0];
+  } catch {
+    return null;
+  }
+}
+
 
