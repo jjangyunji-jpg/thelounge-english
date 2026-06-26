@@ -402,9 +402,22 @@ export default function HomeworkSubmitModal({
     if (asDraft) setSavingDraft(true);
     else setSubmitting(true);
 
+    // Block any further auto-save activity for the rest of this modal's life.
+    submittingRef.current = true;
+    if (debounceTimerRef.current) { clearTimeout(debounceTimerRef.current); debounceTimerRef.current = null; }
+    if (autoSaveTimerRef.current) { clearInterval(autoSaveTimerRef.current); autoSaveTimerRef.current = null; }
+    // Wait for any in-flight auto-save to settle so we don't race its insert.
+    let waited = 0;
+    while (inflightRef.current && waited < 5000) {
+      await new Promise((r) => setTimeout(r, 50));
+      waited += 50;
+    }
+    inflightRef.current = true;
+
     let audioStorageUrl: string | null = null;
     let fileStorageUrl: string | null = null;
     try {
+
       if (recorder.audioBlob) {
         const path = `${assignment.id}/${Date.now()}.webm`;
         const { error: upErr } = await supabase.storage
