@@ -295,6 +295,13 @@ export default function HomeworkSubmitModal({
     if (inflightRef.current) return; // prevent parallel runs creating duplicates
     inflightRef.current = true;
 
+    const logBase = {
+      source: "HomeworkSubmitModal",
+      student_name: studentName,
+      assignment_id: assignment.id,
+      assignment_type: assignment.type,
+    } as const;
+    logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "attempt", context: { text_len: currentText.length } });
 
     try {
       const status = submissionRef.current?.status === "submitted" ? "submitted" : "draft";
@@ -310,6 +317,7 @@ export default function HomeworkSubmitModal({
           lastSavedTextRef.current = currentText;
           autoSaveFailedRef.current = false;
           onSubmittedRef.current(data);
+          logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "success", submission_id: data.id, context: { path: "update_existing" } });
         }
       } else {
         // Sibling-aware lookup: resolve canonical target across all preset
@@ -330,6 +338,7 @@ export default function HomeworkSubmitModal({
             submissionRef.current = data;
             autoSaveFailedRef.current = false;
             onSubmittedRef.current(data);
+            logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "success", submission_id: data.id, context: { path: "update_sibling" } });
           }
         } else {
           const { data, error } = await supabase
@@ -348,10 +357,12 @@ export default function HomeworkSubmitModal({
             submissionRef.current = data;
             autoSaveFailedRef.current = false;
             onSubmittedRef.current(data);
+            logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "success", submission_id: data.id, context: { path: "insert_new", canonical_id: canonicalId } });
           }
         }
       }
     } catch (e) {
+      logHomeworkEvent({ ...logBase, event_type: "autosave", stage: "error", error: e });
       // Notify only once per failure burst so we don't spam toasts.
       if (!autoSaveFailedRef.current) {
         autoSaveFailedRef.current = true;
