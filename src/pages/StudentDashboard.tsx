@@ -177,6 +177,9 @@ function fmtDate(iso: string) {
 function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString("ko-KR", { month: "short", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
 }
+function kstDateKey(iso: string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date(iso));
+}
 function fmtWeek(label: string | null) {
   if (!label) return "-";
   const m = label.match(/(\d{4})-W(\d{2})/);
@@ -826,11 +829,21 @@ export default function StudentDashboard() {
     const activeStudentRec = allStudentRecords.find((r: any) => r.status === "active" && !r.end_date)
       || allStudentRecords.find((r: any) => r.status === "active")
       || allStudentRecords[allStudentRecords.length - 1] || null;
-    // Earliest start_date across all records (so old instructor sessions are visible too)
+    // Earliest start_date across all records (so old instructor sessions are visible too).
+    // If a schedule change overwrote the active record's start_date, fall back
+    // to the first real class_session date so existing notes/homework remain visible.
     const earliestStartDate = allStudentRecords.reduce((min: string | null, r: any) => {
       if (!r.start_date) return min;
       return !min || r.start_date < min ? r.start_date : min;
     }, null as string | null);
+    const earliestRealSessionDate = visibleAllSessions.reduce((min: string | null, s: any) => {
+      if (s.cancellation_type === 'instructor_cancel') return min;
+      const d = kstDateKey(s.scheduled_at);
+      return !min || d < min ? d : min;
+    }, null as string | null);
+    const effectiveEarliestStartDate = earliestRealSessionDate && (!earliestStartDate || earliestRealSessionDate < earliestStartDate)
+      ? earliestRealSessionDate
+      : earliestStartDate;
 
     // Auto-select current period
     const isCorporate = (activeStudentRec?.student_type || 'regular') === 'corporate';
@@ -903,7 +916,7 @@ export default function StudentDashboard() {
       setStudentRecord({
         schedules,
         start_date: activeStudentRec.start_date,
-        earliest_start_date: earliestStartDate,
+        earliest_start_date: effectiveEarliestStartDate,
         level: activeStudentRec.level,
         instructor_name: activeStudentRec.instructor_name,
         instructor_display_name: instrDisplayName,
@@ -914,9 +927,9 @@ export default function StudentDashboard() {
       });
 
       const isSessionVisible = (scheduledAt: string) => {
-        const d = scheduledAt.slice(0, 10);
+        const d = kstDateKey(scheduledAt);
         const isCorp = (activeStudentRec?.student_type || 'regular') === 'corporate';
-        if (!isCorp && earliestStartDate && d < earliestStartDate) return false;
+        if (!isCorp && effectiveEarliestStartDate && d < effectiveEarliestStartDate) return false;
         if (pauses.some((p) => d >= p.pause_start && (!p.pause_end || d <= p.pause_end))) return false;
         return true;
       };

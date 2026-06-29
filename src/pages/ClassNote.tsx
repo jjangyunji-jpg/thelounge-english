@@ -125,21 +125,16 @@ export default function ClassNote() {
     const load = async () => {
       setLoadingSessions(true);
 
-      // Fetch student's start_date, type, and group info
-      // Transferred students have multiple rows — use EARLIEST start_date so
-      // pre-transfer notes (from previous instructor) are still visible.
-      // Use most-recent row for student_type/group_students (current setup).
+      // Fetch current group info. Do NOT use instructor_students.start_date as
+      // a hard cutoff here: schedule changes may update the active row's
+      // start_date, but already-created class_sessions remain the source of
+      // truth for past notes.
       const { data: isRows } = await supabase
         .from("instructor_students")
-        .select("start_date, student_type, group_students")
+        .select("start_date, group_students")
         .eq("student_name", student)
         .order("start_date", { ascending: false, nullsFirst: false });
       const isData = isRows?.[0] ?? null;
-      const startDate = (isRows ?? [])
-        .map(r => r.start_date)
-        .filter(Boolean)
-        .sort()[0]; // earliest start_date across all (transfer-aware)
-      const studentType = (isData as any)?.student_type || "regular";
       const groupStudents: string[] = (isData as any)?.group_students || [];
 
       // Collect all related student names (from bidirectional group_students)
@@ -164,10 +159,6 @@ export default function ClassNote() {
         .in("student_name", allNames)
         .order("scheduled_at", { ascending: false })
         .limit(50);
-
-      if (startDate && studentType !== "corporate") {
-        query = query.gte("scheduled_at", startDate + "T00:00:00+09:00");
-      }
 
       const { data } = await query;
       let list = (data ?? []) as ClassSession[];
