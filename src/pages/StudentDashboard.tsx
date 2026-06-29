@@ -2191,7 +2191,7 @@ export default function StudentDashboard() {
                     <p className="text-[10px] text-muted-foreground">{fmtDateTime(nextClassDate.toISOString())}</p>
                     {!nextClassIsVirtual && nextSessionFromDB?.reschedule_origin_dates && nextSessionFromDB.reschedule_origin_dates.length > 0 && (
                       <p className="text-[9px] text-gold-dark mt-0.5 flex items-center gap-1 flex-wrap">
-                        <MakeupBadges isMakeup isUrgent={nextSessionFromDB.is_urgent_makeup} />
+                        {nextSessionFromDB.is_makeup && <MakeupBadges isMakeup isUrgent={nextSessionFromDB.is_urgent_makeup} />}
                         <span>{formatMovedFromText(nextSessionFromDB.reschedule_origin_dates)}</span>
                       </p>
                     )}
