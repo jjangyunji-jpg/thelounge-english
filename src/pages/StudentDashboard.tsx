@@ -1223,13 +1223,13 @@ export default function StudentDashboard() {
     return studentRecord.pauses.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end));
   };
 
-  // 캘린더용: 실제 세션 + 반복일정 모두 표시 (휴강일 및 휴강 기간 제외)
+  // 캘린더용: 실제 세션 + 반복일정 모두 표시
+  // 실제 세션은 휴원일이라도 그대로 노출 (정기 휴원 중 예외 수업 케이스)
   const allCalendarDates = new Set([
     ...allSessions
       .filter((s) => {
-        const d = new Date(s.scheduled_at);
         const dateKey = s.scheduled_at.slice(0, 10);
-        return s.cancellation_type !== 'instructor_cancel' && !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey);
+        return s.cancellation_type !== 'instructor_cancel' && !isDateInPause(dateKey);
       })
       .map((s) => new Date(s.scheduled_at).toDateString()),
     ...recurringDates
