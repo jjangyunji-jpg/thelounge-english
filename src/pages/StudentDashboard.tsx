@@ -361,9 +361,11 @@ function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPerio
             const date = new Date(cell.year, cell.month, cell.day);
             const dateKey = date.toDateString();
             const isOutsidePeriodMonth = cell.month !== pStartMonth || cell.year !== pStartYear;
-            const holiday = isHoliday(date);
+            const holidayRaw = isHoliday(date);
             const inPeriod = isInPeriod(date);
             const session = inPeriod && allCalendarDates.has(dateKey);
+            // 휴원일이라도 실제 수업이 잡혀 있으면 휴원 처리하지 않고 정상 수업일로 표시
+            const holiday = holidayRaw && !session;
             const todayMark = today.getFullYear() === cell.year && today.getMonth() === cell.month && today.getDate() === cell.day;
             const isOff = holiday;
             const isSelected = selectedDateKey === dateKey;
@@ -1223,13 +1225,13 @@ export default function StudentDashboard() {
     return studentRecord.pauses.some(p => d >= p.pause_start && (!p.pause_end || d <= p.pause_end));
   };
 
-  // 캘린더용: 실제 세션 + 반복일정 모두 표시 (휴강일 및 휴강 기간 제외)
+  // 캘린더용: 실제 세션 + 반복일정 모두 표시
+  // 실제 세션은 휴원일이라도 그대로 노출 (정기 휴원 중 예외 수업 케이스)
   const allCalendarDates = new Set([
     ...allSessions
       .filter((s) => {
-        const d = new Date(s.scheduled_at);
         const dateKey = s.scheduled_at.slice(0, 10);
-        return s.cancellation_type !== 'instructor_cancel' && !holidayDateStrings.has(d.toDateString()) && !isDateInPause(dateKey);
+        return s.cancellation_type !== 'instructor_cancel' && !isDateInPause(dateKey);
       })
       .map((s) => new Date(s.scheduled_at).toDateString()),
     ...recurringDates
@@ -1250,7 +1252,7 @@ export default function StudentDashboard() {
   for (const s of allSessions) {
     const d = new Date(s.scheduled_at);
     const dateKey = s.scheduled_at.slice(0, 10);
-    if (s.cancellation_type === 'instructor_cancel' || holidayDateStrings.has(d.toDateString()) || isDateInPause(dateKey)) continue;
+    if (s.cancellation_type === 'instructor_cancel' || isDateInPause(dateKey)) continue;
     pushDetail(d.toDateString(), {
       iso: s.scheduled_at,
       topic: (s as any).topic ?? null,
