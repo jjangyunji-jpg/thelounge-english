@@ -118,6 +118,7 @@ interface ClassSession {
   notes: string | null;
   reschedule_origin_dates?: string[];
   is_urgent_makeup?: boolean | null;
+  is_makeup?: boolean | null;
   cancellation_type?: CancellationType | null;
   cancellation_resolution?: CancellationResolution | null;
   is_carryover?: boolean;
