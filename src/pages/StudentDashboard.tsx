@@ -1310,10 +1310,12 @@ export default function StudentDashboard() {
   const periodEnd = selectedPeriod ? new Date(selectedPeriod.end_date + "T23:59:59") : null;
 
   const isBeforeStartDate = (dateStr: string) => {
-    if (!studentRecord?.start_date) return false;
-    if (studentRecord.student_type === "corporate") return false;
+    // 이관된 학생도 이전 강사 세션이 보여야 하므로 가장 빠른 start_date 기준으로 비교
+    const cutoff = studentRecord?.earliest_start_date || studentRecord?.start_date;
+    if (!cutoff) return false;
+    if (studentRecord?.student_type === "corporate") return false;
     const d = dateStr.slice(0, 10);
-    return d < studentRecord.start_date;
+    return d < cutoff;
   };
 
   // Helper: check if a date falls within any pause period
