@@ -370,7 +370,7 @@ export default function Classroom() {
   const [objectives, setObjectives] = useState<string[]>([]);
   const [sessionTopic, setSessionTopic] = useState("");
   const [generatingObjectives, setGeneratingObjectives] = useState(false);
-  const [sidebarSessions, setSidebarSessions] = useState<{ id: string; scheduled_at: string; topic: string | null; notes?: string | null; started_at?: string | null; ended_at?: string | null; cancellation_type?: string | null; cancellation_resolution?: string | null; reschedule_origin_dates?: string[] | null; is_urgent_makeup?: boolean | null }[]>([]);
+  const [sidebarSessions, setSidebarSessions] = useState<{ id: string; scheduled_at: string; topic: string | null; notes?: string | null; started_at?: string | null; ended_at?: string | null; cancellation_type?: string | null; cancellation_resolution?: string | null; reschedule_origin_dates?: string[] | null; is_urgent_makeup?: boolean | null; is_makeup?: boolean | null }[]>([]);
   const [groupStudents, setGroupStudents] = useState<string[]>([]);
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
