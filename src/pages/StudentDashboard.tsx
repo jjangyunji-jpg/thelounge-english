@@ -361,9 +361,11 @@ function MiniCalendar({ allCalendarDates, dayDetailsMap, holidays, selectedPerio
             const date = new Date(cell.year, cell.month, cell.day);
             const dateKey = date.toDateString();
             const isOutsidePeriodMonth = cell.month !== pStartMonth || cell.year !== pStartYear;
-            const holiday = isHoliday(date);
+            const holidayRaw = isHoliday(date);
             const inPeriod = isInPeriod(date);
             const session = inPeriod && allCalendarDates.has(dateKey);
+            // 휴원일이라도 실제 수업이 잡혀 있으면 휴원 처리하지 않고 정상 수업일로 표시
+            const holiday = holidayRaw && !session;
             const todayMark = today.getFullYear() === cell.year && today.getMonth() === cell.month && today.getDate() === cell.day;
             const isOff = holiday;
             const isSelected = selectedDateKey === dateKey;
