@@ -1091,8 +1091,9 @@ export default function StudentDashboard() {
   };
 
   // ── 반복 일정에서 가상 세션 날짜 생성 ──
+  // 이관된 학생도 이전 강사 기간 시각화가 가능하도록 가장 빠른 start_date부터 생성
   const recurringDatesRaw = studentRecord
-    ? generateRecurringDates(studentRecord.schedules, studentRecord.start_date || "", 3)
+    ? generateRecurringDates(studentRecord.schedules, studentRecord.earliest_start_date || studentRecord.start_date || "", 3)
     : [];
 
   // 실제 class_sessions에 이미 있는 날짜 (YYYY-MM-DD)
