@@ -429,6 +429,7 @@ export type Database = {
           id: string
           instructor_name: string
           is_carryover: boolean
+          is_makeup: boolean
           is_substitute: boolean
           is_urgent_makeup: boolean
           level: string
@@ -457,6 +458,7 @@ export type Database = {
           id?: string
           instructor_name: string
           is_carryover?: boolean
+          is_makeup?: boolean
           is_substitute?: boolean
           is_urgent_makeup?: boolean
           level?: string
@@ -485,6 +487,7 @@ export type Database = {
           id?: string
           instructor_name?: string
           is_carryover?: boolean
+          is_makeup?: boolean
           is_substitute?: boolean
           is_urgent_makeup?: boolean
           level?: string
