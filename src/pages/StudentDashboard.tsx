@@ -1091,8 +1091,9 @@ export default function StudentDashboard() {
   };
 
   // ── 반복 일정에서 가상 세션 날짜 생성 ──
+  // 이관된 학생도 이전 강사 기간 시각화가 가능하도록 가장 빠른 start_date부터 생성
   const recurringDatesRaw = studentRecord
-    ? generateRecurringDates(studentRecord.schedules, studentRecord.start_date || "", 3)
+    ? generateRecurringDates(studentRecord.schedules, studentRecord.earliest_start_date || studentRecord.start_date || "", 3)
     : [];
 
   // 실제 class_sessions에 이미 있는 날짜 (YYYY-MM-DD)
@@ -1310,10 +1311,12 @@ export default function StudentDashboard() {
   const periodEnd = selectedPeriod ? new Date(selectedPeriod.end_date + "T23:59:59") : null;
 
   const isBeforeStartDate = (dateStr: string) => {
-    if (!studentRecord?.start_date) return false;
-    if (studentRecord.student_type === "corporate") return false;
+    // 이관된 학생도 이전 강사 세션이 보여야 하므로 가장 빠른 start_date 기준으로 비교
+    const cutoff = studentRecord?.earliest_start_date || studentRecord?.start_date;
+    if (!cutoff) return false;
+    if (studentRecord?.student_type === "corporate") return false;
     const d = dateStr.slice(0, 10);
-    return d < studentRecord.start_date;
+    return d < cutoff;
   };
 
   // Helper: check if a date falls within any pause period
