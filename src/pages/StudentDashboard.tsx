@@ -1250,7 +1250,7 @@ export default function StudentDashboard() {
   for (const s of allSessions) {
     const d = new Date(s.scheduled_at);
     const dateKey = s.scheduled_at.slice(0, 10);
-    if (s.cancellation_type === 'instructor_cancel' || holidayDateStrings.has(d.toDateString()) || isDateInPause(dateKey)) continue;
+    if (s.cancellation_type === 'instructor_cancel' || isDateInPause(dateKey)) continue;
     pushDetail(d.toDateString(), {
       iso: s.scheduled_at,
       topic: (s as any).topic ?? null,
