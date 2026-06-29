@@ -112,6 +112,7 @@ interface ClassSession {
   cancellation_type?: string | null;
   cancellation_resolution?: string | null;
   is_urgent_makeup?: boolean | null;
+  is_makeup?: boolean | null;
 }
 
 interface Assignment {
