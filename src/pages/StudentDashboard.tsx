@@ -112,6 +112,7 @@ interface ClassSession {
   cancellation_type?: string | null;
   cancellation_resolution?: string | null;
   is_urgent_makeup?: boolean | null;
+  is_makeup?: boolean | null;
 }
 
 interface Assignment {
@@ -710,14 +711,14 @@ export default function StudentDashboard() {
     setLoading(true);
     try {
     const [sessRes, allSessRes, groupSessRes, groupAllSessRes, hwRes, subRes, vocRes, testRes, studentRes, periodsRes, holidaysRes, deletedDatesRes] = await Promise.all([
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup,is_makeup")
         .eq("student_name", student).order("scheduled_at", { ascending: false }).limit(20),
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup,is_makeup")
         .eq("student_name", student).order("scheduled_at", { ascending: true }),
       // Group sessions: where student is in group_students array
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup,student_name")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup,is_makeup,student_name")
         .contains("group_students", [student]).order("scheduled_at", { ascending: false }).limit(20),
-      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup")
+      supabase.from("class_sessions").select("id,scheduled_at,topic,level,meet_link,instructor_name,started_at,ended_at,reschedule_origin_dates,cancellation_type,cancellation_resolution,is_urgent_makeup,is_makeup")
         .contains("group_students", [student]).order("scheduled_at", { ascending: true }),
       supabase.from("homework_assignments").select("id,title,description,type,due_at,is_preset,session_id,preset_origin_id,created_at")
         .eq("student_name", student).order("created_at", { ascending: false }),
@@ -2190,7 +2191,7 @@ export default function StudentDashboard() {
                     <p className="text-[10px] text-muted-foreground">{fmtDateTime(nextClassDate.toISOString())}</p>
                     {!nextClassIsVirtual && nextSessionFromDB?.reschedule_origin_dates && nextSessionFromDB.reschedule_origin_dates.length > 0 && (
                       <p className="text-[9px] text-gold-dark mt-0.5 flex items-center gap-1 flex-wrap">
-                        <MakeupBadges isMakeup isUrgent={nextSessionFromDB.is_urgent_makeup} />
+                        {nextSessionFromDB.is_makeup && <MakeupBadges isMakeup isUrgent={nextSessionFromDB.is_urgent_makeup} />}
                         <span>{formatMovedFromText(nextSessionFromDB.reschedule_origin_dates)}</span>
                       </p>
                     )}
@@ -2369,7 +2370,7 @@ export default function StudentDashboard() {
                     </p>
                     {!nextClassIsVirtual && nextSessionFromDB?.reschedule_origin_dates && nextSessionFromDB.reschedule_origin_dates.length > 0 && (
                       <p className="text-[10px] text-gold-dark mt-0.5 flex items-center gap-1 flex-wrap">
-                        <MakeupBadges isMakeup isUrgent={nextSessionFromDB.is_urgent_makeup} />
+                        {nextSessionFromDB.is_makeup && <MakeupBadges isMakeup isUrgent={nextSessionFromDB.is_urgent_makeup} />}
                         <span>{formatMovedFromText(nextSessionFromDB.reschedule_origin_dates)}</span>
                       </p>
                     )}

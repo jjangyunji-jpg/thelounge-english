@@ -232,6 +232,7 @@ serve(async (req) => {
           reschedule_origin_dates: [origDateStr],
           gcal_event_id: newEventId,
           is_urgent_makeup: !!makeupReq.urgent_reason,
+          is_makeup: true,
         });
 
         // Re-open original time slot for other students (only if not already exists)
@@ -311,6 +312,7 @@ serve(async (req) => {
           remarks: transferRemarks,
           gcal_event_id: newEventId,
           is_urgent_makeup: !!makeupReq.urgent_reason,
+          is_makeup: true,
         });
 
         // Clear notes/topic from original cancelled session (moved, not copied)

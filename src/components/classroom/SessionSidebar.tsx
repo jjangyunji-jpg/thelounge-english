@@ -14,6 +14,7 @@ interface SessionItem {
   cancellation_resolution?: string | null;
   reschedule_origin_dates?: string[] | null;
   is_urgent_makeup?: boolean | null;
+  is_makeup?: boolean | null;
 }
 
 const CANCEL_BADGES: Record<string, { label: string; cls: string }> = {
@@ -192,7 +193,7 @@ export default function SessionSidebar({
   const renderSessionItem = (s: SessionItem) => {
     const canDelete = onDelete && isDeletable(s);
     const originChain = getOriginChain(s);
-    const isMakeup = (s.reschedule_origin_dates ?? []).length > 0;
+    const isMakeup = !!s.is_makeup;
     return (
       <div
         key={s.id}

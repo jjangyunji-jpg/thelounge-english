@@ -118,6 +118,7 @@ interface ClassSession {
   notes: string | null;
   reschedule_origin_dates?: string[];
   is_urgent_makeup?: boolean | null;
+  is_makeup?: boolean | null;
   cancellation_type?: CancellationType | null;
   cancellation_resolution?: CancellationResolution | null;
   is_carryover?: boolean;
@@ -675,7 +676,7 @@ function CollapsibleSessions({ sessions, onReschedule, onTopicChange }: { sessio
           {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
             <p className="ml-5 text-[9px] text-gold-dark flex items-center gap-1 flex-wrap">
               <RefreshCw className="w-2.5 h-2.5" />
-              <MakeupBadges isMakeup isUrgent={s.is_urgent_makeup} />
+              {s.is_makeup && <MakeupBadges isMakeup isUrgent={s.is_urgent_makeup} />}
               <span>{s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경</span>
             </p>
           )}
@@ -2565,7 +2566,7 @@ export default function InstructorDashboard() {
                               {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
                                 <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5 flex-wrap">
                                   <RefreshCw className="w-2.5 h-2.5" />
-                                  <MakeupBadges isMakeup isUrgent={s.is_urgent_makeup} />
+                                  {s.is_makeup && <MakeupBadges isMakeup isUrgent={s.is_urgent_makeup} />}
                                   <span>{s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨</span>
                                 </p>
                               )}
@@ -2907,7 +2908,7 @@ export default function InstructorDashboard() {
                                           {s.reschedule_origin_dates && s.reschedule_origin_dates.length > 0 && (
                                             <p className="text-[10px] text-gold-dark flex items-center gap-1 mt-0.5 flex-wrap">
                                               <RefreshCw className="w-2.5 h-2.5" />
-                                              <MakeupBadges isMakeup isUrgent={s.is_urgent_makeup} />
+                                              {s.is_makeup && <MakeupBadges isMakeup isUrgent={s.is_urgent_makeup} />}
                                               <span>{s.reschedule_origin_dates.map(d => new Date(d + "T00:00:00").toLocaleDateString("ko-KR", { month: "short", day: "numeric", timeZone: "Asia/Seoul" })).join(", ")}에서 변경됨</span>
                                             </p>
                                           )}
