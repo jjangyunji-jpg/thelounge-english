@@ -128,17 +128,15 @@ export async function resolveCanonicalSubmissionTarget(
       selfRow = (data as AssignmentRow | null) ?? null;
     }
 
-    const selfIsSessionCopy =
-      !!selfRow && selfRow.is_preset === false && !!selfRow.session_id;
-    if (selfIsSessionCopy && selfRow) {
-      const { data: ownSubs } = await supabase
-        .from("homework_submissions")
-        .select("*")
-        .eq("assignment_id", selfRow.id)
-        .eq("student_name", studentName);
-      const ownBest = pickBestSubmission((ownSubs || []) as HwSubmissionLite[]);
-      return { canonicalId: selfRow.id, existingSubmission: ownBest ?? null };
-    }
+    // NOTE: We intentionally do NOT early-return when selfRow is already a
+    // session copy. The caller's assignment.id may refer to a PAST session's
+    // copy (e.g., student clicks 지난 회차 카드 after class ended), and we must
+    // re-route the write to the NEXT scheduled session's copy so the
+    // submission lands on the correct 회차. The fallthrough below handles
+    // both "no session copy" and "wrong session copy" uniformly.
+    //
+    // Existing submitted/reviewed rows on selfRow remain untouched on their
+    // original 회차 — only the new write goes to the upcoming target.
 
     const presetKey =
       (selfRow?.is_preset ? selfRow.id : selfRow?.preset_origin_id) ??
