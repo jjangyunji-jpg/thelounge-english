@@ -2340,6 +2340,10 @@ export type Database = {
         Args: { _group_students?: string[]; _student_name: string }
         Returns: boolean
       }
+      ensure_homework_session_copy: {
+        Args: { _preset_id: string; _session_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
