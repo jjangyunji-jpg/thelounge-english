@@ -64,6 +64,12 @@ interface ClassSession {
   scheduled_at: string;
 }
 
+interface SchedulePeriodLite {
+  id: string;
+  start_date: string;
+  end_date: string;
+}
+
 interface Props {
   assignments: Assignment[];
   submissions: Submission[];
@@ -73,7 +79,9 @@ interface Props {
   testHistory: { id: string; week_label: string | null; completed_at: string | null }[];
   onSubmissionUpdate: (sub: Submission) => void;
   periodStart?: Date | null;
+  allPeriods?: SchedulePeriodLite[];
 }
+
 
 function getWeekLabelFromDate(date: Date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
