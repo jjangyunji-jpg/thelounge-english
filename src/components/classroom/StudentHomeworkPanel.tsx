@@ -272,14 +272,17 @@ function SubmissionCard({
         } else {
           const { data, error } = await supabase
             .from("homework_submissions")
-            .insert({
-              assignment_id: canonicalId,
-              student_name: studentName,
-              text_content: text.trim() || null,
-              audio_url: audioStorageUrl,
-              file_url: fileStorageUrl,
-              status: "submitted",
-            })
+            .upsert(
+              {
+                assignment_id: canonicalId,
+                student_name: studentName,
+                text_content: text.trim() || null,
+                audio_url: audioStorageUrl,
+                file_url: fileStorageUrl,
+                status: "submitted",
+              },
+              { onConflict: "assignment_id,student_name", ignoreDuplicates: false },
+            )
             .select()
             .single();
           if (error) throw error;
@@ -559,18 +562,22 @@ export default function StudentHomeworkPanel({
   studentName,
   sessionId,
   showPreviousCycle = false,
+  headerLabel,
+  emptyMessage,
 }: {
   studentName: string;
   sessionId: string;
   /**
-   * When true (e.g. student dashboard 수업 노트 past-session view), display the
-   * homework cycle that was DUE BEFORE this session — i.e. the cards tied to
-   * the immediately-previous session. Submissions made between the previous
-   * session and this session are reflected as completion for THIS session view.
-   * When false (default — used in classroom during a live class), use the
-   * given sessionId directly.
+   * When true (e.g. student dashboard 수업 노트 past-session view, or instructor
+   * Classroom 직전 사이클 섹션), display the homework cycle that was DUE BEFORE
+   * this session — i.e. the cards tied to the immediately-previous session.
+   * When false (default), use the given sessionId directly.
    */
   showPreviousCycle?: boolean;
+  /** Override the section header label (default: "숙제"). */
+  headerLabel?: string;
+  /** Override empty-state message. */
+  emptyMessage?: string;
 }) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
@@ -689,7 +696,7 @@ export default function StudentHomeworkPanel({
         <div className="px-4 py-3 bg-muted/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckSquare className="w-4 h-4 text-gold" />
-            <span className="font-semibold text-sm text-foreground">숙제</span>
+            <span className="font-semibold text-sm text-foreground">{headerLabel ?? "숙제"}</span>
             {!loading && (
               <span className="text-xs bg-gold/15 text-gold-dark px-1.5 py-0.5 rounded-full font-medium">
                 {submitted}/{total} 완료
@@ -714,8 +721,10 @@ export default function StudentHomeworkPanel({
         ) : assignments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
             <Clock className="w-8 h-8 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">등록된 숙제가 없습니다</p>
-            <p className="text-xs text-muted-foreground/60">강사가 숙제를 추가하면 여기에 표시됩니다</p>
+            <p className="text-sm text-muted-foreground">{emptyMessage ?? "등록된 숙제가 없습니다"}</p>
+            {!emptyMessage && (
+              <p className="text-xs text-muted-foreground/60">강사가 숙제를 추가하면 여기에 표시됩니다</p>
+            )}
           </div>
         ) : (
           assignments.map((a) => (
