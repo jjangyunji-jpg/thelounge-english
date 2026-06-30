@@ -808,6 +808,36 @@ export default function Classroom() {
 
       const prevSessData = prevSessArr?.[0] ?? null;
       const prevPrevSess = prevSessArr?.[1] ?? null;
+      let prevSessionNumber: string | null = null;
+
+      if (prevSessData?.id) {
+        const prevSessionDateStr = prevSessData.scheduled_at.slice(0, 10);
+        const { data: prevMatchingPeriod } = await supabase
+          .from("schedule_periods")
+          .select("start_date, end_date")
+          .eq("is_active", true)
+          .lte("start_date", prevSessionDateStr)
+          .gte("end_date", prevSessionDateStr)
+          .maybeSingle();
+        if (isStale()) return;
+        let prevPeriodFilter = supabase
+          .from("class_sessions")
+          .select("id, scheduled_at")
+          .eq("student_name", session.dbStudentName)
+          .eq("instructor_name", session.instructorName)
+          .order("scheduled_at", { ascending: true });
+        if (prevMatchingPeriod) {
+          prevPeriodFilter = prevPeriodFilter
+            .gte("scheduled_at", prevMatchingPeriod.start_date + "T00:00:00+09:00")
+            .lte("scheduled_at", prevMatchingPeriod.end_date + "T23:59:59+09:00");
+        }
+        const { data: prevAllSessions } = await prevPeriodFilter;
+        if (isStale()) return;
+        if (prevAllSessions) {
+          const prevIdx = prevAllSessions.findIndex(s => s.id === prevSessData.id);
+          prevSessionNumber = `${prevIdx + 1}회차`;
+        }
+      }
 
       if (prevSessData?.id) {
         const { data: prevHwData } = await supabase
