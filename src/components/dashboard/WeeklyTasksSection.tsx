@@ -277,7 +277,11 @@ export default function WeeklyTasksSection({
           <div className="flex items-center gap-1.5">
             <ClipboardList className="w-3.5 h-3.5 text-gold" />
             <span className="text-xs font-semibold text-foreground">
-              {weekNumber ? `${weekNumber}회차 수업 과제` : "최근 수업 과제"}
+              {weekNumber
+                ? (upcomingSession
+                    ? `${weekNumber}회차 수업 전 제출 과제${prevSession ? " (지난 수업에 부여됨)" : ""}`
+                    : `${weekNumber}회차 수업 과제`)
+                : "최근 수업 과제"}
             </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-navy/10 text-navy font-semibold">
               {totalDone}/{totalTasks}
