@@ -696,7 +696,7 @@ export default function StudentHomeworkPanel({
         <div className="px-4 py-3 bg-muted/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckSquare className="w-4 h-4 text-gold" />
-            <span className="font-semibold text-sm text-foreground">숙제</span>
+            <span className="font-semibold text-sm text-foreground">{headerLabel ?? "숙제"}</span>
             {!loading && (
               <span className="text-xs bg-gold/15 text-gold-dark px-1.5 py-0.5 rounded-full font-medium">
                 {submitted}/{total} 완료
@@ -721,8 +721,10 @@ export default function StudentHomeworkPanel({
         ) : assignments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
             <Clock className="w-8 h-8 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">등록된 숙제가 없습니다</p>
-            <p className="text-xs text-muted-foreground/60">강사가 숙제를 추가하면 여기에 표시됩니다</p>
+            <p className="text-sm text-muted-foreground">{emptyMessage ?? "등록된 숙제가 없습니다"}</p>
+            {!emptyMessage && (
+              <p className="text-xs text-muted-foreground/60">강사가 숙제를 추가하면 여기에 표시됩니다</p>
+            )}
           </div>
         ) : (
           assignments.map((a) => (
