@@ -1738,6 +1738,11 @@ export default function Classroom() {
                           >
                             <Icon className={cn("w-3 h-3 flex-shrink-0", meta?.color || "text-muted-foreground")} />
                             <span className="text-[11px] flex-1 truncate">{h.title}</span>
+                            {h.submittedAt && (
+                              <span className="text-[9px] text-muted-foreground flex-shrink-0">
+                                {new Date(h.submittedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            )}
                             {isReviewed ? (
                               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))] font-medium flex-shrink-0">검토됨</span>
                             ) : isSubmitted ? (
