@@ -852,11 +852,14 @@ export default function Classroom() {
             .map(h => h.id);
           const allLookupIds = Array.from(new Set([...hwIds, ...presetOriginIds, ...siblingCopyIds]));
 
-          // Time-window filter: homework for the previous class should only
-          // count submissions made AFTER that previous class started. Anything
-          // submitted before then belongs to an older cycle and must not make
-          // the current class's previous-homework list look submitted.
-          const cutoffTime = new Date(prevSessData.scheduled_at).toISOString();
+          // Time-window filter: a submission belongs to the previous class's
+          // cycle if it was made AFTER the class BEFORE prev (prev-prev) started.
+          // Using prev.scheduled_at as the cutoff incorrectly excludes
+          // submissions made shortly before the prev class started — which is
+          // the most common pattern (students submit right before class).
+          const cutoffTime = prevPrevSess?.scheduled_at
+            ? new Date(prevPrevSess.scheduled_at).toISOString()
+            : new Date(0).toISOString();
 
           const { data: subData } = await supabase
             .from("homework_submissions")
