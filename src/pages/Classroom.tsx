@@ -951,6 +951,7 @@ export default function Classroom() {
               status: matchedSub?.status || "not_submitted",
               submissionId: matchedSub?.id ?? null,
               submittedAt: matchedSub?.submitted_at ?? null,
+              sessionNumber: prevSessionNumber,
             };
           }));
         } else {
