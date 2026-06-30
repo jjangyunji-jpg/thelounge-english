@@ -89,24 +89,35 @@ export async function resolveCanonicalSubmissionTarget(
   assignment: { id: string; preset_origin_id?: string | null; is_preset?: boolean; session_id?: string | null },
   studentName: string,
 ): Promise<{ canonicalId: string; existingSubmission: any | null }> {
+  // safeFallback: re-checks DB to make sure we never return a preset master id.
+  // If the caller's assignment.id IS a preset master, look up any non-preset
+  // sibling and return that. If none exists, throw — writing to a preset master
+  // would orphan the submission from every session card.
   const safeFallback = async (): Promise<string> => {
-    // Never write to a preset master. If the prop's id IS the preset, look up
-    // any non-preset sibling to use instead; otherwise return prop's id.
-    if (assignment.is_preset === true) {
+    const { data: row } = await supabase
+      .from("homework_assignments")
+      .select("id, is_preset")
+      .eq("id", assignment.id)
+      .maybeSingle();
+    const isPresetMaster = row?.is_preset === true || assignment.is_preset === true;
+    if (isPresetMaster) {
       const { data: anyCopy } = await supabase
         .from("homework_assignments")
         .select("id")
         .eq("preset_origin_id", assignment.id)
         .eq("student_name", studentName)
+        .eq("is_preset", false)
         .limit(1)
         .maybeSingle();
       if (anyCopy?.id) return anyCopy.id as string;
+      throw new Error(
+        "CANONICAL_RESOLVE_FAILED: no session copy could be resolved or created for this assignment.",
+      );
     }
     return assignment.id;
   };
 
   try {
-    // Load the assignment row in full so we know preset key, type/title, etc.
     let selfRow: AssignmentRow | null = null;
     {
       const { data } = await supabase
@@ -117,11 +128,6 @@ export async function resolveCanonicalSubmissionTarget(
       selfRow = (data as AssignmentRow | null) ?? null;
     }
 
-    // ── PRIMARY RULE ──
-    // If the student opened a real session-copy card (non-preset row with a
-    // session_id), that card IS the canonical target. Do NOT redirect their
-    // submission to a different session sibling — that's what caused
-    // "submitted but not visible on the card I clicked" reports.
     const selfIsSessionCopy =
       !!selfRow && selfRow.is_preset === false && !!selfRow.session_id;
     if (selfIsSessionCopy && selfRow) {
@@ -134,13 +140,11 @@ export async function resolveCanonicalSubmissionTarget(
       return { canonicalId: selfRow.id, existingSubmission: ownBest ?? null };
     }
 
-    // ── FALLBACK (preset master entry, or orphan row without session_id) ──
     const presetKey =
       (selfRow?.is_preset ? selfRow.id : selfRow?.preset_origin_id) ??
       assignment.preset_origin_id ??
       assignment.id;
 
-    // Sibling assignments: preset master + all per-session copies for this student
     const { data: siblingsData } = await supabase
       .from("homework_assignments")
       .select("id, session_id, preset_origin_id, is_preset, type, title, description, student_name, due_at")
@@ -148,7 +152,6 @@ export async function resolveCanonicalSubmissionTarget(
     const siblings = ((siblingsData || []) as AssignmentRow[])
       .filter((s) => s.student_name === studentName || s.is_preset);
 
-    // Determine target session = next upcoming (non-cancelled), else latest past
     const nowIso = new Date().toISOString();
     const { data: sessionsData } = await supabase
       .from("class_sessions")
@@ -163,12 +166,10 @@ export async function resolveCanonicalSubmissionTarget(
     const targetSession = upcoming || latestPast;
 
     if (targetSession) {
-      // Find sibling whose session_id matches target session
       const match = siblings.find(
         (s) => !s.is_preset && s.session_id === targetSession.id,
       );
       if (match) {
-        // Return any existing submission for this canonical row
         const { data: matchSubs } = await supabase
           .from("homework_submissions")
           .select("*")
@@ -178,7 +179,6 @@ export async function resolveCanonicalSubmissionTarget(
         return { canonicalId: match.id, existingSubmission: best ?? null };
       }
 
-      // No session-copy yet — create one from preset
       const preset = siblings.find((s) => s.is_preset) || selfRow;
       if (preset && targetSession) {
         const { data: created, error: createErr } = await supabase
@@ -198,11 +198,38 @@ export async function resolveCanonicalSubmissionTarget(
         if (!createErr && created?.id) {
           return { canonicalId: created.id as string, existingSubmission: null };
         }
+        // INSERT failed — race or RLS. Re-query for a sibling that another
+        // concurrent request may have just created.
+        const { data: raceMatch } = await supabase
+          .from("homework_assignments")
+          .select("id")
+          .eq("session_id", targetSession.id)
+          .eq("student_name", studentName)
+          .eq("preset_origin_id", presetKey)
+          .eq("is_preset", false)
+          .limit(1)
+          .maybeSingle();
+        if (raceMatch?.id) {
+          const { data: raceSubs } = await supabase
+            .from("homework_submissions")
+            .select("*")
+            .eq("assignment_id", raceMatch.id)
+            .eq("student_name", studentName);
+          const best = pickBestSubmission((raceSubs || []) as HwSubmissionLite[]);
+          return { canonicalId: raceMatch.id as string, existingSubmission: best ?? null };
+        }
+        console.error(
+          "resolveCanonicalSubmissionTarget: session copy INSERT failed",
+          createErr,
+        );
       }
     }
 
     return { canonicalId: await safeFallback(), existingSubmission: null };
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("CANONICAL_RESOLVE_FAILED")) {
+      throw err;
+    }
     return { canonicalId: await safeFallback(), existingSubmission: null };
   }
 }
