@@ -2493,6 +2493,8 @@ export default function StudentDashboard() {
             vocabWords={vocabWords}
             testHistory={testHistory}
             periodStart={periodStart}
+            allPeriods={effectivePeriods}
+
             onSubmissionUpdate={(sub) => {
               setSubmissions(prev => {
                 const idx = prev.findIndex(s => s.id === sub.id);
