@@ -272,14 +272,17 @@ function SubmissionCard({
         } else {
           const { data, error } = await supabase
             .from("homework_submissions")
-            .insert({
-              assignment_id: canonicalId,
-              student_name: studentName,
-              text_content: text.trim() || null,
-              audio_url: audioStorageUrl,
-              file_url: fileStorageUrl,
-              status: "submitted",
-            })
+            .upsert(
+              {
+                assignment_id: canonicalId,
+                student_name: studentName,
+                text_content: text.trim() || null,
+                audio_url: audioStorageUrl,
+                file_url: fileStorageUrl,
+                status: "submitted",
+              },
+              { onConflict: "assignment_id,student_name", ignoreDuplicates: false },
+            )
             .select()
             .single();
           if (error) throw error;
