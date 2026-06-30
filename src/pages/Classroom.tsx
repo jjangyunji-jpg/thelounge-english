@@ -345,7 +345,7 @@ export default function Classroom() {
   useEffect(() => { sessionIdRef.current = session.sessionId; }, [session.sessionId]);
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
-  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; description?: string | null; status: string; presetOriginId?: string | null; submissionId?: string | null }[]>([]);
+  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; description?: string | null; status: string; presetOriginId?: string | null; submissionId?: string | null; submittedAt?: string | null }[]>([]);
   const [prevVocabTests, setPrevVocabTests] = useState<{ id: string; score: number | null; total: number | null; started_at: string; completed_at: string | null }[]>([]);
   const [prevHwOpen, setPrevHwOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
@@ -896,17 +896,17 @@ export default function Classroom() {
           if (isStale()) return;
           const subData = subResults.flatMap(r => r.data ?? []);
 
-          const subMap = new Map<string, { id: string; status: string }>();
+          const subMap = new Map<string, { id: string; status: string; submitted_at: string | null }>();
           subData.forEach(s => {
             if (s.assignment_id && !subMap.has(s.assignment_id)) {
-              subMap.set(s.assignment_id, { id: s.id, status: s.status });
+              subMap.set(s.assignment_id, { id: s.id, status: s.status, submitted_at: s.submitted_at });
             }
           });
-          const subByOrigin = new Map<string, { id: string; status: string }>();
+          const subByOrigin = new Map<string, { id: string; status: string; submitted_at: string | null }>();
           subData.forEach(s => {
             const originId = prevHwData.find(h => h.id === s.assignment_id)?.preset_origin_id;
             if (originId && !subByOrigin.has(originId)) {
-              subByOrigin.set(originId, { id: s.id, status: s.status });
+              subByOrigin.set(originId, { id: s.id, status: s.status, submitted_at: s.submitted_at });
             }
           });
           setPrevHwList(filteredPrev.map(h => {
@@ -920,6 +920,7 @@ export default function Classroom() {
               presetOriginId: h.preset_origin_id,
               status: matchedSub?.status || "not_submitted",
               submissionId: matchedSub?.id ?? null,
+              submittedAt: matchedSub?.submitted_at ?? null,
             };
           }));
         } else {
@@ -1737,6 +1738,11 @@ export default function Classroom() {
                           >
                             <Icon className={cn("w-3 h-3 flex-shrink-0", meta?.color || "text-muted-foreground")} />
                             <span className="text-[11px] flex-1 truncate">{h.title}</span>
+                            {h.submittedAt && (
+                              <span className="text-[9px] text-muted-foreground flex-shrink-0">
+                                {new Date(h.submittedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            )}
                             {isReviewed ? (
                               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))] font-medium flex-shrink-0">검토됨</span>
                             ) : isSubmitted ? (
