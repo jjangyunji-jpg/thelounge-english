@@ -2575,7 +2575,7 @@ export default function StudentDashboard() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-semibold text-foreground truncate">{a.title}</p>
-                                  {sub?.submitted_at && <p className="text-[10px] text-muted-foreground">{fmtDate(sub.submitted_at)}</p>}
+                                  {sub?.submitted_at && <p className="text-[10px] text-muted-foreground">{fmtDateTime(sub.submitted_at)}</p>}
                                 </div>
                                 {status === "reviewed" && sub && (
                                   <button
