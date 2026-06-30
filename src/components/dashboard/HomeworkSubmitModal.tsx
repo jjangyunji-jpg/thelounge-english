@@ -513,14 +513,17 @@ export default function HomeworkSubmitModal({
 
         const { data, error } = await supabase
           .from("homework_submissions")
-          .insert({
-            assignment_id: canonicalAssignmentId,
-            student_name: studentName,
-            text_content: text.trim() || null,
-            audio_url: audioStorageUrl,
-            file_url: fileStorageUrl,
-            status,
-          })
+          .upsert(
+            {
+              assignment_id: canonicalAssignmentId,
+              student_name: studentName,
+              text_content: text.trim() || null,
+              audio_url: audioStorageUrl,
+              file_url: fileStorageUrl,
+              status,
+            },
+            { onConflict: "assignment_id,student_name", ignoreDuplicates: false },
+          )
           .select()
           .single();
         if (error) throw error;
