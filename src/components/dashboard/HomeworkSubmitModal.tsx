@@ -343,12 +343,15 @@ export default function HomeworkSubmitModal({
         } else {
           const { data, error } = await supabase
             .from("homework_submissions")
-            .insert({
-              assignment_id: canonicalId,
-              student_name: studentName,
-              text_content: currentText.trim(),
-              status: "draft",
-            })
+            .upsert(
+              {
+                assignment_id: canonicalId,
+                student_name: studentName,
+                text_content: currentText.trim(),
+                status: "draft",
+              },
+              { onConflict: "assignment_id,student_name", ignoreDuplicates: false },
+            )
             .select()
             .single();
           if (error) throw error;
