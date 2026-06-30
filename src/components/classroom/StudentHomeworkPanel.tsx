@@ -1,71 +1,34 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
-  Mic, Square, Play, Pause, Send, CheckCircle2, RotateCcw,
-  PenLine, BookOpen, Brain, ChevronDown, ChevronUp, Loader2,
-  Clock, MessageSquare, CheckSquare, ExternalLink, Link2, Paperclip, FileUp, X as XIcon, Monitor,
+  CheckCircle2, BookOpen, PenLine, Mic, Brain,
+  ChevronDown, ChevronUp, Loader2, Clock, MessageSquare,
+  ExternalLink, Link2, CheckSquare, Paperclip, Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import HomeworkSubmitModal from "@/components/dashboard/HomeworkSubmitModal";
 import HomeworkFeedbackModal from "@/components/dashboard/HomeworkFeedbackModal";
-import { resolveCanonicalSubmissionTarget } from "@/lib/homeworkSubmissionLookup";
-import { logHomeworkEvent } from "@/lib/homeworkEventLogger";
 
 type HwType = "writing" | "reading" | "speaking" | "memorizing" | "file" | "watching";
 
-interface Assignment {
-  id: string;
-  type: HwType;
-  title: string;
-  description: string | null;
-  is_preset: boolean;
-  session_id: string | null;
-}
-
-interface Submission {
-  id: string;
-  assignment_id: string | null;
-  status: string;
-  text_content: string | null;
-  audio_url: string | null;
-  file_url: string | null;
-  submitted_at: string;
-  instructor_note: string | null;
-  reviewed_at: string | null;
-  ai_correction: any | null;
-}
-
-const HW_META: Record<HwType, {
-  label: string;
-  icon: React.ElementType;
-  color: string;
-  requiresText: boolean;
-  requiresAudio: boolean;
-  requiresFile?: boolean;
-  hint: string;
-}> = {
-  writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]",      requiresText: true,  requiresAudio: false, hint: "텍스트 작성 필수" },
-  reading:    { label: "읽기",       icon: BookOpen,   color: "text-[hsl(var(--gold-dark))]", requiresText: false, requiresAudio: false, hint: "녹음 선택" },
-  speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]",   requiresText: false, requiresAudio: true,  hint: "녹음 필수" },
-  memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500",              requiresText: false, requiresAudio: false, hint: "녹음 선택" },
-  file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500",                requiresText: false, requiresAudio: false, requiresFile: true, hint: "파일 첨부 필수" },
-  watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500",                requiresText: false, requiresAudio: false, hint: "시청 후 체크" },
+const HW_META: Record<HwType, { label: string; icon: React.ElementType; color: string }> = {
+  writing:    { label: "쓰기",       icon: PenLine,    color: "text-[hsl(var(--navy))]" },
+  reading:    { label: "읽기",       icon: BookOpen,   color: "text-[hsl(var(--gold-dark))]" },
+  speaking:   { label: "말하기",     icon: Mic,        color: "text-[hsl(var(--success))]" },
+  memorizing: { label: "외우기",     icon: Brain,      color: "text-purple-500" },
+  file:       { label: "파일올리기", icon: Paperclip,  color: "text-blue-500" },
+  watching:   { label: "시청하기",   icon: Monitor,    color: "text-rose-500" },
 };
 
-// ── URL detection helpers ──────────────────────────────────────────────────────
 const URL_REGEX = /https?:\/\/[^\s<>"']+/g;
-
 function extractUrls(text: string | null): string[] {
   if (!text) return [];
   return text.match(URL_REGEX) || [];
 }
-
 function getDomain(url: string) {
   try { return new URL(url).hostname.replace("www.", ""); } catch { return url; }
 }
-
 function removeUrls(text: string): string {
   return text.replace(URL_REGEX, "").replace(/\n{2,}/g, "\n").trim();
 }
@@ -91,73 +54,34 @@ function BookmarkCard({ url }: { url: string }) {
     </a>
   );
 }
-function useAudioRecorder() {
-  const [recording, setRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const mediaRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const start = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
-      mediaRef.current = mr;
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        const url = URL.createObjectURL(blob);
-        setAudioBlob(blob);
-        setAudioUrl(url);
-        stream.getTracks().forEach((t) => t.stop());
-      };
-      mr.start();
-      setRecording(true);
-      setDuration(0);
-      timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
-    } catch {
-      alert("마이크 접근 권한이 필요합니다.");
-    }
-  }, []);
+interface Assignment {
+  id: string;
+  type: HwType;
+  title: string;
+  description: string | null;
+  is_preset: boolean;
+  session_id: string | null;
+  preset_origin_id?: string | null;
+}
 
-  const stop = useCallback(() => {
-    mediaRef.current?.stop();
-    setRecording(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-  }, []);
-
-  const reset = useCallback(() => {
-    setAudioBlob(null);
-    setAudioUrl(null);
-    setDuration(0);
-    setPlaying(false);
-  }, []);
-
-  const togglePlay = useCallback(() => {
-    if (!audioUrl) return;
-    if (playing) {
-      audioRef.current?.pause();
-      setPlaying(false);
-    } else {
-      const a = new Audio(audioUrl);
-      audioRef.current = a;
-      a.onended = () => setPlaying(false);
-      a.play();
-      setPlaying(true);
-    }
-  }, [audioUrl, playing]);
-
-  const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-
-  return { recording, audioBlob, audioUrl, playing, duration, start, stop, reset, togglePlay, fmt };
+interface Submission {
+  id: string;
+  assignment_id: string | null;
+  status: string;
+  text_content: string | null;
+  audio_url: string | null;
+  file_url: string | null;
+  submitted_at: string;
+  instructor_note: string | null;
+  reviewed_at: string | null;
+  ai_correction: any | null;
 }
 
 // ── Submission Card ────────────────────────────────────────────────────────────
+// Unified: opens HomeworkSubmitModal for all edits/submissions so the same
+// canonical-target resolution, auto-save, sibling-draft prefill, and race
+// guards apply regardless of entry point.
 function SubmissionCard({
   assignment,
   submission,
@@ -171,389 +95,134 @@ function SubmissionCard({
   onSubmitted: (sub: Submission) => void;
   onViewFeedback: (assignment: Assignment, submission: Submission) => void;
 }) {
-  const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  const [descOpen, setDescOpen] = useState(true);
-  const [text, setText] = useState(submission?.text_content ?? "");
-  const [submitting, setSubmitting] = useState(false);
-  const [fileObj, setFileObj] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [descOpen, setDescOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const meta = HW_META[assignment.type];
   const Icon = meta.icon;
-  const recorder = useAudioRecorder();
-
-  const canSubmit =
-    (!meta.requiresText || text.trim().length > 0) &&
-    (!meta.requiresAudio || recorder.audioBlob !== null) &&
-    (!meta.requiresFile || fileObj !== null);
-
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    let audioStorageUrl: string | null = null;
-    let fileStorageUrl: string | null = null;
-
-    const logBase = {
-      source: "StudentHomeworkPanel",
-      student_name: studentName,
-      assignment_id: assignment.id,
-      assignment_type: assignment.type,
-    } as const;
-    logHomeworkEvent({ ...logBase, event_type: "submit", stage: "attempt", context: { text_len: text.length, has_audio: !!recorder.audioBlob, has_file: !!fileObj } });
-
-    try {
-      if (recorder.audioBlob) {
-        logHomeworkEvent({ ...logBase, event_type: "storage_audio_upload", stage: "attempt" });
-        const path = `${assignment.id}/${Date.now()}.webm`;
-        const { error: upErr } = await supabase.storage
-          .from("homework-audio")
-          .upload(path, recorder.audioBlob, { contentType: "audio/webm", upsert: true });
-        if (upErr) {
-          logHomeworkEvent({ ...logBase, event_type: "storage_audio_upload", stage: "error", error: upErr });
-          throw upErr;
-        }
-        const { data: pub } = supabase.storage.from("homework-audio").getPublicUrl(path);
-        audioStorageUrl = pub.publicUrl;
-        logHomeworkEvent({ ...logBase, event_type: "storage_audio_upload", stage: "success" });
-      }
-
-      if (fileObj) {
-        logHomeworkEvent({ ...logBase, event_type: "storage_file_upload", stage: "attempt", context: { size: fileObj.size, mime: fileObj.type } });
-        const ext = fileObj.name.split(".").pop() || "file";
-        const path = `${assignment.id}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from("homework-files")
-          .upload(path, fileObj, { contentType: fileObj.type, upsert: true });
-        if (upErr) {
-          logHomeworkEvent({ ...logBase, event_type: "storage_file_upload", stage: "error", error: upErr });
-          throw upErr;
-        }
-        fileStorageUrl = path;
-        logHomeworkEvent({ ...logBase, event_type: "storage_file_upload", stage: "success" });
-      }
-
-      let resultSub: Submission | null = null;
-      if (submission) {
-        const { data, error } = await supabase
-          .from("homework_submissions")
-          .update({
-            text_content: text.trim() || null,
-            audio_url: audioStorageUrl ?? submission.audio_url,
-            file_url: fileStorageUrl ?? submission.file_url,
-            status: "submitted",
-            submitted_at: new Date().toISOString(),
-          })
-          .eq("id", submission.id)
-          .select()
-          .single();
-        if (error) throw error;
-        resultSub = data;
-      } else {
-        // Sibling-aware canonical resolution: if another preset-sibling already
-        // has a submission for this student, append to that row instead of
-        // creating a new fragmented one. Otherwise insert against current id.
-        const { canonicalId, existingSubmission } =
-          await resolveCanonicalSubmissionTarget(supabase, assignment, studentName);
-
-        if (existingSubmission) {
-          const { data, error } = await supabase
-            .from("homework_submissions")
-            .update({
-              text_content: text.trim() || null,
-              audio_url: audioStorageUrl ?? existingSubmission.audio_url,
-              file_url: fileStorageUrl ?? existingSubmission.file_url,
-              status: "submitted",
-              submitted_at: new Date().toISOString(),
-            })
-            .eq("id", existingSubmission.id)
-            .select()
-            .single();
-          if (error) throw error;
-          resultSub = data;
-        } else {
-          const { data, error } = await supabase
-            .from("homework_submissions")
-            .upsert(
-              {
-                assignment_id: canonicalId,
-                student_name: studentName,
-                text_content: text.trim() || null,
-                audio_url: audioStorageUrl,
-                file_url: fileStorageUrl,
-                status: "submitted",
-              },
-              { onConflict: "assignment_id,student_name", ignoreDuplicates: false },
-            )
-            .select()
-            .single();
-          if (error) throw error;
-          resultSub = data;
-        }
-      }
-
-      logHomeworkEvent({ ...logBase, event_type: "submit", stage: "success", submission_id: resultSub?.id ?? null });
-      toast({ title: "숙제가 제출됐습니다 ✓" });
-      if (resultSub) onSubmitted(resultSub);
-      setOpen(false);
-    } catch (e: unknown) {
-      logHomeworkEvent({ ...logBase, event_type: "submit", stage: "error", error: e });
-      toast({ title: "제출 실패", description: e instanceof Error ? e.message : "오류가 발생했습니다", variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const submitted = !!submission && submission.status === "submitted";
   const reviewed = !!submission && submission.status === "reviewed";
+  const isDraft = !!submission && submission.status === "draft";
+
+  const handleHeaderClick = () => {
+    if (reviewed && submission) {
+      onViewFeedback(assignment, submission);
+    } else {
+      setDescOpen((v) => !v);
+    }
+  };
 
   return (
-    <div className={cn(
-      "rounded-xl border bg-card overflow-hidden transition-all",
-      reviewed ? "border-[hsl(var(--success)/0.5)]" : submitted ? "border-[hsl(var(--gold)/0.4)]" : "border-border"
-    )}>
-      {/* Header */}
-      <button
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-left"
-        onClick={() => {
-          if (reviewed && submission) {
-            onViewFeedback(assignment, submission);
-          } else {
-            setOpen((v) => !v);
-          }
-        }}
-      >
-        <div className={cn("flex-shrink-0", meta.color)}>
-          <Icon className="w-4 h-4" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-foreground">{assignment.title}</span>
-            <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>
-              {meta.label}
-            </span>
-            {reviewed && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]">
-                검토 완료
+    <>
+      <div className={cn(
+        "rounded-xl border bg-card overflow-hidden transition-all",
+        reviewed ? "border-[hsl(var(--success)/0.5)]" : submitted ? "border-[hsl(var(--gold)/0.4)]" : "border-border"
+      )}>
+        <button
+          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-left"
+          onClick={handleHeaderClick}
+        >
+          <div className={cn("flex-shrink-0", meta.color)}>
+            <Icon className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-foreground">{assignment.title}</span>
+              <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-muted", meta.color)}>
+                {meta.label}
               </span>
-            )}
-            {submitted && !reviewed && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]">
-                제출 완료
-              </span>
+              {reviewed && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]">
+                  검토 완료
+                </span>
+              )}
+              {submitted && !reviewed && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]">
+                  제출 완료
+                </span>
+              )}
+              {isDraft && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[hsl(var(--gold)/0.15)] text-[hsl(var(--gold-dark))]">
+                  임시저장
+                </span>
+              )}
+            </div>
+            {assignment.description && (
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{assignment.description}</p>
             )}
           </div>
-          {assignment.description && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">{assignment.description}</p>
-          )}
-        </div>
-        <div className="flex-shrink-0">
-          {submitted || reviewed
-            ? <CheckCircle2 className={cn("w-4 h-4", reviewed ? "text-[hsl(var(--success))]" : "text-[hsl(var(--gold))]")} />
-            : open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-        </div>
-      </button>
+          <div className="flex-shrink-0">
+            {submitted || reviewed
+              ? <CheckCircle2 className={cn("w-4 h-4", reviewed ? "text-[hsl(var(--success))]" : "text-[hsl(var(--gold))]")} />
+              : descOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </div>
+        </button>
 
-        {/* Body */}
-      {open && (
-        <div className="px-4 pb-4 space-y-3 border-t border-border/50">
-          {/* Description (collapsible) */}
-          {assignment.description && (
-            <div className="mt-3 rounded-lg border border-border/60 overflow-hidden">
-              <button
-                onClick={() => setDescOpen((v) => !v)}
-                className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 hover:bg-muted/60 transition-colors text-left"
-              >
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">상세 내용</span>
-                {descOpen ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
-              </button>
-              {descOpen && (
+        {descOpen && (
+          <div className="px-4 pb-4 space-y-3 border-t border-border/50">
+            {assignment.description && (
+              <div className="mt-3 rounded-lg border border-border/60 overflow-hidden">
                 <div className="px-3 py-2.5 bg-muted/20 space-y-2">
-                  {/* Bookmark cards for URLs */}
                   {extractUrls(assignment.description).map((url, i) => (
                     <BookmarkCard key={i} url={url} />
                   ))}
-                  {/* Remaining text */}
                   {removeUrls(assignment.description) && (
                     <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
                       {removeUrls(assignment.description)}
                     </p>
                   )}
                 </div>
-              )}
-            </div>
-          )}
-          {/* Instructor note (reviewed) */}
-          {submission?.instructor_note && (
-            <div className="mt-3 px-3 py-2 rounded-lg bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)]">
-              <p className="text-xs font-semibold text-[hsl(var(--success))] mb-0.5">강사 피드백</p>
-              <p className="text-xs text-foreground line-clamp-2">{submission.instructor_note}</p>
-            </div>
-          )}
-
-          {/* View full feedback button */}
-          {submission && (submission.status === "reviewed" || submission.ai_correction) && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2 w-full h-8 text-xs gap-1.5"
-              onClick={(e) => { e.stopPropagation(); onViewFeedback(assignment, submission); }}
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              검토 결과 보기
-            </Button>
-          )}
-
-          {/* Previous submission playback */}
-          {submission?.audio_url && (
-            <div className="mt-3">
-              <p className="text-[10px] text-muted-foreground mb-1">제출된 녹음</p>
-              <audio controls src={submission.audio_url} className="w-full h-8" />
-            </div>
-          )}
-
-          {/* Text area */}
-          {(meta.requiresText || assignment.type === "memorizing") && (
-            <div className="mt-3">
-              <Textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                spellCheck
-                lang="en"
-                placeholder={
-                  meta.requiresText
-                    ? "여기에 작성하세요 (필수)"
-                    : "메모 또는 자유 작성 (선택)"
-                }
-                className={cn(
-                  "resize-none text-sm",
-                  assignment.type === "writing" ? "min-h-[200px]" : "min-h-[100px]"
-                )}
-              />
-            </div>
-          )}
-
-          {/* Audio recorder */}
-          {(meta.requiresAudio || assignment.type === "reading" || assignment.type === "memorizing") && (
-            <div className="mt-3">
-              <p className="text-[10px] text-muted-foreground mb-2">
-                {meta.requiresAudio ? "음성 녹음 (필수)" : "음성 녹음 (선택)"}
-              </p>
-              {!recorder.audioBlob ? (
-                <div className="flex items-center gap-2">
-                  {!recorder.recording ? (
-                    <Button
-                      size="sm"
-                      onClick={recorder.start}
-                      className="gap-2 h-8 text-xs bg-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.85)] text-white"
-                    >
-                      <Mic className="w-3.5 h-3.5" />
-                      녹음 시작
-                    </Button>
-                  ) : (
-                    <>
-                      <span className="flex items-center gap-1.5 text-xs text-destructive font-mono font-bold">
-                        <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                        {recorder.fmt(recorder.duration)}
-                      </span>
-                      <Button
-                        size="sm"
-                        onClick={recorder.stop}
-                        className="gap-2 h-8 text-xs bg-destructive hover:bg-destructive/85 text-destructive-foreground"
-                      >
-                        <Square className="w-3 h-3 fill-white" />
-                        녹음 중지
-                      </Button>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 border border-border">
-                  <Button size="icon" variant="ghost" className="w-7 h-7" onClick={recorder.togglePlay}>
-                    {recorder.playing
-                      ? <Pause className="w-3.5 h-3.5" />
-                      : <Play className="w-3.5 h-3.5" />}
-                  </Button>
-                  <span className="text-xs text-muted-foreground flex-1">
-                    녹음 완료 ({recorder.fmt(recorder.duration)})
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={recorder.reset}
-                    className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    다시 녹음
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* File upload */}
-          {meta.requiresFile && (
-            <div className="mt-3">
-              <p className="text-[10px] text-muted-foreground mb-2">파일 첨부 (필수)</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={e => { if (e.target.files?.[0]) setFileObj(e.target.files[0]); }}
-              />
-              {!fileObj ? (
-                <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}
-                  className="gap-2 h-8 text-xs border-dashed">
-                  <FileUp className="w-3.5 h-3.5" /> 파일 선택
-                </Button>
-              ) : (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 border border-border">
-                  <Paperclip className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                  <span className="text-xs text-foreground flex-1 truncate">{fileObj.name}</span>
-                  <span className="text-[10px] text-muted-foreground flex-shrink-0">
-                    {(fileObj.size / 1024).toFixed(0)}KB
-                  </span>
-                  <Button size="sm" variant="ghost" onClick={() => { setFileObj(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
-                    <XIcon className="w-3 h-3" />
-                  </Button>
-                </div>
-              )}
-              {submission?.file_url && (
-                <button type="button" onClick={async () => {
-                  const { getHomeworkFileSignedUrl } = await import("@/lib/homeworkFileUrl");
-                  const url = await getHomeworkFileSignedUrl(submission.file_url);
-                  if (url) window.open(url, "_blank", "noopener,noreferrer");
-                }} className="flex items-center gap-2 mt-2 text-xs text-blue-500 hover:underline">
-                  <Paperclip className="w-3 h-3" /> 이전 제출 파일 보기
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Submit button */}
-          <Button
-            size="sm"
-            onClick={handleSubmit}
-            disabled={!canSubmit || submitting || recorder.recording}
-            className="w-full h-9 text-sm gap-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground mt-1"
-          >
-            {submitting ? (
-              <><Loader2 className="w-3.5 h-3.5 animate-spin" />제출 중...</>
-            ) : submitted ? (
-              <><Send className="w-3.5 h-3.5" />다시 제출</>
-            ) : (
-              <><Send className="w-3.5 h-3.5" />숙제 완료하기</>
+              </div>
             )}
-          </Button>
 
-          {!canSubmit && !submitting && (
-            <p className="text-[10px] text-muted-foreground text-center">
-              {meta.requiresText && !text.trim() && "텍스트 작성이 필요합니다"}
-              {meta.requiresAudio && !recorder.audioBlob && "녹음이 필요합니다"}
-            </p>
-          )}
-        </div>
+            {submission?.instructor_note && (
+              <div className="mt-3 px-3 py-2 rounded-lg bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)]">
+                <p className="text-xs font-semibold text-[hsl(var(--success))] mb-0.5">강사 피드백</p>
+                <p className="text-xs text-foreground line-clamp-2">{submission.instructor_note}</p>
+              </div>
+            )}
+
+            {submission && (submission.status === "reviewed" || submission.ai_correction) && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 w-full h-8 text-xs gap-1.5"
+                onClick={(e) => { e.stopPropagation(); onViewFeedback(assignment, submission); }}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                검토 결과 보기
+              </Button>
+            )}
+
+            {!reviewed && (
+              <Button
+                size="sm"
+                className="mt-2 w-full h-9 text-sm gap-1.5 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-light))] text-primary-foreground"
+                onClick={(e) => { e.stopPropagation(); setModalOpen(true); }}
+              >
+                {isDraft ? "이어서 작성" : submitted ? "다시 제출하기" : "제출하기"}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {modalOpen && (
+        <HomeworkSubmitModal
+          assignment={{
+            id: assignment.id,
+            type: assignment.type,
+            title: assignment.title,
+            description: assignment.description,
+            session_id: assignment.session_id,
+          }}
+          submission={submission as any}
+          studentName={studentName}
+          onClose={() => setModalOpen(false)}
+          onSubmitted={(sub) => onSubmitted(sub as any)}
+        />
       )}
-    </div>
+    </>
   );
 }
 
@@ -567,16 +236,8 @@ export default function StudentHomeworkPanel({
 }: {
   studentName: string;
   sessionId: string;
-  /**
-   * When true (e.g. student dashboard 수업 노트 past-session view, or instructor
-   * Classroom 직전 사이클 섹션), display the homework cycle that was DUE BEFORE
-   * this session — i.e. the cards tied to the immediately-previous session.
-   * When false (default), use the given sessionId directly.
-   */
   showPreviousCycle?: boolean;
-  /** Override the section header label (default: "숙제"). */
   headerLabel?: string;
-  /** Override empty-state message. */
   emptyMessage?: string;
 }) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -588,7 +249,6 @@ export default function StudentHomeworkPanel({
     const load = async () => {
       setLoading(true);
 
-      // First, fetch sessions to determine effective sessionId (for previous-cycle mode)
       const { data: sessionRows } = await supabase
         .from("class_sessions")
         .select("id, scheduled_at")
@@ -624,7 +284,6 @@ export default function StudentHomeworkPanel({
       const assignmentRows = (asgn ?? []) as (Assignment & { preset_origin_id?: string | null })[];
       const submissionRows = (subs ?? []) as Submission[];
 
-      // Filter out preset templates that have session copies for the effective session
       const copyOriginIds = new Set(
         assignmentRows.filter(a => a.preset_origin_id && a.session_id === effectiveSessionId)
           .map(a => a.preset_origin_id)
@@ -660,7 +319,6 @@ export default function StudentHomeworkPanel({
         const candidates = groupedByAssignment[assignment.id] ?? [];
         if (candidates.length === 0) return;
 
-        // Only use time-window for remaining preset templates (fallback when no session copy exists)
         if (assignment.is_preset && currentSessionTime) {
           const inWindow = candidates.filter((sub) => {
             const ts = new Date(sub.submitted_at).getTime();
@@ -671,7 +329,6 @@ export default function StudentHomeworkPanel({
           return;
         }
 
-        // Session-specific assignments (including auto-copies): any submission counts
         const latest = pickLatest(candidates);
         if (latest) subMap[assignment.id] = latest;
       });
@@ -691,7 +348,6 @@ export default function StudentHomeworkPanel({
 
   return (
     <div className="flex-1 flex flex-col gap-4 min-h-0">
-      {/* Header */}
       <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
         <div className="px-4 py-3 bg-muted/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -712,7 +368,6 @@ export default function StudentHomeworkPanel({
         </div>
       </div>
 
-      {/* List */}
       <div className="flex-1 overflow-y-auto space-y-3 pb-2">
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -740,7 +395,6 @@ export default function StudentHomeworkPanel({
         )}
       </div>
 
-      {/* Feedback Modal */}
       {feedbackTarget && (
         <HomeworkFeedbackModal
           assignmentTitle={feedbackTarget.assignment.title}
