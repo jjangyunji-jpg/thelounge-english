@@ -852,31 +852,58 @@ export default function Classroom() {
             .map(h => h.id);
           const allLookupIds = Array.from(new Set([...hwIds, ...presetOriginIds, ...siblingCopyIds]));
 
-          // Time-window filter: a submission belongs to the previous class's
-          // cycle if it was made AFTER the class BEFORE prev (prev-prev) started.
-          // Using prev.scheduled_at as the cutoff incorrectly excludes
-          // submissions made shortly before the prev class started — which is
-          // the most common pattern (students submit right before class).
-          const cutoffTime = prevPrevSess?.scheduled_at
+          // Submission lookup strategy:
+          // 1) Direct session-copy match (assignment.session_id == prevSession.id):
+          //    these copies are the canonical write target, so the submission is
+          //    guaranteed to belong to this cycle — no time filter needed.
+          // 2) Preset template / sibling-copy fallback: constrain by time window
+          //    [prev-prev session start, current session start) so an older
+          //    cycle's submission can't leak into this one.
+          const currentSessionMs = session.scheduledAt.getTime();
+          const windowStartIso = prevPrevSess?.scheduled_at
             ? new Date(prevPrevSess.scheduled_at).toISOString()
             : new Date(0).toISOString();
 
-          const { data: subData } = await supabase
-            .from("homework_submissions")
-            .select("id, assignment_id, status, submitted_at")
-            .in("assignment_id", allLookupIds)
-            .gte("submitted_at", cutoffTime)
-            .order("submitted_at", { ascending: false });
+          // Direct copies of the prev session (no time filter)
+          const directCopyIds = filteredPrev
+            .filter(h => h.session_id === prevSessData.id)
+            .map(h => h.id);
+          // Fallback IDs (presets + sibling copies on other sessions)
+          const fallbackIds = allLookupIds.filter(id => !directCopyIds.includes(id));
+
+          const subQueries: Promise<{ data: { id: string; assignment_id: string | null; status: string; submitted_at: string | null }[] | null }>[] = [];
+          if (directCopyIds.length > 0) {
+            subQueries.push(
+              supabase
+                .from("homework_submissions")
+                .select("id, assignment_id, status, submitted_at")
+                .in("assignment_id", directCopyIds)
+                .order("submitted_at", { ascending: false }) as unknown as Promise<{ data: { id: string; assignment_id: string | null; status: string; submitted_at: string | null }[] | null }>
+            );
+          }
+          if (fallbackIds.length > 0) {
+            subQueries.push(
+              supabase
+                .from("homework_submissions")
+                .select("id, assignment_id, status, submitted_at")
+                .in("assignment_id", fallbackIds)
+                .gte("submitted_at", windowStartIso)
+                .lt("submitted_at", new Date(currentSessionMs).toISOString())
+                .order("submitted_at", { ascending: false }) as unknown as Promise<{ data: { id: string; assignment_id: string | null; status: string; submitted_at: string | null }[] | null }>
+            );
+          }
+          const subResults = await Promise.all(subQueries);
           if (isStale()) return;
+          const subData = subResults.flatMap(r => r.data ?? []);
 
           const subMap = new Map<string, { id: string; status: string }>();
-          (subData || []).forEach(s => {
+          subData.forEach(s => {
             if (s.assignment_id && !subMap.has(s.assignment_id)) {
               subMap.set(s.assignment_id, { id: s.id, status: s.status });
             }
           });
           const subByOrigin = new Map<string, { id: string; status: string }>();
-          (subData || []).forEach(s => {
+          subData.forEach(s => {
             const originId = prevHwData.find(h => h.id === s.assignment_id)?.preset_origin_id;
             if (originId && !subByOrigin.has(originId)) {
               subByOrigin.set(originId, { id: s.id, status: s.status });
