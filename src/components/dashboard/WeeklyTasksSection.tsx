@@ -93,7 +93,7 @@ function getWeekLabelFromDate(date: Date) {
 
 export default function WeeklyTasksSection({
   assignments, submissions, sessions, studentName,
-  vocabWords, testHistory, onSubmissionUpdate, periodStart,
+  vocabWords, testHistory, onSubmissionUpdate, periodStart, allPeriods,
 }: Props) {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -123,10 +123,21 @@ export default function WeeklyTasksSection({
     ? (pastSessions[0] ?? null)
     : (pastSessions[1] ?? null);
 
-  // Calculate week number relative to period start
-  const weekNumber = latestSession && periodStart
-    ? Math.floor((new Date(latestSession.scheduled_at).getTime() - periodStart.getTime()) / (7 * 86400000)) + 1
+  // Calculate week number relative to the session's OWN schedule_period
+  // (not the parent's selectedPeriod — when viewing this month's dashboard
+  // an upcoming session may belong to next month's period).
+  const sessionPeriodStart = (() => {
+    if (!latestSession) return periodStart ?? null;
+    const sd = new Date(latestSession.scheduled_at);
+    const sdKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(sd);
+    const own = allPeriods?.find(p => p.start_date <= sdKey && p.end_date >= sdKey);
+    if (own) return new Date(own.start_date + "T00:00:00");
+    return periodStart ?? null;
+  })();
+  const weekNumber = latestSession && sessionPeriodStart
+    ? Math.floor((new Date(latestSession.scheduled_at).getTime() - sessionPeriodStart.getTime()) / (7 * 86400000)) + 1
     : null;
+
 
   // Assignments for the latest session (session-specific copies + remaining presets without copies)
   const sessionCopyOriginIds = new Set(
