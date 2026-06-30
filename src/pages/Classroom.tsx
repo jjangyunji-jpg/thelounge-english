@@ -896,17 +896,17 @@ export default function Classroom() {
           if (isStale()) return;
           const subData = subResults.flatMap(r => r.data ?? []);
 
-          const subMap = new Map<string, { id: string; status: string }>();
+          const subMap = new Map<string, { id: string; status: string; submitted_at: string | null }>();
           subData.forEach(s => {
             if (s.assignment_id && !subMap.has(s.assignment_id)) {
-              subMap.set(s.assignment_id, { id: s.id, status: s.status });
+              subMap.set(s.assignment_id, { id: s.id, status: s.status, submitted_at: s.submitted_at });
             }
           });
-          const subByOrigin = new Map<string, { id: string; status: string }>();
+          const subByOrigin = new Map<string, { id: string; status: string; submitted_at: string | null }>();
           subData.forEach(s => {
             const originId = prevHwData.find(h => h.id === s.assignment_id)?.preset_origin_id;
             if (originId && !subByOrigin.has(originId)) {
-              subByOrigin.set(originId, { id: s.id, status: s.status });
+              subByOrigin.set(originId, { id: s.id, status: s.status, submitted_at: s.submitted_at });
             }
           });
           setPrevHwList(filteredPrev.map(h => {
@@ -920,6 +920,7 @@ export default function Classroom() {
               presetOriginId: h.preset_origin_id,
               status: matchedSub?.status || "not_submitted",
               submissionId: matchedSub?.id ?? null,
+              submittedAt: matchedSub?.submitted_at ?? null,
             };
           }));
         } else {
