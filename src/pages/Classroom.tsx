@@ -345,7 +345,7 @@ export default function Classroom() {
   useEffect(() => { sessionIdRef.current = session.sessionId; }, [session.sessionId]);
   const [notesEditMode, setNotesEditMode] = useState(true);
   const [hwList, setHwList] = useState<HomeworkItem[]>([]);
-  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; description?: string | null; status: string; presetOriginId?: string | null; submissionId?: string | null; submittedAt?: string | null }[]>([]);
+  const [prevHwList, setPrevHwList] = useState<{ id: string; type: HwType; title: string; description?: string | null; status: string; presetOriginId?: string | null; submissionId?: string | null; submittedAt?: string | null; sessionNumber?: string | null }[]>([]);
   const [prevVocabTests, setPrevVocabTests] = useState<{ id: string; score: number | null; total: number | null; started_at: string; completed_at: string | null }[]>([]);
   const [prevHwOpen, setPrevHwOpen] = useState(false);
   const [hwOpen, setHwOpen] = useState(true);
@@ -808,6 +808,36 @@ export default function Classroom() {
 
       const prevSessData = prevSessArr?.[0] ?? null;
       const prevPrevSess = prevSessArr?.[1] ?? null;
+      let prevSessionNumber: string | null = null;
+
+      if (prevSessData?.id) {
+        const prevSessionDateStr = prevSessData.scheduled_at.slice(0, 10);
+        const { data: prevMatchingPeriod } = await supabase
+          .from("schedule_periods")
+          .select("start_date, end_date")
+          .eq("is_active", true)
+          .lte("start_date", prevSessionDateStr)
+          .gte("end_date", prevSessionDateStr)
+          .maybeSingle();
+        if (isStale()) return;
+        let prevPeriodFilter = supabase
+          .from("class_sessions")
+          .select("id, scheduled_at")
+          .eq("student_name", session.dbStudentName)
+          .eq("instructor_name", session.instructorName)
+          .order("scheduled_at", { ascending: true });
+        if (prevMatchingPeriod) {
+          prevPeriodFilter = prevPeriodFilter
+            .gte("scheduled_at", prevMatchingPeriod.start_date + "T00:00:00+09:00")
+            .lte("scheduled_at", prevMatchingPeriod.end_date + "T23:59:59+09:00");
+        }
+        const { data: prevAllSessions } = await prevPeriodFilter;
+        if (isStale()) return;
+        if (prevAllSessions) {
+          const prevIdx = prevAllSessions.findIndex(s => s.id === prevSessData.id);
+          prevSessionNumber = `${prevIdx + 1}회차`;
+        }
+      }
 
       if (prevSessData?.id) {
         const { data: prevHwData } = await supabase
@@ -921,6 +951,7 @@ export default function Classroom() {
               status: matchedSub?.status || "not_submitted",
               submissionId: matchedSub?.id ?? null,
               submittedAt: matchedSub?.submitted_at ?? null,
+              sessionNumber: prevSessionNumber,
             };
           }));
         } else {
@@ -1737,7 +1768,12 @@ export default function Classroom() {
                             )}
                           >
                             <Icon className={cn("w-3 h-3 flex-shrink-0", meta?.color || "text-muted-foreground")} />
-                            <span className="text-[11px] flex-1 truncate">{h.title}</span>
+                            <span className="text-[11px] flex-1 truncate">
+                              {h.title}
+                              {h.sessionNumber && (
+                                <span className="ml-1 text-[9px] text-muted-foreground">({h.sessionNumber} 제출)</span>
+                              )}
+                            </span>
                             {h.submittedAt && (
                               <span className="text-[9px] text-muted-foreground flex-shrink-0">
                                 {new Date(h.submittedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
