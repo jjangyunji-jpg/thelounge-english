@@ -562,18 +562,22 @@ export default function StudentHomeworkPanel({
   studentName,
   sessionId,
   showPreviousCycle = false,
+  headerLabel,
+  emptyMessage,
 }: {
   studentName: string;
   sessionId: string;
   /**
-   * When true (e.g. student dashboard 수업 노트 past-session view), display the
-   * homework cycle that was DUE BEFORE this session — i.e. the cards tied to
-   * the immediately-previous session. Submissions made between the previous
-   * session and this session are reflected as completion for THIS session view.
-   * When false (default — used in classroom during a live class), use the
-   * given sessionId directly.
+   * When true (e.g. student dashboard 수업 노트 past-session view, or instructor
+   * Classroom 직전 사이클 섹션), display the homework cycle that was DUE BEFORE
+   * this session — i.e. the cards tied to the immediately-previous session.
+   * When false (default), use the given sessionId directly.
    */
   showPreviousCycle?: boolean;
+  /** Override the section header label (default: "숙제"). */
+  headerLabel?: string;
+  /** Override empty-state message. */
+  emptyMessage?: string;
 }) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
