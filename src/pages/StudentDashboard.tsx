@@ -2224,17 +2224,9 @@ export default function StudentDashboard() {
             <div className="p-3 grid grid-cols-2 gap-2">
               {/* 수업 입장하기 */}
               {(() => {
-                const canEnter = nextClassDate && (() => {
-                  const now = new Date();
-                  // 수업 당일이면 입장 가능 (KST 기준)
-                  const nKST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-                  const cKST = new Date(nextClassDate.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-                  return nKST.getFullYear() === cKST.getFullYear() && nKST.getMonth() === cKST.getMonth() && nKST.getDate() === cKST.getDate();
-                })();
                 return (
                   <button
                     onClick={() => {
-                      if (!canEnter) return;
                       const meetLink = studentRecord?.meet_link || nextSessionFromDB?.meet_link;
                       if (meetLink) {
                         window.open(meetLink, "_blank", "noopener,noreferrer");
@@ -2242,13 +2234,7 @@ export default function StudentDashboard() {
                         toast({ title: "Google Meet 링크가 설정되지 않았습니다", description: "담당 강사에게 문의해주세요.", variant: "destructive" });
                       }
                     }}
-                    disabled={!canEnter}
-                    className={cn(
-                      "rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all active:scale-[0.98]",
-                      canEnter
-                        ? "bg-navy text-primary-foreground hover:opacity-90"
-                        : "bg-navy/40 text-primary-foreground/50 cursor-not-allowed"
-                    )}
+                    className="rounded-lg p-3 flex flex-col items-start gap-2 text-left transition-all active:scale-[0.98] bg-navy text-primary-foreground hover:opacity-90"
                   >
                     <div className="w-7 h-7 rounded-md flex items-center justify-center bg-white/15">
                       <Video className="w-4 h-4 text-gold" />
@@ -2256,7 +2242,7 @@ export default function StudentDashboard() {
                     <div>
                       <p className="text-xs font-bold leading-none">수업 입장하기</p>
                       <p className="text-[10px] mt-0.5 opacity-60">
-                        {!nextClassDate ? "예정 없음" : canEnter ? "입장 가능" : timeUntilLabel(nextClassDate.toISOString())}
+                        {nextClassDate ? timeUntilLabel(nextClassDate.toISOString()) : "입장 가능"}
                       </p>
                     </div>
                   </button>
