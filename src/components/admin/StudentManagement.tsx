@@ -1641,7 +1641,7 @@ export default function StudentManagement() {
                   className="h-7 px-2 text-[10px] gap-1 border-[hsl(var(--navy))]/30 text-[hsl(var(--navy))] hover:bg-[hsl(var(--navy))]/8 flex-shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/t/student-dashboard?student_name=${encodeURIComponent(student.name)}`);
+                    window.open(`/t/student-dashboard?student_name=${encodeURIComponent(student.name)}`, "_blank", "noopener,noreferrer");
                   }}
                 >
                   <ExternalLink className="w-3 h-3" />
@@ -2786,18 +2786,18 @@ export default function StudentManagement() {
                               {student.instructor} · {student.startDate || "시작일 미정"}
                             </p>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-[10px] gap-1 border-[hsl(var(--navy))]/30 text-[hsl(var(--navy))] hover:bg-[hsl(var(--navy))]/8 flex-shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/t/student-dashboard?student_name=${encodeURIComponent(student.name)}`);
-                            }}
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            대시보드
-                          </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-[10px] gap-1 border-[hsl(var(--navy))]/30 text-[hsl(var(--navy))] hover:bg-[hsl(var(--navy))]/8 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`/t/student-dashboard?student_name=${encodeURIComponent(student.name)}`, "_blank", "noopener,noreferrer");
+                              }}
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              대시보드
+                            </Button>
                       {expandedId === student.id ? (
                             <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           ) : (
