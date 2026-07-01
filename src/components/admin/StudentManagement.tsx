@@ -975,18 +975,33 @@ export default function StudentManagement() {
   };
 
   const saveMeetLink = async (studentId: number) => {
-    const url = meetLinkInput.trim();
-    if (url && !url.startsWith("http")) return;
-    const student = students.find(s => s.id === studentId);
-    if (student?.dbId) {
-      const { error } = await supabase.from("instructor_students").update({ meet_link: url || null }).eq("id", student.dbId);
-      if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
-      // Propagate to future sessions so 강사 대시보드/수업노트에도 반영
-      const startDate = (student as any).startDate || null;
-      const transferDate = (student as any).transferDate || null;
-      const updated = await propagateMeetLinkToSessions(student.name, student.instructor, url || null, startDate, transferDate);
-      toast({ title: "Meet 링크가 저장됐습니다 ✓", description: updated > 0 ? `향후 세션 ${updated}건에도 적용` : undefined });
+    let url = meetLinkInput.trim();
+    // Auto-prepend https:// if user pasted meet.google.com/... without protocol
+    if (url && !/^https?:\/\//i.test(url)) {
+      url = `https://${url.replace(/^\/+/, "")}`;
     }
+    if (url) {
+      try {
+        // Validate URL shape; throws for invalid
+        // eslint-disable-next-line no-new
+        new URL(url);
+      } catch {
+        toast({ title: "저장 실패", description: "올바른 URL 형식이 아닙니다.", variant: "destructive" });
+        return;
+      }
+    }
+    const student = students.find(s => s.id === studentId);
+    if (!student?.dbId) {
+      toast({ title: "저장 실패", description: "학생 DB 레코드를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.from("instructor_students").update({ meet_link: url || null }).eq("id", student.dbId);
+    if (error) { toast({ title: "저장 실패", description: error.message, variant: "destructive" }); return; }
+    // Propagate to future sessions so 강사 대시보드/수업노트에도 반영
+    const startDate = (student as any).startDate || null;
+    const transferDate = (student as any).transferDate || null;
+    const updated = await propagateMeetLinkToSessions(student.name, student.instructor, url || null, startDate, transferDate);
+    toast({ title: "Meet 링크가 저장됐습니다 ✓", description: updated > 0 ? `향후 세션 ${updated}건에도 적용` : undefined });
     setStudents((prev) =>
       prev.map((s) => s.id === studentId ? { ...s, meetLink: url } : s)
     );
