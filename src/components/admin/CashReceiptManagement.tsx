@@ -400,8 +400,14 @@ export default function CashReceiptManagement() {
   // Deduplicate by student_name (transfers / re-registrations create multiple records for the same student).
   // Priority:
   //   1) Prefer ACTIVE records over inactive (so re-registered students don't get hidden by an old inactive row)
-  //   2) Within the same status, prefer the EARLIEST start_date so "신규" badge and period filtering
+  //   2) Prefer records still valid in the current period (end_date null or >= period start) —
+  //      otherwise transfer targets (e.g. 윤세림 record starting 6/8) get hidden behind the outgoing
+  //      instructor's ended row (e.g. 장리원 end_date=2026-06-08) and drop off the payment list.
+  //   3) Within the same validity, prefer the EARLIEST start_date so "신규" badge and period filtering
   //      reflect when the student actually started.
+  const pStartDateForDedup = currentPeriod?.start_date || "";
+  const isValidForPeriod = (s: StudentRecord) =>
+    !s.end_date || !pStartDateForDedup || s.end_date >= pStartDateForDedup;
   const deduped = Array.from(
     students.reduce((map, s) => {
       const existing = map.get(s.student_name);
@@ -410,7 +416,12 @@ export default function CashReceiptManagement() {
       const currentActive = s.status === "active";
       if (currentActive && !existingActive) { map.set(s.student_name, s); return map; }
       if (!currentActive && existingActive) return map;
-      // Same activeness — pick earliest start_date
+      // Same activeness — prefer record still valid in the current period
+      const existingValid = isValidForPeriod(existing);
+      const currentValid = isValidForPeriod(s);
+      if (currentValid && !existingValid) { map.set(s.student_name, s); return map; }
+      if (!currentValid && existingValid) return map;
+      // Same validity — pick earliest start_date
       const a = existing.start_date || "9999-12-31";
       const b = s.start_date || "9999-12-31";
       if (b < a) map.set(s.student_name, s);
